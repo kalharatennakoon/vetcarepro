@@ -1,1 +1,1 @@
-# VetCare Pro
+# VetCare Pro: Smart Web-Based Veterinary Clinic Management System

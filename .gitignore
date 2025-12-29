@@ -21,6 +21,8 @@ yarn-debug.log*
 
 # Dependencies (if installed at root)
 node_modules/
+package-lock.json
+yarn.lock
 
 # Temporary files
 *.tmp
