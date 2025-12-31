@@ -35,22 +35,27 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
+const closeDatabase = () => {
+  pool.end(() => {
+    console.log('Database pool closed');
+    process.exit(0);
+  });
+};
+
 const gracefulShutdown = (signal) => {
   console.log(`${signal} signal received: closing HTTP server`);
   
   if (server) {
-    server.close(() => {
+    server.close((err) => {
+      if (err) {
+        console.error('Error during server shutdown:', err);
+        process.exit(1);
+      }
       console.log('HTTP server closed');
-      pool.end(() => {
-        console.log('Database pool closed');
-        process.exit(0);
-      });
+      closeDatabase();
     });
   } else {
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
+    closeDatabase();
   }
 };
 
