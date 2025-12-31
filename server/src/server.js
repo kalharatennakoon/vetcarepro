@@ -12,14 +12,16 @@ dotenv.config({ path: join(__dirname, '../.env') });
 const PORT = process.env.PORT || 5000;
 
 // Test database connection before starting server
+let server;
+
 const startServer = async () => {
   try {
     // Test database connection
     await pool.query('SELECT NOW()');
     console.log('✅ Database connection successful');
     
-    // Start Express server
-    app.listen(PORT, () => {
+    // Start Express server and store reference
+    server = app.listen(PORT, () => {
       console.log('🚀 VetCare Pro Server is running');
       console.log(`📡 Server: http://localhost:${PORT}`);
       console.log(`🏥 API: http://localhost:${PORT}/api`);
@@ -33,21 +35,32 @@ const startServer = async () => {
 };
 
 // Handle graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+const closeDatabase = () => {
   pool.end(() => {
     console.log('Database pool closed');
     process.exit(0);
   });
-});
+};
 
-process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
-  pool.end(() => {
-    console.log('Database pool closed');
-    process.exit(0);
-  });
-});
+const gracefulShutdown = (signal) => {
+  console.log(`${signal} signal received: closing HTTP server`);
+  
+  if (server) {
+    server.close((err) => {
+      if (err) {
+        console.error('Error during server shutdown:', err);
+        process.exit(1);
+      }
+      console.log('HTTP server closed');
+      closeDatabase();
+    });
+  } else {
+    closeDatabase();
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Start the server
 startServer();
