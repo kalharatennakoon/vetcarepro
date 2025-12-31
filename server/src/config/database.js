@@ -28,8 +28,9 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Unexpected error on idle client', err);
-  process.exit(-1);
+  console.error('❌ Unexpected error on idle client:', err);
+  console.error('Database connection pool encountered a critical error. Application will terminate.');
+  process.exit(1);
 });
 
 // Query helper function
