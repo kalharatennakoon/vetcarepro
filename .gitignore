@@ -27,3 +27,6 @@ yarn.lock
 # Temporary files
 *.tmp
 .tmp/
+
+
+notes.md
