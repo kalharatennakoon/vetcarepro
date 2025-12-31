@@ -1,36 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-dotenv.config({ path: join(__dirname, '../.env') });
+dotenv.config();
 
 const app = express();
 
 // Middleware
-const allowedOrigins = [
-  ...(process.env.CLIENT_URLS ? process.env.CLIENT_URLS.split(',').map(origin => origin.trim()).filter(Boolean) : []),
-  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
-  'http://localhost:5173',
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (e.g., same-origin or non-browser clients)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
 }));
 
@@ -53,7 +31,11 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes will be added here
+// Import routes
+import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+
+// API Routes
 app.get('/api', (req, res) => {
   res.status(200).json({
     status: 'success',
@@ -61,10 +43,15 @@ app.get('/api', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
-      api: '/api'
+      auth: '/api/auth',
+      users: '/api/users'
     }
   });
 });
+
+// Mount routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 handler
 app.use((req, res) => {
