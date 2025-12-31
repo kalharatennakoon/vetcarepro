@@ -1,6 +1,6 @@
 -- VetCare Pro - Sample Seed Data
--- Test data for Pro Pet Animal Hospital, Mawathagama, Kurunegala, Sri Lanka
--- All prices in LKR (Sri Lankan Rupees)
+-- Database: Pro Pet Animal Hospital, Kurunegala District, Sri Lanka
+-- This script populates the database with initial data for testing and development purposes.
 
 -- Insert Users (Staff)
 -- Password for all: 'password123' (will be hashed properly in the application)
