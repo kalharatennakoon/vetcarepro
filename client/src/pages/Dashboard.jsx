@@ -1,7 +1,49 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getPets } from '../services/petService';
+import { getCustomers } from '../services/customerService';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    totalPets: 0,
+    activePets: 0,
+    totalCustomers: 0,
+    recentPets: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch pets and customers in parallel
+      const [petsResponse, customersResponse] = await Promise.all([
+        getPets({}),
+        getCustomers({})
+      ]);
+
+      const pets = petsResponse.data.pets || [];
+      const customers = customersResponse.data.customers || [];
+
+      setStats({
+        totalPets: pets.length,
+        activePets: pets.filter(p => p.is_active).length,
+        totalCustomers: customers.length,
+        recentPets: pets.slice(0, 5)
+      });
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -31,14 +73,13 @@ const Dashboard = () => {
         {/* Sidebar */}
         <aside style={styles.sidebar}>
           <nav style={styles.nav}>
-            <a href="#" style={styles.navItem}>📊 Dashboard</a>
-            <a href="#" style={styles.navItem}>🐾 Appointments</a>
-            <a href="#" style={styles.navItem}>🐕 Patients</a>
-            <a href="#" style={styles.navItem}>👨‍⚕️ Veterinarians</a>
-            <a href="#" style={styles.navItem}>💊 Inventory</a>
-            <a href="#" style={styles.navItem}>💰 Billing</a>
-            <a href="#" style={styles.navItem}>📈 Reports</a>
-            <a href="#" style={styles.navItem}>⚙️ Settings</a>
+            <a href="/dashboard" style={styles.navItem}>📊 Dashboard</a>
+            <a href="/pets" style={styles.navItem}>🐾 Pets</a>
+            <a href="/customers" style={styles.navItem}>👥 Customers</a>
+            <a href="/appointments" style={styles.navItem}>📅 Appointments</a>
+            {user?.role === 'admin' && (
+              <a href="/users" style={styles.navItem}>👨‍⚕️ Staff</a>
+            )}
           </nav>
         </aside>
 
@@ -46,81 +87,128 @@ const Dashboard = () => {
         <main style={styles.content}>
           <h2 style={styles.pageTitle}>Dashboard</h2>
           
-          {/* Stats Cards */}
-          <div style={styles.statsGrid}>
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>📅</div>
-              <div style={styles.statInfo}>
-                <h3 style={styles.statValue}>24</h3>
-                <p style={styles.statLabel}>Today's Appointments</p>
-              </div>
-            </div>
-
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>🐾</div>
-              <div style={styles.statInfo}>
-                <h3 style={styles.statValue}>156</h3>
-                <p style={styles.statLabel}>Active Patients</p>
-              </div>
-            </div>
-
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>👨‍⚕️</div>
-              <div style={styles.statInfo}>
-                <h3 style={styles.statValue}>8</h3>
-                <p style={styles.statLabel}>Veterinarians</p>
-              </div>
-            </div>
-
-            <div style={styles.statCard}>
-              <div style={styles.statIcon}>💰</div>
-              <div style={styles.statInfo}>
-                <h3 style={styles.statValue}>LKR 45,000</h3>
-                <p style={styles.statLabel}>Today's Revenue</p>
-              </div>
-            </div>
+          {/* Quick Actions */}
+          <div style={styles.quickActions}>
+            <button onClick={() => navigate('/pets/new')} style={styles.actionButton}>
+              ➕ Add New Pet
+            </button>
+            <button onClick={() => navigate('/customers/new')} style={styles.actionButton}>
+              ➕ Add New Customer
+            </button>
           </div>
 
-          {/* Recent Activity */}
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Recent Appointments</h3>
-            <div style={styles.table}>
-              <table style={styles.tableElement}>
-                <thead>
-                  <tr style={styles.tableHeader}>
-                    <th style={styles.th}>Time</th>
-                    <th style={styles.th}>Patient</th>
-                    <th style={styles.th}>Owner</th>
-                    <th style={styles.th}>Doctor</th>
-                    <th style={styles.th}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style={styles.tableRow}>
-                    <td style={styles.td}>09:00 AM</td>
-                    <td style={styles.td}>Max (Dog)</td>
-                    <td style={styles.td}>Mr. Silva</td>
-                    <td style={styles.td}>Dr. Nimal</td>
-                    <td style={styles.td}><span style={styles.statusCompleted}>Completed</span></td>
-                  </tr>
-                  <tr style={styles.tableRow}>
-                    <td style={styles.td}>10:30 AM</td>
-                    <td style={styles.td}>Bella (Cat)</td>
-                    <td style={styles.td}>Mrs. Fernando</td>
-                    <td style={styles.td}>Dr. Ayesha</td>
-                    <td style={styles.td}><span style={styles.statusInProgress}>In Progress</span></td>
-                  </tr>
-                  <tr style={styles.tableRow}>
-                    <td style={styles.td}>11:00 AM</td>
-                    <td style={styles.td}>Charlie (Rabbit)</td>
-                    <td style={styles.td}>Ms. Perera</td>
-                    <td style={styles.td}>Dr. Nimal</td>
-                    <td style={styles.td}><span style={styles.statusPending}>Pending</span></td>
-                  </tr>
-                </tbody>
-              </table>
+          {loading ? (
+            <div style={styles.loadingContainer}>
+              <div style={styles.spinner}></div>
+              <p>Loading dashboard data...</p>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Stats Cards */}
+              <div style={styles.statsGrid}>
+                <div 
+                  style={{...styles.statCard, cursor: 'pointer'}}
+                  onClick={() => navigate('/pets')}
+                >
+                  <div style={styles.statIcon}>🐾</div>
+                  <div style={styles.statInfo}>
+                    <h3 style={styles.statValue}>{stats.activePets}</h3>
+                    <p style={styles.statLabel}>Active Pets</p>
+                  </div>
+                </div>
+
+                <div 
+                  style={{...styles.statCard, cursor: 'pointer'}}
+                  onClick={() => navigate('/pets')}
+                >
+                  <div style={styles.statIcon}>📋</div>
+                  <div style={styles.statInfo}>
+                    <h3 style={styles.statValue}>{stats.totalPets}</h3>
+                    <p style={styles.statLabel}>Total Pets Registered</p>
+                  </div>
+                </div>
+
+                <div 
+                  style={{...styles.statCard, cursor: 'pointer'}}
+                  onClick={() => navigate('/customers')}
+                >
+                  <div style={styles.statIcon}>👥</div>
+                  <div style={styles.statInfo}>
+                    <h3 style={styles.statValue}>{stats.totalCustomers}</h3>
+                    <p style={styles.statLabel}>Total Customers</p>
+                  </div>
+                </div>
+
+                <div style={styles.statCard}>
+                  <div style={styles.statIcon}>👨‍⚕️</div>
+                  <div style={styles.statInfo}>
+                    <h3 style={styles.statValue}>{user?.role === 'admin' ? 'Admin' : 'Staff'}</h3>
+                    <p style={styles.statLabel}>Your Role</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Pets */}
+              <div style={styles.section}>
+                <div style={styles.sectionHeader}>
+                  <h3 style={styles.sectionTitle}>Recently Registered Pets</h3>
+                  <button onClick={() => navigate('/pets')} style={styles.viewAllButton}>
+                    View All →
+                  </button>
+                </div>
+                {stats.recentPets.length === 0 ? (
+                  <div style={styles.emptyState}>
+                    <p>No pets registered yet</p>
+                    <button onClick={() => navigate('/pets/new')} style={styles.emptyButton}>
+                      Register First Pet
+                    </button>
+                  </div>
+                ) : (
+                  <div style={styles.table}>
+                    <table style={styles.tableElement}>
+                      <thead>
+                        <tr style={styles.tableHeader}>
+                          <th style={styles.th}>Pet Name</th>
+                          <th style={styles.th}>Species</th>
+                          <th style={styles.th}>Owner</th>
+                          <th style={styles.th}>Registered</th>
+                          <th style={styles.th}>Status</th>
+                          <th style={styles.th}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.recentPets.map((pet) => (
+                          <tr key={pet.pet_id} style={styles.tableRow}>
+                            <td style={styles.td}>{pet.pet_name}</td>
+                            <td style={styles.td}>{pet.species}</td>
+                            <td style={styles.td}>
+                              {pet.owner_first_name} {pet.owner_last_name}
+                            </td>
+                            <td style={styles.td}>
+                              {new Date(pet.created_at).toLocaleDateString()}
+                            </td>
+                            <td style={styles.td}>
+                              <span style={pet.is_active ? styles.statusActive : styles.statusInactive}>
+                                {pet.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td style={styles.td}>
+                              <button
+                                onClick={() => navigate(`/pets/${pet.pet_id}`)}
+                                style={styles.viewButton}
+                              >
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </main>
       </div>
 
@@ -224,6 +312,37 @@ const styles = {
     flex: 1,
     padding: '2rem',
   },
+  quickActions: {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+  },
+  actionButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '3rem',
+  },
+  spinner: {
+    border: '4px solid #f3f3f3',
+    borderTop: '4px solid #2563eb',
+    borderRadius: '50%',
+    width: '50px',
+    height: '50px',
+    animation: 'spin 1s linear infinite',
+  },
   pageTitle: {
     margin: '0 0 1.5rem 0',
     fontSize: '1.875rem',
@@ -269,11 +388,67 @@ const styles = {
     padding: '1.5rem',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
   },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem',
+  },
   sectionTitle: {
-    margin: '0 0 1rem 0',
+    margin: 0,
     fontSize: '1.25rem',
     fontWeight: '600',
     color: '#111827',
+  },
+  viewAllButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: 'transparent',
+    color: '#2563eb',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '3rem',
+    color: '#6b7280',
+  },
+  emptyButton: {
+    marginTop: '1rem',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '1rem',
+    cursor: 'pointer',
+  },
+  viewButton: {
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+  },
+  statusActive: {
+    padding: '0.25rem 0.75rem',
+    backgroundColor: '#d1fae5',
+    color: '#065f46',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+  },
+  statusInactive: {
+    padding: '0.25rem 0.75rem',
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
+    fontWeight: '500',
   },
   table: {
     width: '100%',
@@ -301,30 +476,6 @@ const styles = {
     padding: '0.75rem',
     fontSize: '0.875rem',
     color: '#6b7280',
-  },
-  statusCompleted: {
-    padding: '0.25rem 0.75rem',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  statusInProgress: {
-    padding: '0.25rem 0.75rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  statusPending: {
-    padding: '0.25rem 0.75rem',
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
   },
   footer: {
     padding: '1rem 2rem',

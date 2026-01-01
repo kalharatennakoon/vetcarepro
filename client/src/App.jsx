@@ -9,6 +9,9 @@ import Users from './pages/Users';
 import Customers from './pages/Customers';
 import CustomerDetail from './pages/CustomerDetail';
 import Pets from './pages/Pets';
+import PetDetail from './pages/PetDetail';
+import PetCreate from './pages/PetCreate';
+import PetEdit from './pages/PetEdit';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -83,6 +86,33 @@ function App() {
         element={
           <ProtectedRoute>
             <Pets />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/new" 
+        element={
+          <ProtectedRoute>
+            <PetCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/:id" 
+        element={
+          <ProtectedRoute>
+            <PetDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/:id/edit" 
+        element={
+          <ProtectedRoute>
+            <PetEdit />
           </ProtectedRoute>
         } 
       />
