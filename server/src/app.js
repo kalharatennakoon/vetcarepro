@@ -8,7 +8,8 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.CLIENT_URL || 'http://localhost:5173'
+  ,
   credentials: true
 }));
 
@@ -35,6 +36,7 @@ app.get('/health', (req, res) => {
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
+import petRoutes from './routes/petRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -56,6 +58,7 @@ app.get('/api', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/pets', petRoutes);
 
 // 404 handler
 app.use((req, res) => {

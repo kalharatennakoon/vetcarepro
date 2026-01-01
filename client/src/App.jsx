@@ -8,6 +8,7 @@ import Patients from './pages/Patients';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
 import CustomerDetail from './pages/CustomerDetail';
+import Pets from './pages/Pets';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -76,7 +77,15 @@ function App() {
         } 
       />
 
-      {/* 
+      {/* Pet routes */}
+      <Route 
+        path="/pets" 
+        element={
+          <ProtectedRoute>
+            <Pets />
+          </ProtectedRoute>
+        } 
+      />
 
       {/* Admin-only routes */}
       <Route 
