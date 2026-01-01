@@ -6,6 +6,12 @@ import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import Patients from './pages/Patients';
 import Users from './pages/Users';
+import Customers from './pages/Customers';
+import CustomerDetail from './pages/CustomerDetail';
+import Pets from './pages/Pets';
+import PetDetail from './pages/PetDetail';
+import PetCreate from './pages/PetCreate';
+import PetEdit from './pages/PetEdit';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -51,6 +57,62 @@ function App() {
         element={
           <ProtectedRoute>
             <Patients />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Customer routes */}
+      <Route 
+        path="/customers" 
+        element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/customers/:id" 
+        element={
+          <ProtectedRoute>
+            <CustomerDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Pet routes */}
+      <Route 
+        path="/pets" 
+        element={
+          <ProtectedRoute>
+            <Pets />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/new" 
+        element={
+          <ProtectedRoute>
+            <PetCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/:id" 
+        element={
+          <ProtectedRoute>
+            <PetDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/pets/:id/edit" 
+        element={
+          <ProtectedRoute>
+            <PetEdit />
           </ProtectedRoute>
         } 
       />

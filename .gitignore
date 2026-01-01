@@ -29,4 +29,6 @@ yarn.lock
 .tmp/
 
 
+# Notes
 notes.md
+testing.md
