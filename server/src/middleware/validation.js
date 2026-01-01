@@ -188,3 +188,158 @@ export const validatePasswordChange = [
   
   handleValidationErrors
 ];
+
+/**
+ * Customer creation validation
+ */
+export const validateCustomerCreate = [
+  body('first_name')
+    .trim()
+    .notEmpty()
+    .withMessage('First name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('First name must be between 2 and 50 characters'),
+  
+  body('last_name')
+    .trim()
+    .notEmpty()
+    .withMessage('Last name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Last name must be between 2 and 50 characters'),
+  
+  body('phone')
+    .trim()
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Phone must be in format +94XXXXXXXXX'),
+  
+  body('email')
+    .optional({ nullable: true })
+    .trim()
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
+  
+  body('alternate_phone')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
+  
+  body('preferred_contact_method')
+    .optional()
+    .isIn(['phone', 'email', 'sms'])
+    .withMessage('Contact method must be phone, email, or sms'),
+  
+  handleValidationErrors
+];
+
+/**
+ * Customer update validation
+ */
+export const validateCustomerUpdate = [
+  body('first_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('First name must be between 2 and 50 characters'),
+  
+  body('last_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Last name must be between 2 and 50 characters'),
+  
+  body('phone')
+    .optional()
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Phone must be in format +94XXXXXXXXX'),
+  
+  body('email')
+    .optional({ nullable: true })
+    .trim()
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
+  
+  body('alternate_phone')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
+  
+  body('preferred_contact_method')
+    .optional()
+    .isIn(['phone', 'email', 'sms'])
+    .withMessage('Contact method must be phone, email, or sms'),
+  
+  handleValidationErrors
+];
+
+/**
+ * Pet creation validation
+ */
+export const validatePetCreate = [
+  body('customer_id')
+    .notEmpty()
+    .withMessage('Customer ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Customer ID must be a valid number'),
+  
+  body('pet_name')
+    .trim()
+    .notEmpty()
+    .withMessage('Pet name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Pet name must be between 2 and 50 characters'),
+  
+  body('species')
+    .trim()
+    .notEmpty()
+    .withMessage('Species is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Species must be between 2 and 50 characters'),
+  
+  body('gender')
+    .optional({ nullable: true })
+    .isIn(['Male', 'Female', 'Unknown'])
+    .withMessage('Gender must be Male, Female, or Unknown'),
+  
+  body('date_of_birth')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
+  
+  handleValidationErrors
+];
+
+/**
+ * Pet update validation
+ */
+export const validatePetUpdate = [
+  body('pet_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Pet name must be between 2 and 50 characters'),
+  
+  body('species')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Species must be between 2 and 50 characters'),
+  
+  body('gender')
+    .optional({ nullable: true })
+    .isIn(['Male', 'Female', 'Unknown'])
+    .withMessage('Gender must be Male, Female, or Unknown'),
+  
+  body('date_of_birth')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
+  
+  handleValidationErrors
+];

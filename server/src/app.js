@@ -34,6 +34,8 @@ app.get('/health', (req, res) => {
 // Import routes
 import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
+import petRoutes from './routes/petRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -44,7 +46,9 @@ app.get('/api', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth',
-      users: '/api/users'
+      users: '/api/users',
+      customers: '/api/customers',
+      pets: '/api/pets'
     }
   });
 });
@@ -52,6 +56,8 @@ app.get('/api', (req, res) => {
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/pets', petRoutes);
 
 // 404 handler
 app.use((req, res) => {
