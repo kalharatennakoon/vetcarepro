@@ -723,16 +723,6 @@ const styles = {
     color: '#64748b',
     margin: 0,
   },
-  supportLink: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.375rem',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#1e293b',
-    textDecoration: 'none',
-    transition: 'color 0.2s',
-  },
   supportIconSmall: {
     fontSize: '0.9375rem',
   },
