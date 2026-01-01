@@ -1,22 +1,123 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Appointments from './pages/Appointments';
+import Patients from './pages/Patients';
+import Users from './pages/Users';
 
 function App() {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={styles.spinner}></div>
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
     <Routes>
-      <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-      <Route path="/dashboard" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-      <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+      {/* Public routes */}
+      <Route 
+        path="/login" 
+        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} 
+      />
+
+      {/* Protected routes - All authenticated users */}
+      <Route 
+        path="/dashboard" 
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/appointments" 
+        element={
+          <ProtectedRoute>
+            <Appointments />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/patients" 
+        element={
+          <ProtectedRoute>
+            <Patients />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Admin-only routes */}
+      <Route 
+        path="/users" 
+        element={
+          <ProtectedRoute requiredRoles={['admin']}>
+            <Users />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Default redirect */}
+      <Route 
+        path="/" 
+        element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
+      />
+
+      {/* 404 Not Found */}
+      <Route 
+        path="*" 
+        element={
+          <div style={styles.notFound}>
+            <h1>404</h1>
+            <p>Page not found</p>
+            <a href="/dashboard" style={styles.backLink}>Go to Dashboard</a>
+          </div>
+        } 
+      />
     </Routes>
-  )
+  );
 }
 
-export default App
+const styles = {
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100vh',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  spinner: {
+    border: '4px solid #f3f3f3',
+    borderTop: '4px solid #2563eb',
+    borderRadius: '50%',
+    width: '50px',
+    height: '50px',
+    animation: 'spin 1s linear infinite',
+  },
+  notFound: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100vh',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    textAlign: 'center',
+  },
+  backLink: {
+    marginTop: '1rem',
+    color: '#2563eb',
+    textDecoration: 'none',
+    fontSize: '1rem',
+  },
+};
+
+export default App;
