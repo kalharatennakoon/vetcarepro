@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import Patients from './pages/Patients';
 import Users from './pages/Users';
+import Customers from './pages/Customers';
+import CustomerDetail from './pages/CustomerDetail';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -54,6 +56,27 @@ function App() {
           </ProtectedRoute>
         } 
       />
+
+      {/* Customer routes */}
+      <Route 
+        path="/customers" 
+        element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/customers/:id" 
+        element={
+          <ProtectedRoute>
+            <CustomerDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* 
 
       {/* Admin-only routes */}
       <Route 

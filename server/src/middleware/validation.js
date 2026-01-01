@@ -260,26 +260,26 @@ export const validateCustomerUpdate = [
   body('phone')
     .optional()
     .trim()
-    .matches(/^\+94[0-9]{9}$/)
+    .custom((value) => !value || /^\+94[0-9]{9}$/.test(value))
     .withMessage('Phone must be in format +94XXXXXXXXX'),
   
   body('email')
-    .optional({ nullable: true })
+    .optional({ checkFalsy: true })
     .trim()
     .isEmail()
     .withMessage('Must be a valid email address')
     .normalizeEmail(),
   
   body('alternate_phone')
-    .optional({ nullable: true })
+    .optional({ checkFalsy: true })
     .trim()
-    .matches(/^\+94[0-9]{9}$/)
+    .custom((value) => !value || /^\+94[0-9]{9}$/.test(value))
     .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
   
   body('emergency_phone')
-    .optional({ nullable: true })
+    .optional({ checkFalsy: true })
     .trim()
-    .matches(/^\+94[0-9]{9}$/)
+    .custom((value) => !value || /^\+94[0-9]{9}$/.test(value))
     .withMessage('Emergency phone must be in format +94XXXXXXXXX'),
   
   body('preferred_contact_method')

@@ -132,12 +132,20 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
+      // Clean up empty strings to null for optional fields
+      const cleanedData = { ...formData };
+      ['email', 'alternate_phone', 'emergency_phone', 'emergency_contact', 'address', 'city', 'postal_code', 'nic', 'notes'].forEach(field => {
+        if (cleanedData[field] === '') {
+          cleanedData[field] = null;
+        }
+      });
+
       if (isEditMode) {
         // Update existing customer
-        await axios.put(`${API_URL}/customers/${customerId}`, formData, config);
+        await axios.put(`${API_URL}/customers/${customerId}`, cleanedData, config);
       } else {
         // Create new customer
-        await axios.post(`${API_URL}/customers`, formData, config);
+        await axios.post(`${API_URL}/customers`, cleanedData, config);
       }
 
       onSuccess?.();
