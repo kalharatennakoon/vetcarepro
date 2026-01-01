@@ -190,7 +190,7 @@ export const validatePasswordChange = [
 ];
 
 /**
- * Customer creation validation
+ * Customer creation validation rules
  */
 export const validateCustomerCreate = [
   body('first_name')
@@ -210,7 +210,7 @@ export const validateCustomerCreate = [
   body('phone')
     .trim()
     .notEmpty()
-    .withMessage('Phone number is required')
+    .withMessage('Phone is required')
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Phone must be in format +94XXXXXXXXX'),
   
@@ -227,16 +227,22 @@ export const validateCustomerCreate = [
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
   
+  body('emergency_phone')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Emergency phone must be in format +94XXXXXXXXX'),
+  
   body('preferred_contact_method')
     .optional()
     .isIn(['phone', 'email', 'sms'])
-    .withMessage('Contact method must be phone, email, or sms'),
+    .withMessage('Preferred contact method must be phone, email, or sms'),
   
   handleValidationErrors
 ];
 
 /**
- * Customer update validation
+ * Customer update validation rules
  */
 export const validateCustomerUpdate = [
   body('first_name')
@@ -270,10 +276,21 @@ export const validateCustomerUpdate = [
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
   
+  body('emergency_phone')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Emergency phone must be in format +94XXXXXXXXX'),
+  
   body('preferred_contact_method')
     .optional()
     .isIn(['phone', 'email', 'sms'])
-    .withMessage('Contact method must be phone, email, or sms'),
+    .withMessage('Preferred contact method must be phone, email, or sms'),
+  
+  body('is_active')
+    .optional()
+    .isBoolean()
+    .withMessage('is_active must be a boolean'),
   
   handleValidationErrors
 ];
