@@ -47,6 +47,7 @@ const Dashboard = () => {
 
   const handleLogout = () => {
     logout();
+    navigate('/');
   };
 
   return (

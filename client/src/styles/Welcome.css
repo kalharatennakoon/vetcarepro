@@ -1,0 +1,107 @@
+/* Welcome Page Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+
+/* Hover effects */
+.welcome-login-button:hover {
+  background-color: #0c6fd9;
+  transform: translateY(-2px);
+  box-shadow: 0 15px 20px -5px rgba(19, 127, 236, 0.4);
+}
+
+.welcome-back-button:hover {
+  background-color: #e2e8f0;
+}
+
+.welcome-support-link:hover {
+  color: #137fec;
+}
+
+.welcome-forgot-link:hover {
+  color: #137fec;
+}
+
+.welcome-image-container:hover {
+  transform: scale(1.05);
+}
+
+.welcome-input:focus {
+  border-color: #137fec;
+  box-shadow: 0 0 0 3px rgba(19, 127, 236, 0.1);
+}
+
+/* Input wrapper focus effect */
+.welcome-input:focus-within {
+  border-color: #137fec !important;
+  box-shadow: 0 0 0 1px #137fec;
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .welcome-content-wrapper {
+    flex-direction: column;
+  }
+  
+  .welcome-left-panel {
+    flex: 1 1 100%;
+    padding: 2rem 1.5rem;
+  }
+  
+  .welcome-right-panel {
+    flex: 1 1 100%;
+    min-height: 300px;
+  }
+  
+  .welcome-hero-title {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .welcome-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .welcome-logo-title {
+    font-size: 1rem;
+  }
+  
+  .welcome-support-link span:last-child {
+    display: none;
+  }
+  
+  .welcome-hero-title {
+    font-size: 2rem;
+  }
+  
+  .welcome-hero-description,
+  .welcome-hero-subtext {
+    font-size: 0.875rem;
+  }
+  
+  .welcome-footer-content {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Loading animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+button {
+  user-select: none;
+}
+
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

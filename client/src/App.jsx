@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import Login from './pages/Login';
+import Welcome from './pages/Welcome';
 import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import Patients from './pages/Patients';
@@ -29,8 +29,8 @@ function App() {
     <Routes>
       {/* Public routes */}
       <Route 
-        path="/login" 
-        element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} 
+        path="/" 
+        element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />} 
       />
 
       {/* Protected routes - All authenticated users */}
@@ -125,12 +125,6 @@ function App() {
             <Users />
           </ProtectedRoute>
         } 
-      />
-
-      {/* Default redirect */}
-      <Route 
-        path="/" 
-        element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
       />
 
       {/* 404 Not Found */}
