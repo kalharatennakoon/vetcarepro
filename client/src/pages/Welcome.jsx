@@ -10,6 +10,7 @@ const Welcome = () => {
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -100,7 +101,7 @@ const Welcome = () => {
                 <div style={styles.inputWrapper}>
                   <span style={styles.inputIcon}>🔒</span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
@@ -109,6 +110,15 @@ const Welcome = () => {
                     className="welcome-input"
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={styles.togglePasswordButton}
+                    className="welcome-toggle-password"
+                    disabled={loading}
+                  >
+                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                  </button>
                 </div>
               </div>
 
@@ -653,8 +663,12 @@ const styles = {
   },
   inputIcon: {
     paddingLeft: '0.875rem',
+    paddingRight: '0.5rem',
     fontSize: '1.125rem',
     color: '#64748b',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
@@ -665,6 +679,20 @@ const styles = {
     color: '#1e293b',
     outline: 'none',
     height: '100%',
+  },
+  togglePasswordButton: {
+    paddingRight: '0.875rem',
+    paddingLeft: '0.5rem',
+    fontSize: '1.125rem',
+    color: '#64748b',
+    backgroundColor: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'color 0.2s',
+    outline: 'none',
   },
   rememberForgotRow: {
     display: 'flex',

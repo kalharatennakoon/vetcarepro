@@ -35,6 +35,16 @@
   box-shadow: 0 0 0 1px #137fec;
 }
 
+/* Toggle password button hover */
+.welcome-toggle-password:hover {
+  color: #137fec;
+}
+
+.welcome-toggle-password:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 /* Responsive styles */
 @media (max-width: 1024px) {
   .welcome-content-wrapper {
