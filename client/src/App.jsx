@@ -7,7 +7,9 @@ import Appointments from './pages/Appointments';
 import Patients from './pages/Patients';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
+import CustomerCreate from './pages/CustomerCreate';
 import CustomerDetail from './pages/CustomerDetail';
+import CustomerEdit from './pages/CustomerEdit';
 import Pets from './pages/Pets';
 import PetDetail from './pages/PetDetail';
 import PetCreate from './pages/PetCreate';
@@ -72,10 +74,28 @@ function App() {
       />
 
       <Route 
+        path="/customers/new" 
+        element={
+          <ProtectedRoute>
+            <CustomerCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
         path="/customers/:id" 
         element={
           <ProtectedRoute>
             <CustomerDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/customers/:id/edit" 
+        element={
+          <ProtectedRoute>
+            <CustomerEdit />
           </ProtectedRoute>
         } 
       />

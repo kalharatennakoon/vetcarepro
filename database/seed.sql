@@ -3,13 +3,14 @@
 -- This script populates the database with initial data for testing and development purposes.
 
 -- Insert Users (Staff)
--- Password for all: 'password123' (will be hashed properly in the application)
+-- Passwords: password123 for all users
+-- Hash generated using bcrypt with 10 rounds
 INSERT INTO users (username, password_hash, full_name, email, phone, role, specialization, license_number, is_active) VALUES
-('admin', '$2a$10$YourHashedPasswordHere', 'Dr. Samanthi Jayawardena', 'samanthi@propet.lk', '+94712345001', 'admin', 'Veterinary Administration', 'SLVMC-2015-001', true),
-('vet1', '$2a$10$YourHashedPasswordHere', 'Dr. Nimal Amarasinghe', 'nimal@propet.lk', '+94712345002', 'veterinarian', 'Small Animal Medicine', 'SLVMC-2018-045', true),
-('vet2', '$2a$10$YourHashedPasswordHere', 'Dr. Ayesha Bandara', 'ayesha@propet.lk', '+94712345003', 'veterinarian', 'Surgery & Emergency Care', 'SLVMC-2019-078', true),
-('receptionist1', '$2a$10$YourHashedPasswordHere', 'Kumari Dissanayake', 'kumari@propet.lk', '+94712345004', 'receptionist', NULL, NULL, true);
-
+('admin', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Dulani Gunathilake', 'dulani@propet.lk', '+94712345001', 'admin', 'Veterinary Administration', 'SLVMC-2015-001', true),
+('vet1', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Nimal Amarasinghe', 'nimal@propet.lk', '+94712345002', 'veterinarian', 'Small Animal Medicine', 'SLVMC-2018-045', true),
+('vet2', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Ayesha Bandara', 'ayesha@propet.lk', '+94712345003', 'veterinarian', 'Surgery & Emergency Care', 'SLVMC-2019-078', true),
+('receptionist1', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Kumari Dissanayake', 'kumari@propet.lk', '+94712345004', 'receptionist', NULL, NULL, true);
+('testadmin', '$2b$10$MF7EuL4bpRAE7eOyisFECu/pfuXPzNh5fXPhSF3YzICNW8ljaT9Be', 'Test Admin User', 'testadmin@propet.lk', '+94771111111', 'admin', true);
 -- Insert Customers (Pet Owners from Kurunegala district)
 INSERT INTO customers (first_name, last_name, email, phone, alternate_phone, address, city, nic, emergency_contact, emergency_phone, preferred_contact_method, created_by) VALUES
 ('Pradeep', 'Wickramasinghe', 'pradeep.w@gmail.com', '+94771234501', '+94372221001', 'No. 45, Kandy Road, Mawathagama', 'Mawathagama', '881234567V', 'Sanduni Wickramasinghe', '+94771234502', 'phone', 1),

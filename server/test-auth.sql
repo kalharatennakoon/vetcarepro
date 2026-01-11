@@ -1,8 +1,6 @@
 -- Test user for authentication
 -- Password: Test@123
-
--- This hash is for password: Test@123
--- Generated using bcrypt with 10 rounds
+-- Generate proper hash by running: node generate-hash.js Test@123
 
 INSERT INTO users (
   username, 
@@ -14,7 +12,7 @@ INSERT INTO users (
   is_active
 ) VALUES (
   'testadmin',
-  '$2b$10$0HhC1Sv6j673hpM3yhCMYu1XIAhdWujQXjRIsv8BN43/XNvu79z1W',
+  '$2a$10$rQ3qZ8Jx.LxJZGqK3y4rXOYhNvF6JxqE5RzGqK3y4rXOYhNvF6JxqE', -- change to hash for 'Test@123'
   'Test Admin User',
   'testadmin@propet.lk',
   '+94771111111',

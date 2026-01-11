@@ -1,20 +1,33 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PetForm from '../components/PetForm';
 
 const PetCreate = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const customerId = searchParams.get('customer_id');
 
   const handleSuccess = () => {
-    navigate('/pets');
+    // If coming from customer detail page, redirect back to that customer
+    if (customerId) {
+      navigate(`/customers/${customerId}`);
+    } else {
+      navigate('/pets');
+    }
   };
 
   const handleCancel = () => {
-    navigate('/pets');
+    // If coming from customer detail page, redirect back to that customer
+    if (customerId) {
+      navigate(`/customers/${customerId}`);
+    } else {
+      navigate('/pets');
+    }
   };
 
   return (
     <div style={styles.container}>
       <PetForm
+        customerId={customerId ? parseInt(customerId) : null}
         onSuccess={handleSuccess}
         onCancel={handleCancel}
       />

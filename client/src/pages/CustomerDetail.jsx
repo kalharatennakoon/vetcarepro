@@ -296,12 +296,6 @@ const CustomerDetail = () => {
         ) : (
           <div style={styles.emptyState}>
             <p>No pets registered for this customer</p>
-            <button 
-              onClick={() => navigate(`/pets/new?customer_id=${customer.customer_id}`)}
-              style={styles.addPetButton}
-            >
-              Add First Pet
-            </button>
           </div>
         )}
       </div>
