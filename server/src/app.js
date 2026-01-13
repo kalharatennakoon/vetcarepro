@@ -37,6 +37,7 @@ import authRoutes from './routes/authRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import petRoutes from './routes/petRoutes.js';
+import appointmentRoutes from './routes/appointmentRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -49,7 +50,8 @@ app.get('/api', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       customers: '/api/customers',
-      pets: '/api/pets'
+      pets: '/api/pets',
+      appointments: '/api/appointments'
     }
   });
 });
@@ -59,6 +61,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/pets', petRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getPets } from '../services/petService';
 import { getCustomers } from '../services/customerService';
@@ -23,19 +24,29 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch pets and customers in parallel
-      const [petsResponse, customersResponse] = await Promise.all([
+      // Fetch pets, customers, and appointments in parallel
+      const [petsResponse, customersResponse, appointmentsResponse] = await Promise.all([
         getPets({}),
-        getCustomers({})
+        getCustomers({}),
+        axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/appointments`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        })
       ]);
 
       const pets = petsResponse.data.pets || [];
       const customers = customersResponse.data.customers || [];
+      const appointments = appointmentsResponse.data.data.appointments || [];
+      
+      // Get today's appointments
+      const today = new Date().toISOString().split('T')[0];
+      const todayAppointments = appointments.filter(a => a.appointment_date === today);
 
       setStats({
         totalPets: pets.length,
         activePets: pets.filter(p => p.is_active).length,
         totalCustomers: customers.length,
+        totalAppointments: appointments.length,
+        todayAppointments: todayAppointments.length,
         recentPets: pets.slice(0, 5)
       });
     } catch (err) {
@@ -137,6 +148,17 @@ const Dashboard = () => {
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.totalCustomers}</h3>
                     <p style={styles.statLabel}>Total Customers</p>
+                  </div>
+                </div>
+
+                <div 
+                  style={{...styles.statCard, cursor: 'pointer'}}
+                  onClick={() => navigate('/appointments')}
+                >
+                  <div style={styles.statIcon}>📅</div>
+                  <div style={styles.statInfo}>
+                    <h3 style={styles.statValue}>{stats.todayAppointments}</h3>
+                    <p style={styles.statLabel}>Today's Appointments</p>
                   </div>
                 </div>
 

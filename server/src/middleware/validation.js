@@ -360,3 +360,110 @@ export const validatePetUpdate = [
   
   handleValidationErrors
 ];
+
+/**
+ * Appointment creation validation
+ */
+export const validateAppointmentCreate = [
+  body('customer_id')
+    .notEmpty()
+    .withMessage('Customer ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Customer ID must be a valid number'),
+  
+  body('pet_id')
+    .notEmpty()
+    .withMessage('Pet ID is required')
+    .isInt({ min: 1 })
+    .withMessage('Pet ID must be a valid number'),
+  
+  body('appointment_date')
+    .notEmpty()
+    .withMessage('Appointment date is required')
+    .isISO8601()
+    .withMessage('Appointment date must be a valid date'),
+  
+  body('appointment_time')
+    .notEmpty()
+    .withMessage('Appointment time is required')
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Appointment time must be in HH:MM format'),
+  
+  body('appointment_type')
+    .notEmpty()
+    .withMessage('Appointment type is required')
+    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'followup', 'grooming'])
+    .withMessage('Invalid appointment type'),
+  
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('Reason for visit is required')
+    .isLength({ min: 3, max: 255 })
+    .withMessage('Reason must be between 3 and 255 characters'),
+  
+  body('duration_minutes')
+    .optional()
+    .isInt({ min: 15, max: 240 })
+    .withMessage('Duration must be between 15 and 240 minutes'),
+  
+  body('veterinarian_id')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('Veterinarian ID must be a valid number'),
+  
+  handleValidationErrors
+];
+
+/**
+ * Appointment update validation
+ */
+export const validateAppointmentUpdate = [
+  body('customer_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Customer ID must be a valid number'),
+  
+  body('pet_id')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Pet ID must be a valid number'),
+  
+  body('appointment_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Appointment date must be a valid date'),
+  
+  body('appointment_time')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Appointment time must be in HH:MM format'),
+  
+  body('appointment_type')
+    .optional()
+    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'followup', 'grooming'])
+    .withMessage('Invalid appointment type'),
+  
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 255 })
+    .withMessage('Reason must be between 3 and 255 characters'),
+  
+  body('duration_minutes')
+    .optional()
+    .isInt({ min: 15, max: 240 })
+    .withMessage('Duration must be between 15 and 240 minutes'),
+  
+  body('status')
+    .optional()
+    .isIn(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'])
+    .withMessage('Invalid status'),
+  
+  body('veterinarian_id')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('Veterinarian ID must be a valid number'),
+  
+  handleValidationErrors
+];

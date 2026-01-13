@@ -36,9 +36,12 @@ export const AuthProvider = ({ children }) => {
           console.error('Failed to load user:', error);
           setToken(null);
           setUser(null);
+        } finally {
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadUser();
