@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PetForm from '../components/PetForm';
+import Layout from '../components/Layout';
 
 const PetCreate = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const PetCreate = () => {
   };
 
   return (
+    <Layout>
     <div style={styles.container}>
       <PetForm
         customerId={customerId ? parseInt(customerId) : null}
@@ -32,12 +34,12 @@ const PetCreate = () => {
         onCancel={handleCancel}
       />
     </div>
+    </Layout>
   );
 };
 
 const styles = {
   container: {
-    padding: '2rem',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   },
 };

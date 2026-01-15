@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import PetForm from '../components/PetForm';
+import Layout from '../components/Layout';
 
 const PetEdit = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ const PetEdit = () => {
   };
 
   return (
+    <Layout>
     <div style={styles.container}>
       <PetForm
         petId={id}
@@ -21,12 +23,12 @@ const PetEdit = () => {
         onCancel={handleCancel}
       />
     </div>
+    </Layout>
   );
 };
 
 const styles = {
   container: {
-    padding: '2rem',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   },
 };

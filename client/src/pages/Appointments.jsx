@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import AppointmentForm from '../components/AppointmentForm';
+import Layout from '../components/Layout';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -125,95 +126,18 @@ const Appointments = () => {
 
   if (showForm) {
     return (
-      <div style={styles.container}>
-        {/* Header */}
-        <header style={styles.header}>
-          <div style={styles.headerLeft}>
-            <h1 style={styles.logo}>🏥 VetCare Pro</h1>
-            <p style={styles.headerSubtitle}>Pro Pet Animal Hospital</p>
-          </div>
-          <div style={styles.headerRight}>
-            <div style={styles.userInfo}>
-              <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
-              <span style={styles.userRole}>{user?.role}</span>
-            </div>
-            <button onClick={handleLogout} style={styles.logoutButton}>
-              Logout
-            </button>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <div style={styles.mainContent}>
-          {/* Sidebar */}
-          <aside style={styles.sidebar}>
-            <nav style={styles.nav}>
-              <a href="/dashboard" style={styles.navItem}>📊 Dashboard</a>
-              <a href="/pets" style={styles.navItem}>🐾 Pets</a>
-              <a href="/customers" style={styles.navItem}>👥 Customers</a>
-              <a href="/appointments" style={{...styles.navItem, ...styles.navItemActive}}>📅 Appointments</a>
-              {user?.role === 'admin' && (
-                <a href="/users" style={styles.navItem}>👨‍⚕️ Staff</a>
-              )}
-            </nav>
-          </aside>
-
-          {/* Content Area */}
-          <main style={styles.content}>
-            <AppointmentForm
-              appointmentId={editingId}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-            />
-          </main>
-        </div>
-
-        {/* Footer */}
-        <footer style={styles.footer}>
-          <p style={styles.footerText}>
-            © 2025 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
-          </p>
-        </footer>
-      </div>
+      <Layout>
+        <AppointmentForm
+          appointmentId={editingId}
+          onSuccess={handleFormSuccess}
+          onCancel={handleFormCancel}
+        />
+      </Layout>
     );
   }
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.logo}>🏥 VetCare Pro</h1>
-          <p style={styles.headerSubtitle}>Pro Pet Animal Hospital</p>
-        </div>
-        <div style={styles.headerRight}>
-          <div style={styles.userInfo}>
-            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
-            <span style={styles.userRole}>{user?.role}</span>
-          </div>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div style={styles.mainContent}>
-        {/* Sidebar */}
-        <aside style={styles.sidebar}>
-          <nav style={styles.nav}>
-            <a href="/dashboard" style={styles.navItem}>📊 Dashboard</a>
-            <a href="/pets" style={styles.navItem}>🐾 Pets</a>
-            <a href="/customers" style={styles.navItem}>👥 Customers</a>
-            <a href="/appointments" style={{...styles.navItem, ...styles.navItemActive}}>📅 Appointments</a>
-            {user?.role === 'admin' && (
-              <a href="/users" style={styles.navItem}>👨‍⚕️ Staff</a>
-            )}
-          </nav>
-        </aside>
-
-        {/* Content Area */}
-        <main style={styles.content}>
+    <Layout>
           {/* Page Header */}
           <div style={styles.pageHeader}>
             <div>
@@ -405,16 +329,7 @@ const Appointments = () => {
               </div>
             </>
           )}
-        </main>
-      </div>
-
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <p style={styles.footerText}>
-          © 2025 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
-        </p>
-      </footer>
-    </div>
+    </Layout>
   );
 };
 
@@ -511,7 +426,6 @@ const styles = {
   },
   content: {
     flex: 1,
-    padding: '2rem',
   },
   pageHeader: {
     display: 'flex',

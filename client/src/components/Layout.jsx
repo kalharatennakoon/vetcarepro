@@ -1,26 +1,72 @@
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import Layout from '../components/Layout';
 
-const Users = () => {
+const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const isActive = (path) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  const getNavItemStyle = (path) => {
+    return isActive(path) ? { ...styles.navItem, ...styles.navItemActive } : styles.navItem;
+  };
+
   return (
-    <Layout>
-      <h2 style={styles.title}>User Management</h2>
-      <p style={styles.subtitle}>Manage staff users and permissions</p>
-      <div style={styles.contentBox}>
-        <p>Welcome, {user?.first_name} {user?.last_name}</p>
-        <p>User management functionality coming soon...</p>
-        <p style={styles.note}>This page is only accessible to administrators.</p>
+    <div style={styles.container}>
+      {/* Header */}
+      <header style={styles.header}>
+        <div style={styles.headerLeft}>
+          <h1 style={styles.logo} onClick={() => navigate('/dashboard')}>🏥 VetCare Pro</h1>
+          <p style={styles.subtitle}>Pro Pet Animal Hospital</p>
+        </div>
+        <div style={styles.headerRight}>
+          <div style={styles.userInfo}>
+            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
+            <span style={styles.userRole}>{user?.role}</span>
+          </div>
+          <button onClick={handleLogout} style={styles.logoutButton}>
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div style={styles.mainContent}>
+        {/* Sidebar */}
+        <aside style={styles.sidebar}>
+          <nav style={styles.nav}>
+            <a href="/dashboard" style={getNavItemStyle('/dashboard')}>📊 Dashboard</a>
+            <a href="/pets" style={getNavItemStyle('/pets')}>🐾 Pets</a>
+            <a href="/customers" style={getNavItemStyle('/customers')}>👥 Customers</a>
+            <a href="/appointments" style={getNavItemStyle('/appointments')}>📅 Appointments</a>
+            <a href="/medical-records" style={getNavItemStyle('/medical-records')}>📋 Medical Records</a>
+            {user?.role === 'admin' && (
+              <a href="/users" style={getNavItemStyle('/users')}>👨‍⚕️ Staff</a>
+            )}
+          </nav>
+        </aside>
+
+        {/* Content Area */}
+        <main style={styles.content}>
+          {children}
+        </main>
       </div>
-    </Layout>
+
+      {/* Footer */}
+      <footer style={styles.footer}>
+        <p style={styles.footerText}>
+          © 2026 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
+        </p>
+      </footer>
+    </div>
   );
 };
 
@@ -50,8 +96,9 @@ const styles = {
     fontSize: '1.5rem',
     color: '#1e40af',
     fontWeight: 'bold',
+    cursor: 'pointer',
   },
-  headerSubtitle: {
+  subtitle: {
     margin: 0,
     fontSize: '0.875rem',
     color: '#6b7280',
@@ -109,39 +156,18 @@ const styles = {
     fontWeight: '500',
     transition: 'all 0.2s',
     borderLeft: '3px solid transparent',
+    display: 'block',
   },
   navItemActive: {
     backgroundColor: '#eff6ff',
     color: '#2563eb',
     borderLeft: '3px solid #2563eb',
+    fontWeight: '600',
   },
   content: {
     flex: 1,
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: '0 0 2rem 0',
-  },
-  contentBox: {
-    backgroundColor: '#ffffff',
     padding: '2rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  note: {
-    marginTop: '1rem',
-    padding: '0.75rem',
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
+    overflow: 'auto',
   },
   footer: {
     padding: '1rem 2rem',
@@ -156,4 +182,4 @@ const styles = {
   },
 };
 
-export default Users;
+export default Layout;

@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { getPets } from '../services/petService';
 import { getCustomers } from '../services/customerService';
+import { getMedicalRecords } from '../services/medicalRecordService';
+import Layout from '../components/Layout';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -12,7 +14,9 @@ const Dashboard = () => {
     totalPets: 0,
     activePets: 0,
     totalCustomers: 0,
-    recentPets: []
+    totalMedicalRecords: 0,
+    recentPets: [],
+    recentMedicalRecords: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -24,18 +28,20 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch pets, customers, and appointments in parallel
-      const [petsResponse, customersResponse, appointmentsResponse] = await Promise.all([
+      // Fetch pets, customers, appointments, and medical records in parallel
+      const [petsResponse, customersResponse, appointmentsResponse, medicalRecordsResponse] = await Promise.all([
         getPets({}),
         getCustomers({}),
         axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/appointments`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
+        }),
+        getMedicalRecords({ limit: 5 })
       ]);
 
       const pets = petsResponse.data.pets || [];
       const customers = customersResponse.data.customers || [];
       const appointments = appointmentsResponse.data.data.appointments || [];
+      const medicalRecords = medicalRecordsResponse.data.records || [];
       
       // Get today's appointments
       const today = new Date().toISOString().split('T')[0];
@@ -47,7 +53,9 @@ const Dashboard = () => {
         totalCustomers: customers.length,
         totalAppointments: appointments.length,
         todayAppointments: todayAppointments.length,
-        recentPets: pets.slice(0, 5)
+        totalMedicalRecords: medicalRecordsResponse.total || 0,
+        recentPets: pets.slice(0, 5),
+        recentMedicalRecords: medicalRecords.slice(0, 5)
       });
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -56,47 +64,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <h1 style={styles.logo}>🏥 VetCare Pro</h1>
-          <p style={styles.subtitle}>Pro Pet Animal Hospital</p>
-        </div>
-        <div style={styles.headerRight}>
-          <div style={styles.userInfo}>
-            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
-            <span style={styles.userRole}>{user?.role}</span>
-          </div>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <div style={styles.mainContent}>
-        {/* Sidebar */}
-        <aside style={styles.sidebar}>
-          <nav style={styles.nav}>
-            <a href="/dashboard" style={styles.navItem}>📊 Dashboard</a>
-            <a href="/pets" style={styles.navItem}>🐾 Pets</a>
-            <a href="/customers" style={styles.navItem}>👥 Customers</a>
-            <a href="/appointments" style={styles.navItem}>📅 Appointments</a>
-            {user?.role === 'admin' && (
-              <a href="/users" style={styles.navItem}>👨‍⚕️ Staff</a>
-            )}
-          </nav>
-        </aside>
-
-        {/* Content Area */}
-        <main style={styles.content}>
+    <Layout>
           <h2 style={styles.pageTitle}>Dashboard</h2>
           
           {/* Quick Actions */}
@@ -162,11 +131,14 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div style={styles.statCard}>
-                  <div style={styles.statIcon}>👨‍⚕️</div>
+                <div 
+                  style={{...styles.statCard, cursor: 'pointer'}}
+                  onClick={() => navigate('/medical-records')}
+                >
+                  <div style={styles.statIcon}>📋</div>
                   <div style={styles.statInfo}>
-                    <h3 style={styles.statValue}>{user?.role === 'admin' ? 'Admin' : 'Staff'}</h3>
-                    <p style={styles.statLabel}>Your Role</p>
+                    <h3 style={styles.statValue}>{stats.totalMedicalRecords}</h3>
+                    <p style={styles.statLabel}>Medical Records</p>
                   </div>
                 </div>
               </div>
@@ -230,111 +202,106 @@ const Dashboard = () => {
                   </div>
                 )}
               </div>
+
+              {/* Recent Medical Records */}
+              <div style={{...styles.section, marginTop: '2rem'}}>
+                <div style={styles.sectionHeader}>
+                  <h3 style={styles.sectionTitle}>Recent Medical Visits</h3>
+                  <button onClick={() => navigate('/medical-records')} style={styles.viewAllButton}>
+                    View All →
+                  </button>
+                </div>
+                {stats.recentMedicalRecords.length === 0 ? (
+                  <div style={styles.emptyState}>
+                    <p>No medical records yet</p>
+                    {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                      <button onClick={() => navigate('/medical-records/new')} style={styles.emptyButton}>
+                        Create First Medical Record
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={styles.table}>
+                    <table style={styles.tableElement}>
+                      <thead>
+                        <tr style={styles.tableHeader}>
+                          <th style={styles.th}>Visit Date</th>
+                          <th style={styles.th}>Pet</th>
+                          <th style={styles.th}>Owner</th>
+                          <th style={styles.th}>Veterinarian</th>
+                          <th style={styles.th}>Diagnosis</th>
+                          <th style={styles.th}>Follow-up</th>
+                          <th style={styles.th}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.recentMedicalRecords.map((record) => (
+                          <tr key={record.record_id} style={styles.tableRow}>
+                            <td style={styles.td}>
+                              {new Date(record.visit_date).toLocaleDateString()}
+                            </td>
+                            <td style={styles.td}>
+                              <div>
+                                <div style={{fontWeight: '500', color: '#111827'}}>
+                                  {record.pet_name}
+                                </div>
+                                <div style={{fontSize: '0.75rem', color: '#9ca3af'}}>
+                                  {record.species}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={styles.td}>
+                              {record.owner_first_name} {record.owner_last_name}
+                            </td>
+                            <td style={styles.td}>{record.veterinarian_name}</td>
+                            <td style={styles.td}>
+                              <div style={{
+                                maxWidth: '200px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {record.diagnosis || '-'}
+                              </div>
+                            </td>
+                            <td style={styles.td}>
+                              {record.follow_up_required ? (
+                                <span style={{
+                                  padding: '0.25rem 0.5rem',
+                                  backgroundColor: '#fef3c7',
+                                  color: '#92400e',
+                                  borderRadius: '4px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600'
+                                }}>
+                                  Required
+                                </span>
+                              ) : (
+                                <span style={{color: '#9ca3af'}}>No</span>
+                              )}
+                            </td>
+                            <td style={styles.td}>
+                              <button
+                                onClick={() => navigate(`/medical-records/${record.record_id}`)}
+                                style={styles.viewButton}
+                              >
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </>
           )}
-        </main>
-      </div>
-
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <p style={styles.footerText}>
-          © 2025 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
-        </p>
-      </footer>
-    </div>
+    </Layout>
   );
 };
 
 const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    backgroundColor: '#f5f7fa',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  logo: {
-    margin: 0,
-    fontSize: '1.5rem',
-    color: '#1e40af',
-    fontWeight: 'bold',
-  },
-  subtitle: {
-    margin: 0,
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-  },
-  userName: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  userRole: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  logoutButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  mainContent: {
-    display: 'flex',
-    flex: 1,
-  },
-  sidebar: {
-    width: '250px',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    padding: '1.5rem 0',
-  },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  navItem: {
-    padding: '0.75rem 1.5rem',
-    textDecoration: 'none',
-    color: '#374151',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    borderLeft: '3px solid transparent',
-  },
-  content: {
-    flex: 1,
-    padding: '2rem',
-  },
   quickActions: {
     display: 'flex',
     gap: '1rem',
@@ -497,17 +464,6 @@ const styles = {
   },
   td: {
     padding: '0.75rem',
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  footer: {
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-    textAlign: 'center',
-  },
-  footerText: {
-    margin: 0,
     fontSize: '0.875rem',
     color: '#6b7280',
   },
