@@ -48,6 +48,7 @@ const Layout = ({ children }) => {
             <a href="/customers" style={getNavItemStyle('/customers')}>👥 Customers</a>
             <a href="/appointments" style={getNavItemStyle('/appointments')}>📅 Appointments</a>
             <a href="/medical-records" style={getNavItemStyle('/medical-records')}>📋 Medical Records</a>
+            <a href="/inventory" style={getNavItemStyle('/inventory')}>📦 Inventory</a>
             {user?.role === 'admin' && (
               <a href="/users" style={getNavItemStyle('/users')}>👨‍⚕️ Staff</a>
             )}

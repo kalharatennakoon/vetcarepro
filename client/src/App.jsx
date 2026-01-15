@@ -18,6 +18,10 @@ import MedicalRecords from './pages/MedicalRecords';
 import MedicalRecordDetail from './pages/MedicalRecordDetail';
 import MedicalRecordCreate from './pages/MedicalRecordCreate';
 import MedicalRecordEdit from './pages/MedicalRecordEdit';
+import Inventory from './pages/Inventory';
+import InventoryDetail from './pages/InventoryDetail';
+import InventoryCreate from './pages/InventoryCreate';
+import InventoryEdit from './pages/InventoryEdit';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -174,6 +178,43 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <MedicalRecordEdit />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Inventory routes */}
+      <Route 
+        path="/inventory" 
+        element={
+          <ProtectedRoute>
+            <Inventory />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/inventory/create" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <InventoryCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/inventory/:id" 
+        element={
+          <ProtectedRoute>
+            <InventoryDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/inventory/:id/edit" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <InventoryEdit />
           </ProtectedRoute>
         } 
       />

@@ -35,3 +35,5 @@ testing.md
 configuration-setup.txt
 
 docs/
+*.jsx.bak
+
