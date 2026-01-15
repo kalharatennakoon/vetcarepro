@@ -30,12 +30,13 @@ export const handleValidationErrors = (req, res, next) => {
  * Login validation rules
  */
 export const validateLogin = [
-  body('username')
+  body('email')
     .trim()
     .notEmpty()
-    .withMessage('Username is required')
-    .isLength({ min: 3 })
-    .withMessage('Username must be at least 3 characters'),
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
   
   body('password')
     .notEmpty()
@@ -50,14 +51,13 @@ export const validateLogin = [
  * User registration validation rules
  */
 export const validateUserRegistration = [
-  body('username')
+  body('email')
     .trim()
     .notEmpty()
-    .withMessage('Username is required')
-    .isLength({ min: 3, max: 50 })
-    .withMessage('Username must be between 3 and 50 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
   
   body('password')
     .notEmpty()
@@ -67,20 +67,19 @@ export const validateUserRegistration = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
   
-  body('full_name')
+  body('first_name')
     .trim()
     .notEmpty()
-    .withMessage('Full name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Full name must be between 2 and 100 characters'),
+    .withMessage('First name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('First name must be between 2 and 50 characters'),
   
-  body('email')
+  body('last_name')
     .trim()
     .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Must be a valid email address')
-    .normalizeEmail(),
+    .withMessage('Last name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Last name must be between 2 and 50 characters'),
   
   body('phone')
     .optional({ nullable: true })
@@ -91,8 +90,8 @@ export const validateUserRegistration = [
   body('role')
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['admin', 'veterinarian', 'receptionist'])
-    .withMessage('Role must be admin, veterinarian, or receptionist'),
+    .isIn(['ADMIN', 'VETERINARIAN', 'RECEPTIONIST'])
+    .withMessage('Role must be ADMIN, VETERINARIAN, or RECEPTIONIST'),
   
   body('specialization')
     .optional({ nullable: true })
@@ -113,11 +112,17 @@ export const validateUserRegistration = [
  * User update validation rules
  */
 export const validateUserUpdate = [
-  body('full_name')
+  body('first_name')
     .optional()
     .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Full name must be between 2 and 100 characters'),
+    .isLength({ min: 2, max: 50 })
+    .withMessage('First name must be between 2 and 50 characters'),
+  
+  body('last_name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Last name must be between 2 and 50 characters'),
   
   body('email')
     .optional()
@@ -134,8 +139,8 @@ export const validateUserUpdate = [
   
   body('role')
     .optional()
-    .isIn(['admin', 'veterinarian', 'receptionist'])
-    .withMessage('Role must be admin, veterinarian, or receptionist'),
+    .isIn(['ADMIN', 'VETERINARIAN', 'RECEPTIONIST'])
+    .withMessage('Role must be ADMIN, VETERINARIAN, or RECEPTIONIST'),
   
   body('specialization')
     .optional({ nullable: true })
@@ -284,8 +289,8 @@ export const validateCustomerUpdate = [
   
   body('preferred_contact_method')
     .optional()
-    .isIn(['phone', 'email', 'sms'])
-    .withMessage('Preferred contact method must be phone, email, or sms'),
+    .isIn(['PHONE', 'EMAIL', 'SMS'])
+    .withMessage('Preferred contact method must be PHONE, EMAIL, or SMS'),
   
   body('is_active')
     .optional()
@@ -350,8 +355,8 @@ export const validatePetUpdate = [
   
   body('gender')
     .optional({ nullable: true })
-    .isIn(['Male', 'Female', 'Unknown'])
-    .withMessage('Gender must be Male, Female, or Unknown'),
+    .isIn(['MALE', 'FEMALE'])
+    .withMessage('Gender must be MALE or FEMALE'),
   
   body('date_of_birth')
     .optional({ nullable: true })
@@ -392,7 +397,7 @@ export const validateAppointmentCreate = [
   body('appointment_type')
     .notEmpty()
     .withMessage('Appointment type is required')
-    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'followup', 'grooming'])
+    .isIn(['CHECKUP', 'VACCINATION', 'SURGERY', 'EMERGENCY', 'FOLLOW_UP', 'CONSULTATION'])
     .withMessage('Invalid appointment type'),
   
   body('reason')
@@ -441,7 +446,7 @@ export const validateAppointmentUpdate = [
   
   body('appointment_type')
     .optional()
-    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'followup', 'grooming'])
+    .isIn(['CHECKUP', 'VACCINATION', 'SURGERY', 'EMERGENCY', 'FOLLOW_UP', 'CONSULTATION'])
     .withMessage('Invalid appointment type'),
   
   body('reason')
@@ -457,7 +462,7 @@ export const validateAppointmentUpdate = [
   
   body('status')
     .optional()
-    .isIn(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'])
+    .isIn(['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'])
     .withMessage('Invalid status'),
   
   body('veterinarian_id')

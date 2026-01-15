@@ -1,8 +1,7 @@
 import {
-  findByUsername,
+  findByEmail,
   createUser,
   updateLastLogin,
-  usernameExists,
   emailExists
 } from '../models/userModel.js';
 import {
@@ -24,15 +23,15 @@ import {
  */
 export const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    // Find user by username
-    const user = await findByUsername(username);
+    // Find user by email
+    const user = await findByEmail(email);
 
     if (!user) {
       return res.status(401).json({
         status: 'error',
-        message: 'Invalid username or password'
+        message: 'Invalid email or password'
       });
     }
 
@@ -50,7 +49,7 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         status: 'error',
-        message: 'Invalid username or password'
+        message: 'Invalid email or password'
       });
     }
 
@@ -88,23 +87,15 @@ export const login = async (req, res) => {
 export const register = async (req, res) => {
   try {
     const {
-      username,
+      first_name,
+      last_name,
       password,
-      full_name,
       email,
       phone,
       role,
       specialization,
       license_number
     } = req.body;
-
-    // Check if username already exists
-    if (await usernameExists(username)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Username already exists'
-      });
-    }
 
     // Check if email already exists
     if (await emailExists(email)) {
@@ -119,9 +110,9 @@ export const register = async (req, res) => {
 
     // Create user
     const newUser = await createUser({
-      username,
+      first_name,
+      last_name,
       password_hash,
-      full_name,
       email,
       phone,
       role,

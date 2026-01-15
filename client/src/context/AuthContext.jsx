@@ -50,10 +50,10 @@ export const AuthProvider = ({ children }) => {
   /**
    * Login function
    */
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
       const response = await axios.post(`${API_URL}/auth/login`, {
-        username,
+        email,
         password
       });
 

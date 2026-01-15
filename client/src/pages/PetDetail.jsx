@@ -269,10 +269,6 @@ const PetDetail = () => {
                 <h2 style={styles.sectionTitle}>💊 Medical Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
-                    <span style={styles.infoLabel}>Microchip Number:</span>
-                    <span style={styles.infoValue}>{pet.microchip_number || 'Not registered'}</span>
-                  </div>
-                  <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Neutered/Spayed:</span>
                     <span style={styles.infoValue}>{pet.is_neutered ? 'Yes' : 'No'}</span>
                   </div>

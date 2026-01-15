@@ -44,10 +44,10 @@ export const comparePassword = async (password, hashedPassword) => {
 export const generateToken = (user) => {
   const payload = {
     user_id: user.user_id,
-    username: user.username,
+    first_name: user.first_name,
+    last_name: user.last_name,
     email: user.email,
-    role: user.role,
-    full_name: user.full_name
+    role: user.role
   };
 
   return jwt.sign(

@@ -3,7 +3,6 @@ import {
   findById,
   updateUser,
   deleteUser,
-  usernameExists,
   emailExists
 } from '../models/userModel.js';
 import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
@@ -106,16 +105,6 @@ export const updateUserById = async (req, res) => {
     }
 
     const userData = { ...req.body };
-
-    // If username change is requested, check if it already exists
-    if (userData.username && userData.username !== existingUser.username) {
-      if (await usernameExists(userData.username)) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Username already exists'
-        });
-      }
-    }
 
     // If email change is requested, check if it already exists
     if (userData.email && userData.email !== existingUser.email) {

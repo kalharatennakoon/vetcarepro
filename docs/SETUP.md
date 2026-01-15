@@ -95,24 +95,24 @@ Frontend will run on http://localhost:5173
 
 After running seed data:
 
-**Admin:**
-- Username: `admin`
+**Admin (Dr. Dulani):**
+- Email: `dulani@propet.lk`
 - Password: `password123`
 
-**Veterinarian 1:**
-- Username: `vet1`
+**Veterinarian (Dr. Nimal):**
+- Email: `nimal@propet.lk`
 - Password: `password123`
 
-**Veterinarian 2:**
-- Username: `vet2`
+**Veterinarian (Dr. Ayesha):**
+- Email: `ayesha@propet.lk`
 - Password: `password123`
 
-**Receptionist:**
-- Username: `receptionist1`
+**Receptionist (Kumari):**
+- Email: `kumari@propet.lk`
 - Password: `password123`
 
 **Test Admin:**
-- Username: `testadmin`
+- Email: `testadmin@propet.lk`
 - Password: `Test@123`
 
 ## Testing the Application

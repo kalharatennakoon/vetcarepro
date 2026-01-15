@@ -330,8 +330,8 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
                 <option value="vaccination">Vaccination</option>
                 <option value="surgery">Surgery</option>
                 <option value="emergency">Emergency</option>
-                <option value="followup">Follow-up</option>
-                <option value="grooming">Grooming</option>
+                <option value="follow_up">Follow-up</option>
+                <option value="consultation">Consultation</option>
               </select>
             </div>
           </div>
@@ -347,7 +347,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
               <option value="">No preference</option>
               {veterinarians.map(vet => (
                 <option key={vet.user_id} value={vet.user_id}>
-                  {vet.full_name} {vet.specialization ? `- ${vet.specialization}` : ''}
+                  {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
                 </option>
               ))}
             </select>

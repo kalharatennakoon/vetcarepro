@@ -20,7 +20,7 @@ const Users = () => {
         </div>
         <div style={styles.headerRight}>
           <div style={styles.userInfo}>
-            <span style={styles.userName}>{user?.full_name}</span>
+            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
             <span style={styles.userRole}>{user?.role}</span>
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
@@ -49,7 +49,7 @@ const Users = () => {
       <h2 style={styles.title}>User Management</h2>
       <p style={styles.subtitle}>Manage staff users and permissions</p>
       <div style={styles.contentBox}>
-        <p>Welcome, {user?.full_name}</p>
+        <p>Welcome, {user?.first_name} {user?.last_name}</p>
         <p>User management functionality coming soon...</p>
         <p style={styles.note}>This page is only accessible to administrators.</p>
       </div>

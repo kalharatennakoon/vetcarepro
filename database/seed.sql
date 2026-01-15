@@ -5,12 +5,12 @@
 -- Insert Users (Staff)
 -- Passwords: password123 for all users
 -- Hash generated using bcrypt with 10 rounds
-INSERT INTO users (username, password_hash, full_name, email, phone, role, specialization, license_number, is_active) VALUES
-('admin', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Dulani Gunathilake', 'dulani@propet.lk', '+94712345001', 'admin', 'Veterinary Administration', 'SLVMC-2015-001', true),
-('vet1', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Nimal Amarasinghe', 'nimal@propet.lk', '+94712345002', 'veterinarian', 'Small Animal Medicine', 'SLVMC-2018-045', true),
-('vet2', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Dr. Ayesha Bandara', 'ayesha@propet.lk', '+94712345003', 'veterinarian', 'Surgery & Emergency Care', 'SLVMC-2019-078', true),
-('receptionist1', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'Kumari Dissanayake', 'kumari@propet.lk', '+94712345004', 'receptionist', NULL, NULL, true);
-('testadmin', '$2b$10$MF7EuL4bpRAE7eOyisFECu/pfuXPzNh5fXPhSF3YzICNW8ljaT9Be', 'Test Admin User', 'testadmin@propet.lk', '+94771111111', 'admin', true);
+INSERT INTO users (first_name, last_name, password_hash, email, phone, role, specialization, license_number, is_active) VALUES
+('Dulani', 'Gunathilake', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'dulani@propet.lk', '+94712345001', 'admin', 'Veterinary Administration', 'SLVMC-2015-001', true),
+('Nimal', 'Amarasinghe', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'nimal@propet.lk', '+94712345002', 'veterinarian', 'Small Animal Medicine', 'SLVMC-2018-045', true),
+('Ayesha', 'Bandara', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'ayesha@propet.lk', '+94712345003', 'veterinarian', 'Surgery & Emergency Care', 'SLVMC-2019-078', true),
+('Kumari', 'Dissanayake', '$2b$10$pYYBWaW1oe70cLoosN8H1.3DqfYM5aNwZ.DuNAHflkf8..zEtdv9q', 'kumari@propet.lk', '+94712345004', 'receptionist', NULL, NULL, true),
+('Test', 'Admin', '$2b$10$MF7EuL4bpRAE7eOyisFECu/pfuXPzNh5fXPhSF3YzICNW8ljaT9Be', 'testadmin@propet.lk', '+94771111111', 'admin', 'System Administration', NULL, true);
 -- Insert Customers (Pet Owners from Kurunegala district)
 INSERT INTO customers (first_name, last_name, email, phone, alternate_phone, address, city, nic, emergency_contact, emergency_phone, preferred_contact_method, created_by) VALUES
 ('Pradeep', 'Wickramasinghe', 'pradeep.w@gmail.com', '+94771234501', '+94372221001', 'No. 45, Kandy Road, Mawathagama', 'Mawathagama', '881234567V', 'Sanduni Wickramasinghe', '+94771234502', 'phone', 1),
@@ -23,17 +23,17 @@ INSERT INTO customers (first_name, last_name, email, phone, alternate_phone, add
 ('Thilini', 'Weerasinghe', 'thilini.w@gmail.com', '+94778234501', NULL, 'No. 67, Hospital Road, Wariyapola', 'Wariyapola', '951234567V', 'Ajith Weerasinghe', '+94778234502', 'phone', 1);
 
 -- Insert Pets (Common Sri Lankan pet names and breeds)
-INSERT INTO pets (customer_id, pet_name, species, breed, gender, date_of_birth, color, weight_current, microchip_number, is_neutered, allergies, special_needs, created_by) VALUES
-(1, 'Bruno', 'Dog', 'Labrador Retriever', 'Male', '2020-05-15', 'Golden', 28.5, 'LK001234567890', true, NULL, NULL, 1),
-(1, 'Lassie', 'Dog', 'Mixed Breed', 'Female', '2021-08-20', 'Brown & White', 12.3, 'LK001234567891', false, NULL, NULL, 1),
-(2, 'Max', 'Dog', 'German Shepherd', 'Male', '2019-03-10', 'Black & Tan', 35.0, 'LK001234567892', true, 'Penicillin', NULL, 1),
-(3, 'Pusa', 'Cat', 'Persian', 'Male', '2021-11-05', 'White', 4.5, NULL, true, NULL, NULL, 1),
-(3, 'Malu', 'Cat', 'Mixed Breed', 'Female', '2022-01-15', 'Grey', 3.8, NULL, false, NULL, NULL, 1),
-(4, 'Charlie', 'Dog', 'Beagle', 'Male', '2020-07-22', 'Tricolor', 12.0, 'LK001234567893', false, NULL, NULL, 1),
-(5, 'Putha', 'Rabbit', 'Dutch Rabbit', 'Female', '2022-09-10', 'Black & White', 1.8, NULL, false, NULL, NULL, 1),
-(6, 'Rocky', 'Dog', 'Rottweiler', 'Male', '2019-12-05', 'Black & Brown', 42.0, 'LK001234567894', true, NULL, NULL, 1),
-(7, 'Sudu', 'Cat', 'Local Breed', 'Female', '2023-03-20', 'White', 3.2, NULL, true, NULL, NULL, 1),
-(8, 'Tommy', 'Dog', 'Pomeranian', 'Male', '2022-06-15', 'Orange', 3.5, 'LK001234567895', false, NULL, 'Sensitive stomach', 1);
+INSERT INTO pets (customer_id, pet_name, species, breed, gender, date_of_birth, color, weight_current, is_neutered, allergies, special_needs, created_by) VALUES
+(1, 'Bruno', 'Dog', 'Labrador Retriever', 'male', '2020-05-15', 'Golden', 28.5, true, NULL, NULL, 1),
+(1, 'Lassie', 'Dog', 'Mixed Breed', 'female', '2021-08-20', 'Brown & White', 12.3, false, NULL, NULL, 1),
+(2, 'Max', 'Dog', 'German Shepherd', 'male', '2019-03-10', 'Black & Tan', 35.0, true, 'Penicillin', NULL, 1),
+(3, 'Pusa', 'Cat', 'Persian', 'male', '2021-11-05', 'White', 4.5, true, NULL, NULL, 1),
+(3, 'Malu', 'Cat', 'Mixed Breed', 'female', '2022-01-15', 'Grey', 3.8, false, NULL, NULL, 1),
+(4, 'Charlie', 'Dog', 'Beagle', 'male', '2020-07-22', 'Tricolor', 12.0, false, NULL, NULL, 1),
+(5, 'Putha', 'Rabbit', 'Dutch Rabbit', 'female', '2022-09-10', 'Black & White', 1.8, false, NULL, NULL, 1),
+(6, 'Rocky', 'Dog', 'Rottweiler', 'male', '2019-12-05', 'Black & Brown', 42.0, true, NULL, NULL, 1),
+(7, 'Sudu', 'Cat', 'Local Breed', 'female', '2023-03-20', 'White', 3.2, true, NULL, NULL, 1),
+(8, 'Tommy', 'Dog', 'Pomeranian', 'male', '2022-06-15', 'Orange', 3.5, false, NULL, 'Sensitive stomach', 1);
 
 -- Insert Appointments
 INSERT INTO appointments (customer_id, pet_id, veterinarian_id, appointment_date, appointment_time, duration_minutes, appointment_type, reason, status, created_by) VALUES
@@ -64,11 +64,11 @@ INSERT INTO vaccinations (pet_id, vaccine_name, vaccine_type, vaccination_date, 
 (6, 'DHPP', 'Core', '2023-08-22', '2024-08-22', 'ZTS-DHPP-2023-067', 'Zoetis', 2, 'Due for renewal', 2);
 
 -- Insert Disease Cases (for ML training - common diseases in Sri Lanka)
-INSERT INTO disease_cases (pet_id, disease_name, disease_category, diagnosis_date, species, breed, age_at_diagnosis, severity, outcome, treatment_duration_days, symptoms, region, season, is_contagious, transmission_method, notes, created_by) VALUES
-(3, 'Canine Parvovirus', 'infectious', '2024-08-15', 'Dog', 'German Shepherd', 5, 'severe', 'recovered', 14, 'Vomiting, bloody diarrhea, lethargy, dehydration', 'Kurunegala', 'summer', true, 'Fecal-oral', 'Intensive care required, IV fluids administered', 2),
-(4, 'Feline Upper Respiratory Infection', 'infectious', '2024-11-10', 'Cat', 'Persian', 3, 'moderate', 'recovered', 10, 'Sneezing, nasal discharge, fever, loss of appetite', 'Kurunegala', 'autumn', true, 'Airborne', 'Common during monsoon season', 3),
-(5, 'Ringworm', 'parasitic', '2024-07-20', 'Cat', 'Mixed Breed', 2, 'mild', 'recovered', 21, 'Circular hair loss patches, itching', 'Kurunegala', 'summer', true, 'Direct contact', 'Fungal infection, treated with topical antifungal', 2),
-(8, 'Tick Fever (Ehrlichiosis)', 'parasitic', '2024-09-05', 'Dog', 'Rottweiler', 4, 'moderate', 'recovered', 21, 'High fever, lethargy, loss of appetite, bleeding tendencies', 'Kurunegala', 'summer', false, 'Tick bite', 'Common in Sri Lankan climate, doxycycline treatment', 3);
+INSERT INTO disease_cases (pet_id, disease_name, disease_category, diagnosis_date, species, breed, age_at_diagnosis, severity, outcome, treatment_duration_days, symptoms, region, is_contagious, transmission_method, notes, created_by) VALUES
+(3, 'Canine Parvovirus', 'infectious', '2024-08-15', 'Dog', 'German Shepherd', 5, 'severe', 'recovered', 14, 'Vomiting, bloody diarrhea, lethargy, dehydration', 'Kurunegala', true, 'Fecal-oral', 'Intensive care required, IV fluids administered', 2),
+(4, 'Feline Upper Respiratory Infection', 'infectious', '2024-11-10', 'Cat', 'Persian', 3, 'moderate', 'recovered', 10, 'Sneezing, nasal discharge, fever, loss of appetite', 'Kurunegala', true, 'Airborne', 'Common during monsoon season', 3),
+(5, 'Ringworm', 'parasitic', '2024-07-20', 'Cat', 'Mixed Breed', 2, 'mild', 'recovered', 21, 'Circular hair loss patches, itching', 'Kurunegala', true, 'Direct contact', 'Fungal infection, treated with topical antifungal', 2),
+(8, 'Tick Fever (Ehrlichiosis)', 'parasitic', '2024-09-05', 'Dog', 'Rottweiler', 4, 'moderate', 'recovered', 21, 'High fever, lethargy, loss of appetite, bleeding tendencies', 'Kurunegala', false, 'Tick bite', 'Common in Sri Lankan climate, doxycycline treatment', 3);
 
 -- Insert Inventory Items (Prices in LKR - Sri Lankan Rupees)
 INSERT INTO inventory (item_code, item_name, category, sub_category, quantity, unit, unit_cost, selling_price, supplier, supplier_contact, reorder_level, reorder_quantity, requires_prescription, description, created_by) VALUES
@@ -82,44 +82,44 @@ INSERT INTO inventory (item_code, item_name, category, sub_category, quantity, u
 ('FOOD-001', 'Pedigree Adult Dog Food 10kg', 'pet_food', 'Dog Food', 25, 'bags', 8500.00, 12500.00, 'Pet Care Lanka', '+94112345004', 10, 30, false, 'Complete nutrition for adult dogs', 1),
 ('FOOD-002', 'Royal Canin Kitten Food 2kg', 'pet_food', 'Cat Food', 30, 'bags', 5500.00, 8500.00, 'Pet Care Lanka', '+94112345004', 10, 30, false, 'Specially formulated for kittens', 1),
 ('FOOD-003', 'Pedigree Puppy Food 3kg', 'pet_food', 'Dog Food', 20, 'bags', 3800.00, 5800.00, 'Pet Care Lanka', '+94112345004', 8, 25, false, 'Growth formula for puppies', 1),
-('ACC-001', 'Dog Collar - Medium', 'collar_leash', 'Collar', 45, 'pcs', 350.00, 650.00, 'Pet World Colombo', '+94112345005', 15, 50, false, 'Adjustable nylon collar', 1),
-('ACC-002', 'Dog Leash - 1.5m', 'collar_leash', 'Leash', 38, 'pcs', 450.00, 850.00, 'Pet World Colombo', '+94112345005', 15, 40, false, 'Strong nylon leash', 1),
-('ACC-003', 'Cat Litter 5kg', 'supply', 'Cat Care', 28, 'bags', 850.00, 1500.00, 'Pet Care Lanka', '+94112345004', 10, 30, false, 'Clumping cat litter', 1),
-('TOY-001', 'Dog Chew Toy - Rubber Bone', 'toy', 'Dog Toy', 60, 'pcs', 220.00, 450.00, 'Pet World Colombo', '+94112345005', 20, 60, false, 'Durable chew toy', 1),
-('TOY-002', 'Cat Feather Toy', 'toy', 'Cat Toy', 50, 'pcs', 180.00, 350.00, 'Pet World Colombo', '+94112345005', 15, 50, false, 'Interactive cat toy', 1),
-('GROOM-001', 'Pet Shampoo - Medicated 500ml', 'grooming', 'Shampoo', 35, 'bottles', 650.00, 1200.00, 'VetCare Products Lanka', '+94112345006', 10, 30, false, 'Anti-fungal shampoo', 1),
-('GROOM-002', 'Dog Brush - Slicker', 'grooming', 'Grooming Tool', 25, 'pcs', 450.00, 850.00, 'Pet World Colombo', '+94112345005', 8, 25, false, 'Professional grooming brush', 1),
-('SUPP-001', 'Disposable Gloves - Box of 100', 'supply', 'Medical Supply', 20, 'boxes', 1200.00, 1800.00, 'Medical Supplies Lanka', '+94112345007', 5, 20, false, 'Latex examination gloves', 1),
-('SUPP-002', 'Syringes 5ml - Pack of 100', 'supply', 'Medical Supply', 15, 'packs', 2500.00, 3500.00, 'Medical Supplies Lanka', '+94112345007', 5, 15, false, 'Sterile disposable syringes', 1),
-('SUPP-003', 'Cotton Wool 500g', 'supply', 'Medical Supply', 30, 'packs', 280.00, 450.00, 'Medical Supplies Lanka', '+94112345007', 10, 30, false, 'Medical grade cotton', 1);
+('ACC-001', 'Dog Collar - Medium', 'accessory', 'Collar', 45, 'pcs', 350.00, 650.00, 'Pet World Colombo', '+94112345005', 15, 50, false, 'Adjustable nylon collar', 1),
+('ACC-002', 'Dog Leash - 1.5m', 'accessory', 'Leash', 38, 'pcs', 450.00, 850.00, 'Pet World Colombo', '+94112345005', 15, 40, false, 'Strong nylon leash', 1),
+('ACC-003', 'Cat Litter 5kg', 'accessory', 'Cat Care', 28, 'bags', 850.00, 1500.00, 'Pet Care Lanka', '+94112345004', 10, 30, false, 'Clumping cat litter', 1),
+('TOY-001', 'Dog Chew Toy - Rubber Bone', 'accessory', 'Dog Toy', 60, 'pcs', 220.00, 450.00, 'Pet World Colombo', '+94112345005', 20, 60, false, 'Durable chew toy', 1),
+('TOY-002', 'Cat Feather Toy', 'accessory', 'Cat Toy', 50, 'pcs', 180.00, 350.00, 'Pet World Colombo', '+94112345005', 15, 50, false, 'Interactive cat toy', 1),
+('GROOM-001', 'Pet Shampoo - Medicated 500ml', 'accessory', 'Shampoo', 35, 'bottles', 650.00, 1200.00, 'VetCare Products Lanka', '+94112345006', 10, 30, false, 'Anti-fungal shampoo', 1),
+('GROOM-002', 'Dog Brush - Slicker', 'accessory', 'Grooming Tool', 25, 'pcs', 450.00, 850.00, 'Pet World Colombo', '+94112345005', 8, 25, false, 'Professional grooming brush', 1),
+('SUPP-001', 'Disposable Gloves - Box of 100', 'surgical_supply', 'Medical Supply', 20, 'boxes', 1200.00, 1800.00, 'Medical Supplies Lanka', '+94112345007', 5, 20, false, 'Latex examination gloves', 1),
+('SUPP-002', 'Syringes 5ml - Pack of 100', 'surgical_supply', 'Medical Supply', 15, 'packs', 2500.00, 3500.00, 'Medical Supplies Lanka', '+94112345007', 5, 15, false, 'Sterile disposable syringes', 1),
+('SUPP-003', 'Cotton Wool 500g', 'surgical_supply', 'Medical Supply', 30, 'packs', 280.00, 450.00, 'Medical Supplies Lanka', '+94112345007', 10, 30, false, 'Medical grade cotton', 1);
 
 -- Insert Sample Billing Records (Amounts in LKR)
 INSERT INTO billing (bill_number, customer_id, appointment_id, bill_date, subtotal, discount_amount, tax_amount, total_amount, paid_amount, balance_amount, payment_status, payment_method, notes, created_by) VALUES
-('INV-2024-0001', 1, 6, '2024-12-15', 8500.00, 0, 0, 8500.00, 8500.00, 0, 'paid', 'cash', NULL, 4),
-('INV-2024-0002', 2, 7, '2024-12-20', 12200.00, 0, 0, 12200.00, 12200.00, 0, 'paid', 'card', NULL, 4),
-('INV-2024-0003', 5, 8, '2024-12-28', 5800.00, 500.00, 0, 5300.00, 5300.00, 0, 'paid', 'cash', 'First visit discount applied', 4),
-('INV-2024-0004', 7, 9, '2024-11-10', 15800.00, 0, 0, 15800.00, 10000.00, 5800.00, 'partial', 'cash', 'Balance to be paid on next visit', 4),
-('INV-2025-0001', 3, NULL, '2025-01-02', 12500.00, 0, 0, 12500.00, 12500.00, 0, 'paid', 'bank_transfer', 'Dog food purchase', 4);
+('INV-2024-0001', 1, 6, '2024-12-15', 8500.00, 0, 0, 8500.00, 8500.00, 0, 'fully_paid', 'cash', NULL, 4),
+('INV-2024-0002', 2, 7, '2024-12-20', 12200.00, 0, 0, 12200.00, 12200.00, 0, 'fully_paid', 'card', NULL, 4),
+('INV-2024-0003', 5, 8, '2024-12-28', 5800.00, 500.00, 0, 5300.00, 5300.00, 0, 'fully_paid', 'cash', 'First visit discount applied', 4),
+('INV-2024-0004', 7, 9, '2024-11-10', 15800.00, 0, 0, 15800.00, 10000.00, 5800.00, 'partially_paid', 'cash', 'Balance to be paid on next visit', 4),
+('INV-2025-0001', 3, NULL, '2025-01-02', 12500.00, 0, 0, 12500.00, 12500.00, 0, 'fully_paid', 'bank_transfer', 'Dog food purchase', 4);
 
 -- Insert Billing Items
 INSERT INTO billing_items (bill_id, item_type, item_id, item_name, quantity, unit_price, discount, total_price) VALUES
 (1, 'consultation', NULL, 'Routine Checkup - Dr. Nimal', 1, 3500.00, 0, 3500.00),
 (1, 'service', NULL, 'General Physical Examination', 1, 2500.00, 0, 2500.00),
-(1, 'product', 14, 'Dog Chew Toy - Rubber Bone', 1, 450.00, 0, 450.00),
-(1, 'medicine', 1, 'Amoxicillin 250mg', 20, 50.00, 0, 1000.00),
-(1, 'product', 16, 'Pet Shampoo - Medicated 500ml', 1, 1200.00, 150.00, 1050.00),
+(1, 'inventory_item', 14, 'Dog Chew Toy - Rubber Bone', 1, 450.00, 0, 450.00),
+(1, 'inventory_item', 1, 'Amoxicillin 250mg', 20, 50.00, 0, 1000.00),
+(1, 'inventory_item', 16, 'Pet Shampoo - Medicated 500ml', 1, 1200.00, 150.00, 1050.00),
 (2, 'consultation', NULL, 'Routine Checkup - Dr. Nimal', 1, 3500.00, 0, 3500.00),
-(2, 'vaccine', 5, 'Nobivac Rabies Vaccine', 1, 6500.00, 0, 6500.00),
+(2, 'vaccination', 5, 'Nobivac Rabies Vaccine', 1, 6500.00, 0, 6500.00),
 (2, 'service', NULL, 'Vaccination Administration Fee', 1, 1500.00, 0, 1500.00),
-(2, 'medicine', 1, 'Amoxicillin 250mg', 10, 50.00, 0, 500.00),
+(2, 'inventory_item', 1, 'Amoxicillin 250mg', 10, 50.00, 0, 500.00),
 (3, 'consultation', NULL, 'First Visit Consultation', 1, 3000.00, 500.00, 2500.00),
-(3, 'product', 9, 'Royal Canin Kitten Food 2kg', 1, 8500.00, 0, 8500.00),
-(3, 'product', 13, 'Cat Litter 5kg', 2, 1500.00, 0, 3000.00),
+(3, 'inventory_item', 9, 'Royal Canin Kitten Food 2kg', 1, 8500.00, 0, 8500.00),
+(3, 'inventory_item', 13, 'Cat Litter 5kg', 2, 1500.00, 0, 3000.00),
 (4, 'consultation', NULL, 'Routine Checkup - Dr. Ayesha', 1, 3500.00, 0, 3500.00),
-(4, 'vaccine', 7, 'Nobivac FVRCP Vaccine', 1, 6800.00, 0, 6800.00),
+(4, 'vaccination', 7, 'Nobivac FVRCP Vaccine', 1, 6800.00, 0, 6800.00),
 (4, 'service', NULL, 'Vaccination Administration Fee', 1, 1500.00, 0, 1500.00),
-(4, 'product', 9, 'Royal Canin Kitten Food 2kg', 1, 8500.00, 0, 8500.00),
-(5, 'product', 8, 'Pedigree Adult Dog Food 10kg', 1, 12500.00, 0, 12500.00);
+(4, 'inventory_item', 9, 'Royal Canin Kitten Food 2kg', 1, 8500.00, 0, 8500.00),
+(5, 'inventory_item', 8, 'Pedigree Adult Dog Food 10kg', 1, 12500.00, 0, 12500.00);
 
 -- Insert Daily Sales Summary (for reports and ML - Amounts in LKR)
 INSERT INTO daily_sales_summary (summary_date, total_bills, total_customers, new_customers, total_appointments, completed_appointments, total_revenue, total_paid, total_pending, cash_payments, card_payments, bank_transfer_payments, services_revenue, products_revenue, medicines_revenue, accessories_revenue) VALUES

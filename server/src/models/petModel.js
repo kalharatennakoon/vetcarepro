@@ -103,8 +103,8 @@ export const getPetById = async (petId) => {
 export const createPet = async (petData, createdBy) => {
   const query = `
     INSERT INTO pets (
-      customer_id, pet_name, species, breed, gender,
-      date_of_birth, color, weight_current, microchip_number,
+      customer_id, pet_name, photo_url, species, breed, gender,
+      date_of_birth, color, weight_current,
       insurance_provider, insurance_policy_number, is_neutered,
       allergies, special_needs, notes, created_by
     )
@@ -115,13 +115,13 @@ export const createPet = async (petData, createdBy) => {
   const values = [
     petData.customer_id,
     petData.pet_name,
+    petData.photo_url || null,
     petData.species,
     petData.breed || null,
     petData.gender || null,
     petData.date_of_birth || null,
     petData.color || null,
     petData.weight_current || null,
-    petData.microchip_number || null,
     petData.insurance_provider || null,
     petData.insurance_policy_number || null,
     petData.is_neutered || false,
@@ -146,6 +146,11 @@ export const updatePet = async (petId, petData, updatedBy) => {
   if (petData.pet_name) {
     fields.push(`pet_name = $${paramCount}`);
     values.push(petData.pet_name);
+    paramCount++;
+  }
+  if (petData.photo_url !== undefined) {
+    fields.push(`photo_url = $${paramCount}`);
+    values.push(petData.photo_url);
     paramCount++;
   }
   if (petData.species) {
@@ -176,11 +181,6 @@ export const updatePet = async (petId, petData, updatedBy) => {
   if (petData.weight_current !== undefined) {
     fields.push(`weight_current = $${paramCount}`);
     values.push(petData.weight_current);
-    paramCount++;
-  }
-  if (petData.microchip_number !== undefined) {
-    fields.push(`microchip_number = $${paramCount}`);
-    values.push(petData.microchip_number);
     paramCount++;
   }
   if (petData.insurance_provider !== undefined) {
@@ -257,7 +257,7 @@ export const getPetMedicalHistory = async (petId) => {
   const query = `
     SELECT 
       mr.*,
-      u.full_name as veterinarian_name
+      CONCAT(u.first_name, ' ', u.last_name) as veterinarian_name
     FROM medical_records mr
     LEFT JOIN users u ON mr.veterinarian_id = u.user_id
     WHERE mr.pet_id = $1
@@ -275,7 +275,7 @@ export const getPetVaccinations = async (petId) => {
   const query = `
     SELECT 
       v.*,
-      u.full_name as administered_by_name
+      CONCAT(u.first_name, ' ', u.last_name) as administered_by_name
     FROM vaccinations v
     LEFT JOIN users u ON v.administered_by = u.user_id
     WHERE v.pet_id = $1

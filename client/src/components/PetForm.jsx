@@ -16,7 +16,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
     date_of_birth: '',
     color: '',
     weight_current: '',
-    microchip_number: '',
     insurance_provider: '',
     insurance_policy_number: '',
     is_neutered: false,
@@ -70,7 +69,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
         date_of_birth: pet.date_of_birth ? pet.date_of_birth.split('T')[0] : '',
         color: pet.color || '',
         weight_current: pet.weight_current || '',
-        microchip_number: pet.microchip_number || '',
         insurance_provider: pet.insurance_provider || '',
         insurance_policy_number: pet.insurance_policy_number || '',
         is_neutered: pet.is_neutered || false,
@@ -151,7 +149,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
         // Convert empty strings to null for optional fields
         breed: formData.breed.trim() || null,
         color: formData.color.trim() || null,
-        microchip_number: formData.microchip_number.trim() || null,
         insurance_provider: formData.insurance_provider.trim() || null,
         insurance_policy_number: formData.insurance_policy_number.trim() || null,
         allergies: formData.allergies.trim() || null,
@@ -280,8 +277,9 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
                 required
               >
                 <option value="">Select Gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="unknown">Unknown</option>
               </select>
             </div>
 
@@ -333,18 +331,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Medical Information</h3>
           
           <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Microchip Number</label>
-              <input
-                type="text"
-                name="microchip_number"
-                value={formData.microchip_number}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., LK001234567890"
-              />
-            </div>
-
             <div style={styles.formGroup}>
               <label style={styles.label}>Insurance Provider</label>
               <input

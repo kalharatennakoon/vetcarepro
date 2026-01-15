@@ -71,7 +71,7 @@ const Dashboard = () => {
         </div>
         <div style={styles.headerRight}>
           <div style={styles.userInfo}>
-            <span style={styles.userName}>{user?.full_name}</span>
+            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
             <span style={styles.userRole}>{user?.role}</span>
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
