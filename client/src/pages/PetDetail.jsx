@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPetById, deletePet, getPetMedicalHistory, getPetVaccinations } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
+import Layout from '../components/Layout';
 
 const PetDetail = () => {
   const [pet, setPet] = useState(null);
@@ -110,15 +111,18 @@ const PetDetail = () => {
 
   if (loading) {
     return (
+      <Layout>
       <div style={styles.loadingContainer}>
         <div style={styles.spinner}></div>
         <p>Loading pet details...</p>
       </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
+      <Layout>
       <div style={styles.errorContainer}>
         <h2>Error</h2>
         <p style={styles.errorText}>{error}</p>
@@ -126,21 +130,25 @@ const PetDetail = () => {
           Back to Pets
         </button>
       </div>
+      </Layout>
     );
   }
 
   if (!pet) {
     return (
+      <Layout>
       <div style={styles.errorContainer}>
         <h2>Pet Not Found</h2>
         <button onClick={() => navigate('/pets')} style={styles.backButton}>
           Back to Pets
         </button>
       </div>
+      </Layout>
     );
   }
 
   return (
+    <Layout>
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
@@ -269,10 +277,6 @@ const PetDetail = () => {
                 <h2 style={styles.sectionTitle}>💊 Medical Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
-                    <span style={styles.infoLabel}>Microchip Number:</span>
-                    <span style={styles.infoValue}>{pet.microchip_number || 'Not registered'}</span>
-                  </div>
-                  <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Neutered/Spayed:</span>
                     <span style={styles.infoValue}>{pet.is_neutered ? 'Yes' : 'No'}</span>
                   </div>
@@ -309,24 +313,47 @@ const PetDetail = () => {
 
           {activeTab === 'medical' && (
             <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>🏥 Medical History</h2>
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>🏥 Medical History</h2>
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <button 
+                    onClick={() => navigate(`/medical-records/new?petId=${id}`)} 
+                    style={styles.addRecordButton}
+                  >
+                    + New Medical Record
+                  </button>
+                )}
+              </div>
               {medicalHistory.length === 0 ? (
                 <div style={styles.emptyState}>
                   <p>No medical history records found</p>
+                  {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                    <button 
+                      onClick={() => navigate(`/medical-records/new?petId=${id}`)} 
+                      style={styles.emptyButton}
+                    >
+                      Create First Medical Record
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div style={styles.historyList}>
                   {medicalHistory.map((record) => (
-                    <div key={record.visit_id} style={styles.historyCard}>
+                    <div 
+                      key={record.visit_id || record.record_id} 
+                      style={styles.historyCard}
+                      onClick={() => navigate(`/medical-records/${record.record_id || record.visit_id}`)}
+                    >
                       <div style={styles.historyHeader}>
                         <span style={styles.historyDate}>{formatDate(record.visit_date)}</span>
-                        <span style={styles.historyType}>{record.visit_type}</span>
+                        <span style={styles.historyType}>{record.visit_type || 'Visit'}</span>
                       </div>
                       <div style={styles.historyContent}>
-                        <p><strong>Reason:</strong> {record.reason_for_visit}</p>
+                        <p><strong>Reason:</strong> {record.reason_for_visit || record.chief_complaint || 'N/A'}</p>
                         {record.diagnosis && <p><strong>Diagnosis:</strong> {record.diagnosis}</p>}
                         {record.treatment && <p><strong>Treatment:</strong> {record.treatment}</p>}
                         {record.vet_name && <p><strong>Vet:</strong> {record.vet_name}</p>}
+                        {record.veterinarian_name && <p><strong>Vet:</strong> {record.veterinarian_name}</p>}
                       </div>
                     </div>
                   ))}
@@ -373,12 +400,12 @@ const PetDetail = () => {
         </div>
       </div>
     </div>
+    </Layout>
   );
 };
 
 const styles = {
   container: {
-    padding: '2rem',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     maxWidth: '1200px',
     margin: '0 auto',
@@ -531,6 +558,33 @@ const styles = {
     color: '#111827',
     marginBottom: '1rem',
   },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem',
+  },
+  addRecordButton: {
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    padding: '0.625rem 1rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'background-color 0.2s',
+  },
+  emptyButton: {
+    marginTop: '1rem',
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '1rem',
+    cursor: 'pointer',
+  },
   infoGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -584,6 +638,8 @@ const styles = {
     borderRadius: '8px',
     padding: '1rem',
     backgroundColor: '#f9fafb',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   historyHeader: {
     display: 'flex',

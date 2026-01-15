@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import CustomerForm from '../components/CustomerForm';
+import Layout from '../components/Layout';
 
 const CustomerDetail = () => {
   const [customer, setCustomer] = useState(null);
@@ -60,15 +61,18 @@ const CustomerDetail = () => {
 
   if (loading) {
     return (
+      <Layout>
       <div style={styles.loadingContainer}>
         <div style={styles.spinner}></div>
         <p>Loading customer details...</p>
       </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
+      <Layout>
       <div style={styles.errorContainer}>
         <h2>Error</h2>
         <p style={styles.errorText}>{error}</p>
@@ -76,22 +80,26 @@ const CustomerDetail = () => {
           Back to Customers
         </button>
       </div>
+      </Layout>
     );
   }
 
   if (!customer) {
     return (
+      <Layout>
       <div style={styles.errorContainer}>
         <h2>Customer Not Found</h2>
         <button onClick={() => navigate('/customers')} style={styles.backButton}>
           Back to Customers
         </button>
       </div>
+      </Layout>
     );
   }
 
   if (showEditForm) {
     return (
+      <Layout>
       <div style={styles.container}>
         <CustomerForm
           customerId={id}
@@ -99,10 +107,12 @@ const CustomerDetail = () => {
           onCancel={() => setShowEditForm(false)}
         />
       </div>
+      </Layout>
     );
   }
 
   return (
+    <Layout>
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
@@ -300,12 +310,12 @@ const CustomerDetail = () => {
         )}
       </div>
     </div>
+    </Layout>
   );
 };
 
 const styles = {
   container: {
-    padding: '2rem',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     maxWidth: '1200px',
     margin: '0 auto',

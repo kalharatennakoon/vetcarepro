@@ -38,6 +38,7 @@ import userRoutes from './routes/userRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import petRoutes from './routes/petRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
+import medicalRecordRoutes from './routes/medicalRecordRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -51,7 +52,8 @@ app.get('/api', (req, res) => {
       users: '/api/users',
       customers: '/api/customers',
       pets: '/api/pets',
-      appointments: '/api/appointments'
+      appointments: '/api/appointments',
+      medicalRecords: '/api/medical-records'
     }
   });
 });
@@ -61,6 +63,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/pets', petRoutes);
+app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
 // 404 handler

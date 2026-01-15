@@ -4,7 +4,7 @@
  * 
  * What this does:
  * - Provides functions to interact with the users table
- * - findByUsername(), findByEmail(), findById() - Fetch user data
+ * - findByEmail(), findById() - Fetch user data
  * - getAllUsers() - Get list of all users with optional filters
  * - createUser() - Insert new user into database
  * - updateUser() - Update existing user
@@ -15,19 +15,7 @@
 import pool from '../config/database.js';
 
 /**
- * Find user by username
- * Fetch user data by username
- * @param {string} username
- * @returns {Promise<Object|null>} User object or null
- */
-export const findByUsername = async (username) => {
-  const query = 'SELECT * FROM users WHERE username = $1';
-  const result = await pool.query(query, [username]);
-  return result.rows[0] || null;
-};
-
-/**
- * Find user by email
+ * Find user by email (used for login)
  * Fetch user data by email
  * @param {string} email
  * @returns {Promise<Object|null>} User object or null
@@ -46,7 +34,7 @@ export const findByEmail = async (email) => {
  */
 export const findById = async (userId) => {
   const query = `
-    SELECT user_id, username, full_name, email, phone, role, 
+    SELECT user_id, first_name, last_name, email, phone, role, 
            specialization, license_number, is_active, 
            last_login, created_at, updated_at
     FROM users 
@@ -64,7 +52,7 @@ export const findById = async (userId) => {
  */
 export const getAllUsers = async (filters = {}) => {
   let query = `
-    SELECT user_id, username, full_name, email, phone, role, 
+    SELECT user_id, first_name, last_name, email, phone, role, 
            specialization, license_number, is_active, 
            last_login, created_at, updated_at
     FROM users 
@@ -102,18 +90,18 @@ export const getAllUsers = async (filters = {}) => {
 export const createUser = async (userData) => {
   const query = `
     INSERT INTO users (
-      username, password_hash, full_name, email, phone, 
+      first_name, last_name, password_hash, email, phone, 
       role, specialization, license_number, created_by
     ) 
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING user_id, username, full_name, email, phone, role, 
+    RETURNING user_id, first_name, last_name, email, phone, role, 
               specialization, license_number, is_active, created_at
   `;
   
   const values = [
-    userData.username,
+    userData.first_name,
+    userData.last_name,
     userData.password_hash,
-    userData.full_name,
     userData.email,
     userData.phone || null,
     userData.role,
@@ -140,9 +128,14 @@ export const updateUser = async (userId, userData, updatedBy) => {
   let paramCount = 1;
 
   // Build dynamic UPDATE query based on provided fields
-  if (userData.full_name) {
-    fields.push(`full_name = $${paramCount}`);
-    values.push(userData.full_name);
+  if (userData.first_name) {
+    fields.push(`first_name = $${paramCount}`);
+    values.push(userData.first_name);
+    paramCount++;
+  }
+  if (userData.last_name) {
+    fields.push(`last_name = $${paramCount}`);
+    values.push(userData.last_name);
     paramCount++;
   }
   if (userData.email) {
@@ -192,7 +185,7 @@ export const updateUser = async (userId, userData, updatedBy) => {
     UPDATE users 
     SET ${fields.join(', ')}
     WHERE user_id = $${paramCount}
-    RETURNING user_id, username, full_name, email, phone, role, 
+    RETURNING user_id, first_name, last_name, email, phone, role, 
               specialization, license_number, is_active, updated_at
   `;
 
@@ -223,16 +216,7 @@ export const updateLastLogin = async (userId) => {
   await pool.query(query, [userId]);
 };
 
-/**
- * Check if username exists
- * @param {string} username
- * @returns {Promise<boolean>}
- */
-export const usernameExists = async (username) => {
-  const query = 'SELECT 1 FROM users WHERE username = $1';
-  const result = await pool.query(query, [username]);
-  return result.rows.length > 0;
-};
+
 
 /**
  * Check if email exists

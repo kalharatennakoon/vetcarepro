@@ -10,9 +10,9 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 /**
  * Login user
  */
-export const loginUser = async (username, password) => {
+export const loginUser = async (email, password) => {
   const response = await axios.post(`${API_URL}/auth/login`, {
-    username,
+    email,
     password
   });
   return response.data;

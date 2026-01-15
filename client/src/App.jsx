@@ -14,6 +14,10 @@ import Pets from './pages/Pets';
 import PetDetail from './pages/PetDetail';
 import PetCreate from './pages/PetCreate';
 import PetEdit from './pages/PetEdit';
+import MedicalRecords from './pages/MedicalRecords';
+import MedicalRecordDetail from './pages/MedicalRecordDetail';
+import MedicalRecordCreate from './pages/MedicalRecordCreate';
+import MedicalRecordEdit from './pages/MedicalRecordEdit';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -133,6 +137,43 @@ function App() {
         element={
           <ProtectedRoute>
             <PetEdit />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Medical Records routes */}
+      <Route 
+        path="/medical-records" 
+        element={
+          <ProtectedRoute>
+            <MedicalRecords />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/medical-records/new" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <MedicalRecordCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/medical-records/:id" 
+        element={
+          <ProtectedRoute>
+            <MedicalRecordDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/medical-records/:id/edit" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <MedicalRecordEdit />
           </ProtectedRoute>
         } 
       />

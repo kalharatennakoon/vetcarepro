@@ -8,7 +8,7 @@ const Patients = () => {
       <h1 style={styles.title}>Patients</h1>
       <p style={styles.subtitle}>Manage pet patients and medical records</p>
       <div style={styles.content}>
-        <p>Welcome, {user?.full_name}</p>
+        <p>Welcome, {user?.first_name} {user?.last_name}</p>
         <p>Patient management functionality coming soon...</p>
       </div>
     </div>

@@ -17,7 +17,7 @@ export const getAllAppointments = async (filters = {}) => {
       c.phone as customer_phone,
       p.pet_name,
       p.species,
-      u.full_name as veterinarian_name
+      CONCAT(u.first_name, ' ', u.last_name) as veterinarian_name
     FROM appointments a
     INNER JOIN customers c ON a.customer_id = c.customer_id
     INNER JOIN pets p ON a.pet_id = p.pet_id
@@ -88,7 +88,7 @@ export const getAppointmentById = async (appointmentId) => {
       c.phone as customer_phone,
       p.pet_name,
       p.species,
-      u.full_name as veterinarian_name
+      CONCAT(u.first_name, ' ', u.last_name) as veterinarian_name
     FROM appointments a
     INNER JOIN customers c ON a.customer_id = c.customer_id
     INNER JOIN pets p ON a.pet_id = p.pet_id
@@ -108,9 +108,9 @@ export const createAppointment = async (appointmentData, createdBy) => {
     INSERT INTO appointments (
       customer_id, pet_id, veterinarian_id, appointment_date,
       appointment_time, duration_minutes, appointment_type,
-      reason, status, notes, created_by
+      reason, estimated_cost, status, notes, created_by
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
     RETURNING *
   `;
 
@@ -123,6 +123,7 @@ export const createAppointment = async (appointmentData, createdBy) => {
     appointmentData.duration_minutes || 30,
     appointmentData.appointment_type,
     appointmentData.reason,
+    appointmentData.estimated_cost || null,
     appointmentData.status || 'scheduled',
     appointmentData.notes || null,
     createdBy
@@ -178,6 +179,11 @@ export const updateAppointment = async (appointmentId, appointmentData, updatedB
   if (appointmentData.reason !== undefined) {
     fields.push(`reason = $${paramCount}`);
     values.push(appointmentData.reason);
+    paramCount++;
+  }
+  if (appointmentData.estimated_cost !== undefined) {
+    fields.push(`estimated_cost = $${paramCount}`);
+    values.push(appointmentData.estimated_cost);
     paramCount++;
   }
   if (appointmentData.status !== undefined) {
