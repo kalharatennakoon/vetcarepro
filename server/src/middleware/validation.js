@@ -472,3 +472,137 @@ export const validateAppointmentUpdate = [
   
   handleValidationErrors
 ];
+
+/**
+ * Inventory item validation rules
+ */
+export const validateInventoryItem = [
+  body('itemCode')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Item code must be between 1 and 50 characters'),
+  
+  body('itemName')
+    .trim()
+    .notEmpty()
+    .withMessage('Item name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Item name must be between 2 and 100 characters'),
+  
+  body('category')
+    .notEmpty()
+    .withMessage('Category is required')
+    .isIn(['medicine', 'vaccine', 'accessory', 'surgical_supply', 'diagnostic_equipment', 'pet_food', 'supplements'])
+    .withMessage('Invalid category'),
+  
+  body('subCategory')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Sub-category must not exceed 50 characters'),
+  
+  body('quantity')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Quantity must be a non-negative number'),
+  
+  body('unit')
+    .optional()
+    .trim()
+    .isLength({ max: 20 })
+    .withMessage('Unit must not exceed 20 characters'),
+  
+  body('unitCost')
+    .notEmpty()
+    .withMessage('Unit cost is required')
+    .isFloat({ min: 0 })
+    .withMessage('Unit cost must be a positive number'),
+  
+  body('sellingPrice')
+    .notEmpty()
+    .withMessage('Selling price is required')
+    .isFloat({ min: 0 })
+    .withMessage('Selling price must be a positive number'),
+  
+  body('markupPercentage')
+    .optional()
+    .isFloat({ min: 0, max: 1000 })
+    .withMessage('Markup percentage must be between 0 and 1000'),
+  
+  body('supplier')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Supplier name must not exceed 100 characters'),
+  
+  body('supplierContact')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Supplier contact must not exceed 50 characters'),
+  
+  body('reorderLevel')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Reorder level must be a non-negative number'),
+  
+  body('reorderQuantity')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Reorder quantity must be a positive number'),
+  
+  body('expiryDate')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Expiry date must be a valid date'),
+  
+  body('manufacturingDate')
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage('Manufacturing date must be a valid date'),
+  
+  body('batchNumber')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Batch number must not exceed 50 characters'),
+  
+  body('storageLocation')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Storage location must not exceed 50 characters'),
+  
+  body('requiresPrescription')
+    .optional()
+    .isBoolean()
+    .withMessage('Requires prescription must be a boolean value'),
+  
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Description must not exceed 1000 characters'),
+  
+  body('isActive')
+    .optional()
+    .isBoolean()
+    .withMessage('Is active must be a boolean value'),
+  
+  handleValidationErrors
+];
+
+/**
+ * Inventory quantity update validation rules
+ */
+export const validateQuantityUpdate = [
+  body('quantityChange')
+    .notEmpty()
+    .withMessage('Quantity change is required')
+    .isInt()
+    .withMessage('Quantity change must be an integer'),
+  
+  handleValidationErrors
+];
+
