@@ -287,7 +287,13 @@ const Inventory = () => {
                 <div style={styles.summaryCardPurple}>
                   <p style={styles.summaryLabel}>Active Items</p>
                   <p style={styles.summaryValue}>
-                    {inventory.filter(item => item.is_active).length}
+                    {inventory.filter(item => item.is_active && item.quantity > 0).length}
+                  </p>
+                </div>
+                <div style={styles.summaryCardYellow}>
+                  <p style={styles.summaryLabel}>Out of Stock</p>
+                  <p style={styles.summaryValue}>
+                    {inventory.filter(item => item.quantity === 0).length}
                   </p>
                 </div>
               </div>
@@ -541,6 +547,11 @@ const styles = {
   },
   summaryCardPurple: {
     backgroundColor: '#faf5ff',
+    borderRadius: '8px',
+    padding: '1rem',
+  },
+  summaryCardYellow: {
+    backgroundColor: '#fef3c7',
     borderRadius: '8px',
     padding: '1rem',
   },

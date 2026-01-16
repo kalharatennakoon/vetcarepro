@@ -131,10 +131,32 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
     setError('');
 
     try {
+      // Prepare data with proper types
+      const submitData = {
+        ...formData,
+        // Convert string numbers to actual numbers
+        unitCost: formData.unitCost ? parseFloat(formData.unitCost) : null,
+        sellingPrice: formData.sellingPrice ? parseFloat(formData.sellingPrice) : null,
+        markupPercentage: formData.markupPercentage ? parseFloat(formData.markupPercentage) : null,
+        quantity: formData.quantity ? parseInt(formData.quantity) : 0,
+        reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : null,
+        reorderQuantity: formData.reorderQuantity ? parseInt(formData.reorderQuantity) : null,
+        // Remove empty strings for optional fields
+        itemCode: formData.itemCode || undefined,
+        subCategory: formData.subCategory || undefined,
+        supplier: formData.supplier || undefined,
+        supplierContact: formData.supplierContact || undefined,
+        expiryDate: formData.expiryDate || undefined,
+        manufacturingDate: formData.manufacturingDate || undefined,
+        batchNumber: formData.batchNumber || undefined,
+        storageLocation: formData.storageLocation || undefined,
+        description: formData.description || undefined
+      };
+
       if (isEditMode) {
-        await inventoryService.update(itemId, formData);
+        await inventoryService.update(itemId, submitData);
       } else {
-        await inventoryService.create(formData);
+        await inventoryService.create(submitData);
       }
       
       if (onSuccess) {
