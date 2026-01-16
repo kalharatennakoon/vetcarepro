@@ -22,6 +22,9 @@ import Inventory from './pages/Inventory';
 import InventoryDetail from './pages/InventoryDetail';
 import InventoryCreate from './pages/InventoryCreate';
 import InventoryEdit from './pages/InventoryEdit';
+import Billing from './pages/Billing';
+import BillingDetail from './pages/BillingDetail';
+import BillingCreate from './pages/BillingCreate';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -215,6 +218,34 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <InventoryEdit />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Billing routes */}
+      <Route 
+        path="/billing" 
+        element={
+          <ProtectedRoute>
+            <Billing />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/billing/new" 
+        element={
+          <ProtectedRoute>
+            <BillingCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/billing/:id" 
+        element={
+          <ProtectedRoute>
+            <BillingDetail />
           </ProtectedRoute>
         } 
       />
