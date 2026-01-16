@@ -46,6 +46,11 @@ export const adminOnly = authorize('admin');
 export const vetOrAdmin = authorize('veterinarian', 'admin');
 
 /**
+ * Admin or Receptionist access
+ */
+export const adminOrReceptionist = authorize('admin', 'receptionist');
+
+/**
  * Staff access (all roles)
  */
 export const staffOnly = authorize('admin', 'veterinarian', 'receptionist');

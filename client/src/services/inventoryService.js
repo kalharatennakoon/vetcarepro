@@ -90,6 +90,8 @@ const inventoryService = {
    */
   async update(itemId, itemData) {
     try {
+      console.log('Sending update request for item:', itemId);
+      console.log('Update data:', JSON.stringify(itemData, null, 2));
       const response = await axios.put(
         `${API_URL}/inventory/${itemId}`,
         itemData,
@@ -98,6 +100,10 @@ const inventoryService = {
       return response.data;
     } catch (error) {
       console.error('Error updating inventory item:', error);
+      console.error('Error response:', error.response?.data);
+      if (error.response?.data?.errors) {
+        console.error('Validation errors details:', error.response.data.errors);
+      }
       throw error.response?.data || error;
     }
   },

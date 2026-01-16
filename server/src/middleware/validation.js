@@ -13,12 +13,15 @@ export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
+    console.log('Validation errors:', JSON.stringify(errors.array(), null, 2));
+    console.log('Request body:', req.body);
     return res.status(400).json({
       status: 'error',
       message: 'Validation failed',
       errors: errors.array().map(err => ({
         field: err.path,
-        message: err.msg
+        message: err.msg,
+        value: err.value
       }))
     });
   }
@@ -526,7 +529,7 @@ export const validateInventoryItem = [
     .withMessage('Selling price must be a positive number'),
   
   body('markupPercentage')
-    .optional()
+    .optional({ nullable: true })
     .isFloat({ min: 0, max: 1000 })
     .withMessage('Markup percentage must be between 0 and 1000'),
   
@@ -587,6 +590,13 @@ export const validateInventoryItem = [
   
   body('isActive')
     .optional()
+    .customSanitizer((value) => {
+      // Convert string to boolean if needed
+      if (typeof value === 'string') {
+        return value === 'true' || value === '1';
+      }
+      return Boolean(value);
+    })
     .isBoolean()
     .withMessage('Is active must be a boolean value'),
   
