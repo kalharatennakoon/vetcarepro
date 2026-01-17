@@ -25,6 +25,7 @@ import InventoryEdit from './pages/InventoryEdit';
 import Billing from './pages/Billing';
 import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
+import Reports from './pages/Reports';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -246,6 +247,16 @@ function App() {
         element={
           <ProtectedRoute>
             <BillingDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Reports routes - accessible by admin and veterinarian */}
+      <Route 
+        path="/reports" 
+        element={
+          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+            <Reports />
           </ProtectedRoute>
         } 
       />

@@ -42,6 +42,7 @@ import medicalRecordRoutes from './routes/medicalRecordRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import billingRoutes from './routes/billingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -59,7 +60,8 @@ app.get('/api', (req, res) => {
       medicalRecords: '/api/medical-records',
       inventory: '/api/inventory',
       billing: '/api/billing',
-      payments: '/api/payments'
+      payments: '/api/payments',
+      reports: '/api/reports'
     }
   });
 });
@@ -74,6 +76,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/reports', reportRoutes);
 
 // 404 handler
 app.use((req, res) => {
