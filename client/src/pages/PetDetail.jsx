@@ -39,7 +39,7 @@ const PetDetail = () => {
   const fetchMedicalHistory = async () => {
     try {
       const response = await getPetMedicalHistory(id);
-      setMedicalHistory(response.data.medicalHistory || []);
+      setMedicalHistory(response.data?.medical_history || []);
     } catch (err) {
       console.error('Failed to fetch medical history:', err);
     }
@@ -48,7 +48,7 @@ const PetDetail = () => {
   const fetchVaccinations = async () => {
     try {
       const response = await getPetVaccinations(id);
-      setVaccinations(response.data.vaccinations || []);
+      setVaccinations(response.data?.vaccinations || []);
     } catch (err) {
       console.error('Failed to fetch vaccinations:', err);
     }
@@ -340,19 +340,18 @@ const PetDetail = () => {
                 <div style={styles.historyList}>
                   {medicalHistory.map((record) => (
                     <div 
-                      key={record.visit_id || record.record_id} 
+                      key={record.record_id} 
                       style={styles.historyCard}
-                      onClick={() => navigate(`/medical-records/${record.record_id || record.visit_id}`)}
+                      onClick={() => navigate(`/medical-records/${record.record_id}`)}
                     >
                       <div style={styles.historyHeader}>
                         <span style={styles.historyDate}>{formatDate(record.visit_date)}</span>
-                        <span style={styles.historyType}>{record.visit_type || 'Visit'}</span>
+                        <span style={styles.historyType}>Medical Record</span>
                       </div>
                       <div style={styles.historyContent}>
-                        <p><strong>Reason:</strong> {record.reason_for_visit || record.chief_complaint || 'N/A'}</p>
+                        <p><strong>Reason:</strong> {record.chief_complaint || 'N/A'}</p>
                         {record.diagnosis && <p><strong>Diagnosis:</strong> {record.diagnosis}</p>}
                         {record.treatment && <p><strong>Treatment:</strong> {record.treatment}</p>}
-                        {record.vet_name && <p><strong>Vet:</strong> {record.vet_name}</p>}
                         {record.veterinarian_name && <p><strong>Vet:</strong> {record.veterinarian_name}</p>}
                       </div>
                     </div>
