@@ -1,14 +1,43 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useState, useEffect } from 'react';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleNavigation = (path) => {
+    navigate(path);
+    closeMobileMenu();
   };
 
   const isActive = (path) => {
@@ -24,34 +53,109 @@ const Layout = ({ children }) => {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <h1 style={styles.logo} onClick={() => navigate('/dashboard')}>🏥 VetCare Pro</h1>
-          <p style={styles.subtitle}>Pro Pet Animal Hospital</p>
+          {isMobile && (
+            <button 
+              style={styles.hamburger}
+              onClick={toggleMobileMenu}
+              aria-label="Toggle menu"
+            >
+              <span style={styles.hamburgerLine}></span>
+              <span style={styles.hamburgerLine}></span>
+              <span style={styles.hamburgerLine}></span>
+            </button>
+          )}
+          <div>
+            <h1 style={styles.logo} onClick={() => handleNavigation('/dashboard')}>
+              🏥 {!isMobile && 'VetCare Pro'}
+              {isMobile && 'VCP'}
+            </h1>
+            {!isMobile && <p style={styles.subtitle}>Pro Pet Animal Hospital</p>}
+          </div>
         </div>
         <div style={styles.headerRight}>
           <div style={styles.userInfo}>
-            <span style={styles.userName}>{user?.first_name} {user?.last_name}</span>
-            <span style={styles.userRole}>{user?.role}</span>
+            <span style={styles.userName}>
+              {isMobile ? `${user?.first_name?.charAt(0)}${user?.last_name?.charAt(0)}` : `${user?.first_name} ${user?.last_name}`}
+            </span>
+            {!isMobile && <span style={styles.userRole}>{user?.role}</span>}
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
-            Logout
+            {isMobile ? '🚪' : 'Logout'}
           </button>
         </div>
       </header>
 
+      {/* Mobile Menu Overlay */}
+      {isMobile && isMobileMenuOpen && (
+        <div style={styles.overlay} onClick={closeMobileMenu}></div>
+      )}
+
       {/* Main Content */}
       <div style={styles.mainContent}>
         {/* Sidebar */}
-        <aside style={styles.sidebar}>
+        <aside style={{
+          ...styles.sidebar,
+          ...(isMobile && isMobileMenuOpen ? styles.sidebarMobileOpen : {}),
+          ...(isMobile && !isMobileMenuOpen ? styles.sidebarMobileClosed : {})
+        }}>
           <nav style={styles.nav}>
-            <a href="/dashboard" style={getNavItemStyle('/dashboard')}>📊 Dashboard</a>
-            <a href="/pets" style={getNavItemStyle('/pets')}>🐾 Pets</a>
-            <a href="/customers" style={getNavItemStyle('/customers')}>👥 Customers</a>
-            <a href="/appointments" style={getNavItemStyle('/appointments')}>📅 Appointments</a>
-            <a href="/medical-records" style={getNavItemStyle('/medical-records')}>📋 Medical Records</a>
-            <a href="/billing" style={getNavItemStyle('/billing')}>💰 Billing</a>
-            <a href="/inventory" style={getNavItemStyle('/inventory')}>📦 Inventory</a>
+            <a 
+              href="/dashboard" 
+              style={getNavItemStyle('/dashboard')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
+            >
+              📊 Dashboard
+            </a>
+            <a 
+              href="/pets" 
+              style={getNavItemStyle('/pets')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
+            >
+              🐾 Pets
+            </a>
+            <a 
+              href="/customers" 
+              style={getNavItemStyle('/customers')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
+            >
+              👥 Customers
+            </a>
+            <a 
+              href="/appointments" 
+              style={getNavItemStyle('/appointments')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
+            >
+              📅 Appointments
+            </a>
+            <a 
+              href="/medical-records" 
+              style={getNavItemStyle('/medical-records')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+            >
+              📋 Medical Records
+            </a>
+            <a 
+              href="/billing" 
+              style={getNavItemStyle('/billing')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
+            >
+              💰 Billing
+            </a>
+            <a 
+              href="/inventory" 
+              style={getNavItemStyle('/inventory')}
+              onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
+            >
+              📦 Inventory
+            </a>
             {user?.role === 'admin' && (
-              <a href="/users" style={getNavItemStyle('/users')}>👨‍⚕️ Staff</a>
+              <a 
+                href="/users" 
+                style={getNavItemStyle('/users')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+              >
+                👨‍⚕️ Staff
+              </a>
             )}
           </nav>
         </aside>
@@ -84,31 +188,53 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '1rem 2rem',
+    padding: '1rem',
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #e5e7eb',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
   },
   headerLeft: {
     display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  hamburger: {
+    display: 'flex',
     flexDirection: 'column',
+    gap: '4px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '8px',
+    zIndex: 1001,
+  },
+  hamburgerLine: {
+    width: '24px',
+    height: '3px',
+    backgroundColor: '#1e40af',
+    borderRadius: '2px',
+    transition: 'all 0.3s',
   },
   logo: {
     margin: 0,
-    fontSize: '1.5rem',
+    fontSize: 'clamp(1rem, 4vw, 1.5rem)',
     color: '#1e40af',
     fontWeight: 'bold',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   subtitle: {
     margin: 0,
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: '#6b7280',
   },
   headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '1rem',
+    gap: 'clamp(0.5rem, 2vw, 1rem)',
   },
   userInfo: {
     display: 'flex',
@@ -116,7 +242,7 @@ const styles = {
     alignItems: 'flex-end',
   },
   userName: {
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     fontWeight: '600',
     color: '#111827',
   },
@@ -126,35 +252,65 @@ const styles = {
     textTransform: 'capitalize',
   },
   logoutButton: {
-    padding: '0.5rem 1rem',
+    padding: 'clamp(0.5rem, 2vw, 0.5rem) clamp(0.75rem, 3vw, 1rem)',
     backgroundColor: '#dc2626',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     fontWeight: '500',
     cursor: 'pointer',
     transition: 'background-color 0.2s',
+    whiteSpace: 'nowrap',
+  },
+  overlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 999,
   },
   mainContent: {
     display: 'flex',
     flex: 1,
+    position: 'relative',
   },
   sidebar: {
     width: '250px',
     backgroundColor: '#ffffff',
     borderRight: '1px solid #e5e7eb',
     padding: '1.5rem 0',
+    transition: 'transform 0.3s ease-in-out',
+    flexShrink: 0,
+  },
+  sidebarMobileOpen: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    zIndex: 1000,
+    transform: 'translateX(0)',
+    boxShadow: '2px 0 8px rgba(0, 0, 0, 0.15)',
+    overflowY: 'auto',
+  },
+  sidebarMobileClosed: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    transform: 'translateX(-100%)',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
   },
   navItem: {
-    padding: '0.75rem 1.5rem',
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
     textDecoration: 'none',
     color: '#374151',
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
     fontWeight: '500',
     transition: 'all 0.2s',
     borderLeft: '3px solid transparent',
@@ -168,18 +324,20 @@ const styles = {
   },
   content: {
     flex: 1,
-    padding: '2rem',
+    padding: 'clamp(1rem, 3vw, 2rem)',
     overflow: 'auto',
+    width: '100%',
+    maxWidth: '100%',
   },
   footer: {
-    padding: '1rem 2rem',
+    padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 2rem)',
     backgroundColor: '#ffffff',
     borderTop: '1px solid #e5e7eb',
     textAlign: 'center',
   },
   footerText: {
     margin: 0,
-    fontSize: '0.875rem',
+    fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
     color: '#6b7280',
   },
 };

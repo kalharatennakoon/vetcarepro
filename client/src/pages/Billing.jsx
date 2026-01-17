@@ -317,50 +317,50 @@ const styles = {
   },
   statsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px'
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
+    gap: 'clamp(0.75rem, 2vw, 1rem)',
+    marginBottom: 'clamp(1rem, 3vw, 1.5rem)'
   },
   statCard: {
     backgroundColor: 'white',
-    padding: '20px',
+    padding: 'clamp(1rem, 3vw, 1.25rem)',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '1px solid #E5E7EB'
   },
   statLabel: {
-    fontSize: '14px',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
     color: '#6B7280',
     marginBottom: '8px'
   },
   statValue: {
-    fontSize: '24px',
+    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
     fontWeight: 'bold',
     color: '#1F2937'
   },
   filtersContainer: {
     display: 'flex',
-    gap: '12px',
-    marginBottom: '24px',
+    gap: 'clamp(0.5rem, 2vw, 0.75rem)',
+    marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
     flexWrap: 'wrap'
   },
   searchContainer: {
-    flex: 1,
-    minWidth: '300px'
+    flex: '1 1 250px',
+    minWidth: '0',
   },
   searchInput: {
     width: '100%',
-    padding: '12px 16px',
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(0.75rem, 3vw, 1rem)',
     borderRadius: '8px',
     border: '1px solid #D1D5DB',
-    fontSize: '14px',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
     outline: 'none'
   },
   filterSelect: {
-    padding: '12px 16px',
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(0.75rem, 3vw, 1rem)',
     borderRadius: '8px',
     border: '1px solid #D1D5DB',
-    fontSize: '14px',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
     backgroundColor: 'white',
     cursor: 'pointer',
     outline: 'none'
@@ -369,11 +369,12 @@ const styles = {
     backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
-    padding: '12px 20px',
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.25rem)',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600'
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
   },
   errorBox: {
     backgroundColor: '#FEE2E2',
@@ -422,31 +423,34 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'hidden',
+    overflow: 'auto',
+    WebkitOverflowScrolling: 'touch',
     border: '1px solid #E5E7EB'
   },
   table: {
     width: '100%',
-    borderCollapse: 'collapse'
+    borderCollapse: 'collapse',
+    minWidth: '700px',
   },
   th: {
     backgroundColor: '#F9FAFB',
-    padding: '14px 16px',
+    padding: 'clamp(0.75rem, 2vw, 0.875rem) clamp(0.75rem, 2vw, 1rem)',
     textAlign: 'left',
-    fontSize: '12px',
+    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
     fontWeight: '600',
     color: '#6B7280',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-    borderBottom: '1px solid #E5E7EB'
+    borderBottom: '1px solid #E5E7EB',
+    whiteSpace: 'nowrap',
   },
   tr: {
     borderBottom: '1px solid #E5E7EB',
     transition: 'background-color 0.2s'
   },
   td: {
-    padding: '16px',
-    fontSize: '14px',
+    padding: 'clamp(0.75rem, 2vw, 1rem)',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
     color: '#1F2937'
   },
   billNumber: {
@@ -470,37 +474,41 @@ const styles = {
   },
   actionButtons: {
     display: 'flex',
-    gap: '8px'
+    gap: 'clamp(0.25rem, 1vw, 0.5rem)',
+    flexWrap: 'wrap',
   },
   viewButton: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '6px 12px',
+    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500'
+    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
+    fontWeight: '500',
+    whiteSpace: 'nowrap',
   },
   payButton: {
     backgroundColor: '#059669',
     color: 'white',
     border: 'none',
-    padding: '6px 12px',
+    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500'
+    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
+    fontWeight: '500',
+    whiteSpace: 'nowrap',
   },
   deleteButton: {
     backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
-    padding: '6px 12px',
+    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '500'
+    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
+    fontWeight: '500',
+    whiteSpace: 'nowrap',
   }
 };
 
