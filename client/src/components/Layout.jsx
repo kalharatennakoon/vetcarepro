@@ -148,6 +148,15 @@ const Layout = ({ children }) => {
             >
               📦 Inventory
             </a>
+            {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+              <a 
+                href="/reports" 
+                style={getNavItemStyle('/reports')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
+              >
+                📈 Reports
+              </a>
+            )}
             {user?.role === 'admin' && (
               <a 
                 href="/users" 
