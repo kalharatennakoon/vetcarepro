@@ -93,8 +93,8 @@ export const validateUserRegistration = [
   body('role')
     .notEmpty()
     .withMessage('Role is required')
-    .isIn(['ADMIN', 'VETERINARIAN', 'RECEPTIONIST'])
-    .withMessage('Role must be ADMIN, VETERINARIAN, or RECEPTIONIST'),
+    .isIn(['admin', 'veterinarian', 'receptionist'])
+    .withMessage('Role must be admin, veterinarian, or receptionist'),
   
   body('specialization')
     .optional({ nullable: true })
@@ -142,8 +142,8 @@ export const validateUserUpdate = [
   
   body('role')
     .optional()
-    .isIn(['ADMIN', 'VETERINARIAN', 'RECEPTIONIST'])
-    .withMessage('Role must be ADMIN, VETERINARIAN, or RECEPTIONIST'),
+    .isIn(['admin', 'veterinarian', 'receptionist'])
+    .withMessage('Role must be admin, veterinarian, or receptionist'),
   
   body('specialization')
     .optional({ nullable: true })
@@ -329,8 +329,8 @@ export const validatePetCreate = [
   
   body('gender')
     .optional({ nullable: true })
-    .isIn(['Male', 'Female', 'Unknown'])
-    .withMessage('Gender must be Male, Female, or Unknown'),
+    .isIn(['male', 'female', 'unknown'])
+    .withMessage('Gender must be male, female, or unknown'),
   
   body('date_of_birth')
     .optional({ nullable: true })
@@ -358,8 +358,8 @@ export const validatePetUpdate = [
   
   body('gender')
     .optional({ nullable: true })
-    .isIn(['MALE', 'FEMALE'])
-    .withMessage('Gender must be MALE or FEMALE'),
+    .isIn(['male', 'female', 'unknown'])
+    .withMessage('Gender must be male, female, or unknown'),
   
   body('date_of_birth')
     .optional({ nullable: true })
@@ -400,7 +400,7 @@ export const validateAppointmentCreate = [
   body('appointment_type')
     .notEmpty()
     .withMessage('Appointment type is required')
-    .isIn(['CHECKUP', 'VACCINATION', 'SURGERY', 'EMERGENCY', 'FOLLOW_UP', 'CONSULTATION'])
+    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'follow_up', 'consultation'])
     .withMessage('Invalid appointment type'),
   
   body('reason')
@@ -449,7 +449,7 @@ export const validateAppointmentUpdate = [
   
   body('appointment_type')
     .optional()
-    .isIn(['CHECKUP', 'VACCINATION', 'SURGERY', 'EMERGENCY', 'FOLLOW_UP', 'CONSULTATION'])
+    .isIn(['checkup', 'vaccination', 'surgery', 'emergency', 'follow_up', 'consultation'])
     .withMessage('Invalid appointment type'),
   
   body('reason')
@@ -465,7 +465,7 @@ export const validateAppointmentUpdate = [
   
   body('status')
     .optional()
-    .isIn(['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'])
+    .isIn(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'])
     .withMessage('Invalid status'),
   
   body('veterinarian_id')
