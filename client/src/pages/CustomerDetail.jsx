@@ -147,7 +147,7 @@ const CustomerDetail = () => {
 
         {/* Contact Information */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>📞 Contact Information</h2>
+          <h2 style={styles.sectionTitle}><i className="fas fa-phone"></i> Contact Information</h2>
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Phone:</span>
@@ -176,7 +176,7 @@ const CustomerDetail = () => {
 
         {/* Personal Information */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>👤 Personal Information</h2>
+          <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Personal Information</h2>
           <div style={styles.infoGrid}>
             {customer.nic && (
               <div style={styles.infoItem}>
@@ -208,7 +208,7 @@ const CustomerDetail = () => {
         {/* Emergency Contact */}
         {(customer.emergency_contact || customer.emergency_phone) && (
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>🚨 Emergency Contact</h2>
+            <h2 style={styles.sectionTitle}><i className="fas fa-exclamation-circle"></i> Emergency Contact</h2>
             <div style={styles.infoGrid}>
               {customer.emergency_contact && (
                 <div style={styles.infoItem}>
@@ -229,7 +229,7 @@ const CustomerDetail = () => {
         {/* Notes */}
         {customer.notes && (
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>📝 Notes</h2>
+            <h2 style={styles.sectionTitle}><i className="fas fa-sticky-note"></i> Notes</h2>
             <p style={styles.notesText}>{customer.notes}</p>
           </div>
         )}
@@ -250,7 +250,7 @@ const CustomerDetail = () => {
       {/* Pets Section */}
       <div style={styles.petsSection}>
         <div style={styles.petsSectionHeader}>
-          <h2 style={styles.sectionTitle}>🐾 Registered Pets ({customer.pets?.length || 0})</h2>
+          <h2 style={styles.sectionTitle}><i className="fas fa-paw"></i> Registered Pets ({customer.pets?.length || 0})</h2>
           <button 
             onClick={() => navigate(`/pets/new?customer_id=${customer.customer_id}`)}
             style={styles.addPetButton}

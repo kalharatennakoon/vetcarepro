@@ -183,7 +183,7 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>{isEditMode ? 'Edit Pet' : 'Add New Pet'}</h2>
-        <button onClick={onCancel} style={styles.cancelButton}>✕</button>
+        <button onClick={onCancel} style={styles.cancelButton}><i className="fas fa-times"></i></button>
       </div>
 
       {error && (

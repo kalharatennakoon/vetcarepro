@@ -71,10 +71,10 @@ const Dashboard = () => {
           {/* Quick Actions */}
           <div style={styles.quickActions}>
             <button onClick={() => navigate('/pets/new')} style={styles.actionButton}>
-              ➕ Add New Pet
+              <i className="fas fa-plus"></i> Add New Pet
             </button>
             <button onClick={() => navigate('/customers/new')} style={styles.actionButton}>
-              ➕ Add New Customer
+              <i className="fas fa-plus"></i> Add New Customer
             </button>
           </div>
 
@@ -91,7 +91,7 @@ const Dashboard = () => {
                   style={{...styles.statCard, cursor: 'pointer'}}
                   onClick={() => navigate('/pets')}
                 >
-                  <div style={styles.statIcon}>🐾</div>
+                  <div style={styles.statIcon}><i className="fas fa-paw"></i></div>
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.activePets}</h3>
                     <p style={styles.statLabel}>Active Pets</p>
@@ -102,7 +102,7 @@ const Dashboard = () => {
                   style={{...styles.statCard, cursor: 'pointer'}}
                   onClick={() => navigate('/pets')}
                 >
-                  <div style={styles.statIcon}>📋</div>
+                  <div style={styles.statIcon}><i className="fas fa-clipboard-list"></i></div>
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.totalPets}</h3>
                     <p style={styles.statLabel}>Total Pets Registered</p>
@@ -113,7 +113,7 @@ const Dashboard = () => {
                   style={{...styles.statCard, cursor: 'pointer'}}
                   onClick={() => navigate('/customers')}
                 >
-                  <div style={styles.statIcon}>👥</div>
+                  <div style={styles.statIcon}><i className="fas fa-users"></i></div>
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.totalCustomers}</h3>
                     <p style={styles.statLabel}>Total Customers</p>
@@ -124,7 +124,7 @@ const Dashboard = () => {
                   style={{...styles.statCard, cursor: 'pointer'}}
                   onClick={() => navigate('/appointments')}
                 >
-                  <div style={styles.statIcon}>📅</div>
+                  <div style={styles.statIcon}><i className="fas fa-calendar-alt"></i></div>
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.todayAppointments}</h3>
                     <p style={styles.statLabel}>Today's Appointments</p>
@@ -135,7 +135,7 @@ const Dashboard = () => {
                   style={{...styles.statCard, cursor: 'pointer'}}
                   onClick={() => navigate('/medical-records')}
                 >
-                  <div style={styles.statIcon}>📋</div>
+                  <div style={styles.statIcon}><i className="fas fa-file-medical"></i></div>
                   <div style={styles.statInfo}>
                     <h3 style={styles.statValue}>{stats.totalMedicalRecords}</h3>
                     <p style={styles.statLabel}>Medical Records</p>

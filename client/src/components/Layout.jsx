@@ -66,7 +66,7 @@ const Layout = ({ children }) => {
           )}
           <div>
             <h1 style={styles.logo} onClick={() => handleNavigation('/dashboard')}>
-              🏥 {!isMobile && 'VetCare Pro'}
+              <i className="fas fa-hospital"></i> {!isMobile && 'VetCare Pro'}
               {isMobile && 'VCP'}
             </h1>
             {!isMobile && <p style={styles.subtitle}>Pro Pet Animal Hospital</p>}
@@ -80,7 +80,7 @@ const Layout = ({ children }) => {
             {!isMobile && <span style={styles.userRole}>{user?.role}</span>}
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
-            {isMobile ? '🚪' : 'Logout'}
+            {isMobile ? <i className="fas fa-sign-out-alt"></i> : 'Logout'}
           </button>
         </div>
       </header>
@@ -104,49 +104,49 @@ const Layout = ({ children }) => {
               style={getNavItemStyle('/dashboard')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
             >
-              📊 Dashboard
+              <i className="fas fa-chart-line"></i> Dashboard
             </a>
             <a 
               href="/pets" 
               style={getNavItemStyle('/pets')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
             >
-              🐾 Pets
+              <i className="fas fa-paw"></i> Pets
             </a>
             <a 
               href="/customers" 
               style={getNavItemStyle('/customers')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
             >
-              👥 Customers
+              <i className="fas fa-users"></i> Customers
             </a>
             <a 
               href="/appointments" 
               style={getNavItemStyle('/appointments')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
             >
-              📅 Appointments
+              <i className="fas fa-calendar-alt"></i> Appointments
             </a>
             <a 
               href="/medical-records" 
               style={getNavItemStyle('/medical-records')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
             >
-              📋 Medical Records
+              <i className="fas fa-file-medical"></i> Medical Records
             </a>
             <a 
               href="/billing" 
               style={getNavItemStyle('/billing')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
             >
-              💰 Billing
+              <i className="fas fa-dollar-sign"></i> Billing
             </a>
             <a 
               href="/inventory" 
               style={getNavItemStyle('/inventory')}
               onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
             >
-              📦 Inventory
+              <i className="fas fa-boxes"></i> Inventory
             </a>
             {(user?.role === 'admin' || user?.role === 'veterinarian') && (
               <a 
@@ -154,7 +154,7 @@ const Layout = ({ children }) => {
                 style={getNavItemStyle('/reports')}
                 onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
               >
-                📈 Reports
+                <i className="fas fa-chart-bar"></i> Reports
               </a>
             )}
             {user?.role === 'admin' && (
@@ -163,7 +163,7 @@ const Layout = ({ children }) => {
                 style={getNavItemStyle('/users')}
                 onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
               >
-                👨‍⚕️ Staff
+                <i className="fas fa-user-md"></i> Staff
               </a>
             )}
           </nav>

@@ -41,7 +41,7 @@ const Welcome = () => {
         <header style={styles.header}>
           <div style={styles.headerLeft}>
             <div style={styles.logoIcon}>
-              <span style={styles.iconText}>🐾</span>
+              <i className="fas fa-paw" style={styles.iconText}></i>
             </div>
             <div>
               <h2 style={styles.logoTitle}>VetCare Pro</h2>
@@ -62,7 +62,7 @@ const Welcome = () => {
           <div style={styles.loginCard}>
             <div style={styles.loginHeader}>
               <div style={styles.badge}>
-                <span style={styles.badgeIcon}>🔒</span>
+                <i className="fas fa-lock" style={styles.badgeIcon}></i>
                 <span style={styles.badgeText}>Authorized Staff Only</span>
               </div>
               <h1 style={styles.loginTitle}>Welcome Back</h1>
@@ -73,7 +73,7 @@ const Welcome = () => {
 
             {error && (
               <div style={styles.errorBox}>
-                <span style={styles.errorIcon}>⚠️</span>
+                <i className="fas fa-exclamation-triangle" style={styles.errorIcon}></i>
                 {error}
               </div>
             )}
@@ -82,7 +82,7 @@ const Welcome = () => {
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Email</label>
                 <div style={styles.inputWrapper}>
-                  <span style={styles.inputIcon}>✉️</span>
+                  <i className="fas fa-envelope" style={styles.inputIcon}></i>
                   <input
                     type="email"
                     value={email}
@@ -99,7 +99,7 @@ const Welcome = () => {
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Password</label>
                 <div style={styles.inputWrapper}>
-                  <span style={styles.inputIcon}>🔒</span>
+                  <i className="fas fa-lock" style={styles.inputIcon}></i>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
@@ -117,7 +117,7 @@ const Welcome = () => {
                     className="welcome-toggle-password"
                     disabled={loading}
                   >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
+                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                   </button>
                 </div>
               </div>
@@ -153,7 +153,7 @@ const Welcome = () => {
                 Need help accessing your account?
               </p>
               <a href="#" style={styles.supportLink}>
-                <span style={styles.supportIconSmall}>🎧</span>
+                <i className="fas fa-headset" style={styles.supportIconSmall}></i>
                 Contact Support
               </a>
               <p style={styles.footerText}>
@@ -180,7 +180,7 @@ const Welcome = () => {
       <header style={styles.header} className="welcome-header">
         <div style={styles.headerLeft}>
           <div style={styles.logoIcon}>
-            <span style={styles.iconText}>🐾</span>
+            <i className="fas fa-paw" style={styles.iconText}></i>
           </div>
           <div>
             <h2 style={styles.logoTitle}>VetCare Pro</h2>
@@ -199,7 +199,7 @@ const Welcome = () => {
           <div style={styles.leftPanel} className="welcome-left-panel">
             <div style={styles.leftContent}>
               <div style={styles.badge}>
-                <span style={styles.badgeIcon}>✓</span>
+                <i className="fas fa-check" style={styles.badgeIcon}></i>
                 <span style={styles.badgeText}>Authorized Staff Only</span>
               </div>
 
@@ -226,7 +226,7 @@ const Welcome = () => {
                   Log In to System
                 </button>
                 <div style={styles.forgotPassword}>
-                  <span style={styles.lockIcon}>🔒</span>
+                  <i className="fas fa-lock" style={styles.lockIcon}></i>
                   <a href="#" style={styles.forgotLink} className="welcome-forgot-link">Forgot your password?</a>
                 </div>
               </div>
@@ -247,7 +247,7 @@ const Welcome = () => {
               <div style={styles.imageOverlay}></div>
               <div style={styles.imageCard}>
                 <div style={styles.imageCardIcon}>
-                  <span style={styles.heartIcon}>❤️</span>
+                  <i className="fas fa-heart" style={styles.heartIcon}></i>
                 </div>
                 <div>
                   <p style={styles.imageCardTitle}>Compassionate Care</p>

@@ -89,19 +89,19 @@ const Pets = () => {
     return `${years}y ${months}m`;
   };
 
-  const getSpeciesEmoji = (species) => {
-    const emojis = {
-      'Dog': '🐕',
-      'Cat': '🐈',
-      'Bird': '🐦',
-      'Rabbit': '🐰',
-      'Hamster': '🐹',
-      'Guinea Pig': '🐹',
-      'Fish': '🐠',
-      'Reptile': '🦎',
-      'Other': '🐾'
+  const getSpeciesIcon = (species) => {
+    const icons = {
+      'Dog': 'fa-dog',
+      'Cat': 'fa-cat',
+      'Bird': 'fa-dove',
+      'Rabbit': 'fa-rabbit',
+      'Hamster': 'fa-hamster',
+      'Guinea Pig': 'fa-hamster',
+      'Fish': 'fa-fish',
+      'Reptile': 'fa-dragon',
+      'Other': 'fa-paw'
     };
-    return emojis[species] || '🐾';
+    return icons[species] || 'fa-paw';
   };
 
   const handleLogout = () => {
@@ -209,7 +209,7 @@ const Pets = () => {
                     <tr key={pet.pet_id} style={styles.tableRow}>
                       <td style={styles.td}>
                         <div style={styles.petName}>
-                          <span style={styles.emoji}>{getSpeciesEmoji(pet.species)}</span>
+                          <i className={`fas ${getSpeciesIcon(pet.species)}`} style={styles.icon}></i>
                           {pet.pet_name}
                         </div>
                       </td>
@@ -520,8 +520,10 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
   },
-  emoji: {
+  icon: {
     fontSize: '1.25rem',
+    color: '#3b82f6',
+    marginRight: '0.5rem',
   },
   ownerLink: {
     color: '#2563eb',

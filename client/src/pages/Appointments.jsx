@@ -92,16 +92,16 @@ const Appointments = () => {
     return colors[status] || '#6b7280';
   };
 
-  const getTypeEmoji = (type) => {
-    const emojis = {
-      checkup: '🩺',
-      vaccination: '💉',
-      surgery: '🏥',
-      emergency: '🚨',
-      followup: '📋',
-      grooming: '✂️'
+  const getTypeIcon = (type) => {
+    const icons = {
+      checkup: 'fa-stethoscope',
+      vaccination: 'fa-syringe',
+      surgery: 'fa-hospital',
+      emergency: 'fa-ambulance',
+      followup: 'fa-calendar-check',
+      grooming: 'fa-cut'
     };
-    return emojis[type] || '📅';
+    return icons[type] || 'fa-calendar';
   };
 
   const formatDate = (dateString) => {
@@ -231,9 +231,7 @@ const Appointments = () => {
                       <div key={appointment.appointment_id} style={styles.card}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
-                            <span style={styles.typeEmoji}>
-                              {getTypeEmoji(appointment.appointment_type)}
-                            </span>
+                            <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
                             <div>
                               <h3 style={styles.cardTitle}>
                                 {appointment.pet_name}
@@ -256,24 +254,24 @@ const Appointments = () => {
 
                         <div style={styles.cardBody}>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}>📅 Date:</span>
+                            <span style={styles.infoLabel}><i className="far fa-calendar"></i> Date:</span>
                             <span style={styles.infoValue}>{formatDate(appointment.appointment_date)}</span>
                           </div>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}>🕐 Time:</span>
+                            <span style={styles.infoLabel}><i className="far fa-clock"></i> Time:</span>
                             <span style={styles.infoValue}>{formatTime(appointment.appointment_time)}</span>
                           </div>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}>⏱️ Duration:</span>
+                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> Duration:</span>
                             <span style={styles.infoValue}>{appointment.duration_minutes} min</span>
                           </div>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}>📝 Type:</span>
+                            <span style={styles.infoLabel}><i className="fas fa-clipboard"></i> Type:</span>
                             <span style={styles.infoValue}>{appointment.appointment_type}</span>
                           </div>
                           {appointment.veterinarian_name && (
                             <div style={styles.infoRow}>
-                              <span style={styles.infoLabel}>👨‍⚕️ Vet:</span>
+                              <span style={styles.infoLabel}><i className="fas fa-user-md"></i> Vet:</span>
                               <span style={styles.infoValue}>{appointment.veterinarian_name}</span>
                             </div>
                           )}
@@ -572,8 +570,9 @@ const styles = {
     gap: '0.75rem',
     alignItems: 'center',
   },
-  typeEmoji: {
-    fontSize: '2rem',
+  typeIcon: {
+    fontSize: '1.5rem',
+    color: '#3b82f6',
   },
   cardTitle: {
     margin: '0 0 0.25rem 0',

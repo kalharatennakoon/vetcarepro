@@ -94,19 +94,19 @@ const PetDetail = () => {
     });
   };
 
-  const getSpeciesEmoji = (species) => {
-    const emojis = {
-      'Dog': '🐕',
-      'Cat': '🐈',
-      'Bird': '🐦',
-      'Rabbit': '🐰',
-      'Hamster': '🐹',
-      'Guinea Pig': '🐹',
-      'Fish': '🐠',
-      'Reptile': '🦎',
-      'Other': '🐾'
+  const getSpeciesIcon = (species) => {
+    const icons = {
+      'Dog': 'fa-dog',
+      'Cat': 'fa-cat',
+      'Bird': 'fa-dove',
+      'Rabbit': 'fa-rabbit',
+      'Hamster': 'fa-hamster',
+      'Guinea Pig': 'fa-hamster',
+      'Fish': 'fa-fish',
+      'Reptile': 'fa-dragon',
+      'Other': 'fa-paw'
     };
-    return emojis[species] || '🐾';
+    return icons[species] || 'fa-paw';
   };
 
   if (loading) {
@@ -171,7 +171,7 @@ const PetDetail = () => {
       <div style={styles.mainCard}>
         <div style={styles.cardHeader}>
           <div style={styles.titleSection}>
-            <span style={styles.emoji}>{getSpeciesEmoji(pet.species)}</span>
+            <i className={`fas ${getSpeciesIcon(pet.species)}`} style={styles.icon}></i>
             <div>
               <h1 style={styles.petName}>{pet.pet_name}</h1>
               <p style={styles.petId}>Pet ID: #{pet.pet_id}</p>
@@ -195,19 +195,19 @@ const PetDetail = () => {
             style={activeTab === 'info' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('info')}
           >
-            📋 Information
+            <i className="fas fa-info-circle"></i> Information
           </button>
           <button
             style={activeTab === 'medical' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('medical')}
           >
-            🏥 Medical History ({medicalHistory.length})
+            <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
           </button>
           <button
             style={activeTab === 'vaccinations' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('vaccinations')}
           >
-            💉 Vaccinations ({vaccinations.length})
+            <i className="fas fa-syringe"></i> Vaccinations ({vaccinations.length})
           </button>
         </div>
 
@@ -217,7 +217,7 @@ const PetDetail = () => {
             <>
               {/* Basic Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>🐾 Basic Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-paw"></i> Basic Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Species:</span>
@@ -250,7 +250,7 @@ const PetDetail = () => {
 
               {/* Owner Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>👤 Owner Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Owner:</span>
@@ -274,7 +274,7 @@ const PetDetail = () => {
 
               {/* Medical Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>💊 Medical Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-pills"></i> Medical Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Neutered/Spayed:</span>
@@ -314,7 +314,7 @@ const PetDetail = () => {
           {activeTab === 'medical' && (
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>🏥 Medical History</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-hospital"></i> Medical History</h2>
                 {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                   <button 
                     onClick={() => navigate(`/medical-records/new?petId=${id}`)} 
@@ -363,7 +363,7 @@ const PetDetail = () => {
 
           {activeTab === 'vaccinations' && (
             <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>💉 Vaccinations</h2>
+              <h2 style={styles.sectionTitle}><i className="fas fa-syringe"></i> Vaccinations</h2>
               {vaccinations.length === 0 ? (
                 <div style={styles.emptyState}>
                   <p>No vaccination records found</p>
@@ -467,8 +467,9 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
   },
-  emoji: {
+  icon: {
     fontSize: '3rem',
+    color: '#3b82f6',
   },
   petName: {
     fontSize: '2rem',

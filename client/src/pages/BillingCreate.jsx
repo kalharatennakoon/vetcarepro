@@ -397,7 +397,7 @@ const BillingCreate = () => {
                       style={styles.removeButton}
                       title="Remove item"
                     >
-                      ✕
+                      <i className="fas fa-times"></i>
                     </button>
                   )}
                 </div>

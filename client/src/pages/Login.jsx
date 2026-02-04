@@ -31,7 +31,7 @@ const Login = () => {
     <div style={styles.container}>
       <div style={styles.loginBox}>
         <div style={styles.header}>
-          <h1 style={styles.title}>🏥 VetCare Pro</h1>
+          <h1 style={styles.title}><i className="fas fa-hospital"></i> VetCare Pro</h1>
           <p style={styles.subtitle}>Pro Pet Animal Hospital</p>
         </div>
 

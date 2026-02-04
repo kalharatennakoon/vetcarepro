@@ -222,7 +222,7 @@ const BillingDetail = () => {
                 onClick={() => setShowPaymentForm(!showPaymentForm)} 
                 style={styles.paymentButton}
               >
-                {showPaymentForm ? 'Cancel' : '💳 Record Payment'}
+                {showPaymentForm ? 'Cancel' : <><i className="fas fa-credit-card"></i> Record Payment</>}
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
@@ -230,7 +230,7 @@ const BillingDetail = () => {
                 onClick={() => window.print()} 
                 style={styles.printButton}
               >
-                🖨️ Print Invoice
+                <i className="fas fa-print"></i> Print Invoice
               </button>
             )}
           </div>
