@@ -269,14 +269,6 @@ const Customers = () => {
                           >
                             View
                           </button>
-                          <button
-                            onClick={() => navigate(`/customers/${customer.customer_id}/edit`)}
-                            style={styles.editButton}
-                            onMouseOver={(e) => e.target.style.backgroundColor = styles.editButtonHover.backgroundColor}
-                            onMouseOut={(e) => e.target.style.backgroundColor = styles.editButton.backgroundColor}
-                          >
-                            Edit
-                          </button>
                           {user?.role === 'admin' && (
                             <button
                               onClick={() => handleDelete(customer.customer_id)}
