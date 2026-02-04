@@ -11,6 +11,8 @@ const Pets = () => {
   const [speciesFilter, setSpeciesFilter] = useState('');
   const [speciesList, setSpeciesList] = useState([]);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -21,6 +23,7 @@ const Pets = () => {
 
   useEffect(() => {
     fetchPets();
+    setCurrentPage(1);
   }, [search, speciesFilter]);
 
   const fetchSpeciesList = async () => {
@@ -66,9 +69,48 @@ const Pets = () => {
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchPets();
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(pets.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPets = pets.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
   };
 
   const calculateAge = (birthDate) => {
@@ -113,28 +155,47 @@ const Pets = () => {
     <Layout>
       {/* Page Header */}
       <div style={styles.pageHeader}>
-        <div>
-          <h2 style={styles.title}>Pets</h2>
-          <p style={styles.subtitle}>Manage all pets in the clinic</p>
+        <div style={styles.headerInfo}>
+          <div style={styles.headerIconWrapper}>
+            <i className="fas fa-paw" style={styles.headerIcon}></i>
+          </div>
+          <div>
+            <h2 style={styles.title}>Pet Management</h2>
+            <p style={styles.subtitle}>Manage all pets in the clinic</p>
+          </div>
         </div>
         <button 
           onClick={() => navigate('/pets/new')}
           style={styles.addButton}
+          onMouseOver={(e) => e.target.style.backgroundColor = styles.addButtonHover.backgroundColor}
+          onMouseOut={(e) => e.target.style.backgroundColor = styles.addButton.backgroundColor}
         >
-          + Add Pet
+          <span style={styles.buttonIcon}>+</span>
+          <span>Add Pet</span>
         </button>
       </div>
 
       {/* Search and Filter Bar */}
-      <div style={styles.filterContainer}>
-        <form onSubmit={handleSearch} style={styles.searchForm}>
-          <input
-            type="text"
-            placeholder="Search by pet name or owner..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
-          />
+      <div style={styles.searchContainer}>
+        <div style={styles.searchRow}>
+          <div style={styles.searchWrapper}>
+            <i className="fas fa-search" style={styles.searchIconSpan}></i>
+            <input
+              type="text"
+              placeholder="Search by pet name or owner..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={styles.searchInput}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={styles.clearButton}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
           <select
             value={speciesFilter}
             onChange={(e) => setSpeciesFilter(e.target.value)}
@@ -147,10 +208,29 @@ const Pets = () => {
               </option>
             ))}
           </select>
-          <button type="submit" style={styles.searchButton}>
-            Search
-          </button>
-        </form>
+        </div>
+        <div style={styles.statsBar}>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Total Pets</span>
+            <span style={styles.statValue}>{pets.length}</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Showing</span>
+            <span style={styles.statValue}>
+              {pets.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, pets.length)}` : '0'}
+            </span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Active</span>
+            <span style={styles.statValue}>{pets.filter(p => p.is_active !== false).length}</span>
+          </div>
+          {speciesFilter && (
+            <div style={styles.statItem}>
+              <span style={styles.statLabel}>Species</span>
+              <span style={styles.statValue}>{speciesFilter}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error Message */}
@@ -168,15 +248,9 @@ const Pets = () => {
         </div>
       ) : (
         <>
-          {/* Pet Count */}
-          <div style={styles.countInfo}>
-            Total Pets: <strong>{pets.length}</strong>
-            {speciesFilter && ` (Filtered by ${speciesFilter})`}
-          </div>
-
           {/* Pets Table */}
           <div style={styles.tableContainer}>
-            {pets.length === 0 ? (
+            {currentPets.length === 0 ? (
               <div style={styles.emptyState}>
                 <p style={styles.emptyText}>
                   {search || speciesFilter ? 'No pets found matching your criteria' : 'No pets registered yet'}
@@ -194,28 +268,39 @@ const Pets = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.tableHeader}>
-                    <th style={styles.th}>Pet Name</th>
-                    <th style={styles.th}>Species</th>
-                    <th style={styles.th}>Breed</th>
-                    <th style={styles.th}>Age</th>
-                    <th style={styles.th}>Owner</th>
-                    <th style={styles.th}>Gender</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={{...styles.th, width: '25%'}}>Pet</th>
+                    <th style={{...styles.th, width: '15%'}}>Species</th>
+                    <th style={{...styles.th, width: '15%'}}>Age</th>
+                    <th style={{...styles.th, width: '25%'}}>Owner</th>
+                    <th style={{...styles.th, width: '10%', textAlign: 'center'}}>Gender</th>
+                    <th style={{...styles.th, width: '10%', textAlign: 'right'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pets.map((pet) => (
-                    <tr key={pet.pet_id} style={styles.tableRow}>
+                  {currentPets.map((pet) => (
+                    <tr 
+                      key={pet.pet_id} 
+                      style={styles.tableRow}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
                       <td style={styles.td}>
-                        <div style={styles.petName}>
-                          <i className={`fas ${getSpeciesIcon(pet.species)}`} style={styles.icon}></i>
-                          {pet.pet_name}
+                        <div style={styles.petCell}>
+                          <div style={styles.avatar}>
+                            <i className={`fas ${getSpeciesIcon(pet.species)}`} style={styles.avatarIcon}></i>
+                          </div>
+                          <div style={styles.petInfo}>
+                            <div style={styles.petName}>{pet.pet_name}</div>
+                            <div style={styles.petBreed}>{pet.breed || 'Mixed Breed'}</div>
+                          </div>
                         </div>
                       </td>
-                      <td style={styles.td}>{pet.species || '-'}</td>
-                      <td style={styles.td}>{pet.breed || '-'}</td>
-                      <td style={styles.td}>{calculateAge(pet.date_of_birth)}</td>
+                      <td style={styles.td}>
+                        <span style={styles.speciesText}>{pet.species || '-'}</span>
+                      </td>
+                      <td style={styles.td}>
+                        <span style={styles.ageText}>{calculateAge(pet.date_of_birth)}</span>
+                      </td>
                       <td style={styles.td}>
                         <div 
                           style={styles.ownerLink}
@@ -226,31 +311,28 @@ const Pets = () => {
                             : 'Unknown'}
                         </div>
                       </td>
-                      <td style={styles.td}>
+                      <td style={{...styles.td, textAlign: 'center'}}>
                         {pet.gender ? (
-                          <span style={pet.gender === 'Male' ? styles.maleBadge : styles.femaleBadge}>
+                          <span style={styles.genderBadge}>
                             {pet.gender}
                           </span>
                         ) : '-'}
                       </td>
-                      <td style={styles.td}>
-                        <span style={pet.is_active ? styles.activeBadge : styles.inactiveBadge}>
-                          {pet.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td style={styles.td}>
+                      <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={styles.actions}>
                           <button
                             onClick={() => navigate(`/pets/${pet.pet_id}`)}
                             style={styles.viewButton}
-                            title="View Details"
+                            onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
+                            onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
                           >
                             View
                           </button>
                           <button
                             onClick={() => navigate(`/pets/${pet.pet_id}/edit`)}
                             style={styles.editButton}
-                            title="Edit Pet"
+                            onMouseOver={(e) => e.target.style.backgroundColor = styles.editButtonHover.backgroundColor}
+                            onMouseOut={(e) => e.target.style.backgroundColor = styles.editButton.backgroundColor}
                           >
                             Edit
                           </button>
@@ -258,7 +340,8 @@ const Pets = () => {
                             <button
                               onClick={() => handleDelete(pet.pet_id)}
                               style={styles.deleteButton}
-                              title="Delete Pet"
+                              onMouseOver={(e) => e.target.style.backgroundColor = styles.deleteButtonHover.backgroundColor}
+                              onMouseOut={(e) => e.target.style.backgroundColor = styles.deleteButton.backgroundColor}
                             >
                               Delete
                             </button>
@@ -271,6 +354,50 @@ const Pets = () => {
               </table>
             )}
           </div>
+
+          {/* Pagination */}
+          {pets.length > itemsPerPage && (
+            <div style={styles.paginationContainer}>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
+                }}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              
+              {getPageNumbers().map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    style={{
+                      ...styles.paginationButton,
+                      ...(currentPage === page ? styles.paginationButtonActive : {})
+                    }}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
+                }}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          )}
         </>
       )}
     </Layout>
@@ -278,161 +405,141 @@ const Pets = () => {
 };
 
 const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    backgroundColor: '#f5f7fa',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  logo: {
-    margin: 0,
-    fontSize: '1.5rem',
-    color: '#1e40af',
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    margin: 0,
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-  },
-  userName: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  userRole: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  logoutButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  mainContent: {
-    display: 'flex',
-    flex: 1,
-  },
-  sidebar: {
-    width: '250px',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    padding: '1.5rem 0',
-  },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  navItem: {
-    padding: '0.75rem 1.5rem',
-    textDecoration: 'none',
-    color: '#374151',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    borderLeft: '3px solid transparent',
-  },
-  navItemActive: {
-    backgroundColor: '#eff6ff',
-    color: '#2563eb',
-    borderLeft: '3px solid #2563eb',
-  },
-  content: {
-    flex: 1,
-  },
   pageHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2rem',
+    marginBottom: '8px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  headerInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  headerIconWrapper: {
+    width: '30px',
+    height: '30px',
+    borderRadius: '6px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIcon: {
+    fontSize: '14px',
+    color: 'white',
   },
   title: {
-    fontSize: '2rem',
+    fontSize: '18px',
     fontWeight: 'bold',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
+    color: '#1f2937',
+    margin: 0,
+    lineHeight: '1.2',
   },
   subtitle: {
-    fontSize: '1rem',
+    fontSize: '11px',
     color: '#6b7280',
-    margin: 0,
+    margin: '0',
+    lineHeight: '1.2',
   },
   addButton: {
-    padding: '0.75rem 1.5rem',
+    padding: '6px 12px',
     backgroundColor: '#2563eb',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '600',
+    borderRadius: '5px',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  filterContainer: {
-    marginBottom: '1.5rem',
-  },
-  searchForm: {
+    fontSize: '12px',
+    fontWeight: '500',
     display: 'flex',
-    gap: '0.5rem',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  addButtonHover: {
+    backgroundColor: '#1d4ed8',
+  },
+  buttonIcon: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+  searchContainer: {
+    backgroundColor: '#ffffff',
+    padding: '8px',
+    borderRadius: '6px',
+    marginBottom: '8px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+  },
+  searchRow: {
+    display: 'flex',
+    gap: '6px',
+    marginBottom: '8px',
+  },
+  searchWrapper: {
+    flex: 1,
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  searchIconSpan: {
+    position: 'absolute',
+    left: '8px',
+    color: '#9ca3af',
+    fontSize: '11px',
   },
   searchInput: {
-    flex: 2,
-    padding: '0.75rem',
-    fontSize: '1rem',
+    width: '100%',
+    padding: '5px 30px 5px 28px',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
+    borderRadius: '5px',
+    fontSize: '12px',
+    backgroundColor: '#f8fafc',
+  },
+  clearButton: {
+    position: 'absolute',
+    right: '6px',
+    background: 'none',
+    border: 'none',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    padding: '3px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '10px',
   },
   selectInput: {
-    flex: 1,
-    padding: '0.75rem',
-    fontSize: '1rem',
+    padding: '5px 10px',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-    cursor: 'pointer',
+    borderRadius: '5px',
+    fontSize: '12px',
+    backgroundColor: '#f8fafc',
+    minWidth: '120px',
   },
-  searchButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '500',
-    cursor: 'pointer',
+  statsBar: {
+    display: 'flex',
+    gap: '6px',
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '4px 10px',
+    backgroundColor: '#f8fafc',
+    borderRadius: '5px',
+    minWidth: '70px',
+  },
+  statLabel: {
+    fontSize: '9px',
+    color: '#6b7280',
+    marginBottom: '1px',
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#1f2937',
   },
   errorBox: {
     padding: '1rem',
@@ -457,156 +564,204 @@ const styles = {
     height: '50px',
     animation: 'spin 1s linear infinite',
   },
-  countInfo: {
-    padding: '1rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '6px',
-    marginBottom: '1rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-  },
   tableContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'hidden',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '3rem',
-  },
-  emptyText: {
-    color: '#6b7280',
-    fontSize: '1rem',
-  },
-  emptyButton: {
-    marginTop: '1rem',
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
+    backgroundColor: 'white',
     borderRadius: '6px',
-    fontSize: '1rem',
-    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+    maxHeight: 'calc(100vh - 240px)',
+    overflow: 'auto',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
+    tableLayout: 'fixed',
+    minWidth: '800px',
   },
   tableHeader: {
     backgroundColor: '#f9fafb',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
   },
   th: {
-    padding: '0.75rem 1rem',
+    padding: '6px 10px',
     textAlign: 'left',
-    fontSize: '0.875rem',
+    fontSize: '10px',
     fontWeight: '600',
-    color: '#374151',
-    borderBottom: '1px solid #e5e7eb',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px',
   },
   tableRow: {
     borderBottom: '1px solid #f3f4f6',
-    transition: 'background-color 0.15s',
+    transition: 'background-color 0.2s',
   },
   td: {
-    padding: '0.75rem 1rem',
-    fontSize: '0.875rem',
-    color: '#6b7280',
+    padding: '6px 10px',
+    fontSize: '12px',
+    color: '#1f2937',
   },
-  petName: {
-    fontWeight: '500',
-    color: '#111827',
+  petCell: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
+    gap: '6px',
   },
-  icon: {
-    fontSize: '1.25rem',
-    color: '#3b82f6',
-    marginRight: '0.5rem',
+  avatar: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarIcon: {
+    fontSize: '12px',
+    color: 'white',
+  },
+  petInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+  },
+  petName: {
+    fontWeight: '600',
+    color: '#1f2937',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    fontSize: '12px',
+  },
+  petBreed: {
+    fontSize: '10px',
+    color: '#6b7280',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  speciesText: {
+    color: '#1f2937',
+  },
+  ageText: {
+    color: '#1f2937',
   },
   ownerLink: {
     color: '#2563eb',
     cursor: 'pointer',
-    textDecoration: 'underline',
+    textDecoration: 'none',
     fontWeight: '500',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
-  activeBadge: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  inactiveBadge: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  maleBadge: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  femaleBadge: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: '#fce7f3',
-    color: '#9f1239',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
+  genderBadge: {
+    display: 'inline-block',
+    padding: '2px 5px',
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+    borderRadius: '3px',
+    fontSize: '10px',
     fontWeight: '500',
   },
   actions: {
     display: 'flex',
-    gap: '0.5rem',
+    gap: '3px',
+    justifyContent: 'flex-end',
   },
   viewButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#10b981',
+    padding: '3px 7px',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '3px',
     cursor: 'pointer',
-    transition: 'background-color 0.15s',
+    fontSize: '10px',
+    fontWeight: '500',
+  },
+  viewButtonHover: {
+    backgroundColor: '#475569',
   },
   editButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#f59e0b',
+    padding: '3px 7px',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '3px',
     cursor: 'pointer',
-    transition: 'background-color 0.15s',
+    fontSize: '10px',
+    fontWeight: '500',
+  },
+  editButtonHover: {
+    backgroundColor: '#475569',
   },
   deleteButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#ef4444',
+    padding: '3px 7px',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '3px',
     cursor: 'pointer',
-    transition: 'background-color 0.15s',
+    fontSize: '10px',
+    fontWeight: '500',
   },
-  footer: {
-    padding: '1rem 2rem',
+  deleteButtonHover: {
+    backgroundColor: '#475569',
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '3px',
+    padding: '6px',
+    borderTop: '1px solid #f3f4f6',
+    backgroundColor: 'white',
+    position: 'sticky',
+    bottom: 0,
+  },
+  paginationButton: {
+    padding: '3px 6px',
     backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-    textAlign: 'center',
+    border: '1px solid #d1d5db',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    fontSize: '11px',
+    color: '#374151',
+    minWidth: '28px',
+    transition: 'all 0.2s',
   },
-  footerText: {
-    margin: 0,
-    fontSize: '0.875rem',
+  paginationButtonActive: {
+    backgroundColor: '#2563eb',
+    color: 'white',
+    borderColor: '#2563eb',
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+  },
+  paginationEllipsis: {
+    padding: '3px 2px',
+    color: '#9ca3af',
+    fontSize: '11px',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '30px 15px',
     color: '#6b7280',
+  },
+  emptyText: {
+    color: '#6b7280',
+    fontSize: '13px',
+  },
+  emptyButton: {
+    marginTop: '10px',
+    padding: '6px 12px',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '5px',
+    fontSize: '12px',
+    cursor: 'pointer',
   },
 };
 
