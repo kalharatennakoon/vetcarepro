@@ -95,7 +95,7 @@ Frontend will run on http://localhost:5173
 
 After running seed data:
 
-**Admin (Dr. Dulani):**
+**Veterinarian & Admin (Dr. Dulani):**
 - Email: `dulani@propet.lk`
 - Password: `password123`
 

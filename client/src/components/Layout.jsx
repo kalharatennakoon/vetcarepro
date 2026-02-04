@@ -48,6 +48,57 @@ const Layout = ({ children }) => {
     return isActive(path) ? { ...styles.navItem, ...styles.navItemActive } : styles.navItem;
   };
 
+  const detectGender = (firstName) => {
+    // Sri Lankan and common female name patterns
+    const femaleNames = [
+      'dulani', 'ayesha', 'kumari', 'chandani', 'thilini', 'dilini', 'sanduni', 
+      'chamari', 'amaya', 'nimali', 'nuwan', 'nisha', 'priya', 'malini', 'shalini'
+    ];
+    
+    const lowerName = firstName?.toLowerCase() || '';
+    
+    // Check if name is in female list or ends with common female suffixes
+    if (femaleNames.includes(lowerName) || lowerName.endsWith('ni') || lowerName.endsWith('sha')) {
+      return 'female';
+    }
+    
+    return 'male';
+  };
+
+  const getNameWithPrefix = () => {
+    if (!user) return '';
+    
+    const fullName = `${user.first_name} ${user.last_name}`;
+    const initials = `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}`;
+    const gender = detectGender(user.first_name);
+    
+    let prefix = '';
+    
+    // Check if user is a veterinarian (has veterinary credentials)
+    if (user.role === 'veterinarian' || (user.specialization && user.license_number)) {
+      prefix = 'Dr.';
+    } else {
+      // For admin and receptionist, use Mr./Ms. based on gender
+      prefix = gender === 'female' ? 'Ms.' : 'Mr.';
+    }
+    
+    if (isMobile) {
+      return `${prefix} ${initials}`;
+    }
+    return `${prefix} ${fullName}`;
+  };
+
+  const getRoleDisplay = () => {
+    if (!user) return '';
+    
+    // Special case: if user is admin but has veterinary credentials, show both roles
+    if (user.role === 'admin' && user.specialization && user.license_number) {
+      return 'Veterinarian & Admin';
+    }
+    
+    return user.role;
+  };
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -75,9 +126,9 @@ const Layout = ({ children }) => {
         <div style={styles.headerRight}>
           <div style={styles.userInfo}>
             <span style={styles.userName}>
-              {isMobile ? `${user?.first_name?.charAt(0)}${user?.last_name?.charAt(0)}` : `${user?.first_name} ${user?.last_name}`}
+              {getNameWithPrefix()}
             </span>
-            {!isMobile && <span style={styles.userRole}>{user?.role}</span>}
+            {!isMobile && <span style={styles.userRole}>{getRoleDisplay()}</span>}
           </div>
           <button onClick={handleLogout} style={styles.logoutButton}>
             {isMobile ? <i className="fas fa-sign-out-alt"></i> : 'Logout'}
