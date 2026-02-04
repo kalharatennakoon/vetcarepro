@@ -40,7 +40,9 @@ const Pets = () => {
   const fetchPets = async () => {
     try {
       setLoading(true);
-      const filters = {};
+      const filters = {
+        is_active: true // Only fetch active pets
+      };
       if (search) filters.search = search;
       if (speciesFilter) filters.species = speciesFilter;
       
@@ -61,11 +63,14 @@ const Pets = () => {
     }
 
     try {
-      await deletePet(id);
+      const response = await deletePet(id);
+      console.log('Delete response:', response);
+      alert('Pet deleted successfully');
       fetchPets();
     } catch (err) {
-      alert('Failed to delete pet');
-      console.error(err);
+      console.error('Delete error:', err);
+      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to delete pet';
+      alert(errorMessage);
     }
   };
 
