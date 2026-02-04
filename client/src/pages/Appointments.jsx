@@ -13,19 +13,36 @@ const Appointments = () => {
   const [editingId, setEditingId] = useState(null);
   const [filterDate, setFilterDate] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedVet, setSelectedVet] = useState('');
+  const [lastSearchQuery, setLastSearchQuery] = useState('');
+  const [lastFilterStatus, setLastFilterStatus] = useState('');
+  const [lastSelectedVet, setLastSelectedVet] = useState('');
   
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   useEffect(() => {
     fetchAppointments();
-  }, [filterDate, filterStatus]);
+  }, [filterDate, filterStatus, viewMode]);
+
+  // Navigate calendar to selected date when date filter changes in calendar view
+  useEffect(() => {
+    if (viewMode === 'calendar' && filterDate) {
+      const selectedDate = new Date(filterDate + 'T00:00:00');
+      setCurrentMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    }
+  }, [filterDate, viewMode]);
 
   const fetchAppointments = async () => {
     try {
       setLoading(true);
       const filters = {};
-      if (filterDate) filters.date = filterDate;
+      // In calendar view, don't send date filter to API - fetch all appointments
+      // In list view, apply date filter if set
+      if (viewMode === 'list' && filterDate) filters.date = filterDate;
       if (filterStatus) filters.status = filterStatus;
       
       const response = await getAppointments(filters);
@@ -79,6 +96,100 @@ const Appointments = () => {
     setShowForm(true);
   };
 
+  // Filter appointments based on search query, date, status, and vet
+  const filteredAppointments = appointments.filter(appointment => {
+    const matchesSearch = !searchQuery || 
+      appointment.pet_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.customer_first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.customer_last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      appointment.veterinarian_name?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // In list view, apply date filter if set
+    // In calendar view, show all appointments (no date filtering)
+    const matchesDate = viewMode === 'list' ? (!filterDate || getISTDate(appointment.appointment_date) === filterDate) : true;
+    const matchesStatus = !filterStatus || appointment.status === filterStatus;
+    const matchesVet = !selectedVet || appointment.veterinarian_id === parseInt(selectedVet);
+    
+    return matchesSearch && matchesDate && matchesStatus && matchesVet;
+  });
+
+  // Helper function to format date as YYYY-MM-DD in IST timezone
+  const formatDateLocal = (date) => {
+    // Convert to IST (UTC+5:30)
+    const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+    const day = String(istDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to convert UTC timestamp string to IST date string (YYYY-MM-DD)
+  const getISTDate = (utcDateString) => {
+    const date = new Date(utcDateString);
+    return formatDateLocal(date);
+  };
+
+  // Navigate to first filtered appointment when search/filters change in calendar view
+  useEffect(() => {
+    const filtersChanged = searchQuery !== lastSearchQuery || 
+                          filterStatus !== lastFilterStatus || 
+                          selectedVet !== lastSelectedVet;
+    
+    if (viewMode === 'calendar' && filtersChanged && filteredAppointments.length > 0) {
+      const firstApt = filteredAppointments[0];
+      const aptDateStr = getISTDate(firstApt.appointment_date);
+      const aptDate = new Date(aptDateStr + 'T00:00:00');
+      setCurrentMonth(new Date(aptDate.getFullYear(), aptDate.getMonth(), 1));
+      
+      setLastSearchQuery(searchQuery);
+      setLastFilterStatus(filterStatus);
+      setLastSelectedVet(selectedVet);
+    }
+  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments.length]);
+
+  // Get calendar grid data
+  const getCalendarDays = () => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const days = [];
+    const current = new Date(startDate);
+    
+    for (let i = 0; i < 35; i++) {
+      const dateStr = formatDateLocal(current);
+      const dayAppointments = filteredAppointments.filter(apt => {
+        const aptDate = getISTDate(apt.appointment_date);
+        return aptDate === dateStr;
+      });
+      
+      days.push({
+        date: new Date(current),
+        dateStr: dateStr,
+        isCurrentMonth: current.getMonth() === month,
+        isToday: dateStr === formatDateLocal(new Date()),
+        isSelectedDate: filterDate && dateStr === filterDate,
+        appointments: dayAppointments
+      });
+      
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return days;
+  };
+
+  const navigateMonth = (direction) => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + direction);
+    setCurrentMonth(newDate);
+  };
+
+  const goToToday = () => {
+    setCurrentMonth(new Date());
+  };
+
   const getStatusColor = (status) => {
     const colors = {
       scheduled: '#3b82f6',
@@ -86,6 +197,19 @@ const Appointments = () => {
       in_progress: '#f59e0b',
       completed: '#6b7280',
       cancelled: '#ef4444',
+      no_show: '#dc2626',
+      rescheduled: '#8b5cf6'
+    };
+    return colors[status] || '#6b7280';
+  };
+
+  const getStatusBorderColor = (status) => {
+    const colors = {
+      scheduled: '#3b82f6',
+      confirmed: '#10b981',
+      in_progress: '#f59e0b',
+      completed: '#6b7280',
+      cancelled: '#6b7280',
       no_show: '#dc2626',
       rescheduled: '#8b5cf6'
     };
@@ -105,10 +229,12 @@ const Appointments = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'Asia/Kolkata'
     });
   };
 
@@ -116,6 +242,13 @@ const Appointments = () => {
     return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
+    });
+  };
+
+  const formatMonthYear = () => {
+    return currentMonth.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric'
     });
   };
 
@@ -148,29 +281,33 @@ const Appointments = () => {
               onClick={() => setShowForm(true)}
               style={styles.addButton}
             >
-              + Schedule Appointment
+              <i className="fas fa-plus" style={{ marginRight: '0.5rem' }}></i>
+              Schedule Appointment
             </button>
           </div>
 
-          {/* Filters */}
-          <div style={styles.filterContainer}>
-            <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Date:</label>
+          {/* Toolbar */}
+          <div style={styles.toolbar}>
+            {/* Search Bar */}
+            <div style={styles.searchContainer}>
+              <i className="fas fa-search" style={styles.searchIcon}></i>
               <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                style={styles.filterInput}
+                type="text"
+                placeholder="Search appointments..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.searchInput}
               />
             </div>
+
+            {/* Filters */}
             <div style={styles.filterGroup}>
-              <label style={styles.filterLabel}>Status:</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 style={styles.filterSelect}
               >
-                <option value="">All Statuses</option>
+                <option value="">All Status</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="in_progress">In Progress</option>
@@ -180,22 +317,98 @@ const Appointments = () => {
                 <option value="rescheduled">Rescheduled</option>
               </select>
             </div>
-            {(filterDate || filterStatus) && (
+
+            {/* Date Filter */}
+            <div style={styles.filterGroup}>
+              <input
+                type="date"
+                value={filterDate}
+                onChange={(e) => setFilterDate(e.target.value)}
+                style={styles.filterInput}
+                placeholder="Filter by date"
+              />
+            </div>
+
+            {/* View Toggle */}
+            <div style={styles.viewToggle}>
+              <button
+                onClick={() => setViewMode('calendar')}
+                style={{
+                  ...styles.viewToggleButton,
+                  ...(viewMode === 'calendar' ? styles.viewToggleButtonActive : {})
+                }}
+              >
+                <i className="far fa-calendar" style={{ marginRight: '0.5rem' }}></i>
+                Calendar
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  ...styles.viewToggleButton,
+                  ...(viewMode === 'list' ? styles.viewToggleButtonActive : {})
+                }}
+              >
+                <i className="fas fa-list" style={{ marginRight: '0.5rem' }}></i>
+                List
+              </button>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(filterStatus || searchQuery || filterDate) && (
+            <div style={styles.activeFilters}>
+              <span style={styles.activeFiltersLabel}>Active filters:</span>
+              {filterStatus && (
+                <span style={styles.filterPill}>
+                  Status: {filterStatus}
+                  <button
+                    onClick={() => setFilterStatus('')}
+                    style={styles.filterPillClose}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </span>
+              )}
+              {searchQuery && (
+                <span style={styles.filterPill}>
+                  Search: "{searchQuery}"
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    style={styles.filterPillClose}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </span>
+              )}
+              {filterDate && (
+                <span style={styles.filterPill}>
+                  Date: {filterDate}
+                  <button
+                    onClick={() => setFilterDate('')}
+                    style={styles.filterPillClose}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </span>
+              )}
               <button
                 onClick={() => {
-                  setFilterDate('');
                   setFilterStatus('');
-                }}
-                style={styles.clearButton}
+                  setSearchQuery('');
+                  setFilterDate('');
+                }
+}
+                style={styles.clearAllButton}
               >
-                Clear Filters
+                Clear all
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (
             <div style={styles.errorBox}>
+              <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
               {error}
             </div>
           )}
@@ -208,15 +421,88 @@ const Appointments = () => {
             </div>
           ) : (
             <>
-              {/* Appointment Count */}
-              <div style={styles.countInfo}>
-                Total Appointments: <strong>{appointments.length}</strong>
-              </div>
+              {viewMode === 'calendar' ? (
+                /* Calendar View */
+                <div style={styles.calendarContainer}>
+                  <div style={styles.calendarHeader}>
+                    <h3 style={styles.calendarTitle}>{formatMonthYear()}</h3>
+                    <div style={styles.calendarControls}>
+                      <button onClick={goToToday} style={styles.todayButton}>
+                        <i className="fas fa-calendar-day" style={{ marginRight: '0.5rem' }}></i>
+                        Today
+                      </button>
+                      <button onClick={() => navigateMonth(-1)} style={styles.navButton}>
+                        <i className="fas fa-chevron-left"></i>
+                      </button>
+                      <button onClick={() => navigateMonth(1)} style={styles.navButton}>
+                        <i className="fas fa-chevron-right"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={styles.calendarGrid}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} style={styles.dayHeader}>{day}</div>
+                    ))}
+
+                    {getCalendarDays().map((day, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          ...styles.calendarDay,
+                          ...(day.isCurrentMonth ? {} : styles.calendarDayOtherMonth),
+                          ...(day.isToday ? styles.calendarDayToday : {}),
+                          ...(day.isSelectedDate ? styles.calendarDaySelected : {})
+                        }}
+                      >
+                        <div style={styles.calendarDayNumber}>
+                          {day.date.getDate()}
+                        </div>
+                        <div style={styles.appointmentsInDay}>
+                          {day.appointments.slice(0, 3).map(apt => (
+                            <div
+                              key={apt.appointment_id}
+                              style={{
+                                ...styles.appointmentCard,
+                                borderLeftColor: getStatusBorderColor(apt.status)
+                              }}
+                              onClick={() => handleEdit(apt.appointment_id)}
+                            >
+                              <div style={styles.appointmentCardTime}>
+                                {formatTime(apt.appointment_time)}
+                              </div>
+                              <div style={styles.appointmentCardTitle}>
+                                {apt.pet_name}
+                              </div>
+                              <div style={styles.appointmentCardSubtitle}>
+                                {apt.customer_first_name} {apt.customer_last_name}
+                              </div>
+                            </div>
+                          ))}
+                          {day.appointments.length > 3 && (
+                            <div style={styles.moreAppointments}>
+                              +{day.appointments.length - 3} more
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* List View */
+                <>
+                  {/* Appointment Count */}
+                  <div style={styles.countInfo}>
+                    <i className="fas fa-calendar-check" style={{ marginRight: '0.5rem' }}></i>
+                    Total Appointments: <strong>{filteredAppointments.length}</strong>
+                  </div>
 
               {/* Appointments List */}
               <div style={styles.appointmentsList}>
-                {appointments.length === 0 ? (
+                {filteredAppointments.length === 0 ? (
                   <div style={styles.emptyState}>
+                    <i className="far fa-calendar-times" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
                     <p>No appointments found</p>
                     <button 
                       onClick={() => setShowForm(true)}
@@ -227,7 +513,7 @@ const Appointments = () => {
                   </div>
                 ) : (
                   <div style={styles.cardsGrid}>
-                    {appointments.map((appointment) => (
+                    {filteredAppointments.map((appointment) => (
                       <div key={appointment.appointment_id} style={styles.card}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
@@ -286,6 +572,7 @@ const Appointments = () => {
                               onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')}
                               style={styles.confirmButton}
                             >
+                              <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>
                               Confirm
                             </button>
                           )}
@@ -294,6 +581,7 @@ const Appointments = () => {
                               onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')}
                               style={styles.startButton}
                             >
+                              <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>
                               Start
                             </button>
                           )}
@@ -302,6 +590,7 @@ const Appointments = () => {
                               onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
                               style={styles.completeButton}
                             >
+                              <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
                               Complete
                             </button>
                           )}
@@ -309,6 +598,7 @@ const Appointments = () => {
                             onClick={() => handleEdit(appointment.appointment_id)}
                             style={styles.editButton}
                           >
+                            <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>
                             Edit
                           </button>
                           {user?.role === 'admin' && (
@@ -316,6 +606,7 @@ const Appointments = () => {
                               onClick={() => handleDelete(appointment.appointment_id)}
                               style={styles.deleteButton}
                             >
+                              <i className="fas fa-trash" style={{ marginRight: '0.25rem' }}></i>
                               Delete
                             </button>
                           )}
@@ -325,6 +616,8 @@ const Appointments = () => {
                   </div>
                 )}
               </div>
+                </>
+              )}
             </>
           )}
     </Layout>
@@ -447,11 +740,13 @@ const styles = {
     backgroundColor: '#2563eb',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
+    borderRadius: '8px',
     fontSize: '1rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
   },
   filterContainer: {
     display: 'flex',
@@ -498,9 +793,11 @@ const styles = {
     padding: '1rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '6px',
+    borderRadius: '8px',
     marginBottom: '1rem',
     border: '1px solid #fecaca',
+    display: 'flex',
+    alignItems: 'center',
   },
   loadingContainer: {
     display: 'flex',
@@ -520,10 +817,12 @@ const styles = {
   countInfo: {
     padding: '1rem',
     backgroundColor: '#f9fafb',
-    borderRadius: '6px',
+    borderRadius: '8px',
     marginBottom: '1rem',
     fontSize: '0.875rem',
     color: '#374151',
+    display: 'flex',
+    alignItems: 'center',
   },
   appointmentsList: {
     backgroundColor: '#ffffff',
@@ -603,6 +902,9 @@ const styles = {
   infoLabel: {
     fontSize: '0.875rem',
     color: '#6b7280',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   infoValue: {
     fontSize: '0.875rem',
@@ -629,45 +931,296 @@ const styles = {
     backgroundColor: '#10b981',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
   },
   startButton: {
     padding: '0.5rem 1rem',
     backgroundColor: '#f59e0b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
   },
   completeButton: {
     padding: '0.5rem 1rem',
     backgroundColor: '#6b7280',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
   },
   editButton: {
     padding: '0.5rem 1rem',
     backgroundColor: '#3b82f6',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
   },
   deleteButton: {
     padding: '0.5rem 1rem',
     backgroundColor: '#ef4444',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '6px',
     fontSize: '0.875rem',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
+  },
+  toolbar: {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  searchContainer: {
+    position: 'relative',
+    flex: '1',
+    minWidth: '300px',
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: '1rem',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: '#9ca3af',
+    fontSize: '1rem',
+  },
+  searchInput: {
+    width: '100%',
+    padding: '0.75rem 1rem 0.75rem 3rem',
+    fontSize: '0.875rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    outline: 'none',
+    transition: 'all 0.2s',
+  },
+  viewToggle: {
+    display: 'flex',
+    gap: '0',
+    backgroundColor: '#f3f4f6',
+    borderRadius: '8px',
+    padding: '0.25rem',
+  },
+  viewToggleButton: {
+    padding: '0.5rem 1rem',
+    fontSize: '0.875rem',
+    border: 'none',
+    backgroundColor: 'transparent',
+    color: '#6b7280',
+    cursor: 'pointer',
+    borderRadius: '6px',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  viewToggleButtonActive: {
+    backgroundColor: 'white',
+    color: '#2563eb',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+  },
+  activeFilters: {
+    display: 'flex',
+    gap: '0.75rem',
+    marginBottom: '1.5rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  activeFiltersLabel: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  filterPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#dbeafe',
+    color: '#1e40af',
+    borderRadius: '9999px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+  },
+  filterPillClose: {
+    padding: '0',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#1e40af',
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  clearAllButton: {
+    padding: '0.375rem 0.75rem',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#6b7280',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+  },
+  calendarContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+  },
+  calendarHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  calendarTitle: {
+    fontSize: '1.5rem',
+    fontWeight: '600',
+    color: '#111827',
+    margin: 0,
+  },
+  calendarControls: {
+    display: 'flex',
+    gap: '0.5rem',
+    alignItems: 'center',
+  },
+  todayButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'all 0.2s',
+  },
+  navButton: {
+    padding: '0.5rem 0.75rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'all 0.2s',
+  },
+  calendarGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(7, 1fr)',
+    borderTop: '1px solid #e5e7eb',
+  },
+  dayHeader: {
+    padding: '0.75rem',
+    textAlign: 'center',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    backgroundColor: '#f9fafb',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  calendarDay: {
+    minHeight: '120px',
+    padding: '0.5rem',
+    borderRight: '1px solid #e5e7eb',
+    borderBottom: '1px solid #e5e7eb',
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+  },
+  calendarDayOtherMonth: {
+    backgroundColor: '#f9fafb',
+    opacity: 0.5,
+  },
+  calendarDayToday: {
+    backgroundColor: '#eff6ff',
+    borderTop: '2px solid #3b82f6',
+    borderRight: '2px solid #3b82f6',
+    borderBottom: '2px solid #3b82f6',
+    borderLeft: '2px solid #3b82f6',
+  },
+  calendarDaySelected: {
+    backgroundColor: '#fef3c7',
+    borderTop: '2px solid #f59e0b',
+    borderRight: '2px solid #f59e0b',
+    borderBottom: '2px solid #f59e0b',
+    borderLeft: '2px solid #f59e0b',
+    boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.1)',
+  },
+  calendarDayNumber: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: '0.5rem',
+  },
+  appointmentsInDay: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  appointmentCard: {
+    padding: '0.5rem',
+    backgroundColor: '#f9fafb',
+    borderRadius: '4px',
+    borderLeft: '3px solid',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    fontSize: '0.75rem',
+  },
+  appointmentCardTime: {
+    fontSize: '0.6875rem',
+    fontWeight: '600',
+    color: '#6b7280',
+    marginBottom: '0.125rem',
+  },
+  appointmentCardTitle: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#111827',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  appointmentCardSubtitle: {
+    fontSize: '0.6875rem',
+    color: '#6b7280',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  moreAppointments: {
+    padding: '0.25rem 0.5rem',
+    fontSize: '0.6875rem',
+    color: '#6b7280',
+    textAlign: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: '4px',
   },
   footer: {
     padding: '1rem 2rem',

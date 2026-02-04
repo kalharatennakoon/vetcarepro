@@ -62,6 +62,11 @@ const Dashboard = () => {
       const waitingAppointments = todayAppointments.filter(a => 
         a.status === 'scheduled' || a.status === 'checked_in'
       );
+      const completedToday = todayAppointments.filter(a => a.status === 'completed');
+      const urgentCases = todayAppointments.filter(a => 
+        a.appointment_type?.toLowerCase().includes('emergency') || 
+        a.appointment_type?.toLowerCase().includes('urgent')
+      );
       const pendingBills = bills.filter(b => 
         b.payment_status === 'pending' || b.payment_status === 'partially_paid'
       );
@@ -73,6 +78,9 @@ const Dashboard = () => {
         totalAppointments: appointments.length,
         todayAppointments: todayAppointments.length,
         waitingPatients: waitingAppointments.length,
+        completedToday: completedToday.length,
+        urgentCases: urgentCases.length,
+        labResultsReady: 0, // Placeholder for future implementation
         pendingInvoices: pendingBills.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         recentAppointments: todayAppointments.slice(0, 6),
@@ -148,101 +156,189 @@ const Dashboard = () => {
           <>
             {/* Stats Cards */}
             <div style={styles.statsGrid}>
-              <div style={styles.statCard}>
-                <div style={styles.statContent}>
-                  <div>
-                    <p style={styles.statLabel}>Appointments Today</p>
-                    <p style={styles.statValue}>{stats.todayAppointments}</p>
+              {(user?.role === 'veterinarian' || user?.role === 'admin') ? (
+                // Veterinarian Stats
+                <>
+                  <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6'}}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>PATIENTS WAITING</p>
+                        <p style={styles.statValue}>{stats.waitingPatients}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
+                        <i className="fas fa-users" style={{...styles.statIconText, color: '#1e40af'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: '#10b981'}}>
+                        <i className="fas fa-arrow-up" style={{fontSize: '0.75rem'}}></i> +{stats.waitingPatients > 0 ? Math.floor(stats.waitingPatients / 2) : 0} since 9am
+                      </span>
+                    </div>
                   </div>
-                  <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
-                    <i className="fas fa-calendar-check" style={{...styles.statIconText, color: '#1e40af'}}></i>
-                  </div>
-                </div>
-                <div style={styles.statFooter}>
-                  <span style={{...styles.statChange, color: '#10b981'}}>
-                    {stats.waitingPatients} waiting
-                  </span>
-                </div>
-              </div>
 
-              <div style={styles.statCard}>
-                <div style={styles.statContent}>
-                  <div>
-                    <p style={styles.statLabel}>Active Patients</p>
-                    <p style={styles.statValue}>{stats.activePets}</p>
+                  <div style={styles.statCard}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>COMPLETED TODAY</p>
+                        <p style={styles.statValue}>{stats.completedToday}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#d1fae5'}}>
+                        <i className="fas fa-check-circle" style={{...styles.statIconText, color: '#065f46'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={styles.statChange}>
+                        On track for daily goal
+                      </span>
+                    </div>
                   </div>
-                  <div style={{...styles.statIconWrapper, backgroundColor: '#fed7aa'}}>
-                    <i className="fas fa-paw" style={{...styles.statIconText, color: '#c2410c'}}></i>
-                  </div>
-                </div>
-                <div style={styles.statFooter}>
-                  <span style={styles.statChange}>
-                    {stats.totalPets} total registered
-                  </span>
-                </div>
-              </div>
 
-              <div style={styles.statCard}>
-                <div style={styles.statContent}>
-                  <div>
-                    <p style={styles.statLabel}>Pending Invoices</p>
-                    <p style={styles.statValue}>{stats.pendingInvoices}</p>
+                  <div style={{...styles.statCard, borderLeft: stats.urgentCases > 0 ? '4px solid #f97316' : 'none', backgroundColor: stats.urgentCases > 0 ? '#fff7ed' : 'white'}}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={{...styles.statLabel, color: stats.urgentCases > 0 ? '#c2410c' : '#6b7280'}}>URGENT CASES</p>
+                        <p style={styles.statValue}>{stats.urgentCases}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#fed7aa'}}>
+                        <i className="fas fa-exclamation-triangle" style={{...styles.statIconText, color: '#c2410c'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: stats.urgentCases > 0 ? '#c2410c' : '#6b7280'}}>
+                        {stats.urgentCases > 0 ? 'Requires immediate attention' : 'No urgent cases'}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{...styles.statIconWrapper, backgroundColor: '#e9d5ff'}}>
-                    <i className="fas fa-file-invoice-dollar" style={{...styles.statIconText, color: '#7c3aed'}}></i>
+
+                  <div style={styles.statCard}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>LAB RESULTS READY</p>
+                        <p style={styles.statValue}>{stats.labResultsReady}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#e9d5ff'}}>
+                        <i className="fas fa-flask" style={{...styles.statIconText, color: '#7c3aed'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: '#7c3aed', cursor: 'pointer'}}>
+                        Review all results →
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div style={styles.statFooter}>
-                  <span style={styles.statChange}>
-                    Awaiting payment
-                  </span>
-                </div>
-              </div>
+                </>
+              ) : (
+                // Receptionist Stats
+                <>
+                  <div style={styles.statCard}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>Appointments Today</p>
+                        <p style={styles.statValue}>{stats.todayAppointments}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
+                        <i className="fas fa-calendar-check" style={{...styles.statIconText, color: '#1e40af'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: '#10b981'}}>
+                        {stats.waitingPatients} waiting
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={styles.statCard}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>Active Patients</p>
+                        <p style={styles.statValue}>{stats.activePets}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#fed7aa'}}>
+                        <i className="fas fa-paw" style={{...styles.statIconText, color: '#c2410c'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={styles.statChange}>
+                        {stats.totalPets} total registered
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={styles.statCard}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>Pending Invoices</p>
+                        <p style={styles.statValue}>{stats.pendingInvoices}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#e9d5ff'}}>
+                        <i className="fas fa-file-invoice-dollar" style={{...styles.statIconText, color: '#7c3aed'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={styles.statChange}>
+                        Awaiting payment
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Quick Actions - Role Specific */}
-            <div style={styles.quickActions}>
-              <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
-                <i className="fas fa-plus-circle"></i>
-                <span>New Appointment</span>
-              </button>
-              
-              {user?.role === 'receptionist' && (
-                <>
-                  <button onClick={() => navigate('/appointments')} style={styles.secondaryButton}>
-                    <i className="fas fa-check-circle" style={{color: '#10b981'}}></i>
-                    <span>Check-in Patient</span>
+            {(user?.role === 'veterinarian' || user?.role === 'admin') ? (
+              // Veterinarian Quick Actions
+              <div style={styles.vetQuickActionsContainer}>
+                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                  <button onClick={() => navigate('/medical-records/new')} style={styles.primaryButton}>
+                    <i className="fas fa-play"></i>
+                    <span>Start Next Exam</span>
                   </button>
-                  <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
-                    <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
-                    <span>New Client</span>
-                  </button>
-                  <button onClick={() => navigate('/billing')} style={styles.secondaryButton}>
-                    <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
-                    <span>Process Payment</span>
-                  </button>
-                </>
-              )}
-              
-              {(user?.role === 'veterinarian' || user?.role === 'admin') && (
-                <>
                   <button onClick={() => navigate('/medical-records/new')} style={styles.secondaryButton}>
-                    <i className="fas fa-notes-medical" style={{color: '#10b981'}}></i>
-                    <span>New Medical Record</span>
+                    <i className="fas fa-plus-circle" style={{color: '#3b82f6'}}></i>
+                    <span>New Record</span>
                   </button>
-                  <button onClick={() => navigate('/pets/new')} style={styles.secondaryButton}>
-                    <i className="fas fa-paw" style={{color: '#f59e0b'}}></i>
-                    <span>Register Pet</span>
-                  </button>
-                  {user?.role === 'admin' && (
-                    <button onClick={() => navigate('/reports')} style={styles.secondaryButton}>
-                      <i className="fas fa-chart-bar" style={{color: '#3b82f6'}}></i>
-                      <span>View Reports</span>
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+                </div>
+
+                <div style={styles.quickActionsGrid}>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records/new')}>
+                    <i className="fas fa-prescription" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Prescription</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records')}>
+                    <i className="fas fa-flask" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Lab Request</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records/new')}>
+                    <i className="fas fa-notes-medical" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Add Notes</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records')}>
+                    <i className="fas fa-syringe" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Vaccine Log</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Receptionist Quick Actions
+              <div style={styles.quickActions}>
+                <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
+                  <i className="fas fa-plus-circle"></i>
+                  <span>New Appointment</span>
+                </button>
+                <button onClick={() => navigate('/appointments')} style={styles.secondaryButton}>
+                  <i className="fas fa-check-circle" style={{color: '#10b981'}}></i>
+                  <span>Check-in Patient</span>
+                </button>
+                <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
+                  <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
+                  <span>New Client</span>
+                </button>
+                <button onClick={() => navigate('/billing')} style={styles.secondaryButton}>
+                  <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
+                  <span>Process Payment</span>
+                </button>
+              </div>
+            )}
 
             {/* Main Dashboard Split View */}
             <div style={{
@@ -794,6 +890,41 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '500',
     cursor: 'pointer',
+  },
+  vetQuickActionsContainer: {
+    marginBottom: '2rem',
+  },
+  quickActionsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '0.75rem',
+  },
+  quickActionCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '1rem',
+    backgroundColor: 'white',
+    border: '1px solid #e5e7eb',
+    borderRadius: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    ':hover': {
+      borderColor: '#3b82f6',
+      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+    },
+  },
+  quickActionIcon: {
+    fontSize: '1.5rem',
+    transition: 'transform 0.2s',
+  },
+  quickActionLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    color: '#111827',
+    textAlign: 'center',
   },
   '@media (min-width: 1024px)': {
     mainGrid: {
