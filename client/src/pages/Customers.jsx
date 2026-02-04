@@ -9,12 +9,15 @@ const Customers = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   useEffect(() => {
     fetchCustomers();
+    setCurrentPage(1); // Reset to first page when search changes
   }, [search]);
 
   const fetchCustomers = async () => {
@@ -55,36 +58,123 @@ const Customers = () => {
     navigate('/');
   };
 
+  const getInitials = (firstName, lastName) => {
+    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
+  };
+
+  const formatPhone = (phone) => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, '');
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (match) {
+      return `(${match[1]}) ${match[2]}-${match[3]}`;
+    }
+    return phone;
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCustomers = customers.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 5;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
+
   return (
     <Layout>
       {/* Page Header */}
       <div style={styles.pageHeader}>
-        <div>
-          <h2 style={styles.title}>Customers</h2>
-          <p style={styles.subtitle}>Manage pet owners and their information</p>
+        <div style={styles.headerInfo}>
+          <div style={styles.headerIconWrapper}>
+            <i className="fas fa-users" style={styles.headerIcon}></i>
+          </div>
+          <div>
+            <h2 style={styles.title}>Customer Management</h2>
+            <p style={styles.subtitle}>Manage pet owners and their information</p>
+          </div>
         </div>
         <button 
           onClick={() => navigate('/customers/new')}
           style={styles.addButton}
+          onMouseOver={(e) => e.target.style.backgroundColor = styles.addButtonHover.backgroundColor}
+          onMouseOut={(e) => e.target.style.backgroundColor = styles.addButton.backgroundColor}
         >
-          + Add Customer
+          <span style={styles.buttonIcon}>+</span>
+          <span>Add Customer</span>
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search & Filter Bar */}
       <div style={styles.searchContainer}>
-        <form onSubmit={handleSearch} style={styles.searchForm}>
+        <div style={styles.searchWrapper}>
+          <i className="fas fa-search" style={styles.searchIconSpan}></i>
           <input
             type="text"
-            placeholder="Search by name, phone, or email..."
+            placeholder="Search by name, phone, email, or city..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={styles.searchInput}
           />
-          <button type="submit" style={styles.searchButton}>
-            Search
-          </button>
-        </form>
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={styles.clearButton}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          )}
+        </div>
+        <div style={styles.statsBar}>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Total Customers</span>
+            <span style={styles.statValue}>{customers.length}</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Showing</span>
+            <span style={styles.statValue}>
+              {customers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, customers.length)}` : '0'}
+            </span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Active</span>
+            <span style={styles.statValue}>{customers.filter(c => c.is_active !== false).length}</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>With Pets</span>
+            <span style={styles.statValue}>{customers.filter(c => c.pet_count > 0).length}</span>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -102,14 +192,9 @@ const Customers = () => {
         </div>
       ) : (
         <>
-          {/* Customer Count */}
-          <div style={styles.countInfo}>
-            Total Customers: <strong>{customers.length}</strong>
-          </div>
-
           {/* Customers Table */}
           <div style={styles.tableContainer}>
-            {customers.length === 0 ? (
+            {currentCustomers.length === 0 ? (
               <div style={styles.emptyState}>
                 <p>No customers found</p>
                 <button 
@@ -123,39 +208,72 @@ const Customers = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.tableHeader}>
-                    <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Phone</th>
-                    <th style={styles.th}>Email</th>
-                    <th style={styles.th}>City</th>
-                    <th style={styles.th}>Pets</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={{...styles.th, width: '35%'}}>Customer</th>
+                    <th style={{...styles.th, width: '20%'}}>Phone</th>
+                    <th style={{...styles.th, width: '25%'}}>Email</th>
+                    <th style={{...styles.th, width: '10%', textAlign: 'center'}}>Pets</th>
+                    <th style={{...styles.th, width: '10%', textAlign: 'right'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map((customer) => (
-                    <tr key={customer.customer_id} style={styles.tableRow}>
+                  {currentCustomers.map((customer) => (
+                    <tr 
+                      key={customer.customer_id} 
+                      style={styles.tableRow}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
                       <td style={styles.td}>
-                        <div style={styles.customerName}>
-                          {customer.first_name} {customer.last_name}
+                        <div style={styles.customerCell}>
+                          <div style={styles.avatar}>
+                            {getInitials(customer.first_name, customer.last_name)}
+                          </div>
+                          <div style={styles.customerInfo}>
+                            <div style={styles.customerName}>
+                              {customer.first_name} {customer.last_name}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td style={styles.td}>{customer.phone}</td>
-                      <td style={styles.td}>{customer.email || '-'}</td>
-                      <td style={styles.td}>{customer.city || '-'}</td>
                       <td style={styles.td}>
-                        <span style={styles.petCount}>{customer.pet_count || 0}</span>
+                        <span style={styles.phoneNumber}>{formatPhone(customer.phone)}</span>
                       </td>
                       <td style={styles.td}>
+                        {customer.email ? (
+                          <a href={`mailto:${customer.email}`} style={styles.emailLink}>
+                            {customer.email}
+                          </a>
+                        ) : (
+                          <span style={styles.noData}>No email</span>
+                        )}
+                      </td>
+                      <td style={{...styles.td, textAlign: 'center'}}>
+                        <span style={{
+                          ...styles.petCount,
+                          ...(customer.pet_count > 0 ? {} : styles.petCountZero)
+                        }}>
+                          {customer.pet_count || 0}
+                        </span>
+                      </td>
+                      <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={styles.actions}>
                           <button
                             onClick={() => navigate(`/customers/${customer.customer_id}`)}
                             style={styles.viewButton}
+                            onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
+                            onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
                           >
                             View
                           </button>
                           <button
                             onClick={() => navigate(`/customers/${customer.customer_id}/edit`)}
                             style={styles.editButton}
+                            onMouseOver={(e) => e.target.style.backgroundColor = styles.editButtonHover.backgroundColor}
+                            onMouseOut={(e) => e.target.style.backgroundColor = styles.editButton.backgroundColor}
                           >
                             Edit
                           </button>
@@ -163,6 +281,8 @@ const Customers = () => {
                             <button
                               onClick={() => handleDelete(customer.customer_id)}
                               style={styles.deleteButton}
+                              onMouseOver={(e) => e.target.style.backgroundColor = styles.deleteButtonHover.backgroundColor}
+                              onMouseOut={(e) => e.target.style.backgroundColor = styles.deleteButton.backgroundColor}
                             >
                               Delete
                             </button>
@@ -175,6 +295,50 @@ const Customers = () => {
               </table>
             )}
           </div>
+
+          {/* Pagination */}
+          {customers.length > itemsPerPage && (
+            <div style={styles.paginationContainer}>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
+                }}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              
+              {getPageNumbers().map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    style={{
+                      ...styles.paginationButton,
+                      ...(currentPage === page ? styles.paginationButtonActive : {})
+                    }}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
+                }}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          )}
         </>
       )}
     </Layout>
@@ -182,157 +346,149 @@ const Customers = () => {
 };
 
 const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    backgroundColor: '#f5f7fa',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  logo: {
-    margin: 0,
-    fontSize: '1.5rem',
-    color: '#1e40af',
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    margin: 0,
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-  },
-  userName: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  userRole: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  logoutButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  mainContent: {
-    display: 'flex',
-    flex: 1,
-  },
-  sidebar: {
-    width: '250px',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    padding: '1.5rem 0',
-  },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  navItem: {
-    padding: '0.75rem 1.5rem',
-    textDecoration: 'none',
-    color: '#374151',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    borderLeft: '3px solid transparent',
-  },
-  navItemActive: {
-    backgroundColor: '#eff6ff',
-    color: '#2563eb',
-    borderLeft: '3px solid #2563eb',
-  },
-  content: {
-    flex: 1,
-  },
+  // Page Header
   pageHeader: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 'clamp(1rem, 3vw, 2rem)',
+    alignItems: 'center',
+    marginBottom: '2rem',
     flexWrap: 'wrap',
     gap: '1rem',
+    paddingBottom: '1.5rem',
+    borderBottom: '2px solid #e5e7eb',
+  },
+  headerInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  headerIconWrapper: {
+    width: '3.5rem',
+    height: '3.5rem',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 6px rgba(102, 126, 234, 0.25)',
+  },
+  headerIcon: {
+    fontSize: '1.5rem',
+    color: 'white',
   },
   title: {
-    fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-    fontWeight: 'bold',
+    fontSize: '1.875rem',
+    fontWeight: '700',
     color: '#111827',
-    margin: '0 0 0.5rem 0',
+    margin: 0,
+    letterSpacing: '-0.025em',
   },
   subtitle: {
-    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+    fontSize: '0.875rem',
     color: '#6b7280',
-    margin: 0,
+    margin: '0.25rem 0 0 0',
+    fontWeight: '400',
   },
   addButton: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.75rem 1.5rem',
     backgroundColor: '#2563eb',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+    borderRadius: '8px',
+    fontSize: '0.9375rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
+    transition: 'all 0.2s ease',
     whiteSpace: 'nowrap',
+    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
   },
+  addButtonHover: {
+    backgroundColor: '#1d4ed8',
+  },
+  buttonIcon: {
+    fontSize: '1.25rem',
+    lineHeight: '1',
+  },
+  
+  // Search Section
   searchContainer: {
     marginBottom: '1.5rem',
-  },
-  searchForm: {
     display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    gap: '1rem',
+  },
+  searchWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: '10px',
+    border: '2px solid #e5e7eb',
+    padding: '0.75rem 1rem',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+  },
+  searchIconSpan: {
+    fontSize: '1rem',
+    marginRight: '0.75rem',
+    color: '#94a3b8',
   },
   searchInput: {
-    flex: '1 1 250px',
-    padding: 'clamp(0.625rem, 2vw, 0.75rem)',
-    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  searchButton: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
-    backgroundColor: '#10b981',
-    color: 'white',
+    flex: 1,
     border: 'none',
-    borderRadius: '6px',
-    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+    outline: 'none',
+    fontSize: '0.9375rem',
     fontWeight: '500',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
+    color: '#111827',
+    backgroundColor: 'transparent',
   },
+  clearButton: {
+    backgroundColor: '#f3f4f6',
+    border: 'none',
+    borderRadius: '50%',
+    width: '1.5rem',
+    height: '1.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    transition: 'all 0.2s',
+  },
+  statsBar: {
+    display: 'flex',
+    gap: '1rem',
+    flexWrap: 'wrap',
+  },
+  statItem: {
+    backgroundColor: 'white',
+    borderRadius: '8px',
+    padding: '0.75rem 1.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+    flex: '1 1 150px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+  },
+  statLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  statValue: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#2563eb',
+  },
+  
+  // Error & Loading
   errorBox: {
     padding: '1rem',
     backgroundColor: '#fee2e2',
@@ -356,117 +512,220 @@ const styles = {
     height: '50px',
     animation: 'spin 1s linear infinite',
   },
-  countInfo: {
-    padding: '1rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '6px',
-    marginBottom: '1rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-  },
+  
+  // Table Styles
   tableContainer: {
     backgroundColor: '#ffffff',
     borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.08)',
     overflow: 'auto',
     WebkitOverflowScrolling: 'touch',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '3rem',
-  },
-  emptyButton: {
-    marginTop: '1rem',
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    cursor: 'pointer',
+    border: '1px solid #e5e7eb',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    minWidth: '600px',
+    minWidth: '800px',
+    tableLayout: 'fixed',
   },
   tableHeader: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8fafc',
+    borderBottom: '2px solid #e5e7eb',
   },
   th: {
-    padding: 'clamp(0.5rem, 2vw, 0.75rem) clamp(0.75rem, 2vw, 1rem)',
+    padding: '1rem 1.25rem',
     textAlign: 'left',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    fontWeight: '600',
-    color: '#374151',
-    borderBottom: '1px solid #e5e7eb',
+    fontSize: '0.75rem',
+    fontWeight: '700',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
     whiteSpace: 'nowrap',
   },
   tableRow: {
-    borderBottom: '1px solid #f3f4f6',
+    borderBottom: '1px solid #f1f5f9',
+    transition: 'all 0.15s ease',
+    cursor: 'pointer',
   },
   td: {
-    padding: 'clamp(0.5rem, 2vw, 0.75rem) clamp(0.75rem, 2vw, 1rem)',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    color: '#6b7280',
+    padding: '1rem 1.25rem',
+    fontSize: '0.875rem',
+    color: '#64748b',
+    verticalAlign: 'middle',
+  },
+  customerCell: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.875rem',
+  },
+  avatar: {
+    width: '2.5rem',
+    height: '2.5rem',
+    borderRadius: '8px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: 'white',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    flexShrink: 0,
+    boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)',
+  },
+  customerInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.125rem',
   },
   customerName: {
+    fontWeight: '600',
+    color: '#111827',
+    fontSize: '0.9375rem',
+  },
+  phoneNumber: {
     fontWeight: '500',
     color: '#111827',
+    fontFamily: 'monospace',
+  },
+  emailLink: {
+    color: '#2563eb',
+    textDecoration: 'none',
+    fontWeight: '500',
+    transition: 'color 0.2s',
+  },
+  noData: {
+    color: '#cbd5e1',
+    fontStyle: 'italic',
   },
   petCount: {
-    padding: '0.25rem 0.5rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '2rem',
+    padding: '0.375rem 0.625rem',
     backgroundColor: '#dbeafe',
     color: '#1e40af',
-    borderRadius: '4px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '700',
+    boxShadow: '0 1px 2px rgba(37, 99, 235, 0.1)',
   },
+  petCountZero: {
+    backgroundColor: '#f1f5f9',
+    color: '#94a3b8',
+  },
+  
+  // Action Buttons
   actions: {
     display: 'flex',
-    gap: 'clamp(0.25rem, 1vw, 0.5rem)',
-    flexWrap: 'wrap',
+    gap: '0.375rem',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   viewButton: {
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
-    backgroundColor: '#10b981',
+    padding: '0.5rem 0.875rem',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    borderRadius: '6px',
+    fontSize: '0.8125rem',
+    fontWeight: '600',
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 2px rgba(100, 116, 139, 0.2)',
     whiteSpace: 'nowrap',
+  },
+  viewButtonHover: {
+    backgroundColor: '#475569',
   },
   editButton: {
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
-    backgroundColor: '#f59e0b',
+    padding: '0.5rem 0.875rem',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    borderRadius: '6px',
+    fontSize: '0.8125rem',
+    fontWeight: '600',
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 2px rgba(100, 116, 139, 0.2)',
     whiteSpace: 'nowrap',
+  },
+  editButtonHover: {
+    backgroundColor: '#475569',
   },
   deleteButton: {
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
-    backgroundColor: '#ef4444',
+    padding: '0.5rem 0.875rem',
+    backgroundColor: '#64748b',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    borderRadius: '6px',
+    fontSize: '0.8125rem',
+    fontWeight: '600',
     cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 2px rgba(100, 116, 139, 0.2)',
     whiteSpace: 'nowrap',
   },
-  footer: {
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-    textAlign: 'center',
+  deleteButtonHover: {
+    backgroundColor: '#475569',
   },
-  footerText: {
-    margin: 0,
+  
+  // Empty State
+  emptyState: {
+    textAlign: 'center',
+    padding: '4rem 2rem',
+  },
+  emptyButton: {
+    marginTop: '1.5rem',
+    padding: '0.875rem 2rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+    transition: 'all 0.2s ease',
+  },
+  
+  // Pagination
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginTop: '1.5rem',
+    padding: '1rem',
+  },
+  paginationButton: {
+    padding: '0.5rem 0.75rem',
+    minWidth: '2.5rem',
+    backgroundColor: 'white',
+    color: '#64748b',
+    border: '1px solid #e5e7eb',
+    borderRadius: '6px',
     fontSize: '0.875rem',
-    color: '#6b7280',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+  },
+  paginationButtonActive: {
+    backgroundColor: '#2563eb',
+    color: 'white',
+    borderColor: '#2563eb',
+    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+  },
+  paginationButtonDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
+  paginationEllipsis: {
+    padding: '0.5rem 0.25rem',
+    color: '#94a3b8',
+    fontSize: '0.875rem',
   },
 };
 
