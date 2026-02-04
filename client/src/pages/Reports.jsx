@@ -12,7 +12,7 @@ function Reports() {
   const [reportData, setReportData] = useState(null);
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 10;
 
   // Date filters
   const [startDate, setStartDate] = useState(() => {
@@ -140,7 +140,13 @@ function Reports() {
 
     return (
       <div style={styles.dashboardSummary}>
-        <h3 style={styles.summaryTitle}>Quick Summary ({formatDate(startDate)} - {formatDate(endDate)})</h3>
+        <div style={styles.summaryHeader}>
+          <h3 style={styles.summaryTitle}>Quick Summary</h3>
+          <div style={styles.dateRangeBadge}>
+            <i className="fas fa-calendar-alt" style={{marginRight: '0.5rem', fontSize: '0.875rem'}}></i>
+            <span>{formatDate(startDate)} - {formatDate(endDate)}</span>
+          </div>
+        </div>
         <div style={styles.summaryGrid}>
           <div style={styles.summaryCard}>
             <h4 style={styles.summaryCardTitle}><i className="fas fa-dollar-sign" style={{marginRight: '6px', color: '#667eea'}} /><span>Financial</span></h4>
@@ -321,8 +327,6 @@ function Reports() {
           </div>
         </div>
 
-        {renderDashboardSummary()}
-
         {error && (
           <div style={styles.errorAlert}>
             {error}
@@ -418,6 +422,8 @@ function Reports() {
 
           {renderReportData()}
         </div>
+
+        {renderDashboardSummary()}
       </div>
     </Layout>
   );
@@ -433,69 +439,89 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: '0.75rem',
+    marginBottom: '2rem',
     gap: '1rem',
   },
   pageHeaderContent: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
+    gap: '1rem',
   },
   headerIcon: {
-    fontSize: '30px',
+    fontSize: '2rem',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
   },
   title: {
-    fontSize: '18px',
+    fontSize: '2rem',
     fontWeight: '600',
     color: '#1F2937',
     margin: 0,
   },
   subtitle: {
-    fontSize: '12px',
+    fontSize: '1rem',
     color: '#6B7280',
-    margin: '2px 0 0 0',
+    margin: '0.5rem 0 0 0',
   },
   dashboardSummary: {
     backgroundColor: 'white',
-    padding: '12px',
-    borderRadius: '8px',
+    padding: '1.5rem',
+    borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '0.75rem',
+    marginBottom: '2rem',
     border: '1px solid #e5e7eb',
+  },
+  summaryHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1.5rem',
+    flexWrap: 'wrap',
+    gap: '1rem',
   },
   summaryTitle: {
     color: '#1f2937',
-    fontSize: '14px',
+    fontSize: '1.5rem',
     fontWeight: '600',
-    margin: '0 0 10px 0',
+    margin: 0,
+  },
+  dateRangeBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    boxShadow: '0 2px 4px rgba(102, 126, 234, 0.2)',
   },
   summaryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '10px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '1.5rem',
   },
   summaryCard: {
     backgroundColor: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-    padding: '10px',
-    borderRadius: '6px',
+    padding: '1.5rem',
+    borderRadius: '8px',
     border: '1px solid #e5e7eb',
   },
   summaryCardTitle: {
     color: '#374151',
-    fontSize: '13px',
+    fontSize: '1rem',
     fontWeight: '600',
-    margin: '0 0 8px 0',
+    margin: '0 0 1rem 0',
   },
   summaryItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '6px 0',
+    padding: '0.75rem 0',
     borderBottom: '1px solid #e5e7eb',
-    fontSize: '12px',
+    fontSize: '0.875rem',
   },
   summaryLabel: {
     color: '#6b7280',
@@ -504,20 +530,21 @@ const styles = {
   summaryValue: {
     color: '#1f2937',
     fontWeight: '600',
+    fontSize: '1rem',
   },
   errorAlert: {
     backgroundColor: '#FEE2E2',
     border: '1px solid #FCA5A5',
     color: '#991B1B',
-    padding: '8px',
-    borderRadius: '6px',
-    marginBottom: '0.75rem',
-    fontSize: '12px',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '2rem',
+    fontSize: '0.875rem',
   },
   reportsSection: {
     backgroundColor: 'white',
-    padding: '8px',
-    borderRadius: '8px',
+    padding: '1.5rem',
+    borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },
   reportControls: {
@@ -525,16 +552,16 @@ const styles = {
   },
   tabs: {
     display: 'flex',
-    gap: '10px',
-    marginBottom: '1rem',
+    gap: '1rem',
+    marginBottom: '1.5rem',
     borderBottom: '2px solid #e5e7eb',
   },
   tab: {
-    padding: '8px 12px',
+    padding: '0.75rem 1.5rem',
     background: 'none',
     border: 'none',
     color: '#6b7280',
-    fontSize: '12px',
+    fontSize: '0.875rem',
     fontWeight: '500',
     cursor: 'pointer',
     borderBottom: '3px solid transparent',
@@ -548,7 +575,7 @@ const styles = {
   filters: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 1fr auto',
-    gap: '6px',
+    gap: '1rem',
     alignItems: 'flex-end',
   },
   formGroup: {
@@ -556,26 +583,26 @@ const styles = {
     flexDirection: 'column',
   },
   label: {
-    marginBottom: '3px',
+    marginBottom: '0.5rem',
     color: '#6b7280',
     fontWeight: '500',
-    fontSize: '11px',
+    fontSize: '0.75rem',
   },
   formControl: {
-    padding: '5px',
+    padding: '0.5rem 0.75rem',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '12px',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
     outline: 'none',
   },
   btnPrimary: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '5px 10px',
-    borderRadius: '6px',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '0.875rem',
     fontWeight: '600',
     transition: 'all 0.2s',
     whiteSpace: 'nowrap',
@@ -599,7 +626,7 @@ const styles = {
   },
   reportTableContainer: {
     backgroundColor: 'white',
-    borderRadius: '8px',
+    borderRadius: '12px',
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
@@ -610,29 +637,29 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px',
+    padding: '1.5rem',
     borderBottom: '1px solid #e5e7eb',
     backgroundColor: '#f9fafb',
   },
   reportTitle: {
     color: '#1f2937',
     margin: 0,
-    fontSize: '13px',
+    fontSize: '1.125rem',
     fontWeight: '600',
   },
   exportButton: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '5px 10px',
-    borderRadius: '6px',
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '11px',
+    fontSize: '0.875rem',
     fontWeight: '600',
     whiteSpace: 'nowrap',
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '0.5rem',
   },
   tableWrapper: {
     overflow: 'auto',
@@ -645,9 +672,9 @@ const styles = {
   },
   reportTh: {
     backgroundColor: '#f3f4f6',
-    padding: '8px',
+    padding: '1rem',
     textAlign: 'left',
-    fontSize: '11px',
+    fontSize: '0.75rem',
     fontWeight: '600',
     color: '#374151',
     borderBottom: '1px solid #e5e7eb',
@@ -655,10 +682,11 @@ const styles = {
     top: 0,
     zIndex: 10,
     whiteSpace: 'nowrap',
+    textTransform: 'uppercase',
   },
   reportTd: {
-    padding: '8px',
-    fontSize: '12px',
+    padding: '1rem',
+    fontSize: '0.875rem',
     color: '#1f2937',
     borderBottom: '1px solid #f3f4f6',
   },
@@ -666,8 +694,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: '3px',
-    padding: '10px',
+    gap: '0.5rem',
+    padding: '1rem 1.5rem',
     borderTop: '1px solid #e5e7eb',
     backgroundColor: '#f9fafb',
   },
@@ -675,11 +703,11 @@ const styles = {
     backgroundColor: 'white',
     color: '#1F2937',
     border: '1px solid #1F2937',
-    padding: '4px 6px',
-    minWidth: '28px',
-    fontSize: '11px',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
@@ -687,28 +715,28 @@ const styles = {
     backgroundColor: '#1F2937',
     color: 'white',
     border: '1px solid #1F2937',
-    padding: '4px 6px',
-    minWidth: '28px',
-    fontSize: '11px',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'pointer',
   },
   paginationButtonDisabled: {
     backgroundColor: '#F3F4F6',
     color: '#D1D5DB',
     border: '1px solid #D1D5DB',
-    padding: '4px 6px',
-    minWidth: '28px',
-    fontSize: '11px',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
     fontWeight: '500',
-    borderRadius: '4px',
+    borderRadius: '6px',
     cursor: 'not-allowed',
   },
   paginationEllipsis: {
     color: '#9ca3af',
-    padding: '0 3px',
-    fontSize: '11px',
+    padding: '0 0.5rem',
+    fontSize: '0.875rem',
   },
 };
 
