@@ -560,7 +560,7 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500'
+    fontWeight: '600'
   },
   invoiceCard: {
     backgroundColor: 'white',

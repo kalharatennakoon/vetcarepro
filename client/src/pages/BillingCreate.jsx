@@ -726,7 +726,7 @@ const styles = {
     fontWeight: '500'
   },
   submitButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
     padding: '12px 32px',

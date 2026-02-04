@@ -146,7 +146,7 @@ const styles = {
     fontSize: '16px',
     fontWeight: '600',
     color: 'white',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#3B82F6',
     border: 'none',
     borderRadius: '6px',
     cursor: 'pointer',

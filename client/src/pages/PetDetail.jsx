@@ -431,12 +431,12 @@ const styles = {
   },
   editButton: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
     fontSize: '0.875rem',
-    fontWeight: '500',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   deleteButton: {
