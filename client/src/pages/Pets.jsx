@@ -268,12 +268,12 @@ const Pets = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.tableHeader}>
-                    <th style={{...styles.th, width: '25%'}}>Pet</th>
-                    <th style={{...styles.th, width: '15%'}}>Species</th>
-                    <th style={{...styles.th, width: '15%'}}>Age</th>
-                    <th style={{...styles.th, width: '25%'}}>Owner</th>
-                    <th style={{...styles.th, width: '10%', textAlign: 'center'}}>Gender</th>
-                    <th style={{...styles.th, width: '10%', textAlign: 'right'}}>Actions</th>
+                    <th style={{...styles.th, width: '22%'}}>Pet</th>
+                    <th style={{...styles.th, width: '13%'}}>Species</th>
+                    <th style={{...styles.th, width: '13%'}}>Age</th>
+                    <th style={{...styles.th, width: '22%'}}>Owner</th>
+                    <th style={{...styles.th, width: '12%', textAlign: 'center'}}>Gender</th>
+                    <th style={{...styles.th, width: '18%', textAlign: 'right'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -245,12 +245,12 @@ const Billing = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Invoice #</th>
-                    <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Customer</th>
-                    <th style={styles.th}>Total</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={{...styles.th, width: '12%'}}>Invoice #</th>
+                    <th style={{...styles.th, width: '15%'}}>Date</th>
+                    <th style={{...styles.th, width: '20%'}}>Customer</th>
+                    <th style={{...styles.th, width: '12%'}}>Total</th>
+                    <th style={{...styles.th, width: '13%'}}>Status</th>
+                    <th style={{...styles.th, width: '28%', textAlign: 'right', paddingRight: '1rem'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -270,7 +270,7 @@ const Billing = () => {
                       <td style={styles.td}>
                         {getStatusBadge(bill.payment_status)}
                       </td>
-                      <td style={styles.td}>
+                      <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={styles.actionButtons}>
                           <button
                             onClick={() => navigate(`/billing/${bill.bill_id}`)}
@@ -281,8 +281,8 @@ const Billing = () => {
                           </button>
                           {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && (
                             <button
-                              onClick={() => navigate(`/billing/${bill.bill_id}`)}
-                              style={styles.viewButton}
+                              onClick={() => navigate(`/billing/${bill.bill_id}`, { state: { openPaymentForm: true } })}
+                              style={styles.payButton}
                               title="Record Payment"
                             >
                               Pay
@@ -291,7 +291,7 @@ const Billing = () => {
                           {user?.role === 'admin' && (
                             <button
                               onClick={() => handleDelete(bill.bill_id)}
-                              style={styles.viewButton}
+                              style={styles.deleteButton}
                               title="Cancel Invoice"
                             >
                               Cancel
@@ -504,9 +504,7 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
+    overflow: 'auto',
     maxHeight: 'calc(100vh - 340px)',
     border: '1px solid #E5E7EB'
   },
@@ -514,8 +512,6 @@ const styles = {
     width: '100%',
     borderCollapse: 'collapse',
     tableLayout: 'fixed',
-    flex: 1,
-    overflow: 'auto',
   },
   th: {
     backgroundColor: '#F9FAFB',
@@ -564,6 +560,7 @@ const styles = {
     display: 'flex',
     gap: '0.5rem',
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   viewButton: {
     backgroundColor: '#3B82F6',
@@ -576,9 +573,12 @@ const styles = {
     fontWeight: '600',
     whiteSpace: 'nowrap',
     transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   payButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#10B981',
     color: 'white',
     border: 'none',
     padding: '0.5rem 1rem',
@@ -588,6 +588,9 @@ const styles = {
     fontWeight: '600',
     whiteSpace: 'nowrap',
     transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   deleteButton: {
     backgroundColor: '#DC2626',
@@ -600,6 +603,9 @@ const styles = {
     fontWeight: '600',
     whiteSpace: 'nowrap',
     transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   paginationContainer: {
     display: 'flex',

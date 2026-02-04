@@ -306,14 +306,6 @@ const Inventory = () => {
                             View
                           </button>
                           <button
-                            onClick={() => navigate(`/inventory/${item.item_id}/edit`)}
-                            style={styles.editButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                          >
-                            Edit
-                          </button>
-                          <button
                             onClick={() => handleDelete(item.item_id)}
                             style={styles.deleteButton}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}

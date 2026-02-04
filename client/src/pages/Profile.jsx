@@ -352,7 +352,11 @@ function Profile() {
                     {isVeterinarian && 'Dr. '}
                     {profileData?.first_name} {profileData?.last_name}
                   </div>
-                  <div style={styles.avatarRole}>{profileData?.role}</div>
+                  <div style={styles.avatarRole}>
+                    {profileData?.role === 'admin' && profileData?.specialization 
+                      ? 'Veterinarian & Admin' 
+                      : profileData?.role}
+                  </div>
                   
                   <div style={styles.imageUploadSection}>
                     <input
@@ -507,7 +511,7 @@ function Profile() {
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>License Number</label>
-                    {isEditing ? (
+                    {isEditing && currentUser.role === 'admin' ? (
                       <input
                         type="text"
                         name="license_number"

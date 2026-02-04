@@ -208,11 +208,11 @@ const Customers = () => {
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.tableHeader}>
-                    <th style={{...styles.th, width: '35%'}}>Customer</th>
-                    <th style={{...styles.th, width: '20%'}}>Phone</th>
-                    <th style={{...styles.th, width: '25%'}}>Email</th>
+                    <th style={{...styles.th, width: '30%'}}>Customer</th>
+                    <th style={{...styles.th, width: '18%'}}>Phone</th>
+                    <th style={{...styles.th, width: '24%'}}>Email</th>
                     <th style={{...styles.th, width: '10%', textAlign: 'center'}}>Pets</th>
-                    <th style={{...styles.th, width: '10%', textAlign: 'right'}}>Actions</th>
+                    <th style={{...styles.th, width: '18%', textAlign: 'right'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
