@@ -223,6 +223,11 @@ export const updatePet = async (petId, petData, updatedBy) => {
     values.push(petData.deceased_date);
     paramCount++;
   }
+  if (petData.image !== undefined) {
+    fields.push(`image = $${paramCount}`);
+    values.push(petData.image);
+    paramCount++;
+  }
 
   fields.push(`updated_by = $${paramCount}`);
   values.push(updatedBy);

@@ -35,7 +35,7 @@ export const findByEmail = async (email) => {
 export const findById = async (userId) => {
   const query = `
     SELECT user_id, first_name, last_name, email, phone, role, 
-           specialization, license_number, is_active, 
+           specialization, license_number, profile_image, is_active, 
            last_login, created_at, updated_at
     FROM users 
     WHERE user_id = $1
@@ -53,7 +53,7 @@ export const findById = async (userId) => {
 export const getAllUsers = async (filters = {}) => {
   let query = `
     SELECT user_id, first_name, last_name, email, phone, role, 
-           specialization, license_number, is_active, 
+           specialization, license_number, profile_image, is_active, 
            last_login, created_at, updated_at
     FROM users 
     WHERE 1=1
@@ -171,6 +171,11 @@ export const updateUser = async (userId, userData, updatedBy) => {
   if (userData.password_hash) {
     fields.push(`password_hash = $${paramCount}`);
     values.push(userData.password_hash);
+    paramCount++;
+  }
+  if (userData.profile_image !== undefined) {
+    fields.push(`profile_image = $${paramCount}`);
+    values.push(userData.profile_image);
     paramCount++;
   }
 

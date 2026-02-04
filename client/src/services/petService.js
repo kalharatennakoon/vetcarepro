@@ -78,3 +78,39 @@ export const getSpeciesList = async () => {
   const response = await axios.get(`${API_URL}/pets/species/list`);
   return response.data;
 };
+
+/**
+ * Upload pet image
+ */
+export const uploadPetImage = async (id, imageFile) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  
+  const response = await axios.post(`${API_URL}/pets/${id}/upload-image`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+/**
+ * Delete pet image
+ */
+export const deletePetImage = async (id) => {
+  const response = await axios.delete(`${API_URL}/pets/${id}/image`);
+  return response.data;
+};
+
+export default {
+  getPets,
+  getPetById,
+  createPet,
+  updatePet,
+  deletePet,
+  getPetMedicalHistory,
+  getPetVaccinations,
+  getSpeciesList,
+  uploadPetImage,
+  deletePetImage
+};

@@ -111,6 +111,20 @@ export const AuthProvider = ({ children }) => {
    */
   const isReceptionist = () => hasRole('receptionist');
 
+  /**
+   * Refresh user data
+   */
+  const refreshUser = async () => {
+    if (token) {
+      try {
+        const response = await axios.get(`${API_URL}/auth/me`);
+        setUser(response.data.data.user);
+      } catch (error) {
+        console.error('Failed to refresh user:', error);
+      }
+    }
+  };
+
   const value = {
     user,
     token,
@@ -121,6 +135,7 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isVet,
     isReceptionist,
+    refreshUser,
     isAuthenticated: !!user
   };
 

@@ -135,9 +135,17 @@ const Layout = ({ children }) => {
                 <span style={styles.userRole}>{getRoleDisplay()}</span>
               </div>
             )}
-            <div style={styles.userAvatar}>
-              {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
-            </div>
+            {user?.profile_image ? (
+              <img
+                src={`http://localhost:5001/uploads/${user.profile_image}`}
+                alt="Profile"
+                style={styles.userAvatarImage}
+              />
+            ) : (
+              <div style={styles.userAvatar}>
+                {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -344,6 +352,14 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '600',
     border: '2px solid #e5e7eb',
+  },
+  userAvatarImage: {
+    width: 'clamp(32px, 8vw, 40px)',
+    height: 'clamp(32px, 8vw, 40px)',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid #e5e7eb',
+    flexShrink: 0,
   },
   userName: {
     fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',

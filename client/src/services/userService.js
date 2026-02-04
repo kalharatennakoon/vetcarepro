@@ -59,3 +59,42 @@ export const deleteUser = async (id) => {
   const response = await axios.delete(`${API_URL}/users/${id}`, getAuthHeader());
   return response.data;
 };
+
+/**
+ * Upload profile image
+ */
+export const uploadProfileImage = async (id, imageFile) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+  
+  const response = await axios.post(
+    `${API_URL}/users/${id}/upload-profile-image`,
+    formData,
+    {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Delete profile image
+ */
+export const deleteProfileImage = async (id) => {
+  const response = await axios.delete(`${API_URL}/users/${id}/profile-image`, getAuthHeader());
+  return response.data;
+};
+
+export default {
+  getVeterinarians,
+  getUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  uploadProfileImage,
+  deleteProfileImage
+};

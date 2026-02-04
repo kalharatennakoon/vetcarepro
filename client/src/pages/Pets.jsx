@@ -286,9 +286,17 @@ const Pets = () => {
                     >
                       <td style={styles.td}>
                         <div style={styles.petCell}>
-                          <div style={styles.avatar}>
-                            <i className={`fas ${getSpeciesIcon(pet.species)}`} style={styles.avatarIcon}></i>
-                          </div>
+                          {pet.image ? (
+                            <img 
+                              src={`http://localhost:5001/uploads/${pet.image}`} 
+                              alt={pet.pet_name}
+                              style={styles.avatarImage}
+                            />
+                          ) : (
+                            <div style={styles.avatar}>
+                              <i className="fas fa-paw" style={styles.avatarIcon}></i>
+                            </div>
+                          )}
                           <div style={styles.petInfo}>
                             <div style={styles.petName}>{pet.pet_name}</div>
                             <div style={styles.petBreed}>{pet.breed || 'Mixed Breed'}</div>
@@ -327,14 +335,6 @@ const Pets = () => {
                             onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
                           >
                             View
-                          </button>
-                          <button
-                            onClick={() => navigate(`/pets/${pet.pet_id}/edit`)}
-                            style={styles.editButton}
-                            onMouseOver={(e) => e.target.style.backgroundColor = styles.editButtonHover.backgroundColor}
-                            onMouseOut={(e) => e.target.style.backgroundColor = styles.editButton.backgroundColor}
-                          >
-                            Edit
                           </button>
                           {user?.role === 'admin' && (
                             <button
@@ -620,6 +620,14 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  avatarImage: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid #e5e7eb',
     flexShrink: 0,
   },
   avatarIcon: {
