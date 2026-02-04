@@ -26,6 +26,7 @@ import Billing from './pages/Billing';
 import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
+import Profile from './pages/Profile';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -257,6 +258,16 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
             <Reports />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Profile route - accessible by all authenticated users */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         } 
       />

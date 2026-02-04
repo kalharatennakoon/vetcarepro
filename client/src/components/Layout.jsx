@@ -226,14 +226,14 @@ const Layout = ({ children }) => {
               )}
             </nav>
             
-            {/* Bottom Section with Settings and Sign Out */}
+            {/* Bottom Section with Profile and Sign Out */}
             <div style={styles.sidebarBottom}>
               <a 
-                href="#" 
-                style={styles.bottomNavItem}
-                onClick={(e) => { e.preventDefault(); /* Add settings navigation */ }}
+                href="/profile" 
+                style={isActive('/profile') ? {...styles.bottomNavItem, ...styles.navItemActive} : styles.bottomNavItem}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/profile'); }}
               >
-                <i className="fas fa-cog"></i> Settings
+                <i className="fas fa-user-circle"></i> Profile
               </a>
               <a 
                 href="#" 
