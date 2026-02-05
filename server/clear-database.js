@@ -16,7 +16,7 @@ const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'vetcarepro',
-  user: process.env.DB_USER || 'vetcarepro_adminuser',
+  user: process.env.DB_USER || 'vetcarepro_admin',
 };
 
 if (process.env.DB_PASSWORD) {

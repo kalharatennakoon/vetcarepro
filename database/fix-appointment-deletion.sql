@@ -1,10 +1,10 @@
 -- Quick Fix for Appointment Deletion (Run as postgres superuser)
 -- This grants necessary permissions and updates constraints
 
--- Grant ownership/permissions to vetcarepro_adminuser
-ALTER TABLE medical_records OWNER TO vetcarepro_adminuser;
-ALTER TABLE billing OWNER TO vetcarepro_adminuser;
-ALTER TABLE appointments OWNER TO vetcarepro_adminuser;
+-- Grant ownership/permissions to vetcarepro_admin
+ALTER TABLE medical_records OWNER TO vetcarepro_admin;
+ALTER TABLE billing OWNER TO vetcarepro_admin;
+ALTER TABLE appointments OWNER TO vetcarepro_admin;
 
 -- Now apply the constraint fixes
 ALTER TABLE medical_records 

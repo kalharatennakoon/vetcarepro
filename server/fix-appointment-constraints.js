@@ -16,7 +16,7 @@ const poolConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
   database: process.env.DB_NAME || 'vetcarepro',
-  user: process.env.DB_USER || 'vetcarepro_adminuser',
+  user: process.env.DB_USER || 'vetcarepro_admin',
 };
 
 if (process.env.DB_PASSWORD) {
@@ -92,7 +92,7 @@ async function fixConstraints() {
     if (error.message.includes('must be owner') || error.message.includes('permission denied')) {
       console.log('\n⚠️  Permission error detected.');
       console.log('   Please run the SQL script manually:');
-      console.log('   psql -h localhost -U vetcarepro_adminuser -d vetcarepro -f ../database/SIMPLE-FIX-appointment-deletion.sql\n');
+      console.log('   psql -h localhost -U vetcarepro_admin -d vetcarepro -f ../database/SIMPLE-FIX-appointment-deletion.sql\n');
     }
   } finally {
     client.release();

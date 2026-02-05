@@ -1,12 +1,12 @@
 -- Run this as postgres superuser to fix appointment deletion
 -- Command: psql -h localhost -U postgres -d vetcarepro -f fix-as-superuser.sql
 
--- First, grant ownership to vetcarepro_adminuser (optional but recommended)
-ALTER TABLE medical_records OWNER TO vetcarepro_adminuser;
-ALTER TABLE billing OWNER TO vetcarepro_adminuser;
-ALTER TABLE appointments OWNER TO vetcarepro_adminuser;
-ALTER TABLE customers OWNER TO vetcarepro_adminuser;
-ALTER TABLE pets OWNER TO vetcarepro_adminuser;
+-- First, grant ownership to vetcarepro_admin (optional but recommended)
+ALTER TABLE medical_records OWNER TO vetcarepro_admin;
+ALTER TABLE billing OWNER TO vetcarepro_admin;
+ALTER TABLE appointments OWNER TO vetcarepro_admin;
+ALTER TABLE customers OWNER TO vetcarepro_admin;
+ALTER TABLE pets OWNER TO vetcarepro_admin;
 
 -- Now fix the constraints
 ALTER TABLE medical_records 
