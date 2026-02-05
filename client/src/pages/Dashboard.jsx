@@ -17,6 +17,11 @@ const Dashboard = () => {
     totalCustomers: 0,
     totalMedicalRecords: 0,
     todayAppointments: 0,
+    todayCompleted: 0,
+    todayCancelled: 0,
+    todayScheduled: 0,
+    todayOverdue: 0,
+    todayUpcoming: 0,
     waitingPatients: 0,
     pendingInvoices: 0,
     lowStockItems: 0,
@@ -25,6 +30,8 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -59,17 +66,57 @@ const Dashboard = () => {
       const bills = billingResponse.data.data?.bills || billingResponse.data.bills || [];
       const lowStockItems = lowStockResponse.data.data || lowStockResponse.data || [];
       
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in local timezone (YYYY-MM-DD format)
+      const today = new Date();
+      const todayString = today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0');
+      
       const todayAppointments = appointments.filter(a => {
         if (!a.appointment_date) return false;
         // Handle both simple date format (2026-02-05) and ISO format (2026-02-05T...)
-        const appointmentDate = a.appointment_date.split('T')[0];
-        return appointmentDate === today;
+        // Also account for timezone issues by comparing the local date
+        const appointmentDate = new Date(a.appointment_date);
+        const appointmentLocalDate = appointmentDate.getFullYear() + '-' + 
+          String(appointmentDate.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(appointmentDate.getDate()).padStart(2, '0');
+        return appointmentLocalDate === todayString;
       });
+
+      // Get current time for more accurate appointment status
+      const now = new Date();
+      const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes from midnight
+
+      // Detailed breakdown of today's appointments
+      const completedToday = todayAppointments.filter(a => a.status === 'completed');
+      const cancelledToday = todayAppointments.filter(a => a.status === 'cancelled');
+      const scheduledToday = todayAppointments.filter(a => a.status === 'scheduled' || a.status === 'checked_in');
+      
+      // Appointments that are overdue (past their scheduled time but still scheduled)
+      const overdueToday = todayAppointments.filter(a => {
+        if (a.status !== 'scheduled' && a.status !== 'checked_in') return false;
+        if (!a.appointment_time) return false;
+        
+        const [hours, minutes] = a.appointment_time.split(':').map(Number);
+        const appointmentTimeMinutes = hours * 60 + minutes;
+        
+        return appointmentTimeMinutes < currentTime;
+      });
+
+      // Appointments still upcoming today
+      const upcomingToday = todayAppointments.filter(a => {
+        if (a.status !== 'scheduled') return false;
+        if (!a.appointment_time) return false;
+        
+        const [hours, minutes] = a.appointment_time.split(':').map(Number);
+        const appointmentTimeMinutes = hours * 60 + minutes;
+        
+        return appointmentTimeMinutes > currentTime;
+      });
+
       const waitingAppointments = todayAppointments.filter(a => 
         a.status === 'scheduled' || a.status === 'checked_in'
       );
-      const completedToday = todayAppointments.filter(a => a.status === 'completed');
       const urgentCases = todayAppointments.filter(a => 
         a.appointment_type?.toLowerCase().includes('emergency') || 
         a.appointment_type?.toLowerCase().includes('urgent')
@@ -84,6 +131,11 @@ const Dashboard = () => {
         totalCustomers: customers.length,
         totalAppointments: appointments.length,
         todayAppointments: todayAppointments.length,
+        todayCompleted: completedToday.length,
+        todayCancelled: cancelledToday.length,
+        todayScheduled: scheduledToday.length,
+        todayOverdue: overdueToday.length,
+        todayUpcoming: upcomingToday.length,
         waitingPatients: waitingAppointments.length,
         completedToday: completedToday.length,
         urgentCases: urgentCases.length,
@@ -91,7 +143,7 @@ const Dashboard = () => {
         pendingInvoices: pendingBills.length,
         lowStockItems: lowStockItems.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
-        recentAppointments: todayAppointments.slice(0, 6),
+        recentAppointments: todayAppointments,
         upcomingAppointments: appointments.filter(a => 
           new Date(a.appointment_date) > new Date() && a.status === 'scheduled'
         ).sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date)).slice(0, 5)
@@ -248,8 +300,8 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#10b981'}}>
-                        {stats.waitingPatients} waiting
+                      <span style={{fontSize: '0.75rem', color: '#10b981'}}>
+                        {stats.todayUpcoming + stats.todayOverdue} waiting
                       </span>
                     </div>
                   </div>
@@ -416,10 +468,14 @@ const Dashboard = () => {
                                 </td>
                                 <td style={styles.td}>
                                   <button 
-                                    onClick={() => navigate(`/appointments/${appointment.appointment_id}`)}
-                                    style={styles.actionButton}
+                                    onClick={() => {
+                                      setSelectedAppointment(appointment);
+                                      setShowModal(true);
+                                    }}
+                                    style={styles.viewButton}
+                                    title="View appointment details"
                                   >
-                                    <i className="fas fa-ellipsis-v"></i>
+                                    View
                                   </button>
                                 </td>
                               </tr>
@@ -501,6 +557,96 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Appointment Details Modal */}
+            {showModal && selectedAppointment && (
+              <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
+                <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                  <div style={styles.modalHeader}>
+                    <h3 style={styles.modalTitle}>Appointment Details</h3>
+                    <button 
+                      style={styles.modalCloseButton}
+                      onClick={() => setShowModal(false)}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                  <div style={styles.modalBody}>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Appointment ID:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.appointment_id}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Patient:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.pet_name} ({selectedAppointment.species})</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Owner:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.customer_first_name} {selectedAppointment.customer_last_name}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Phone:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.customer_phone}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Date & Time:</span>
+                      <span style={styles.modalValue}>
+                        {new Date(selectedAppointment.appointment_date).toLocaleDateString()} at {formatTime(selectedAppointment.appointment_time)}
+                      </span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Type:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.appointment_type}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Reason:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.reason || 'Not specified'}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Veterinarian:</span>
+                      <span style={styles.modalValue}>{selectedAppointment.veterinarian_name || 'Not assigned'}</span>
+                    </div>
+                    <div style={styles.modalRow}>
+                      <span style={styles.modalLabel}>Status:</span>
+                      <span style={{
+                        ...styles.modalValue,
+                        ...styles.badge,
+                        backgroundColor: getStatusBadge(selectedAppointment.status).bg,
+                        color: getStatusBadge(selectedAppointment.status).color,
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.75rem'
+                      }}>
+                        {getStatusBadge(selectedAppointment.status).text}
+                      </span>
+                    </div>
+                    {selectedAppointment.notes && (
+                      <div style={styles.modalRow}>
+                        <span style={styles.modalLabel}>Notes:</span>
+                        <span style={styles.modalValue}>{selectedAppointment.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={styles.modalFooter}>
+                    <button 
+                      style={styles.modalAction}
+                      onClick={() => {
+                        setShowModal(false);
+                        navigate('/appointments');
+                      }}
+                    >
+                      Go to Appointments
+                    </button>
+                    <button 
+                      style={styles.modalCancel}
+                      onClick={() => setShowModal(false)}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -792,6 +938,17 @@ const styles = {
     cursor: 'pointer',
     fontSize: '0.875rem',
   },
+  viewButton: {
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#3b82f6',
+    border: 'none',
+    borderRadius: '6px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    transition: 'background-color 0.2s',
+  },
   sidebar: {
     display: 'flex',
     flexDirection: 'column',
@@ -951,6 +1108,95 @@ const styles = {
     fontWeight: '500',
     color: '#111827',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: 0,
+    maxWidth: '500px',
+    width: '90%',
+    maxHeight: '80vh',
+    overflow: 'auto',
+    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem 1.5rem 1rem 1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    margin: 0,
+    color: '#111827',
+  },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.25rem',
+    color: '#6b7280',
+    cursor: 'pointer',
+    padding: '4px',
+  },
+  modalBody: {
+    padding: '1.5rem',
+  },
+  modalRow: {
+    display: 'flex',
+    marginBottom: '1rem',
+    alignItems: 'flex-start',
+  },
+  modalLabel: {
+    fontWeight: '600',
+    color: '#374151',
+    minWidth: '120px',
+    fontSize: '0.875rem',
+  },
+  modalValue: {
+    color: '#111827',
+    fontSize: '0.875rem',
+    flex: 1,
+  },
+  modalFooter: {
+    padding: '1rem 1.5rem 1.5rem 1.5rem',
+    borderTop: '1px solid #e5e7eb',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '0.75rem',
+  },
+  modalAction: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  modalCancel: {
+    padding: '0.5rem 1rem',
+    backgroundColor: 'transparent',
+    color: '#6b7280',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
   },
   '@media (min-width: 1024px)': {
     mainGrid: {
