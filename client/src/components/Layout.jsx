@@ -74,8 +74,8 @@ const Layout = ({ children }) => {
     
     let prefix = '';
     
-    // Check if user is a veterinarian (has veterinary credentials)
-    if (user.role === 'veterinarian' || (user.specialization && user.license_number)) {
+    // Check if user is a veterinarian
+    if (user.role === 'veterinarian') {
       prefix = 'Dr.';
     } else {
       // For admin and receptionist, use Mr./Ms. based on gender
@@ -90,12 +90,6 @@ const Layout = ({ children }) => {
 
   const getRoleDisplay = () => {
     if (!user) return '';
-    
-    // Special case: if user is admin but has veterinary credentials, show both roles
-    if (user.role === 'admin' && user.specialization && user.license_number) {
-      return 'Veterinarian & Admin';
-    }
-    
     return user.role;
   };
 

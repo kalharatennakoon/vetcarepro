@@ -104,7 +104,7 @@ function Profile() {
       }
 
       // Include veterinarian-specific fields if applicable
-      if (currentUser.role === 'veterinarian' || (currentUser.role === 'admin' && profileData.specialization)) {
+      if (currentUser.role === 'veterinarian') {
         updateData.specialization = formData.specialization;
         updateData.license_number = formData.license_number;
       }
@@ -279,7 +279,38 @@ function Profile() {
     );
   }
 
-  const isVeterinarian = currentUser.role === 'veterinarian' || (currentUser.role === 'admin' && profileData?.specialization);
+  const isVeterinarian = currentUser.role === 'veterinarian';
+
+  // Helper function to detect gender based on name
+  const detectGender = (firstName) => {
+    if (!firstName) return 'male';
+    
+    const lowerName = firstName.toLowerCase();
+    const femaleNames = ['kumari', 'sanduni', 'dulani', 'ayesha', 'chandani', 'thilini', 
+                         'shalini', 'janaki', 'nethmi', 'madhavi', 'anuradha', 'champa', 
+                         'nalini', 'kushani', 'hemali', 'shirani'];
+    
+    if (femaleNames.includes(lowerName) || lowerName.endsWith('ni') || lowerName.endsWith('sha')) {
+      return 'female';
+    }
+    
+    return 'male';
+  };
+
+  // Get name with appropriate prefix
+  const getNameWithPrefix = () => {
+    if (!profileData) return '';
+    
+    let prefix = '';
+    if (isVeterinarian) {
+      prefix = 'Dr.';
+    } else {
+      const gender = detectGender(profileData.first_name);
+      prefix = gender === 'female' ? 'Ms.' : 'Mr.';
+    }
+    
+    return `${prefix} ${profileData.first_name} ${profileData.last_name}`;
+  };
 
   return (
     <Layout>
@@ -349,13 +380,10 @@ function Profile() {
                 
                 <div style={styles.avatarInfo}>
                   <div style={styles.avatarName}>
-                    {isVeterinarian && 'Dr. '}
-                    {profileData?.first_name} {profileData?.last_name}
+                    {getNameWithPrefix()}
                   </div>
                   <div style={styles.avatarRole}>
-                    {profileData?.role === 'admin' && profileData?.specialization 
-                      ? 'Veterinarian & Admin' 
-                      : profileData?.role}
+                    {profileData?.role}
                   </div>
                   
                   <div style={styles.imageUploadSection}>
