@@ -291,9 +291,9 @@ const Pets = () => {
                     >
                       <td style={styles.td}>
                         <div style={styles.petCell}>
-                          {pet.image ? (
+                          {pet.photo_url ? (
                             <img 
-                              src={`http://localhost:5001/uploads/${pet.image}`} 
+                              src={`http://localhost:5001/uploads/${pet.photo_url}`} 
                               alt={pet.pet_name}
                               style={styles.avatarImage}
                             />

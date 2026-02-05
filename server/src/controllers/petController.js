@@ -301,7 +301,7 @@ export const getSpecies = async (req, res) => {
  */
 export const uploadPetImageHandler = async (req, res) => {
   try {
-    const petId = parseInt(req.params.id);
+    const petId = req.params.id; // Use string ID directly (PET-0001)
 
     // Get existing pet
     const existingPet = await getPetById(petId);
@@ -321,13 +321,13 @@ export const uploadPetImageHandler = async (req, res) => {
     }
 
     // Delete old pet image if exists
-    if (existingPet.image) {
-      deleteImageFile(existingPet.image);
+    if (existingPet.photo_url) {
+      deleteImageFile(existingPet.photo_url);
     }
 
     // Update pet with new image path
     const imagePath = `pet-images/${req.file.filename}`;
-    const updatedPet = await updatePet(petId, { image: imagePath }, req.user.user_id);
+    const updatedPet = await updatePet(petId, { photo_url: imagePath }, req.user.user_id);
 
     res.status(200).json({
       status: 'success',

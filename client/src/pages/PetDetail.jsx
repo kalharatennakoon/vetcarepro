@@ -294,9 +294,9 @@ const PetDetail = () => {
       <div style={styles.mainCard}>
         <div style={styles.cardHeader}>
           <div style={styles.titleSection}>
-            {pet.image ? (
+            {pet.photo_url ? (
               <img 
-                src={`http://localhost:5001/uploads/${pet.image}`} 
+                src={`http://localhost:5001/uploads/${pet.photo_url}`} 
                 alt={pet.pet_name}
                 style={styles.headerAvatarImage}
               />
@@ -384,9 +384,9 @@ const PetDetail = () => {
                 <h2 style={styles.sectionTitle}><i className="fas fa-camera"></i> Pet Image</h2>
                 <div style={styles.imageSection}>
                   <div style={styles.imageContainer}>
-                    {imagePreview || pet?.image ? (
+                    {imagePreview || pet?.photo_url ? (
                       <img 
-                        src={imagePreview || `http://localhost:5001/uploads/${pet.image}`} 
+                        src={imagePreview || `http://localhost:5001/uploads/${pet.photo_url}`} 
                         alt={pet.pet_name}
                         style={styles.petImage}
                       />
@@ -431,7 +431,7 @@ const PetDetail = () => {
                         <label htmlFor="petImageInput" style={styles.selectImageButton}>
                           <i className="fas fa-camera"></i> Select Image
                         </label>
-                        {pet?.image && (
+                        {pet?.photo_url && (
                           <button
                             type="button"
                             onClick={handleImageDelete}

@@ -81,3 +81,4 @@ router.post('/:id/upload-image', uploadPetImage.single('image'), uploadPetImageH
 router.delete('/:id/image', deletePetImageHandler);
 
 export default router;
+

@@ -35,6 +35,7 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'veterinarian', 'receptionist')),
     specialization VARCHAR(100), -- For veterinarians (e.g., "Small Animals", "Surgery")
     license_number VARCHAR(50), -- Professional license for vets
+    profile_image VARCHAR(255), -- Profile image path
     is_active BOOLEAN DEFAULT true,
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
