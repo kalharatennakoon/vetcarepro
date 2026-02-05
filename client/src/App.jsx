@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
 import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
+import AppointmentCreate from './pages/AppointmentCreate';
 import Patients from './pages/Patients';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
@@ -63,6 +64,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Appointments />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/appointments/new" 
+        element={
+          <ProtectedRoute>
+            <AppointmentCreate />
           </ProtectedRoute>
         } 
       />

@@ -158,8 +158,8 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
       // Prepare appointment data with proper types and formatting
       const appointmentData = {
-        customer_id: parseInt(formData.customer_id),
-        pet_id: parseInt(formData.pet_id),
+        customer_id: formData.customer_id, // Keep as string for new format
+        pet_id: formData.pet_id, // Keep as string for new format
         appointment_date: formData.appointment_date, // YYYY-MM-DD format
         appointment_time: formData.appointment_time, // HH:MM format
         duration_minutes: parseInt(formData.duration_minutes),

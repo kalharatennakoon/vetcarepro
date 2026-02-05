@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getPets } from '../services/petService';
 import { getCustomers } from '../services/customerService';
 import { getMedicalRecords } from '../services/medicalRecordService';
+import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 
 const Dashboard = () => {
@@ -18,6 +19,7 @@ const Dashboard = () => {
     todayAppointments: 0,
     waitingPatients: 0,
     pendingInvoices: 0,
+    lowStockItems: 0,
     recentAppointments: [],
     upcomingAppointments: []
   });
@@ -38,7 +40,7 @@ const Dashboard = () => {
     try {
       setLoading(true);
       
-      const [petsResponse, customersResponse, appointmentsResponse, medicalRecordsResponse, billingResponse] = await Promise.all([
+      const [petsResponse, customersResponse, appointmentsResponse, medicalRecordsResponse, billingResponse, lowStockResponse] = await Promise.all([
         getPets({}),
         getCustomers({}),
         axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/appointments`, {
@@ -47,18 +49,23 @@ const Dashboard = () => {
         getMedicalRecords({ limit: 5 }),
         axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/billing`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        }).catch(() => ({ data: { bills: [] } }))
+        }).catch(() => ({ data: { bills: [] } })),
+        inventoryService.getLowStockItems().catch(() => ({ data: [] }))
       ]);
 
       const pets = petsResponse.data.pets || [];
       const customers = customersResponse.data.customers || [];
       const appointments = appointmentsResponse.data.data.appointments || [];
-      const bills = billingResponse.data.bills || [];
+      const bills = billingResponse.data.data?.bills || billingResponse.data.bills || [];
+      const lowStockItems = lowStockResponse.data.data || lowStockResponse.data || [];
       
       const today = new Date().toISOString().split('T')[0];
-      const todayAppointments = appointments.filter(a => 
-        a.appointment_date === today || a.appointment_date?.startsWith(today)
-      );
+      const todayAppointments = appointments.filter(a => {
+        if (!a.appointment_date) return false;
+        // Handle both simple date format (2026-02-05) and ISO format (2026-02-05T...)
+        const appointmentDate = a.appointment_date.split('T')[0];
+        return appointmentDate === today;
+      });
       const waitingAppointments = todayAppointments.filter(a => 
         a.status === 'scheduled' || a.status === 'checked_in'
       );
@@ -68,7 +75,7 @@ const Dashboard = () => {
         a.appointment_type?.toLowerCase().includes('urgent')
       );
       const pendingBills = bills.filter(b => 
-        b.payment_status === 'pending' || b.payment_status === 'partially_paid'
+        b.payment_status === 'pending' || b.payment_status === 'partially_paid' || b.payment_status === 'unpaid'
       );
 
       setStats({
@@ -82,11 +89,12 @@ const Dashboard = () => {
         urgentCases: urgentCases.length,
         labResultsReady: 0, // Placeholder for future implementation
         pendingInvoices: pendingBills.length,
+        lowStockItems: lowStockItems.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         recentAppointments: todayAppointments.slice(0, 6),
         upcomingAppointments: appointments.filter(a => 
           new Date(a.appointment_date) > new Date() && a.status === 'scheduled'
-        ).slice(0, 5)
+        ).sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date)).slice(0, 5)
       });
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -453,8 +461,8 @@ const Dashboard = () => {
                         <i className="fas fa-boxes"></i>
                       </div>
                       <div>
-                        <div style={styles.quickStatValue}>--</div>
-                        <div style={styles.quickStatLabel}>Inventory Items</div>
+                        <div style={styles.quickStatValue}>{stats.lowStockItems}</div>
+                        <div style={styles.quickStatLabel}>Low Stock Alerts</div>
                       </div>
                     </div>
                   </div>
