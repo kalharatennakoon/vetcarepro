@@ -116,10 +116,6 @@ const inventoryController = {
       const { id } = req.params;
       const userId = req.user.userId;
 
-      // Log the incoming data for debugging
-      console.log('Update request body:', req.body);
-      console.log('isActive value:', req.body.isActive, 'type:', typeof req.body.isActive);
-
       // Check if item exists
       const existingItem = await inventoryModel.getById(id);
       if (!existingItem) {

@@ -147,7 +147,7 @@ export const getBillById = async (billId) => {
     `;
     paymentsResult = await pool.query(paymentsQuery, [billId]);
   } catch (error) {
-    console.log('Payments table not found, skipping payment history');
+    // Payments table not found, skipping payment history
   }
 
   const [billResult, itemsResult] = await Promise.all([
