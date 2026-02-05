@@ -245,7 +245,11 @@ INSERT INTO medical_records (pet_id, appointment_id, veterinarian_id, visit_date
 ('PET-0044', 'APPT-2024-0034', 2, '2024-09-20', 'Skin condition', 'Hot spots, excessive scratching', 'Flea allergy dermatitis', 'Flea treatment, anti-inflammatory', 'Flea prevention monthly, Prednisolone 5mg - daily for 7 days', 7.0, 38.6, 105, 26, 'Discussed strict flea control. Improvement expected in 1-2 weeks.', 2),
 ('PET-0047', 'APPT-2024-0035', 3, '2024-04-15', 'Emergency - kidney failure', 'Not eating, vomiting, extreme lethargy', 'Acute renal failure', 'Intensive care, IV fluids, multiple medications', 'Various emergency medications', 45.0, 40.1, 120, 36, 'Critical condition. Despite aggressive treatment, died June 10, 2024.', 3),
 ('PET-0048', 'APPT-2024-0036', 1, '2024-11-22', 'Weight loss', 'Owner reports weight loss', 'Weight loss - mild, no other abnormalities', 'Monitor, increase food portions', 'High-calorie supplement', 4.8, 38.5, 190, 32, 'Recheck weight in 2 weeks', 1),
-('PET-0050', 'APPT-2024-0037', 2, '2024-10-12', 'Herding dog exam', 'None', 'Healthy, high energy', 'Continue current exercise regimen', NULL, 18.0, 38.6, 95, 24, 'Excellent condition for working breed', 2);
+('PET-0050', 'APPT-2024-0037', 2, '2024-10-12', 'Herding dog exam', 'None', 'Healthy, high energy', 'Continue current exercise regimen', NULL, 18.0, 38.6, 95, 24, 'Excellent condition for working breed', 2),
+-- Additional medical records for Max (PET-0003)
+('PET-0003', 'APPT-2025-0038', 1, '2025-02-18', 'Arthritis follow-up', 'Mild improvement in mobility, occasional stiffness in cold weather', 'Arthritis - responding well to treatment', 'Continue glucosamine, add physiotherapy exercises', 'Glucosamine & Chondroitin - continue, Carprofen 25mg - as needed', 34.2, 38.5, 88, 24, 'Weight reduced by 0.8kg. Owner reports improved activity levels. Demonstrated physiotherapy exercises.', 1),
+('PET-0003', 'APPT-2025-0041', 2, '2025-09-15', 'Senior wellness exam', 'Generally good, some morning stiffness persists', 'Arthritis - stable, age-related changes noted', 'Continue current management, monitor for progression', 'Glucosamine & Chondroitin - daily, Omega-3 fatty acids added', 33.8, 38.7, 90, 26, 'Senior blood panel normal. Discussed advanced pain management options. Quality of life good.', 2),
+('PET-0003', 'APPT-2026-0001', 1, '2026-01-15', 'Joint pain reassessment', 'Increased difficulty with stairs, slower on walks', 'Arthritis progression - moderate', 'Adjust pain management, consider joint injections', 'Carprofen 50mg - twice daily, Tramadol 25mg - as needed for flare-ups', 33.5, 38.6, 85, 23, 'X-rays show progression of joint degeneration. Discussed quality of life measures and advanced treatment options with owner.', 1);
 
 -- Insert Vaccinations
 INSERT INTO vaccinations (pet_id, vaccine_name, vaccine_type, vaccination_date, next_due_date, batch_number, manufacturer, administered_by, notes, created_by) VALUES
@@ -282,7 +286,6 @@ INSERT INTO vaccinations (pet_id, vaccine_name, vaccine_type, vaccination_date, 
 ('PET-0041', 'DHPP', 'Core', '2022-06-08', '2023-06-08', 'ZTS-DHPP-2022-067', 'Zoetis', 1, 'Overdue', 1),
 ('PET-0044', 'DHPP', 'Core', '2023-09-30', '2024-09-30', 'ZTS-DHPP-2023-134', 'Zoetis', 2, 'Due for renewal', 2),
 ('PET-0044', 'Rabies', 'Core', '2023-09-30', '2026-09-30', 'ZTS-RAB-2023-145', 'Zoetis', 2, NULL, 2),
-('PET-0044', 'DHPP', 'Core', '2022-05-17', '2023-05-17', 'ZTS-DHPP-2022-056', 'Zoetis', 3, 'Overdue', 3),
 ('PET-0050', 'DHPP', 'Core', '2023-10-18', '2024-10-18', 'ZTS-DHPP-2023-145', 'Zoetis', 2, 'Due for renewal', 2),
 ('PET-0050', 'Rabies', 'Core', '2022-10-18', '2025-10-18', 'ZTS-RAB-2022-167', 'Zoetis', 1, NULL, 1),
 ('PET-0052', 'DHPP', 'Core', '2021-01-28', '2022-01-28', 'ZTS-DHPP-2021-012', 'Zoetis', 1, 'Overdue', 1),
@@ -312,8 +315,7 @@ INSERT INTO vaccinations (pet_id, vaccine_name, vaccine_type, vaccination_date, 
 ('PET-0037', 'FVRCP', 'Core', '2023-08-20', '2024-08-20', 'ZTS-FVRCP-2023-112', 'Zoetis', 3, 'Due for renewal', 3),
 ('PET-0042', 'FVRCP', 'Core', '2023-02-19', '2024-02-19', 'ZTS-FVRCP-2023-023', 'Zoetis', 1, 'Due for renewal', 1),
 ('PET-0048', 'FVRCP', 'Core', '2022-08-14', '2023-08-14', 'ZTS-FVRCP-2022-098', 'Zoetis', 1, 'Overdue', 1),
-('PET-0048', 'Rabies', 'Core', '2024-08-14', '2027-08-14', 'ZTS-RAB-2024-112', 'Zoetis', 1, NULL, 1),
-('PET-0048', 'FVRCP', 'Core', '2021-12-22', '2022-12-22', 'ZTS-FVRCP-2021-178', 'Zoetis', 3, 'Overdue', 3),
+('PET-0048', 'Rabies', 'Core', '2024-08-14', '2027-08-14', 'ZTS-RAB-2024-112', 'Zoetis', 1, NULL, 1);
 ('PET-0048', 'Rabies', 'Core', '2023-12-22', '2026-12-22', 'ZTS-RAB-2023-189', 'Zoetis', 3, NULL, 3),
 ('PET-0050', 'FVRCP', 'Core', '2022-04-05', '2023-04-05', 'ZTS-FVRCP-2022-045', 'Zoetis', 1, 'Overdue', 1),
 ('PET-0050', 'Rabies', 'Core', '2024-04-05', '2027-04-05', 'ZTS-RAB-2024-056', 'Zoetis', 1, NULL, 1);
