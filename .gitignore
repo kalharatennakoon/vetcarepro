@@ -37,3 +37,6 @@ configuration-setup.txt
 docs/
 *.jsx.bak
 
+
+# Tests
+VetCarePro-API-Tests.postman_collection.json
