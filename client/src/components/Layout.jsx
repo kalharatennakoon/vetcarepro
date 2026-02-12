@@ -48,6 +48,51 @@ const Layout = ({ children }) => {
     return isActive(path) ? { ...styles.navItem, ...styles.navItemActive } : styles.navItem;
   };
 
+  const detectGender = (firstName) => {
+    // Sri Lankan and common female name patterns
+    const femaleNames = [
+      'dulani', 'ayesha', 'kumari', 'chandani', 'thilini', 'dilini', 'sanduni', 
+      'chamari', 'amaya', 'nimali', 'nuwan', 'nisha', 'priya', 'malini', 'shalini'
+    ];
+    
+    const lowerName = firstName?.toLowerCase() || '';
+    
+    // Check if name is in female list or ends with common female suffixes
+    if (femaleNames.includes(lowerName) || lowerName.endsWith('ni') || lowerName.endsWith('sha')) {
+      return 'female';
+    }
+    
+    return 'male';
+  };
+
+  const getNameWithPrefix = () => {
+    if (!user) return '';
+    
+    const fullName = `${user.first_name} ${user.last_name}`;
+    const initials = `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}`;
+    const gender = detectGender(user.first_name);
+    
+    let prefix = '';
+    
+    // Check if user is a veterinarian
+    if (user.role === 'veterinarian') {
+      prefix = 'Dr.';
+    } else {
+      // For admin and receptionist, use Mr./Ms. based on gender
+      prefix = gender === 'female' ? 'Ms.' : 'Mr.';
+    }
+    
+    if (isMobile) {
+      return `${prefix} ${initials}`;
+    }
+    return `${prefix} ${fullName}`;
+  };
+
+  const getRoleDisplay = () => {
+    if (!user) return '';
+    return user.role;
+  };
+
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -66,22 +111,36 @@ const Layout = ({ children }) => {
           )}
           <div>
             <h1 style={styles.logo} onClick={() => handleNavigation('/dashboard')}>
-              🏥 {!isMobile && 'VetCare Pro'}
+              <i className="fas fa-hospital"></i> {!isMobile && 'VetCare Pro'}
               {isMobile && 'VCP'}
             </h1>
             {!isMobile && <p style={styles.subtitle}>Pro Pet Animal Hospital</p>}
           </div>
         </div>
+
         <div style={styles.headerRight}>
-          <div style={styles.userInfo}>
-            <span style={styles.userName}>
-              {isMobile ? `${user?.first_name?.charAt(0)}${user?.last_name?.charAt(0)}` : `${user?.first_name} ${user?.last_name}`}
-            </span>
-            {!isMobile && <span style={styles.userRole}>{user?.role}</span>}
+          {/* User Profile Section */}
+          <div style={styles.userSection}>
+            {!isMobile && (
+              <div style={styles.userInfo}>
+                <span style={styles.userName}>
+                  {getNameWithPrefix()}
+                </span>
+                <span style={styles.userRole}>{getRoleDisplay()}</span>
+              </div>
+            )}
+            {user?.profile_image ? (
+              <img
+                src={`http://localhost:5001/uploads/${user.profile_image}`}
+                alt="Profile"
+                style={styles.userAvatarImage}
+              />
+            ) : (
+              <div style={styles.userAvatar}>
+                {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+              </div>
+            )}
           </div>
-          <button onClick={handleLogout} style={styles.logoutButton}>
-            {isMobile ? '🚪' : 'Logout'}
-          </button>
         </div>
       </header>
 
@@ -98,75 +157,95 @@ const Layout = ({ children }) => {
           ...(isMobile && isMobileMenuOpen ? styles.sidebarMobileOpen : {}),
           ...(isMobile && !isMobileMenuOpen ? styles.sidebarMobileClosed : {})
         }}>
-          <nav style={styles.nav}>
-            <a 
-              href="/dashboard" 
-              style={getNavItemStyle('/dashboard')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
-            >
-              📊 Dashboard
-            </a>
-            <a 
-              href="/pets" 
-              style={getNavItemStyle('/pets')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
-            >
-              🐾 Pets
-            </a>
-            <a 
-              href="/customers" 
-              style={getNavItemStyle('/customers')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
-            >
-              👥 Customers
-            </a>
-            <a 
-              href="/appointments" 
-              style={getNavItemStyle('/appointments')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
-            >
-              📅 Appointments
-            </a>
-            <a 
-              href="/medical-records" 
-              style={getNavItemStyle('/medical-records')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
-            >
-              📋 Medical Records
-            </a>
-            <a 
-              href="/billing" 
-              style={getNavItemStyle('/billing')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
-            >
-              💰 Billing
-            </a>
-            <a 
-              href="/inventory" 
-              style={getNavItemStyle('/inventory')}
-              onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
-            >
-              📦 Inventory
-            </a>
-            {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+          <div style={styles.sidebarContent}>
+            <nav style={styles.nav}>
               <a 
-                href="/reports" 
-                style={getNavItemStyle('/reports')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
+                href="/dashboard" 
+                style={getNavItemStyle('/dashboard')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
               >
-                📈 Reports
+                <i className="fas fa-chart-line"></i> Dashboard
               </a>
-            )}
-            {user?.role === 'admin' && (
               <a 
-                href="/users" 
-                style={getNavItemStyle('/users')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+                href="/pets" 
+                style={getNavItemStyle('/pets')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
               >
-                👨‍⚕️ Staff
+                <i className="fas fa-paw"></i> Pets
               </a>
-            )}
-          </nav>
+              <a 
+                href="/customers" 
+                style={getNavItemStyle('/customers')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
+              >
+                <i className="fas fa-users"></i> Customers
+              </a>
+              <a 
+                href="/appointments" 
+                style={getNavItemStyle('/appointments')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
+              >
+                <i className="fas fa-calendar-alt"></i> Appointments
+              </a>
+              <a 
+                href="/medical-records" 
+                style={getNavItemStyle('/medical-records')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+              >
+                <i className="fas fa-file-medical"></i> Medical Records
+              </a>
+              <a 
+                href="/billing" 
+                style={getNavItemStyle('/billing')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
+              >
+                <i className="fas fa-dollar-sign"></i> Billing
+              </a>
+              <a 
+                href="/inventory" 
+                style={getNavItemStyle('/inventory')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
+              >
+                <i className="fas fa-boxes"></i> Inventory
+              </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a 
+                  href="/reports" 
+                  style={getNavItemStyle('/reports')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
+                >
+                  <i className="fas fa-chart-bar"></i> Reports
+                </a>
+              )}
+              {user?.role === 'admin' && (
+                <a 
+                  href="/users" 
+                  style={getNavItemStyle('/users')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+                >
+                  <i className="fas fa-user-md"></i> Staff
+                </a>
+              )}
+            </nav>
+            
+            {/* Bottom Section with Profile and Sign Out */}
+            <div style={styles.sidebarBottom}>
+              <a 
+                href="/profile" 
+                style={isActive('/profile') ? {...styles.bottomNavItem, ...styles.navItemActive} : styles.bottomNavItem}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/profile'); }}
+              >
+                <i className="fas fa-user-circle"></i> Profile
+              </a>
+              <a 
+                href="#" 
+                style={styles.bottomNavItemLogout}
+                onClick={(e) => { e.preventDefault(); handleLogout(); }}
+              >
+                <i className="fas fa-sign-out-alt"></i> Sign Out
+              </a>
+            </div>
+          </div>
         </aside>
 
         {/* Content Area */}
@@ -245,10 +324,36 @@ const styles = {
     alignItems: 'center',
     gap: 'clamp(0.5rem, 2vw, 1rem)',
   },
+  userSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  },
   userInfo: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-end',
+  },
+  userAvatar: {
+    width: '2.5rem',
+    height: '2.5rem',
+    borderRadius: '50%',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    border: '2px solid #e5e7eb',
+  },
+  userAvatarImage: {
+    width: 'clamp(32px, 8vw, 40px)',
+    height: 'clamp(32px, 8vw, 40px)',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid #e5e7eb',
+    flexShrink: 0,
   },
   userName: {
     fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
@@ -290,9 +395,17 @@ const styles = {
     width: '250px',
     backgroundColor: '#ffffff',
     borderRight: '1px solid #e5e7eb',
-    padding: '1.5rem 0',
+    padding: 0,
     transition: 'transform 0.3s ease-in-out',
     flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  sidebarContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    justifyContent: 'space-between',
   },
   sidebarMobileOpen: {
     position: 'fixed',
@@ -314,6 +427,33 @@ const styles = {
   nav: {
     display: 'flex',
     flexDirection: 'column',
+    padding: '1.5rem 0',
+    flex: 1,
+    overflowY: 'auto',
+  },
+  sidebarBottom: {
+    borderTop: '1px solid #e5e7eb',
+    padding: '1rem 0',
+  },
+  bottomNavItem: {
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
+    textDecoration: 'none',
+    color: '#374151',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+    display: 'block',
+    cursor: 'pointer',
+  },
+  bottomNavItemLogout: {
+    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
+    textDecoration: 'none',
+    color: '#dc2626',
+    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontWeight: '500',
+    transition: 'all 0.2s',
+    display: 'block',
+    cursor: 'pointer',
   },
   navItem: {
     padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',

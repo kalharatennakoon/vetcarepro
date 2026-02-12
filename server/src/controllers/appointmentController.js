@@ -177,7 +177,7 @@ export const updateAppointmentById = async (req, res) => {
       };
 
       if (checkData.veterinarian_id) {
-        const hasConflict = await checkAppointmentConflict(checkData, parseInt(id));
+        const hasConflict = await checkAppointmentConflict(checkData, id);
         if (hasConflict) {
           return res.status(409).json({
             status: 'error',
@@ -188,7 +188,7 @@ export const updateAppointmentById = async (req, res) => {
     }
 
     const updatedAppointment = await updateAppointment(
-      parseInt(id),
+      id,
       appointmentData,
       req.user.user_id
     );
@@ -227,7 +227,7 @@ export const deleteAppointmentById = async (req, res) => {
       });
     }
 
-    await deleteAppointment(parseInt(id));
+    await deleteAppointment(id);
 
     res.status(200).json({
       status: 'success',
@@ -271,7 +271,7 @@ export const updateStatus = async (req, res) => {
     }
 
     const updatedAppointment = await updateAppointmentStatus(
-      parseInt(id),
+      id,
       status,
       req.user.user_id
     );

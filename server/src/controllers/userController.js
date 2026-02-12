@@ -6,6 +6,7 @@ import {
   emailExists
 } from '../models/userModel.js';
 import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
+import { deleteImageFile } from '../config/multer.js';
 
 /**
  * User Controller
@@ -211,6 +212,118 @@ export const getVeterinarians = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An error occurred while fetching veterinarians'
+    });
+  }
+};
+
+/**
+ * @route   POST /api/users/:id/upload-profile-image
+ * @desc    Upload profile image for user
+ * @access  Private (Admin or own profile)
+ */
+export const uploadUserProfileImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    // Check permissions
+    if (req.user.role !== 'admin' && req.user.user_id !== userId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You do not have permission to update this profile image'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No image file provided'
+      });
+    }
+
+    // Delete old profile image if exists
+    if (existingUser.profile_image) {
+      deleteImageFile(existingUser.profile_image);
+    }
+
+    // Update user with new profile image path
+    const imagePath = `profile-images/${req.file.filename}`;
+    const updatedUser = await updateUser(userId, { profile_image: imagePath }, req.user.user_id);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile image uploaded successfully',
+      data: {
+        user: sanitizeUser(updatedUser),
+        imageUrl: `/uploads/${imagePath}`
+      }
+    });
+  } catch (error) {
+    console.error('Upload profile image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while uploading profile image'
+    });
+  }
+};
+
+/**
+ * @route   DELETE /api/users/:id/profile-image
+ * @desc    Delete profile image for user
+ * @access  Private (Admin or own profile)
+ */
+export const deleteUserProfileImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    // Check permissions
+    if (req.user.role !== 'admin' && req.user.user_id !== userId) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You do not have permission to delete this profile image'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // Delete profile image file if exists
+    if (existingUser.profile_image) {
+      deleteImageFile(existingUser.profile_image);
+    }
+
+    // Update user to remove profile image
+    const updatedUser = await updateUser(userId, { profile_image: null }, req.user.user_id);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile image deleted successfully',
+      data: {
+        user: sanitizeUser(updatedUser)
+      }
+    });
+  } catch (error) {
+    console.error('Delete profile image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while deleting profile image'
     });
   }
 };

@@ -4,11 +4,14 @@ import {
   getUserById,
   updateUserById,
   deleteUserById,
-  getVeterinarians
+  getVeterinarians,
+  uploadUserProfileImage,
+  deleteUserProfileImage
 } from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly, vetOrAdmin } from '../middleware/roleCheck.js';
 import { validateUserUpdate } from '../middleware/validation.js';
+import { uploadProfileImage } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -45,5 +48,15 @@ router.put('/:id', validateUserUpdate, updateUserById);
 // @desc    Delete user (soft delete)
 // @access  Private (Admin only)
 router.delete('/:id', adminOnly, deleteUserById);
+
+// @route   POST /api/users/:id/upload-profile-image
+// @desc    Upload profile image
+// @access  Private (Admin or own profile)
+router.post('/:id/upload-profile-image', uploadProfileImage.single('image'), uploadUserProfileImage);
+
+// @route   DELETE /api/users/:id/profile-image
+// @desc    Delete profile image
+// @access  Private (Admin or own profile)
+router.delete('/:id/profile-image', deleteUserProfileImage);
 
 export default router;

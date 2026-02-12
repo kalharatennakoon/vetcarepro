@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPetById, deletePet, getPetMedicalHistory, getPetVaccinations } from '../services/petService';
+import { getPetById, deletePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import ImageCropModal from '../components/ImageCropModal';
 
 const PetDetail = () => {
   const [pet, setPet] = useState(null);
@@ -11,6 +12,12 @@ const PetDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('info'); // info, medical, vaccinations
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState(null);
+  const [success, setSuccess] = useState('');
   
   const { id } = useParams();
   const navigate = useNavigate();
@@ -94,19 +101,113 @@ const PetDetail = () => {
     });
   };
 
-  const getSpeciesEmoji = (species) => {
-    const emojis = {
-      'Dog': '🐕',
-      'Cat': '🐈',
-      'Bird': '🐦',
-      'Rabbit': '🐰',
-      'Hamster': '🐹',
-      'Guinea Pig': '🐹',
-      'Fish': '🐠',
-      'Reptile': '🦎',
-      'Other': '🐾'
+  const getSpeciesIcon = (species) => {
+    const icons = {
+      'Dog': 'fa-dog',
+      'Cat': 'fa-cat',
+      'Bird': 'fa-dove',
+      'Rabbit': 'fa-rabbit',
+      'Hamster': 'fa-hamster',
+      'Guinea Pig': 'fa-hamster',
+      'Fish': 'fa-fish',
+      'Reptile': 'fa-dragon',
+      'Other': 'fa-paw'
     };
-    return emojis[species] || '🐾';
+    return icons[species] || 'fa-paw';
+  };
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImageToCrop(reader.result);
+        setShowCropModal(true);
+      };
+      reader.readAsDataURL(file);
+      setError('');
+    }
+  };
+
+  const handleCropComplete = (croppedBlob) => {
+    const croppedUrl = URL.createObjectURL(croppedBlob);
+    setImagePreview(croppedUrl);
+    
+    const fileName = `pet-${Date.now()}.jpg`;
+    const croppedFile = new File([croppedBlob], fileName, { type: 'image/jpeg' });
+    setSelectedImage(croppedFile);
+    
+    setShowCropModal(false);
+    setImageToCrop(null);
+  };
+
+  const handleCropCancel = () => {
+    setShowCropModal(false);
+    setImageToCrop(null);
+  };
+
+  const handleImageUpload = async () => {
+    if (!selectedImage) {
+      setError('Please select an image first');
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setError('');
+      await uploadPetImage(id, selectedImage);
+      
+      setSuccess('Pet image uploaded successfully');
+      setSelectedImage(null);
+      setImagePreview(null);
+      
+      await fetchPetDetails();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload image');
+      console.error('Error uploading image:', err);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this pet image?')) {
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setError('');
+      await deletePetImage(id);
+      
+      setSuccess('Pet image deleted successfully');
+      setSelectedImage(null);
+      setImagePreview(null);
+      
+      await fetchPetDetails();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete image');
+      console.error('Error deleting image:', err);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const cancelImageSelection = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setError('');
   };
 
   if (loading) {
@@ -149,6 +250,14 @@ const PetDetail = () => {
 
   return (
     <Layout>
+    {showCropModal && (
+      <ImageCropModal
+        image={imageToCrop}
+        onCancel={handleCropCancel}
+        onComplete={handleCropComplete}
+      />
+    )}
+    
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
@@ -167,11 +276,33 @@ const PetDetail = () => {
         </div>
       </div>
 
+      {error && (
+        <div style={styles.errorAlert}>
+          <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div style={styles.successAlert}>
+          <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
+          {success}
+        </div>
+      )}
+
       {/* Pet Information Card */}
       <div style={styles.mainCard}>
         <div style={styles.cardHeader}>
           <div style={styles.titleSection}>
-            <span style={styles.emoji}>{getSpeciesEmoji(pet.species)}</span>
+            {pet.photo_url ? (
+              <img 
+                src={`http://localhost:5001/uploads/${pet.photo_url}`} 
+                alt={pet.pet_name}
+                style={styles.headerAvatarImage}
+              />
+            ) : (
+              <i className="fas fa-paw" style={styles.icon}></i>
+            )}
             <div>
               <h1 style={styles.petName}>{pet.pet_name}</h1>
               <p style={styles.petId}>Pet ID: #{pet.pet_id}</p>
@@ -195,19 +326,19 @@ const PetDetail = () => {
             style={activeTab === 'info' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('info')}
           >
-            📋 Information
+            <i className="fas fa-info-circle"></i> Information
           </button>
           <button
             style={activeTab === 'medical' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('medical')}
           >
-            🏥 Medical History ({medicalHistory.length})
+            <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
           </button>
           <button
             style={activeTab === 'vaccinations' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('vaccinations')}
           >
-            💉 Vaccinations ({vaccinations.length})
+            <i className="fas fa-syringe"></i> Vaccinations ({vaccinations.length})
           </button>
         </div>
 
@@ -217,7 +348,7 @@ const PetDetail = () => {
             <>
               {/* Basic Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>🐾 Basic Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-paw"></i> Basic Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Species:</span>
@@ -248,9 +379,81 @@ const PetDetail = () => {
                 </div>
               </div>
 
+              {/* Pet Image Section */}
+              <div style={styles.section}>
+                <h2 style={styles.sectionTitle}><i className="fas fa-camera"></i> Pet Image</h2>
+                <div style={styles.imageSection}>
+                  <div style={styles.imageContainer}>
+                    {imagePreview || pet?.photo_url ? (
+                      <img 
+                        src={imagePreview || `http://localhost:5001/uploads/${pet.photo_url}`} 
+                        alt={pet.pet_name}
+                        style={styles.petImage}
+                      />
+                    ) : (
+                      <div style={styles.noImage}>
+                        <i className="fas fa-paw" style={styles.noImageIcon}></i>
+                        <p>No image uploaded</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div style={styles.imageActions}>
+                    <input
+                      type="file"
+                      id="petImageInput"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleImageSelect}
+                      style={{ display: 'none' }}
+                    />
+                    
+                    {selectedImage ? (
+                      <div style={styles.imageButtonGroup}>
+                        <button
+                          type="button"
+                          onClick={handleImageUpload}
+                          disabled={uploadingImage}
+                          style={styles.uploadButton}
+                        >
+                          <i className="fas fa-upload"></i> {uploadingImage ? 'Uploading...' : 'Upload Image'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelImageSelection}
+                          disabled={uploadingImage}
+                          style={styles.cancelImageButton}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={styles.imageButtonGroup}>
+                        <label htmlFor="petImageInput" style={styles.selectImageButton}>
+                          <i className="fas fa-camera"></i> Select Image
+                        </label>
+                        {pet?.photo_url && (
+                          <button
+                            type="button"
+                            onClick={handleImageDelete}
+                            disabled={uploadingImage}
+                            style={styles.deleteImageButton}
+                          >
+                            <i className="fas fa-trash"></i> Remove
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <p style={styles.imageHint}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '0.25rem' }}></i>
+                      Max 5MB • JPEG, PNG, GIF, WebP
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Owner Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>👤 Owner Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Owner:</span>
@@ -274,7 +477,7 @@ const PetDetail = () => {
 
               {/* Medical Information */}
               <div style={styles.section}>
-                <h2 style={styles.sectionTitle}>💊 Medical Information</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-pills"></i> Medical Information</h2>
                 <div style={styles.infoGrid}>
                   <div style={styles.infoItem}>
                     <span style={styles.infoLabel}>Neutered/Spayed:</span>
@@ -314,7 +517,7 @@ const PetDetail = () => {
           {activeTab === 'medical' && (
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>🏥 Medical History</h2>
+                <h2 style={styles.sectionTitle}><i className="fas fa-hospital"></i> Medical History</h2>
                 {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                   <button 
                     onClick={() => navigate(`/medical-records/new?petId=${id}`)} 
@@ -363,7 +566,7 @@ const PetDetail = () => {
 
           {activeTab === 'vaccinations' && (
             <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>💉 Vaccinations</h2>
+              <h2 style={styles.sectionTitle}><i className="fas fa-syringe"></i> Vaccinations</h2>
               {vaccinations.length === 0 ? (
                 <div style={styles.emptyState}>
                   <p>No vaccination records found</p>
@@ -431,12 +634,12 @@ const styles = {
   },
   editButton: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#f59e0b',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
     fontSize: '0.875rem',
-    fontWeight: '500',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   deleteButton: {
@@ -467,8 +670,17 @@ const styles = {
     alignItems: 'center',
     gap: '1rem',
   },
-  emoji: {
+  icon: {
     fontSize: '3rem',
+    color: '#3b82f6',
+  },
+  headerAvatarImage: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '3px solid #e5e7eb',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
   },
   petName: {
     fontSize: '2rem',
@@ -483,38 +695,39 @@ const styles = {
   },
   badges: {
     display: 'flex',
-    gap: '0.5rem',
+    gap: '1rem',
+    alignItems: 'center',
   },
   activeBadge: {
-    padding: '0.5rem 1rem',
     backgroundColor: '#d1fae5',
     color: '#065f46',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
     fontWeight: '500',
   },
   inactiveBadge: {
-    padding: '0.5rem 1rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
     fontWeight: '500',
   },
   maleBadge: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
+    backgroundColor: '#f3f4f6',
+    color: '#111827',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
     fontWeight: '500',
   },
   femaleBadge: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#fce7f3',
-    color: '#9f1239',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
+    backgroundColor: '#f3f4f6',
+    color: '#111827',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.75rem',
     fontWeight: '500',
   },
   tabs: {
@@ -713,6 +926,145 @@ const styles = {
   errorText: {
     color: '#ef4444',
     marginBottom: '1rem',
+  },
+  errorAlert: {
+    backgroundColor: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    color: '#991B1B',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '1.5rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  successAlert: {
+    backgroundColor: '#D1FAE5',
+    border: '1px solid #6EE7B7',
+    color: '#065F46',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '1.5rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  imageSection: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '1.5rem',
+    padding: '1rem',
+    backgroundColor: '#F9FAFB',
+    borderRadius: '8px',
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '200px',
+    height: '200px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  petImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: '12px',
+    objectFit: 'cover',
+    border: '3px solid white',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  },
+  noImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: '12px',
+    backgroundColor: '#E5E7EB',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#6B7280',
+    border: '2px dashed #9CA3AF',
+  },
+  noImageIcon: {
+    fontSize: '3rem',
+    marginBottom: '0.5rem',
+    color: '#9CA3AF',
+  },
+  imageActions: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.75rem',
+    width: '100%',
+    maxWidth: '400px',
+  },
+  imageButtonGroup: {
+    display: 'flex',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  selectImageButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  uploadButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#10B981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  deleteImageButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#EF4444',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  cancelImageButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#6B7280',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  imageHint: {
+    fontSize: '0.75rem',
+    color: '#6B7280',
+    textAlign: 'center',
   },
 };
 

@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
 import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
+import AppointmentCreate from './pages/AppointmentCreate';
 import Patients from './pages/Patients';
 import Users from './pages/Users';
 import Customers from './pages/Customers';
@@ -26,6 +27,7 @@ import Billing from './pages/Billing';
 import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
+import Profile from './pages/Profile';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -62,6 +64,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Appointments />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/appointments/new" 
+        element={
+          <ProtectedRoute>
+            <AppointmentCreate />
           </ProtectedRoute>
         } 
       />
@@ -257,6 +268,16 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
             <Reports />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Profile route - accessible by all authenticated users */}
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         } 
       />

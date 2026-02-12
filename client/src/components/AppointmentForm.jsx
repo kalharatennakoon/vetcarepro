@@ -55,10 +55,14 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       setLoading(true);
       const response = await getAppointmentById(appointmentId);
       const appointment = response.data.appointment;
+      
+      // Extract date in YYYY-MM-DD format without timezone conversion
+      const appointmentDate = appointment.appointment_date.split('T')[0];
+      
       setFormData({
         customer_id: appointment.customer_id,
         pet_id: appointment.pet_id,
-        appointment_date: appointment.appointment_date,
+        appointment_date: appointmentDate,
         appointment_time: appointment.appointment_time.substring(0, 5), // Format HH:MM
         duration_minutes: appointment.duration_minutes,
         appointment_type: appointment.appointment_type,
@@ -158,8 +162,8 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
       // Prepare appointment data with proper types and formatting
       const appointmentData = {
-        customer_id: parseInt(formData.customer_id),
-        pet_id: parseInt(formData.pet_id),
+        customer_id: formData.customer_id, // Keep as string for new format
+        pet_id: formData.pet_id, // Keep as string for new format
         appointment_date: formData.appointment_date, // YYYY-MM-DD format
         appointment_time: formData.appointment_time, // HH:MM format
         duration_minutes: parseInt(formData.duration_minutes),
@@ -206,7 +210,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>{isEditMode ? 'Edit Appointment' : 'Schedule Appointment'}</h2>
-        <button onClick={onCancel} style={styles.cancelButton}>✕</button>
+        <button onClick={onCancel} style={styles.cancelButton}><i className="fas fa-times"></i></button>
       </div>
 
       {error && (

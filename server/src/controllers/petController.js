@@ -10,6 +10,7 @@ import {
   getSpeciesList
 } from '../models/petModel.js';
 import { getCustomerById } from '../models/customerModel.js';
+import { deleteImageFile } from '../config/multer.js';
 
 /**
  * Pet Controller
@@ -289,6 +290,106 @@ export const getSpecies = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An error occurred while fetching species list'
+    });
+  }
+};
+
+/**
+ * @route   POST /api/pets/:id/upload-image
+ * @desc    Upload pet image
+ * @access  Private
+ */
+export const uploadPetImageHandler = async (req, res) => {
+  try {
+    const petId = req.params.id; // Use string ID directly (PET-0001)
+
+    // Get existing pet
+    const existingPet = await getPetById(petId);
+    if (!existingPet) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Pet not found'
+      });
+    }
+
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No image file provided'
+      });
+    }
+
+    // Delete old pet image if exists
+    if (existingPet.photo_url) {
+      deleteImageFile(existingPet.photo_url);
+    }
+
+    // Update pet with new image path
+    const imagePath = `pet-images/${req.file.filename}`;
+    const updatedPet = await updatePet(petId, { photo_url: imagePath }, req.user.user_id);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Pet image uploaded successfully',
+      data: {
+        pet: updatedPet,
+        imageUrl: `/uploads/${imagePath}`
+      }
+    });
+  } catch (error) {
+    console.error('Upload pet image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while uploading pet image'
+    });
+  }
+};
+
+/**
+ * @route   DELETE /api/pets/:id/image
+ * @desc    Delete pet image
+ * @access  Private
+ */
+export const deletePetImageHandler = async (req, res) => {
+  try {
+    const petId = parseInt(req.params.id);
+
+    // Get existing pet
+    const existingPet = await getPetById(petId);
+    if (!existingPet) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Pet not found'
+      });
+    }
+
+    // Check if pet has an image
+    if (!existingPet.image) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Pet does not have an image'
+      });
+    }
+
+    // Delete the image file
+    deleteImageFile(existingPet.image);
+
+    // Update pet to remove image path
+    const updatedPet = await updatePet(petId, { image: null }, req.user.user_id);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Pet image deleted successfully',
+      data: {
+        pet: updatedPet
+      }
+    });
+  } catch (error) {
+    console.error('Delete pet image error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while deleting pet image'
     });
   }
 };

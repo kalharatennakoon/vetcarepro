@@ -7,7 +7,9 @@ import {
   deletePetById,
   getPetMedicalHistoryById,
   getPetVaccinationsById,
-  getSpecies
+  getSpecies,
+  uploadPetImageHandler,
+  deletePetImageHandler
 } from '../controllers/petController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -15,6 +17,7 @@ import {
   validatePetCreate,
   validatePetUpdate
 } from '../middleware/validation.js';
+import { uploadPetImage } from '../config/multer.js';
 
 const router = express.Router();
 
@@ -67,4 +70,15 @@ router.get('/:id/medical-history', getPetMedicalHistoryById);
 // @access  Private
 router.get('/:id/vaccinations', getPetVaccinationsById);
 
+// @route   POST /api/pets/:id/upload-image
+// @desc    Upload pet image
+// @access  Private
+router.post('/:id/upload-image', uploadPetImage.single('image'), uploadPetImageHandler);
+
+// @route   DELETE /api/pets/:id/image
+// @desc    Delete pet image
+// @access  Private
+router.delete('/:id/image', deletePetImageHandler);
+
 export default router;
+

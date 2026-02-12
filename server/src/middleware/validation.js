@@ -13,8 +13,6 @@ export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', JSON.stringify(errors.array(), null, 2));
-    console.log('Request body:', req.body);
     return res.status(400).json({
       status: 'error',
       message: 'Validation failed',
@@ -310,8 +308,8 @@ export const validatePetCreate = [
   body('customer_id')
     .notEmpty()
     .withMessage('Customer ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Customer ID must be a valid number'),
+    .matches(/^CUST-\d{4}$/)
+    .withMessage('Customer ID must be in format CUST-XXXX'),
   
   body('pet_name')
     .trim()
@@ -376,14 +374,14 @@ export const validateAppointmentCreate = [
   body('customer_id')
     .notEmpty()
     .withMessage('Customer ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Customer ID must be a valid number'),
+    .matches(/^CUST-\d{4}$/)
+    .withMessage('Customer ID must be in format CUST-XXXX'),
   
   body('pet_id')
     .notEmpty()
     .withMessage('Pet ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Pet ID must be a valid number'),
+    .matches(/^PET-\d{4}$/)
+    .withMessage('Pet ID must be in format PET-XXXX'),
   
   body('appointment_date')
     .notEmpty()
@@ -429,13 +427,13 @@ export const validateAppointmentCreate = [
 export const validateAppointmentUpdate = [
   body('customer_id')
     .optional()
-    .isInt({ min: 1 })
-    .withMessage('Customer ID must be a valid number'),
+    .matches(/^CUST-\d{4}$/)
+    .withMessage('Customer ID must be in format CUST-XXXX'),
   
   body('pet_id')
     .optional()
-    .isInt({ min: 1 })
-    .withMessage('Pet ID must be a valid number'),
+    .matches(/^PET-\d{4}$/)
+    .withMessage('Pet ID must be in format PET-XXXX'),
   
   body('appointment_date')
     .optional()

@@ -10,6 +10,10 @@ dotenv.config({ path: join(__dirname, '../../.env') });
 
 const { Pool } = pg;
 
+// Configure pg to return dates as strings without timezone conversion
+// This prevents timezone-related date shifting issues
+pg.types.setTypeParser(1082, (val) => val); // DATE type (1082)
+
 // PostgreSQL connection pool configuration
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',

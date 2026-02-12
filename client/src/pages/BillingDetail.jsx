@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getBillById, recordPayment } from '../services/billingService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -21,11 +21,19 @@ const BillingDetail = () => {
   
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   useEffect(() => {
     fetchBill();
   }, [id]);
+
+  useEffect(() => {
+    // Check if we should open the payment form
+    if (location.state?.openPaymentForm && bill) {
+      setShowPaymentForm(true);
+    }
+  }, [location.state?.openPaymentForm, bill]);
 
   const fetchBill = async () => {
     try {
@@ -222,7 +230,7 @@ const BillingDetail = () => {
                 onClick={() => setShowPaymentForm(!showPaymentForm)} 
                 style={styles.paymentButton}
               >
-                {showPaymentForm ? 'Cancel' : '💳 Record Payment'}
+                {showPaymentForm ? 'Cancel' : <><i className="fas fa-credit-card"></i> Record Payment</>}
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
@@ -230,7 +238,7 @@ const BillingDetail = () => {
                 onClick={() => window.print()} 
                 style={styles.printButton}
               >
-                🖨️ Print Invoice
+                <i className="fas fa-print"></i> Print Invoice
               </button>
             )}
           </div>
@@ -298,7 +306,7 @@ const BillingDetail = () => {
                     <td style={styles.td}>{item.item_name}</td>
                     <td style={styles.td}>
                       <span style={styles.itemTypeBadge}>
-                        {item.item_type.replace('_', ' ')}
+                        {item.item_type ? item.item_type.replace('_', ' ') : '-'}
                       </span>
                     </td>
                     <td style={styles.tdRight}>{item.quantity}</td>
@@ -484,7 +492,7 @@ const BillingDetail = () => {
                       <strong style={{color: '#059669'}}>{formatCurrency(payment.amount)}</strong>
                     </td>
                     <td style={styles.td}>
-                      <span style={styles.methodBadge}>{payment.payment_method.replace('_', ' ')}</span>
+                      <span style={styles.methodBadge}>{payment.payment_method ? payment.payment_method.replace('_', ' ') : '-'}</span>
                     </td>
                     <td style={styles.td}>{payment.payment_reference || '-'}</td>
                     <td style={styles.td}>{payment.received_by_name}</td>
@@ -560,7 +568,7 @@ const styles = {
     borderRadius: '8px',
     cursor: 'pointer',
     fontSize: '14px',
-    fontWeight: '500'
+    fontWeight: '600'
   },
   invoiceCard: {
     backgroundColor: 'white',

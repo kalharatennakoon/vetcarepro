@@ -18,6 +18,11 @@ DROP TABLE IF EXISTS customers CASCADE;
 DROP TABLE IF EXISTS inventory CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
+-- Create sequences for formatted IDs
+CREATE SEQUENCE IF NOT EXISTS customers_id_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS pets_id_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS appointments_id_seq START 1;
+
 -- Users Table (Staff: Admin, Receptionists, Veterinarians)
 -- Supports: Authentication, Role-based access, Audit trail
 CREATE TABLE users (
@@ -30,6 +35,7 @@ CREATE TABLE users (
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'veterinarian', 'receptionist')),
     specialization VARCHAR(100), -- For veterinarians (e.g., "Small Animals", "Surgery")
     license_number VARCHAR(50), -- Professional license for vets
+    profile_image VARCHAR(255), -- Profile image path
     is_active BOOLEAN DEFAULT true,
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,7 +47,7 @@ CREATE TABLE users (
 -- Customers Table (Pet Owners)
 -- Supports: Customer management, Contact tracking
 CREATE TABLE customers (
-    customer_id SERIAL PRIMARY KEY,
+    customer_id VARCHAR(50) PRIMARY KEY DEFAULT 'CUST-' || LPAD(nextval('customers_id_seq')::TEXT, 4, '0'),
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     email VARCHAR(100),
@@ -65,8 +71,8 @@ CREATE TABLE customers (
 -- Pets Table
 -- Supports: Pet profiles, Medical history tracking, Species-specific data
 CREATE TABLE pets (
-    pet_id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    pet_id VARCHAR(50) PRIMARY KEY DEFAULT 'PET-' || LPAD(nextval('pets_id_seq')::TEXT, 4, '0'),
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
     pet_name VARCHAR(50) NOT NULL,
     photo_url VARCHAR(255),
     species VARCHAR(50) NOT NULL,
@@ -92,9 +98,9 @@ CREATE TABLE pets (
 -- Appointments Table
 -- Supports: Scheduling, State transitions, Conflict prevention
 CREATE TABLE appointments (
-    appointment_id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
-    pet_id INTEGER NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+    appointment_id VARCHAR(50) PRIMARY KEY,
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    pet_id VARCHAR(50) NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
     veterinarian_id INTEGER REFERENCES users(user_id),
     appointment_date DATE NOT NULL,
     appointment_time TIME NOT NULL,
@@ -117,8 +123,8 @@ CREATE TABLE appointments (
 -- Supports: Complete medical history, Clinical data, Prescriptions
 CREATE TABLE medical_records (
     record_id SERIAL PRIMARY KEY,
-    pet_id INTEGER NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
-    appointment_id INTEGER REFERENCES appointments(appointment_id),
+    pet_id VARCHAR(50) NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+    appointment_id VARCHAR(50) REFERENCES appointments(appointment_id),
     veterinarian_id INTEGER NOT NULL REFERENCES users(user_id),
     visit_date DATE NOT NULL,
     chief_complaint VARCHAR(255),
@@ -145,7 +151,7 @@ CREATE TABLE medical_records (
 -- Supports: Vaccination schedules, Reminder system, Batch tracking
 CREATE TABLE vaccinations (
     vaccination_id SERIAL PRIMARY KEY,
-    pet_id INTEGER NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+    pet_id VARCHAR(50) NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
     vaccine_name VARCHAR(100) NOT NULL,
     vaccine_type VARCHAR(50), -- e.g., "Core", "Non-core", "Required by law"
     vaccination_date DATE NOT NULL,
@@ -169,7 +175,7 @@ CREATE TABLE vaccinations (
 -- Supports: Epidemiological tracking, Pattern analysis, ML training data
 CREATE TABLE disease_cases (
     case_id SERIAL PRIMARY KEY,
-    pet_id INTEGER NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+    pet_id VARCHAR(50) NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
     disease_name VARCHAR(100) NOT NULL,
     disease_category VARCHAR(50) CHECK (disease_category IN ('infectious', 'parasitic', 'metabolic', 'genetic', 'immune_mediated', 'neoplastic', 'traumatic', 'nutritional')),
     diagnosis_date DATE NOT NULL,
@@ -229,8 +235,8 @@ CREATE TABLE inventory (
 CREATE TABLE billing (
     bill_id SERIAL PRIMARY KEY,
     bill_number VARCHAR(50) UNIQUE NOT NULL,
-    customer_id INTEGER NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
-    appointment_id INTEGER REFERENCES appointments(appointment_id),
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(customer_id) ON DELETE CASCADE,
+    appointment_id VARCHAR(50) REFERENCES appointments(appointment_id),
     bill_date DATE NOT NULL DEFAULT CURRENT_DATE,
     due_date DATE,
     subtotal DECIMAL(10,2) NOT NULL,
@@ -354,6 +360,22 @@ CREATE INDEX idx_daily_sales_date ON daily_sales_summary(summary_date);
 CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
 CREATE INDEX idx_audit_logs_table ON audit_logs(table_name);
 CREATE INDEX idx_audit_logs_timestamp ON audit_logs(timestamp);
+
+-- Auto-generate formatted appointment IDs with year
+CREATE OR REPLACE FUNCTION generate_appointment_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.appointment_id IS NULL OR NEW.appointment_id = '' THEN
+        NEW.appointment_id := 'APPT-' || TO_CHAR(NEW.appointment_date, 'YYYY') || '-' || LPAD(nextval('appointments_id_seq')::TEXT, 4, '0');
+    END IF;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER trigger_generate_appointment_id 
+    BEFORE INSERT ON appointments 
+    FOR EACH ROW 
+    EXECUTE FUNCTION generate_appointment_id();
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

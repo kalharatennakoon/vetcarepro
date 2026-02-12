@@ -15,6 +15,8 @@ const Inventory = () => {
   });
   const [lowStockCount, setLowStockCount] = useState(0);
   const [expiringCount, setExpiringCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const categories = [
     { value: '', label: 'All Categories' },
@@ -99,6 +101,38 @@ const Inventory = () => {
     return `Rs. ${parseFloat(amount).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const getPageNumbers = () => {
+    const totalPages = Math.ceil(inventory.length / itemsPerPage);
+    const pages = [];
+    const maxPagesToShow = 7;
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 4) pages.push('...');
+      for (let i = Math.max(2, currentPage - 2); i <= Math.min(totalPages - 1, currentPage + 2); i++) {
+        if (!pages.includes(i)) pages.push(i);
+      }
+      if (currentPage < totalPages - 3) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  const handlePageChange = (page) => {
+    if (typeof page === 'number') {
+      setCurrentPage(page);
+    }
+  };
+
+  const getPaginatedInventory = () => {
+    const totalPages = Math.ceil(inventory.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return inventory.slice(startIndex, endIndex);
+  };
+
   return (
     <Layout>
       {/* Page Header */}
@@ -116,6 +150,37 @@ const Inventory = () => {
           + Add New Item
         </button>
       </div>
+
+      {/* Summary at Top */}
+      {!loading && inventory.length > 0 && (
+        <div style={styles.summaryContainer}>
+          <h3 style={styles.summaryTitle}>Inventory Summary</h3>
+          <div style={styles.summaryGrid}>
+            <div style={styles.summaryCardBlue}>
+              <p style={styles.summaryLabel}>Total Items</p>
+              <p style={styles.summaryValue}>{inventory.length}</p>
+            </div>
+            <div style={styles.summaryCardGreen}>
+              <p style={styles.summaryLabel}>Total Value</p>
+              <p style={styles.summaryValue}>
+                {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
+              </p>
+            </div>
+            <div style={styles.summaryCardPurple}>
+              <p style={styles.summaryLabel}>Active Items</p>
+              <p style={styles.summaryValue}>
+                {inventory.filter(item => item.is_active && item.quantity > 0).length}
+              </p>
+            </div>
+            <div style={styles.summaryCardYellow}>
+              <p style={styles.summaryLabel}>Out of Stock</p>
+              <p style={styles.summaryValue}>
+                {inventory.filter(item => item.quantity === 0).length}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alert Summary */}
       {(lowStockCount > 0 || expiringCount > 0) && (
@@ -179,11 +244,6 @@ const Inventory = () => {
         </div>
       ) : (
         <>
-          {/* Inventory Count */}
-          <div style={styles.countInfo}>
-            Total Items: <strong>{inventory.length}</strong>
-          </div>
-
           {/* Inventory Table */}
           <div style={styles.tableContainer}>
             {inventory.length === 0 ? (
@@ -199,20 +259,21 @@ const Inventory = () => {
                 </button>
               </div>
             ) : (
-              <table style={styles.table}>
-                <thead>
-                  <tr style={styles.tableHeader}>
-                    <th style={styles.th}>Item</th>
-                    <th style={styles.th}>Category</th>
-                    <th style={styles.th}>Quantity</th>
-                    <th style={styles.th}>Unit Cost</th>
-                    <th style={styles.th}>Selling Price</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inventory.map((item) => (
+              <>
+                <table style={styles.table}>
+                  <thead>
+                    <tr style={styles.tableHeader}>
+                      <th style={styles.th}>Item</th>
+                      <th style={styles.th}>Category</th>
+                      <th style={styles.th}>Quantity</th>
+                      <th style={styles.th}>Unit Cost</th>
+                      <th style={styles.th}>Selling Price</th>
+                      <th style={styles.th}>Status</th>
+                      <th style={styles.th}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getPaginatedInventory().map((item) => (
                     <tr key={item.item_id} style={styles.tableRow}>
                       <td style={styles.td}>
                         <div style={styles.itemName}>{item.item_name}</div>
@@ -245,14 +306,6 @@ const Inventory = () => {
                             View
                           </button>
                           <button
-                            onClick={() => navigate(`/inventory/${item.item_id}/edit`)}
-                            style={styles.editButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f59e0b'}
-                          >
-                            Edit
-                          </button>
-                          <button
                             onClick={() => handleDelete(item.item_id)}
                             style={styles.deleteButton}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
@@ -263,42 +316,62 @@ const Inventory = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {Math.ceil(inventory.length / itemsPerPage) > 1 && (
+                  <div style={styles.paginationContainer}>
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== 1) e.currentTarget.style.backgroundColor = '#667eea';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== 1) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      ← Prev
+                    </button>
+
+                    {getPageNumbers().map((page, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handlePageChange(page)}
+                        disabled={page === '...'}
+                        style={page === currentPage ? styles.paginationButtonActive : page === '...' ? styles.paginationEllipsis : styles.paginationButton}
+                        onMouseEnter={(e) => {
+                          if (page !== '...' && page !== currentPage) e.currentTarget.style.backgroundColor = '#667eea';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (page !== '...' && page !== currentPage) e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === Math.ceil(inventory.length / itemsPerPage)}
+                      style={currentPage === Math.ceil(inventory.length / itemsPerPage) ? styles.paginationButtonDisabled : styles.paginationButton}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== Math.ceil(inventory.length / itemsPerPage)) e.currentTarget.style.backgroundColor = '#667eea';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== Math.ceil(inventory.length / itemsPerPage)) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
-
-          {/* Summary */}
-          {inventory.length > 0 && (
-            <div style={styles.summaryContainer}>
-              <h3 style={styles.summaryTitle}>Inventory Summary</h3>
-              <div style={styles.summaryGrid}>
-                <div style={styles.summaryCardBlue}>
-                  <p style={styles.summaryLabel}>Total Items</p>
-                  <p style={styles.summaryValue}>{inventory.length}</p>
-                </div>
-                <div style={styles.summaryCardGreen}>
-                  <p style={styles.summaryLabel}>Total Value</p>
-                  <p style={styles.summaryValue}>
-                    {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
-                  </p>
-                </div>
-                <div style={styles.summaryCardPurple}>
-                  <p style={styles.summaryLabel}>Active Items</p>
-                  <p style={styles.summaryValue}>
-                    {inventory.filter(item => item.is_active && item.quantity > 0).length}
-                  </p>
-                </div>
-                <div style={styles.summaryCardYellow}>
-                  <p style={styles.summaryLabel}>Out of Stock</p>
-                  <p style={styles.summaryValue}>
-                    {inventory.filter(item => item.quantity === 0).length}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
     </Layout>
@@ -311,12 +384,15 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '2rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid #e5e7eb',
   },
   title: {
     fontSize: '2rem',
     fontWeight: 'bold',
     color: '#111827',
     margin: '0 0 0.5rem 0',
+    lineHeight: '1.2',
   },
   subtitle: {
     fontSize: '1rem',
@@ -325,34 +401,34 @@ const styles = {
   },
   addButton: {
     padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
+    boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
   },
   alertContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
     gap: '1rem',
-    marginBottom: '1.5rem',
+    marginBottom: '2rem',
   },
   alertDanger: {
-    padding: '1rem',
+    padding: '1rem 1.5rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '6px',
+    borderRadius: '8px',
     borderLeft: '4px solid #ef4444',
     fontSize: '0.875rem',
   },
   alertWarning: {
-    padding: '1rem',
+    padding: '1rem 1.5rem',
     backgroundColor: '#fef3c7',
     color: '#92400e',
-    borderRadius: '6px',
+    borderRadius: '8px',
     borderLeft: '4px solid #f59e0b',
     fontSize: '0.875rem',
   },
@@ -360,28 +436,29 @@ const styles = {
     padding: '1rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '6px',
+    borderRadius: '8px',
     marginBottom: '1rem',
     border: '1px solid #fecaca',
+    fontSize: '0.875rem',
   },
   filterContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
     gap: '1rem',
-    marginBottom: '1.5rem',
+    marginBottom: '2rem',
   },
   searchInput: {
-    padding: '0.75rem',
-    fontSize: '1rem',
+    padding: '0.75rem 1rem',
+    fontSize: '0.875rem',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
+    borderRadius: '8px',
     outline: 'none',
   },
   filterSelect: {
-    padding: '0.75rem',
-    fontSize: '1rem',
+    padding: '0.75rem 1rem',
+    fontSize: '0.875rem',
     border: '1px solid #d1d5db',
-    borderRadius: '6px',
+    borderRadius: '8px',
     outline: 'none',
     backgroundColor: 'white',
   },
@@ -390,101 +467,112 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '3rem',
+    padding: '2rem',
   },
   spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
+    border: '3px solid #f3f3f3',
+    borderTop: '3px solid #2563eb',
     borderRadius: '50%',
-    width: '50px',
-    height: '50px',
+    width: '40px',
+    height: '40px',
     animation: 'spin 1s linear infinite',
   },
   countInfo: {
-    padding: '1rem',
+    padding: '6px 10px',
     backgroundColor: '#f9fafb',
-    borderRadius: '6px',
-    marginBottom: '1rem',
-    fontSize: '0.875rem',
+    borderRadius: '5px',
+    marginBottom: '8px',
+    fontSize: '11px',
     color: '#374151',
   },
   tableContainer: {
     backgroundColor: '#ffffff',
     borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'hidden',
-    marginBottom: '2rem',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    maxHeight: 'calc(100vh - 340px)',
+    overflow: 'auto',
+    border: '1px solid #e5e7eb',
   },
   emptyState: {
     textAlign: 'center',
-    padding: '3rem',
+    padding: '4rem 2rem',
   },
   emptyButton: {
     marginTop: '1rem',
     padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
+    tableLayout: 'fixed',
+    minWidth: '900px',
   },
   tableHeader: {
     backgroundColor: '#f9fafb',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
   },
   th: {
-    padding: '0.75rem 1rem',
+    padding: '1rem',
     textAlign: 'left',
-    fontSize: '0.875rem',
+    fontSize: '0.75rem',
     fontWeight: '600',
-    color: '#374151',
+    color: '#6b7280',
     borderBottom: '1px solid #e5e7eb',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   tableRow: {
     borderBottom: '1px solid #f3f4f6',
+    transition: 'background-color 0.2s',
   },
   td: {
-    padding: '0.75rem 1rem',
+    padding: '1rem',
     fontSize: '0.875rem',
-    color: '#6b7280',
+    color: '#374151',
   },
   itemName: {
     fontWeight: '500',
     color: '#111827',
+    fontSize: '12px',
   },
   itemCode: {
-    fontSize: '0.75rem',
+    fontSize: '10px',
     color: '#9ca3af',
   },
   badgeDanger: {
-    padding: '0.25rem 0.75rem',
+    padding: '0.375rem 0.75rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '12px',
+    borderRadius: '6px',
     fontSize: '0.75rem',
-    fontWeight: '500',
+    fontWeight: '600',
     display: 'inline-block',
   },
   badgeWarning: {
-    padding: '0.25rem 0.75rem',
+    padding: '0.375rem 0.75rem',
     backgroundColor: '#fef3c7',
     color: '#92400e',
-    borderRadius: '12px',
+    borderRadius: '6px',
     fontSize: '0.75rem',
-    fontWeight: '500',
+    fontWeight: '600',
     display: 'inline-block',
   },
   badgeSuccess: {
-    padding: '0.25rem 0.75rem',
+    padding: '0.375rem 0.75rem',
     backgroundColor: '#d1fae5',
     color: '#065f46',
-    borderRadius: '12px',
+    borderRadius: '6px',
     fontSize: '0.75rem',
-    fontWeight: '500',
+    fontWeight: '600',
     display: 'inline-block',
   },
   actions: {
@@ -492,79 +580,140 @@ const styles = {
     gap: '0.5rem',
   },
   viewButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#10b981',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   editButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#f59e0b',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   deleteButton: {
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#ef4444',
+    padding: '0.5rem 1rem',
+    backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     cursor: 'pointer',
   },
   summaryContainer: {
     backgroundColor: '#ffffff',
     borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     padding: '1.5rem',
+    marginBottom: '2rem',
+    border: '1px solid #e5e7eb',
   },
   summaryTitle: {
     fontSize: '1.25rem',
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#111827',
     marginBottom: '1rem',
   },
   summaryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '1.5rem',
   },
   summaryCardBlue: {
     backgroundColor: '#eff6ff',
     borderRadius: '8px',
-    padding: '1rem',
+    padding: '1.25rem 1.5rem',
+    border: '1px solid #dbeafe',
   },
   summaryCardGreen: {
     backgroundColor: '#f0fdf4',
     borderRadius: '8px',
-    padding: '1rem',
+    padding: '1.25rem 1.5rem',
+    border: '1px solid #d1fae5',
   },
   summaryCardPurple: {
     backgroundColor: '#faf5ff',
     borderRadius: '8px',
-    padding: '1rem',
+    padding: '1.25rem 1.5rem',
+    border: '1px solid #e9d5ff',
   },
   summaryCardYellow: {
     backgroundColor: '#fef3c7',
     borderRadius: '8px',
-    padding: '1rem',
+    padding: '1.25rem 1.5rem',
+    border: '1px solid #fde68a',
   },
   summaryLabel: {
-    fontSize: '0.875rem',
+    fontSize: '0.75rem',
     color: '#6b7280',
     margin: '0 0 0.5rem 0',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   summaryValue: {
     fontSize: '1.5rem',
     fontWeight: 'bold',
     color: '#111827',
     margin: 0,
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '1rem',
+    borderTop: '1px solid #e5e7eb',
+    backgroundColor: 'white',
+  },
+  paginationButton: {
+    backgroundColor: 'white',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  paginationButtonActive: {
+    backgroundColor: '#3B82F6',
+    color: 'white',
+    border: '1px solid #3B82F6',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#D1D5DB',
+    border: '1px solid #D1D5DB',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    borderRadius: '6px',
+    cursor: 'not-allowed',
+  },
+  paginationEllipsis: {
+    color: '#9ca3af',
+    padding: '0.5rem',
+    fontSize: '0.875rem',
+    cursor: 'default',
   },
 };
 

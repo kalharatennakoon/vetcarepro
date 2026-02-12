@@ -12,12 +12,15 @@ const Billing = () => {
   const [showOverdue, setShowOverdue] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({ total: 0, totalRevenue: 0, totalPaid: 0, totalPending: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
     fetchBills();
+    setCurrentPage(1);
   }, [search, paymentStatus, showOverdue]);
 
   const fetchBills = async () => {
@@ -72,6 +75,40 @@ const Billing = () => {
     }
   };
 
+  // Pagination calculations
+  const totalPages = Math.ceil(bills.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentBills = bills.slice(startIndex, endIndex);
+
+  // Helper functions for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const getStatusBadge = (status) => {
     const statusStyles = {
       unpaid: { backgroundColor: '#FEE2E2', color: '#991B1B' },
@@ -108,10 +145,13 @@ const Billing = () => {
   return (
     <Layout>
       {/* Page Header */}
-      <div style={styles.pageHeader}>
-        <div>
-          <h2 style={styles.title}>Billing & Invoices</h2>
-          <p style={styles.subtitle}>Manage invoices and track payments</p>
+      <div style={styles.header}>
+        <div style={styles.pageHeaderContent}>
+          <i className="fas fa-receipt" style={styles.headerIcon}></i>
+          <div>
+            <h1 style={styles.title}>Billing & Invoices</h1>
+            <p style={styles.subtitle}>Manage invoices and track payments</p>
+          </div>
         </div>
         <button 
           onClick={() => navigate('/billing/new')}
@@ -143,15 +183,13 @@ const Billing = () => {
 
       {/* Filters */}
       <div style={styles.filtersContainer}>
-        <div style={styles.searchContainer}>
-          <input
-            type="text"
-            placeholder="Search by invoice number, customer name, or phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
-          />
-        </div>
+        <input
+          type="text"
+          placeholder="Search by invoice number, customer name, or phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={styles.searchInput}
+        />
         
         <select
           value={paymentStatus}
@@ -207,18 +245,16 @@ const Billing = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Invoice #</th>
-                    <th style={styles.th}>Date</th>
-                    <th style={styles.th}>Customer</th>
-                    <th style={styles.th}>Total</th>
-                    <th style={styles.th}>Paid</th>
-                    <th style={styles.th}>Balance</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={{...styles.th, width: '12%'}}>Invoice #</th>
+                    <th style={{...styles.th, width: '15%'}}>Date</th>
+                    <th style={{...styles.th, width: '20%'}}>Customer</th>
+                    <th style={{...styles.th, width: '12%'}}>Total</th>
+                    <th style={{...styles.th, width: '13%'}}>Status</th>
+                    <th style={{...styles.th, width: '28%', textAlign: 'right', paddingRight: '1rem'}}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bills.map((bill) => (
+                  {currentBills.map((bill) => (
                     <tr key={bill.bill_id} style={styles.tr}>
                       <td style={styles.td}>
                         <span style={styles.billNumber}>{bill.bill_number}</span>
@@ -231,19 +267,10 @@ const Billing = () => {
                         </div>
                       </td>
                       <td style={styles.td}>{formatCurrency(bill.total_amount)}</td>
-                      <td style={styles.td}>{formatCurrency(bill.paid_amount)}</td>
-                      <td style={styles.td}>
-                        <span style={{
-                          color: parseFloat(bill.balance_amount) > 0 ? '#DC2626' : '#059669',
-                          fontWeight: '600'
-                        }}>
-                          {formatCurrency(bill.balance_amount)}
-                        </span>
-                      </td>
                       <td style={styles.td}>
                         {getStatusBadge(bill.payment_status)}
                       </td>
-                      <td style={styles.td}>
+                      <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={styles.actionButtons}>
                           <button
                             onClick={() => navigate(`/billing/${bill.bill_id}`)}
@@ -254,7 +281,7 @@ const Billing = () => {
                           </button>
                           {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && (
                             <button
-                              onClick={() => navigate(`/billing/${bill.bill_id}`)}
+                              onClick={() => navigate(`/billing/${bill.bill_id}`, { state: { openPaymentForm: true } })}
                               style={styles.payButton}
                               title="Record Payment"
                             >
@@ -276,6 +303,42 @@ const Billing = () => {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div style={styles.paginationContainer}>
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+
+                  {getPageNumbers().map((pageNum, index) => (
+                    <span key={index}>
+                      {pageNum === '...' ? (
+                        <span style={styles.paginationEllipsis}>...</span>
+                      ) : (
+                        <button
+                          onClick={() => handlePageChange(pageNum)}
+                          style={currentPage === pageNum ? styles.paginationButtonActive : styles.paginationButton}
+                        >
+                          {pageNum}
+                        </button>
+                      )}
+                    </span>
+                  ))}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -285,82 +348,99 @@ const Billing = () => {
 };
 
 const styles = {
-  pageHeader: {
+  header: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: '2rem',
+    gap: '1rem',
+    paddingBottom: '1rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  pageHeaderContent: {
+    display: 'flex',
     alignItems: 'center',
-    marginBottom: '32px',
-    flexWrap: 'wrap',
-    gap: '16px'
+    gap: '1rem',
+  },
+  headerIcon: {
+    fontSize: '2rem',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   title: {
-    fontSize: '28px',
+    fontSize: '2rem',
     fontWeight: 'bold',
-    color: '#1F2937',
-    margin: 0
+    color: '#111827',
+    margin: '0 0 0.5rem 0'
   },
   subtitle: {
-    fontSize: '14px',
-    color: '#6B7280',
-    margin: '4px 0 0 0'
+    fontSize: '1rem',
+    color: '#6b7280',
+    margin: '0'
   },
   addButton: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '12px 24px',
+    padding: '0.75rem 1.5rem',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '0.875rem',
     fontWeight: '600',
-    transition: 'background-color 0.2s'
+    transition: 'background-color 0.2s',
+    whiteSpace: 'nowrap',
+    boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
   },
   statsContainer: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
-    gap: 'clamp(0.75rem, 2vw, 1rem)',
-    marginBottom: 'clamp(1rem, 3vw, 1.5rem)'
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '1.5rem',
+    marginBottom: '2rem'
   },
   statCard: {
     backgroundColor: 'white',
-    padding: 'clamp(1rem, 3vw, 1.25rem)',
+    padding: '1.5rem',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '1px solid #E5E7EB'
   },
   statLabel: {
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    color: '#6B7280',
-    marginBottom: '8px'
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    marginBottom: '0.5rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   statValue: {
-    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+    fontSize: '1.5rem',
     fontWeight: 'bold',
-    color: '#1F2937'
+    color: '#111827'
   },
   filtersContainer: {
     display: 'flex',
-    gap: 'clamp(0.5rem, 2vw, 0.75rem)',
-    marginBottom: 'clamp(1rem, 3vw, 1.5rem)',
-    flexWrap: 'wrap'
+    gap: '1rem',
+    marginBottom: '2rem',
+    flexWrap: 'wrap',
   },
   searchContainer: {
-    flex: '1 1 250px',
+    flex: '1 1 200px',
     minWidth: '0',
   },
   searchInput: {
     width: '100%',
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(0.75rem, 3vw, 1rem)',
+    padding: '0.75rem',
     borderRadius: '8px',
     border: '1px solid #D1D5DB',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontSize: '0.875rem',
     outline: 'none'
   },
   filterSelect: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(0.75rem, 3vw, 1rem)',
+    padding: '0.75rem',
     borderRadius: '8px',
     border: '1px solid #D1D5DB',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontSize: '0.875rem',
     backgroundColor: 'white',
     cursor: 'pointer',
     outline: 'none'
@@ -369,10 +449,10 @@ const styles = {
     backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.25rem)',
+    padding: '0.75rem 1rem',
     borderRadius: '8px',
     cursor: 'pointer',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
+    fontSize: '0.875rem',
     fontWeight: '600',
     whiteSpace: 'nowrap',
   },
@@ -380,16 +460,17 @@ const styles = {
     backgroundColor: '#FEE2E2',
     border: '1px solid #FCA5A5',
     color: '#991B1B',
-    padding: '12px 16px',
-    borderRadius: '8px',
-    marginBottom: '20px'
+    padding: '8px',
+    borderRadius: '6px',
+    marginBottom: '0.75rem',
+    fontSize: '12px',
   },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '60px 20px',
+    padding: '2rem 1rem',
     color: '#6B7280'
   },
   spinner: {
@@ -403,55 +484,58 @@ const styles = {
   },
   emptyState: {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: '2rem 1rem',
     backgroundColor: 'white',
-    borderRadius: '12px',
+    borderRadius: '8px',
     border: '1px solid #E5E7EB'
   },
   emptyStateButton: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '12px 24px',
-    borderRadius: '8px',
+    padding: '6px 12px',
+    borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '600',
-    marginTop: '16px'
+    marginTop: '1rem'
   },
   tableContainer: {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     overflow: 'auto',
-    WebkitOverflowScrolling: 'touch',
+    maxHeight: 'calc(100vh - 340px)',
     border: '1px solid #E5E7EB'
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    minWidth: '700px',
+    tableLayout: 'fixed',
   },
   th: {
     backgroundColor: '#F9FAFB',
-    padding: 'clamp(0.75rem, 2vw, 0.875rem) clamp(0.75rem, 2vw, 1rem)',
+    padding: '1rem',
     textAlign: 'left',
-    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
+    fontSize: '0.75rem',
     fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    color: '#6b7280',
     borderBottom: '1px solid #E5E7EB',
     whiteSpace: 'nowrap',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   },
   tr: {
     borderBottom: '1px solid #E5E7EB',
     transition: 'background-color 0.2s'
   },
   td: {
-    padding: 'clamp(0.75rem, 2vw, 1rem)',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    color: '#1F2937'
+    padding: '1rem',
+    fontSize: '0.875rem',
+    color: '#374151'
   },
   billNumber: {
     fontWeight: '600',
@@ -459,57 +543,117 @@ const styles = {
   },
   customerName: {
     fontWeight: '500',
-    marginBottom: '2px'
+    marginBottom: '1px'
   },
   customerPhone: {
-    fontSize: '12px',
+    fontSize: '11px',
     color: '#6B7280'
   },
   badge: {
-    padding: '4px 12px',
-    borderRadius: '12px',
-    fontSize: '11px',
+    padding: '2px 6px',
+    borderRadius: '8px',
+    fontSize: '10px',
     fontWeight: '600',
     display: 'inline-block'
   },
   actionButtons: {
     display: 'flex',
-    gap: 'clamp(0.25rem, 1vw, 0.5rem)',
+    gap: '0.5rem',
     flexWrap: 'wrap',
+    justifyContent: 'flex-end',
   },
   viewButton: {
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
+    padding: '0.5rem 1rem',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
-    fontWeight: '500',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     whiteSpace: 'nowrap',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   payButton: {
-    backgroundColor: '#059669',
+    backgroundColor: '#10B981',
     color: 'white',
     border: 'none',
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
+    padding: '0.5rem 1rem',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
-    fontWeight: '500',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     whiteSpace: 'nowrap',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
   },
   deleteButton: {
     backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
-    padding: 'clamp(0.3125rem, 2vw, 0.375rem) clamp(0.625rem, 2vw, 0.75rem)',
+    padding: '0.5rem 1rem',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
-    fontWeight: '500',
+    fontSize: '0.75rem',
+    fontWeight: '600',
     whiteSpace: 'nowrap',
-  }
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '1rem',
+    borderTop: '1px solid #E5E7EB',
+  },
+  paginationButton: {
+    backgroundColor: 'white',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  paginationButtonActive: {
+    backgroundColor: '#3B82F6',
+    color: 'white',
+    border: '1px solid #3B82F6',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  paginationButtonDisabled: {
+    backgroundColor: '#F3F4F6',
+    color: '#D1D5DB',
+    border: '1px solid #D1D5DB',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    borderRadius: '6px',
+    cursor: 'not-allowed',
+  },
+  paginationEllipsis: {
+    color: '#9ca3af',
+    padding: '0.5rem',
+    fontSize: '0.875rem',
+  },
 };
 
 export default Billing;
