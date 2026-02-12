@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import AppointmentForm from '../components/AppointmentForm';
@@ -20,13 +20,34 @@ const Appointments = () => {
   const [lastSearchQuery, setLastSearchQuery] = useState('');
   const [lastFilterStatus, setLastFilterStatus] = useState('');
   const [lastSelectedVet, setLastSelectedVet] = useState('');
+  const [showDayModal, setShowDayModal] = useState(false);
+  const [selectedDayAppointments, setSelectedDayAppointments] = useState([]);
+  const [selectedDate, setSelectedDate] = useState('');
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
+
+  // Helper functions - defined early to avoid hoisting issues
+  // Helper function to format date as YYYY-MM-DD without timezone conversion
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to convert date string from database to YYYY-MM-DD
+  // Database returns dates like "2026-02-13T00:00:00.000Z" or "2026-02-13"
+  const getISTDate = (dateString) => {
+    if (!dateString) return '';
+    // Extract just the date part (YYYY-MM-DD) from the ISO string
+    return dateString.split('T')[0];
+  };
 
   useEffect(() => {
     fetchAppointments();
-  }, [filterDate, filterStatus, viewMode]);
+  }, [filterStatus]);
 
   // Navigate calendar to selected date when date filter changes in calendar view
   useEffect(() => {
@@ -36,13 +57,22 @@ const Appointments = () => {
     }
   }, [filterDate, viewMode]);
 
+  // Check if navigated from dashboard with specific appointment to edit
+  useEffect(() => {
+    if (location.state?.editAppointmentId) {
+      setEditingId(location.state.editAppointmentId);
+      setShowForm(true);
+      // Clear the state to prevent reopening on subsequent renders
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const fetchAppointments = async () => {
     try {
       setLoading(true);
       const filters = {};
-      // In calendar view, don't send date filter to API - fetch all appointments
-      // In list view, apply date filter if set
-      if (viewMode === 'list' && filterDate) filters.date = filterDate;
+      // Always fetch all appointments - we'll filter on client side
+      // Only apply status filter to API
       if (filterStatus) filters.status = filterStatus;
       
       const response = await getAppointments(filters);
@@ -98,36 +128,26 @@ const Appointments = () => {
 
   // Filter appointments based on search query, date, status, and vet
   const filteredAppointments = appointments.filter(appointment => {
-    const matchesSearch = !searchQuery || 
-      appointment.pet_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.customer_first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.customer_last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      appointment.veterinarian_name?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // In list view, apply date filter if set
-    // In calendar view, show all appointments (no date filtering)
-    const matchesDate = viewMode === 'list' ? (!filterDate || getISTDate(appointment.appointment_date) === filterDate) : true;
-    const matchesStatus = !filterStatus || appointment.status === filterStatus;
-    const matchesVet = !selectedVet || appointment.veterinarian_id === parseInt(selectedVet);
-    
-    return matchesSearch && matchesDate && matchesStatus && matchesVet;
+    try {
+      const matchesSearch = !searchQuery || 
+        appointment.pet_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appointment.customer_first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appointment.customer_last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        appointment.veterinarian_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Apply date filter in both views
+      const appointmentDate = getISTDate(appointment.appointment_date);
+      const matchesDate = !filterDate || appointmentDate === filterDate;
+      
+      const matchesStatus = !filterStatus || appointment.status === filterStatus;
+      const matchesVet = !selectedVet || appointment.veterinarian_id === parseInt(selectedVet);
+      
+      return matchesSearch && matchesDate && matchesStatus && matchesVet;
+    } catch (error) {
+      console.error('Error filtering appointment:', appointment, error);
+      return false;
+    }
   });
-
-  // Helper function to format date as YYYY-MM-DD in IST timezone
-  const formatDateLocal = (date) => {
-    // Convert to IST (UTC+5:30)
-    const istDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-    const year = istDate.getFullYear();
-    const month = String(istDate.getMonth() + 1).padStart(2, '0');
-    const day = String(istDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Helper function to convert UTC timestamp string to IST date string (YYYY-MM-DD)
-  const getISTDate = (utcDateString) => {
-    const date = new Date(utcDateString);
-    return formatDateLocal(date);
-  };
 
   // Navigate to first filtered appointment when search/filters change in calendar view
   useEffect(() => {
@@ -149,35 +169,65 @@ const Appointments = () => {
 
   // Get calendar grid data
   const getCalendarDays = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
-    const days = [];
-    const current = new Date(startDate);
-    
-    for (let i = 0; i < 35; i++) {
-      const dateStr = formatDateLocal(current);
-      const dayAppointments = filteredAppointments.filter(apt => {
-        const aptDate = getISTDate(apt.appointment_date);
-        return aptDate === dateStr;
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay());
+      
+      const days = [];
+      const current = new Date(startDate);
+      
+      // For calendar view, show all appointments that match search/status/vet filters
+      // regardless of date filter (date filter only highlights the selected date)
+      const calendarAppointments = appointments.filter(apt => {
+        try {
+          const matchesSearch = !searchQuery || 
+            apt.pet_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            apt.customer_first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            apt.customer_last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            apt.veterinarian_name?.toLowerCase().includes(searchQuery.toLowerCase());
+          
+          const matchesStatus = !filterStatus || apt.status === filterStatus;
+          const matchesVet = !selectedVet || apt.veterinarian_id === parseInt(selectedVet);
+          
+          return matchesSearch && matchesStatus && matchesVet;
+        } catch (error) {
+          console.error('Error filtering appointment for calendar:', apt, error);
+          return false;
+        }
       });
       
-      days.push({
-        date: new Date(current),
-        dateStr: dateStr,
-        isCurrentMonth: current.getMonth() === month,
-        isToday: dateStr === formatDateLocal(new Date()),
-        isSelectedDate: filterDate && dateStr === filterDate,
-        appointments: dayAppointments
-      });
+      for (let i = 0; i < 35; i++) {
+        const dateStr = formatDateLocal(current);
+        const dayAppointments = calendarAppointments.filter(apt => {
+          try {
+            const aptDate = getISTDate(apt.appointment_date);
+            return aptDate === dateStr;
+          } catch (error) {
+            console.error('Error matching appointment date:', apt, error);
+            return false;
+          }
+        });
+        
+        days.push({
+          date: new Date(current),
+          dateStr: dateStr,
+          isCurrentMonth: current.getMonth() === month,
+          isToday: dateStr === formatDateLocal(new Date()),
+          isSelectedDate: filterDate && dateStr === filterDate,
+          appointments: dayAppointments
+        });
+        
+        current.setDate(current.getDate() + 1);
+      }
       
-      current.setDate(current.getDate() + 1);
+      return days;
+    } catch (error) {
+      console.error('Error generating calendar days:', error);
+      return [];
     }
-    
-    return days;
   };
 
   const navigateMonth = (direction) => {
@@ -188,6 +238,27 @@ const Appointments = () => {
 
   const goToToday = () => {
     setCurrentMonth(new Date());
+    setFilterDate(''); // Clear date filter when going to today
+  };
+
+  const handleDayClick = (dateStr, dayAppointments) => {
+    // Show modal with all appointments for the clicked day
+    if (dayAppointments.length > 0) {
+      setSelectedDate(dateStr);
+      setSelectedDayAppointments(dayAppointments);
+      setShowDayModal(true);
+    }
+  };
+
+  const handleCloseDayModal = () => {
+    setShowDayModal(false);
+    setSelectedDayAppointments([]);
+    setSelectedDate('');
+  };
+
+  const handleAppointmentClick = (appointmentId) => {
+    setShowDayModal(false);
+    handleEdit(appointmentId);
   };
 
   const getStatusColor = (status) => {
@@ -229,12 +300,14 @@ const Appointments = () => {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Extract date part and parse it as local date
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-');
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      timeZone: 'Asia/Kolkata'
+      day: 'numeric'
     });
   };
 
@@ -440,6 +513,27 @@ const Appointments = () => {
                     </div>
                   </div>
 
+                  {/* Calendar instructions */}
+                  {!filterDate && (
+                    <div style={styles.calendarInstructions}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                      Click on any day to filter appointments for that date. Click the appointment card to view details.
+                    </div>
+                  )}
+                  
+                  {filterDate && (
+                    <div style={styles.calendarInstructions}>
+                      <i className="fas fa-filter" style={{ marginRight: '0.5rem' }}></i>
+                      Showing appointments for {new Date(filterDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                      <button 
+                        onClick={() => setFilterDate('')}
+                        style={{ marginLeft: '0.5rem', color: '#3b82f6', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                      >
+                        Clear filter
+                      </button>
+                    </div>
+                  )}
+
                   <div style={styles.calendarGrid}>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                       <div key={day} style={styles.dayHeader}>{day}</div>
@@ -452,11 +546,23 @@ const Appointments = () => {
                           ...styles.calendarDay,
                           ...(day.isCurrentMonth ? {} : styles.calendarDayOtherMonth),
                           ...(day.isToday ? styles.calendarDayToday : {}),
-                          ...(day.isSelectedDate ? styles.calendarDaySelected : {})
+                          ...(day.isSelectedDate ? styles.calendarDaySelected : {}),
+                          cursor: day.appointments.length > 0 ? 'pointer' : 'default',
                         }}
+                        onClick={() => handleDayClick(day.dateStr, day.appointments)}
                       >
                         <div style={styles.calendarDayNumber}>
                           {day.date.getDate()}
+                          {day.appointments.length > 0 && (
+                            <span style={{
+                              marginLeft: '4px',
+                              fontSize: '0.625rem',
+                              color: '#3b82f6',
+                              fontWeight: 'bold'
+                            }}>
+                              ({day.appointments.length})
+                            </span>
+                          )}
                         </div>
                         <div style={styles.appointmentsInDay}>
                           {day.appointments.slice(0, 3).map(apt => (
@@ -466,7 +572,10 @@ const Appointments = () => {
                                 ...styles.appointmentCard,
                                 borderLeftColor: getStatusBorderColor(apt.status)
                               }}
-                              onClick={() => handleEdit(apt.appointment_id)}
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent day click when clicking appointment
+                                handleEdit(apt.appointment_id);
+                              }}
                             >
                               <div style={styles.appointmentCardTime}>
                                 {formatTime(apt.appointment_time)}
@@ -513,7 +622,33 @@ const Appointments = () => {
                   </div>
                 ) : (
                   <div style={styles.cardsGrid}>
-                    {filteredAppointments.map((appointment) => (
+                    {filteredAppointments
+                      .sort((a, b) => {
+                        const today = formatDateLocal(new Date());
+                        const dateA = getISTDate(a.appointment_date);
+                        const dateB = getISTDate(b.appointment_date);
+                        
+                        // Separate upcoming and past appointments
+                        const aIsUpcoming = dateA >= today;
+                        const bIsUpcoming = dateB >= today;
+                        
+                        // Upcoming appointments come first
+                        if (aIsUpcoming && !bIsUpcoming) return -1;
+                        if (!aIsUpcoming && bIsUpcoming) return 1;
+                        
+                        // Within same category (both upcoming or both past)
+                        // Upcoming: sort ascending (earliest first)
+                        // Past: sort descending (most recent first)
+                        const dateCompare = new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+                        if (dateCompare !== 0) {
+                          return aIsUpcoming ? dateCompare : -dateCompare;
+                        }
+                        // If dates are equal, sort by time
+                        return aIsUpcoming 
+                          ? a.appointment_time.localeCompare(b.appointment_time)
+                          : b.appointment_time.localeCompare(a.appointment_time);
+                      })
+                      .map((appointment) => (
                       <div key={appointment.appointment_id} style={styles.card}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
@@ -568,22 +703,40 @@ const Appointments = () => {
 
                         <div style={styles.cardFooter}>
                           {appointment.status === 'scheduled' && (
-                            <button
-                              onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')}
-                              style={styles.confirmButton}
-                            >
-                              <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>
-                              Confirm
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')}
+                                style={styles.confirmButton}
+                              >
+                                <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
+                                style={styles.completeButton}
+                              >
+                                <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
+                                Complete
+                              </button>
+                            </>
                           )}
                           {appointment.status === 'confirmed' && (
-                            <button
-                              onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')}
-                              style={styles.startButton}
-                            >
-                              <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>
-                              Start
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')}
+                                style={styles.startButton}
+                              >
+                                <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>
+                                Start
+                              </button>
+                              <button
+                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
+                                style={styles.completeButton}
+                              >
+                                <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
+                                Complete
+                              </button>
+                            </>
                           )}
                           {appointment.status === 'in_progress' && (
                             <button
@@ -594,12 +747,26 @@ const Appointments = () => {
                               Complete
                             </button>
                           )}
+                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to cancel this appointment?')) {
+                                  handleStatusUpdate(appointment.appointment_id, 'cancelled');
+                                }
+                              }}
+                              style={styles.cancelButton}
+                            >
+                              <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>
+                              Cancel
+                            </button>
+                          )}
                           <button
                             onClick={() => handleEdit(appointment.appointment_id)}
                             style={styles.editButton}
+                            title="Edit or reschedule appointment"
                           >
                             <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>
-                            Edit
+                            Edit/Reschedule
                           </button>
                           {user?.role === 'admin' && (
                             <button
@@ -619,6 +786,100 @@ const Appointments = () => {
                 </>
               )}
             </>
+          )}
+
+          {/* Day Appointments Modal */}
+          {showDayModal && (
+            <div style={styles.modalOverlay} onClick={handleCloseDayModal}>
+              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className="far fa-calendar-alt" style={{ marginRight: '0.5rem' }}></i>
+                    Appointments for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </h3>
+                  <button onClick={handleCloseDayModal} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={styles.modalBody}>
+                  <div style={styles.appointmentCount}>
+                    <i className="fas fa-list-ul" style={{ marginRight: '0.5rem' }}></i>
+                    {selectedDayAppointments.length} appointment{selectedDayAppointments.length !== 1 ? 's' : ''}
+                  </div>
+                  <div style={styles.modalAppointmentsList}>
+                    {selectedDayAppointments
+                      .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
+                      .map((appointment) => (
+                      <div 
+                        key={appointment.appointment_id} 
+                        style={styles.modalAppointmentCard}
+                        onClick={() => handleAppointmentClick(appointment.appointment_id)}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                          e.currentTarget.style.boxShadow = 'none';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                      >
+                        <div style={styles.modalAppointmentHeader}>
+                          <div style={styles.modalAppointmentTime}>
+                            <i className="far fa-clock" style={{ marginRight: '0.25rem' }}></i>
+                            {formatTime(appointment.appointment_time)}
+                          </div>
+                          <span 
+                            style={{
+                              ...styles.statusBadge,
+                              backgroundColor: `${getStatusColor(appointment.status)}20`,
+                              color: getStatusColor(appointment.status),
+                            }}
+                          >
+                            {appointment.status}
+                          </span>
+                        </div>
+                        <div style={styles.modalAppointmentInfo}>
+                          <div style={styles.modalAppointmentPet}>
+                            <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} 
+                               style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
+                            <strong>{appointment.pet_name}</strong>
+                          </div>
+                          <div style={styles.modalAppointmentOwner}>
+                            <i className="fas fa-user" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
+                            {appointment.customer_first_name} {appointment.customer_last_name}
+                          </div>
+                          {appointment.veterinarian_name && (
+                            <div style={styles.modalAppointmentVet}>
+                              <i className="fas fa-user-md" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
+                              Dr. {appointment.veterinarian_name}
+                            </div>
+                          )}
+                          <div style={styles.modalAppointmentReason}>
+                            <i className="fas fa-notes-medical" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
+                            {appointment.reason}
+                          </div>
+                        </div>
+                        <div style={styles.modalAppointmentFooter}>
+                          <span style={styles.modalAppointmentType}>
+                            {appointment.appointment_type}
+                          </span>
+                          <span style={styles.modalAppointmentDuration}>
+                            {appointment.duration_minutes} min
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
     </Layout>
   );
@@ -926,6 +1187,7 @@ const styles = {
     padding: '1rem',
     borderTop: '1px solid #f3f4f6',
     backgroundColor: '#f9fafb',
+    flexWrap: 'wrap',
   },
   confirmButton: {
     padding: '0.5rem 1rem',
@@ -954,6 +1216,18 @@ const styles = {
   completeButton: {
     padding: '0.5rem 1rem',
     backgroundColor: '#6b7280',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '500',
+  },
+  cancelButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#ef4444',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
@@ -1107,6 +1381,15 @@ const styles = {
     gap: '0.5rem',
     alignItems: 'center',
   },
+  calendarInstructions: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#f0f9ff',
+    color: '#0369a1',
+    fontSize: '0.75rem',
+    borderBottom: '1px solid #e5e7eb',
+    display: 'flex',
+    alignItems: 'center',
+  },
   todayButton: {
     padding: '0.5rem 0.75rem',
     backgroundColor: '#f3f4f6',
@@ -1154,6 +1437,10 @@ const styles = {
     borderBottom: '1px solid #e5e7eb',
     backgroundColor: '#ffffff',
     overflow: 'hidden',
+    transition: 'all 0.2s',
+    ':hover': {
+      backgroundColor: '#f9fafb',
+    }
   },
   calendarDayOtherMonth: {
     backgroundColor: '#f9fafb',
@@ -1193,6 +1480,10 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s',
     fontSize: '0.625rem',
+    ':hover': {
+      backgroundColor: '#f3f4f6',
+      transform: 'translateX(2px)',
+    }
   },
   appointmentCardTime: {
     fontSize: '0.625rem',
@@ -1216,12 +1507,158 @@ const styles = {
     whiteSpace: 'nowrap',
   },
   moreAppointments: {
-    padding: '2px 4px',
-    fontSize: '7px',
-    color: '#6b7280',
+    padding: '4px',
+    fontSize: '0.625rem',
+    color: '#3b82f6',
     textAlign: 'center',
+    backgroundColor: '#eff6ff',
+    borderRadius: '3px',
+    fontWeight: '600',
+    marginTop: '2px',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    backdropFilter: 'blur(2px)',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    maxWidth: '700px',
+    width: '90%',
+    maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: '1.25rem',
+    fontWeight: '600',
+    color: '#111827',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    padding: '0.5rem',
+    backgroundColor: 'transparent',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    color: '#6b7280',
+    fontSize: '1.25rem',
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBody: {
+    padding: '1.5rem',
+    overflowY: 'auto',
+    flex: 1,
+  },
+  appointmentCount: {
+    padding: '0.75rem 1rem',
+    backgroundColor: '#f0f9ff',
+    color: '#0369a1',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    marginBottom: '1rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalAppointmentsList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  modalAppointmentCard: {
+    padding: '1rem',
+    backgroundColor: '#f9fafb',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  modalAppointmentHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '0.75rem',
+  },
+  modalAppointmentTime: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#111827',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalAppointmentInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    marginBottom: '0.75rem',
+  },
+  modalAppointmentPet: {
+    fontSize: '0.9375rem',
+    fontWeight: '600',
+    color: '#111827',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalAppointmentOwner: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalAppointmentVet: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  modalAppointmentReason: {
+    fontSize: '0.875rem',
+    color: '#374151',
+    display: 'flex',
+    alignItems: 'flex-start',
+    lineHeight: '1.5',
+  },
+  modalAppointmentFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: '0.75rem',
+    borderTop: '1px solid #e5e7eb',
+  },
+  modalAppointmentType: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
+    textTransform: 'capitalize',
     backgroundColor: '#f3f4f6',
-    borderRadius: '2px',
+    padding: '0.25rem 0.5rem',
+    borderRadius: '4px',
+  },
+  modalAppointmentDuration: {
+    fontSize: '0.75rem',
+    color: '#6b7280',
   },
   footer: {
     padding: '0.75rem 1.5rem',

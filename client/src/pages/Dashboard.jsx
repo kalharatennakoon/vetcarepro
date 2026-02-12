@@ -72,14 +72,17 @@ const Dashboard = () => {
         String(today.getMonth() + 1).padStart(2, '0') + '-' + 
         String(today.getDate()).padStart(2, '0');
       
+      // Helper function to extract date from ISO string without timezone conversion
+      const getLocalDateString = (dateString) => {
+        if (!dateString) return '';
+        // Extract just the date part (YYYY-MM-DD) from ISO string or date string
+        return dateString.split('T')[0];
+      };
+      
       const todayAppointments = appointments.filter(a => {
         if (!a.appointment_date) return false;
-        // Handle both simple date format (2026-02-05) and ISO format (2026-02-05T...)
-        // Also account for timezone issues by comparing the local date
-        const appointmentDate = new Date(a.appointment_date);
-        const appointmentLocalDate = appointmentDate.getFullYear() + '-' + 
-          String(appointmentDate.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(appointmentDate.getDate()).padStart(2, '0');
+        // Use direct string comparison to avoid timezone issues
+        const appointmentLocalDate = getLocalDateString(a.appointment_date);
         return appointmentLocalDate === todayString;
       });
 
@@ -144,9 +147,14 @@ const Dashboard = () => {
         lowStockItems: lowStockItems.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         recentAppointments: todayAppointments,
-        upcomingAppointments: appointments.filter(a => 
-          new Date(a.appointment_date) > new Date() && a.status === 'scheduled'
-        ).sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date)).slice(0, 5)
+        upcomingAppointments: appointments.filter(a => {
+          const appointmentDate = getLocalDateString(a.appointment_date);
+          return appointmentDate > todayString && a.status === 'scheduled';
+        }).sort((a, b) => {
+          const dateA = getLocalDateString(a.appointment_date);
+          const dateB = getLocalDateString(b.appointment_date);
+          return dateA.localeCompare(dateB);
+        }).slice(0, 5)
       });
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -632,10 +640,12 @@ const Dashboard = () => {
                       style={styles.modalAction}
                       onClick={() => {
                         setShowModal(false);
-                        navigate('/appointments');
+                        navigate('/appointments', { 
+                          state: { editAppointmentId: selectedAppointment.appointment_id } 
+                        });
                       }}
                     >
-                      Go to Appointments
+                      Go to Appointment
                     </button>
                     <button 
                       style={styles.modalCancel}

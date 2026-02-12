@@ -55,10 +55,14 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       setLoading(true);
       const response = await getAppointmentById(appointmentId);
       const appointment = response.data.appointment;
+      
+      // Extract date in YYYY-MM-DD format without timezone conversion
+      const appointmentDate = appointment.appointment_date.split('T')[0];
+      
       setFormData({
         customer_id: appointment.customer_id,
         pet_id: appointment.pet_id,
-        appointment_date: appointment.appointment_date,
+        appointment_date: appointmentDate,
         appointment_time: appointment.appointment_time.substring(0, 5), // Format HH:MM
         duration_minutes: appointment.duration_minutes,
         appointment_type: appointment.appointment_type,
