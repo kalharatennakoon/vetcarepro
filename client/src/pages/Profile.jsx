@@ -129,6 +129,9 @@ function Profile() {
       
       // Reload profile to get fresh data
       await loadProfile();
+      
+      // Refresh user in auth context to update header
+      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update profile');
       console.error('Error updating profile:', err);

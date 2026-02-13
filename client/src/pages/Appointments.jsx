@@ -393,13 +393,23 @@ const Appointments = () => {
 
             {/* Date Filter */}
             <div style={styles.filterGroup}>
-              <input
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                style={styles.filterInput}
-                placeholder="Filter by date"
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  style={styles.filterInput}
+                  placeholder="Filter by date"
+                />
+                <button
+                  onClick={() => setFilterDate(formatDateLocal(new Date()))}
+                  style={styles.todayButton}
+                  title="Filter today's appointments"
+                >
+                  <i className="fas fa-calendar-day" style={{ marginRight: '0.25rem' }}></i>
+                  Today
+                </button>
+              </div>
             </div>
 
             {/* View Toggle */}
@@ -517,7 +527,7 @@ const Appointments = () => {
                   {!filterDate && (
                     <div style={styles.calendarInstructions}>
                       <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-                      Click on any day to filter appointments for that date. Click the appointment card to view details.
+                      Click on a day with appointments to view all scheduled visits for that date.
                     </div>
                   )}
                   
@@ -1032,6 +1042,20 @@ const styles = {
     border: '1px solid #d1d5db',
     borderRadius: '6px',
     outline: 'none',
+  },
+  todayButton: {
+    padding: '0.5rem 0.75rem',
+    backgroundColor: '#3B82F6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   filterSelect: {
     padding: '0.5rem 0.75rem',
