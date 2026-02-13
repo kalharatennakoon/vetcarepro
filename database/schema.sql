@@ -32,11 +32,13 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     phone VARCHAR(20),
+    gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
     role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'veterinarian', 'receptionist')),
     specialization VARCHAR(100), -- For veterinarians (e.g., "Small Animals", "Surgery")
     license_number VARCHAR(50), -- Professional license for vets
     profile_image VARCHAR(255), -- Profile image path
     is_active BOOLEAN DEFAULT true,
+    password_must_change BOOLEAN DEFAULT false, -- Flag for first-time login password change
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

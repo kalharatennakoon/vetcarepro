@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMedicalRecords, deleteMedicalRecord } from '../services/medicalRecordService';
+import { getMedicalRecords } from '../services/medicalRecordService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -40,19 +40,6 @@ const MedicalRecords = () => {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this medical record? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await deleteMedicalRecord(id);
-      fetchRecords();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete medical record');
     }
   };
 
@@ -265,33 +252,13 @@ const MedicalRecords = () => {
                     )}
                   </td>
                   <td style={styles.td}>
-                    <div style={styles.actions}>
-                      <button
-                        onClick={() => navigate(`/medical-records/${record.record_id}`)}
-                        style={styles.viewButton}
-                        title="View Details"
-                      >
-                        View
-                      </button>
-                      {isVetOrAdmin && (
-                        <>
-                          <button
-                            onClick={() => navigate(`/medical-records/${record.record_id}/edit`)}
-                            style={styles.viewButton}
-                            title="Edit Record"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(record.record_id)}
-                            style={styles.viewButton}
-                            title="Delete Record"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <button
+                      onClick={() => navigate(`/medical-records/${record.record_id}`)}
+                      style={styles.viewButton}
+                      title="View Details"
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -476,9 +443,7 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
+    overflow: 'auto',
     maxHeight: 'calc(100vh - 340px)',
     border: '1px solid #e5e7eb',
   },
@@ -486,8 +451,6 @@ const styles = {
     width: '100%',
     borderCollapse: 'collapse',
     tableLayout: 'fixed',
-    flex: 1,
-    overflow: 'auto',
   },
   th: {
     backgroundColor: '#f9fafb',
@@ -546,23 +509,8 @@ const styles = {
     color: '#6b7280',
     fontSize: '0.875rem',
   },
-  actions: {
-    display: 'flex',
-    gap: '0.5rem',
-  },
   viewButton: {
     backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  deleteButton: {
-    backgroundColor: '#DC2626',
     color: 'white',
     border: 'none',
     padding: '0.5rem 1rem',

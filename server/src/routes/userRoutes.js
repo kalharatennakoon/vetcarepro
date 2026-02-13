@@ -1,5 +1,6 @@
 import express from 'express';
 import {
+  createUserByAdmin,
   getUsers,
   getUserById,
   updateUserById,
@@ -10,7 +11,7 @@ import {
 } from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly, vetOrAdmin } from '../middleware/roleCheck.js';
-import { validateUserUpdate } from '../middleware/validation.js';
+import { validateUserCreation, validateUserUpdate } from '../middleware/validation.js';
 import { uploadProfileImage } from '../config/multer.js';
 
 const router = express.Router();
@@ -23,6 +24,11 @@ const router = express.Router();
 
 // Apply authentication to all routes
 router.use(authenticate);
+
+// @route   POST /api/users
+// @desc    Create new user (Admin only)
+// @access  Private (Admin only)
+router.post('/', adminOnly, validateUserCreation, createUserByAdmin);
 
 // @route   GET /api/users/veterinarians
 // @desc    Get all active veterinarians
