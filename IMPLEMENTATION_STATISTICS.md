@@ -354,6 +354,93 @@
 
 **Status:** All infrastructure is operational. Ready for Phase 2!
 
+---
+
+## 🚀 Running the ML Infrastructure
+
+### Required Services
+To use ML features, you need **three services** running simultaneously:
+
+1. **PostgreSQL Database** (Port 5432)
+2. **Node.js Backend API** (Port 3000)
+3. **Python ML Service** (Port 5001)
+
+### Starting the ML Service
+
+**Option 1: Using the startup script (Recommended)**
+```bash
+cd ml
+./start.sh
+```
+
+**Option 2: Manual start**
+```bash
+cd ml
+source venv/bin/activate
+python app.py
+```
+
+**Option 3: Background process**
+```bash
+cd ml
+source venv/bin/activate
+nohup python app.py > ml.log 2>&1 &
+```
+
+### Verifying the ML Service
+
+**Check if ML service is running:**
+```bash
+curl http://localhost:5001/api/ml/health
+```
+
+Expected response:
+```json
+{
+  "service": "VetCare Pro ML Service",
+  "status": "healthy",
+  "version": "1.0.0"
+}
+```
+
+**Test through Node.js API (requires authentication):**
+```bash
+# Login first
+TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin1@propet.lk", "password": "admin1@pass"}' \
+  | grep -oE '"token":"[^"]*"' | cut -d'"' -f4)
+
+# Test ML health through Node.js proxy
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/ml/health
+```
+
+### Accessing the ML Dashboard
+
+1. Login to the app with admin credentials: `admin1@propet.lk` / `admin1@pass`
+2. Navigate to **ML Dashboard** in the sidebar (brain icon 🧠)
+3. View service health, models status, and test database connectivity
+
+### Stopping the ML Service
+
+```bash
+# Find and kill the process
+lsof -ti:5001 | xargs kill -9
+```
+
+### Troubleshooting
+
+**Problem:** ML health check fails  
+**Solution:** Make sure the Python ML service is running on port 5001
+
+**Problem:** Cannot access ML Dashboard  
+**Solution:** Login as admin user (only admins have access)
+
+**Problem:** Database connection fails  
+**Solution:** Verify PostgreSQL is running and credentials in `ml/.env` are correct
+
+---
+
 ### 🔄 Phase 2: Disease Prediction ML (Medium Priority) - **NEXT**
 - ❌ Populate `disease_cases` table from existing `medical_records`
 - ❌ Create disease case data collection system
