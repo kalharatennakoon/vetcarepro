@@ -362,7 +362,7 @@ class ReportModel {
         AND mr.visit_date BETWEEN $1 AND $2
       LEFT JOIN billing b ON a.appointment_id = b.appointment_id
         AND b.bill_date BETWEEN $1 AND $2
-      WHERE u.role IN ('veterinarian', 'admin')
+      WHERE u.role = 'veterinarian'
       GROUP BY u.user_id, u.first_name, u.last_name, u.role
       ORDER BY total_appointments DESC
     `;

@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reportService from '../services/reportService';
 import Layout from '../components/Layout';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Cell
+} from 'recharts';
 
 function Reports() {
   const navigate = useNavigate();
@@ -231,6 +248,333 @@ function Reports() {
     );
   };
 
+  const renderCharts = () => {
+    if (!reportData || !reportData.data) return null;
+
+    const data = Array.isArray(reportData.data) ? reportData.data : [reportData.data];
+
+    if (data.length === 0) return null;
+
+    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
+
+    // Revenue Summary Chart
+    if (reportType === 'revenue-summary') {
+      const chartData = data.map(item => ({
+        date: formatDate(item.date),
+        revenue: parseFloat(item.total_revenue || 0),
+        paid: parseFloat(item.total_paid || 0),
+        outstanding: parseFloat(item.total_outstanding || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Revenue Trend</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+              <Area type="monotone" dataKey="revenue" stackId="1" stroke="#667eea" fill="#667eea" name="Total Revenue" />
+              <Area type="monotone" dataKey="paid" stackId="2" stroke="#43e97b" fill="#43e97b" name="Paid Amount" />
+              <Area type="monotone" dataKey="outstanding" stackId="3" stroke="#fa709a" fill="#fa709a" name="Outstanding" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Payments by Method Chart
+    if (reportType === 'payments-by-method') {
+      const chartData = data.map(item => ({
+        name: item.payment_method || 'Unknown',
+        value: parseFloat(item.total_amount || 0),
+        count: parseInt(item.transaction_count || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Payment Methods Distribution</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={true}
+                label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Revenue by Service Chart
+    if (reportType === 'revenue-by-service') {
+      const chartData = data.map(item => ({
+        service: item.service_type || 'Unknown',
+        revenue: parseFloat(item.total_revenue || 0),
+        count: parseInt(item.service_count || 0),
+        average: parseFloat(item.average_amount || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Revenue by Service Type</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="service" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+              <Bar dataKey="revenue" fill="#667eea" name="Total Revenue" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Monthly Trend Chart
+    if (reportType === 'monthly-trend') {
+      const chartData = data.map(item => ({
+        month: item.month || '',
+        revenue: parseFloat(item.total_revenue || 0),
+        collected: parseFloat(item.total_collected || 0),
+        invoices: parseInt(item.invoice_count || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>12-Month Revenue Trend</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value, name) => name === 'invoices' ? value : formatCurrency(value)} />
+              <Legend />
+              <Line type="monotone" dataKey="revenue" stroke="#667eea" strokeWidth={2} name="Revenue" />
+              <Line type="monotone" dataKey="collected" stroke="#43e97b" strokeWidth={2} name="Collected" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Annual Income Chart
+    if (reportType === 'annual-income') {
+      const chartData = data.map(item => ({
+        month: item.month ? item.month.trim() : '',
+        revenue: parseFloat(item.total_revenue || 0),
+        collected: parseFloat(item.total_collected || 0),
+        outstanding: parseFloat(item.total_outstanding || 0),
+        invoices: parseInt(item.invoice_count || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Annual Income Overview</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+              <Bar dataKey="revenue" fill="#667eea" name="Total Revenue" />
+              <Bar dataKey="collected" fill="#43e97b" name="Collected" />
+              <Bar dataKey="outstanding" fill="#fa709a" name="Outstanding" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Monthly Income Chart
+    if (reportType === 'monthly-income' && data[0] && data[0].daily_revenue !== undefined) {
+      const chartData = data.map(item => ({
+        date: formatDate(item.date),
+        revenue: parseFloat(item.daily_revenue || 0),
+        collected: parseFloat(item.daily_collected || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Daily Revenue</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value) => formatCurrency(value)} />
+              <Legend />
+              <Area type="monotone" dataKey="revenue" stroke="#667eea" fill="#667eea" name="Revenue" />
+              <Area type="monotone" dataKey="collected" stroke="#43e97b" fill="#43e97b" name="Collected" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Customer Growth Chart
+    if (reportType === 'customer-growth') {
+      const chartData = data.map(item => ({
+        date: formatDate(item.registration_date),
+        new: parseInt(item.new_customers || 0),
+        total: parseInt(item.cumulative_customers || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Customer Growth</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="new" stroke="#667eea" strokeWidth={2} name="New Customers" />
+              <Line type="monotone" dataKey="total" stroke="#43e97b" strokeWidth={2} name="Total Customers" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Appointment Statistics Chart
+    if (reportType === 'appointment-stats') {
+      const chartData = data.map(item => ({
+        date: formatDate(item.date),
+        total: parseInt(item.total_appointments || 0),
+        completed: parseInt(item.completed || 0),
+        cancelled: parseInt(item.cancelled || 0),
+        scheduled: parseInt(item.scheduled || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Appointment Statistics</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
+              <Bar dataKey="scheduled" stackId="a" fill="#667eea" name="Scheduled" />
+              <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Appointments by Type Chart
+    if (reportType === 'appointments-by-type') {
+      const chartData = data.map(item => ({
+        name: item.appointment_type || 'Unknown',
+        value: parseInt(item.appointment_count || 0),
+        percentage: parseFloat(item.percentage || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Appointments by Type</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                labelLine={true}
+                label={(entry) => `${entry.name}: ${entry.value} (${entry.percentage}%)`}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Veterinarian Performance Chart
+    if (reportType === 'veterinarian-performance') {
+      const chartData = data.slice(0, 10).map(item => ({
+        name: item.veterinarian_name || 'Unknown',
+        appointments: parseInt(item.total_appointments || 0),
+        completed: parseInt(item.completed_appointments || 0),
+        revenue: parseFloat(item.total_revenue_generated || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Top Veterinarian Performance</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="appointments" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="completed" fill="#43e97b" name="Completed" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Inventory Usage Chart
+    if (reportType === 'inventory-usage') {
+      const chartData = data.slice(0, 10).map(item => ({
+        name: item.item_name || 'Unknown',
+        used: parseFloat(item.quantity_used || 0),
+        value: parseFloat(item.value_used || 0),
+        stock: parseFloat(item.current_stock || 0)
+      }));
+
+      return (
+        <div style={styles.chartContainer}>
+          <h4 style={styles.chartTitle}>Top 10 Inventory Usage</h4>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" style={{fontSize: '0.75rem'}} />
+              <YAxis style={{fontSize: '0.75rem'}} />
+              <Tooltip formatter={(value, name) => name === 'value' ? formatCurrency(value) : value} />
+              <Legend />
+              <Bar dataKey="used" fill="#667eea" name="Quantity Used" />
+              <Bar dataKey="value" fill="#43e97b" name="Value Used" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   const renderReportData = () => {
     if (!reportData || !reportData.data) return null;
 
@@ -250,18 +594,20 @@ function Reports() {
     const columns = Object.keys(data[0]);
 
     return (
-      <div style={styles.reportTableContainer}>
-        <div style={styles.reportHeader}>
-          <h3 style={styles.reportTitle}>{financialReports.concat(operationalReports).find(r => r.value === reportType)?.label}</h3>
-          <div style={{display: 'flex', gap: '0.5rem'}}>
-            <button onClick={handleExportReport} style={styles.exportButton}>
-              <i className="fas fa-file-csv"></i> Export CSV
-            </button>
-            <button onClick={handleExportReportPDF} style={{...styles.exportButton, backgroundColor: '#e74c3c'}}>
-              <i className="fas fa-file-pdf"></i> Export PDF
-            </button>
+      <>
+        {renderCharts()}
+        <div style={styles.reportTableContainer}>
+          <div style={styles.reportHeader}>
+            <h3 style={styles.reportTitle}>{financialReports.concat(operationalReports).find(r => r.value === reportType)?.label}</h3>
+            <div style={{display: 'flex', gap: '0.5rem'}}>
+              <button onClick={handleExportReport} style={styles.exportButton}>
+                <i className="fas fa-file-csv"></i> Export CSV
+              </button>
+              <button onClick={handleExportReportPDF} style={{...styles.exportButton, backgroundColor: '#e74c3c'}}>
+                <i className="fas fa-file-pdf"></i> Export PDF
+              </button>
+            </div>
           </div>
-        </div>
         <div style={styles.tableWrapper}>
           <table style={styles.reportTable}>
             <thead>
@@ -329,6 +675,7 @@ function Reports() {
           </div>
         )}
       </div>
+      </>
     );
   };
 
@@ -755,6 +1102,22 @@ const styles = {
     color: '#9ca3af',
     padding: '0 0.5rem',
     fontSize: '0.875rem',
+  },
+  chartContainer: {
+    backgroundColor: 'white',
+    padding: '1.5rem',
+    borderRadius: '12px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    marginBottom: '1.5rem',
+    border: '1px solid #e5e7eb',
+  },
+  chartTitle: {
+    color: '#1f2937',
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    marginBottom: '1rem',
+    paddingBottom: '0.75rem',
+    borderBottom: '2px solid #e5e7eb',
   },
 };
 
