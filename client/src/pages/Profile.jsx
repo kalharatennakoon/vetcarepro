@@ -23,6 +23,7 @@ function Profile() {
     last_name: '',
     email: '',
     phone: '',
+    gender: '',
     specialization: '',
     license_number: '',
     current_password: '',
@@ -46,6 +47,7 @@ function Profile() {
         last_name: userData.last_name || '',
         email: userData.email || '',
         phone: userData.phone || '',
+        gender: userData.gender || '',
         specialization: userData.specialization || '',
         license_number: userData.license_number || '',
         current_password: '',
@@ -129,6 +131,9 @@ function Profile() {
       
       // Reload profile to get fresh data
       await loadProfile();
+      
+      // Refresh user in auth context to update header
+      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update profile');
       console.error('Error updating profile:', err);
@@ -281,22 +286,6 @@ function Profile() {
 
   const isVeterinarian = currentUser.role === 'veterinarian';
 
-  // Helper function to detect gender based on name
-  const detectGender = (firstName) => {
-    if (!firstName) return 'male';
-    
-    const lowerName = firstName.toLowerCase();
-    const femaleNames = ['kumari', 'sanduni', 'dulani', 'ayesha', 'chandani', 'thilini', 
-                         'shalini', 'janaki', 'nethmi', 'madhavi', 'anuradha', 'champa', 
-                         'nalini', 'kushani', 'hemali', 'shirani'];
-    
-    if (femaleNames.includes(lowerName) || lowerName.endsWith('ni') || lowerName.endsWith('sha')) {
-      return 'female';
-    }
-    
-    return 'male';
-  };
-
   // Get name with appropriate prefix
   const getNameWithPrefix = () => {
     if (!profileData) return '';
@@ -305,7 +294,8 @@ function Profile() {
     if (isVeterinarian) {
       prefix = 'Dr.';
     } else {
-      const gender = detectGender(profileData.first_name);
+      // Use gender from user data or default to 'Mr.'
+      const gender = profileData.gender || currentUser.gender;
       prefix = gender === 'female' ? 'Ms.' : 'Mr.';
     }
     
@@ -505,6 +495,27 @@ function Profile() {
                     />
                   ) : (
                     <div style={styles.displayValue}>{profileData?.phone || 'Not provided'}</div>
+                  )}
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Gender</label>
+                  {isEditing ? (
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      style={styles.input}
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  ) : (
+                    <div style={styles.displayValue}>
+                      {profileData?.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not specified'}
+                    </div>
                   )}
                 </div>
               </div>

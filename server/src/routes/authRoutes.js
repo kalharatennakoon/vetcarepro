@@ -3,7 +3,8 @@ import {
   login,
   register,
   getCurrentUser,
-  logout
+  logout,
+  changePasswordFirstLogin
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -38,5 +39,10 @@ router.get('/me', authenticate, getCurrentUser);
 // @desc    Logout user
 // @access  Private
 router.post('/logout', authenticate, logout);
+
+// @route   POST /api/auth/change-password-first-login
+// @desc    Change password for first-time login
+// @access  Private
+router.post('/change-password-first-login', authenticate, changePasswordFirstLogin);
 
 export default router;

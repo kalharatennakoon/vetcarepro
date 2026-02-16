@@ -14,7 +14,10 @@ const Inventory = () => {
     isActive: true
   });
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [lowStockItems, setLowStockItems] = useState([]);
   const [expiringCount, setExpiringCount] = useState(0);
+  const [expiringItems, setExpiringItems] = useState([]);
+  const [alertFilter, setAlertFilter] = useState(null); // 'lowStock' or 'expiring'
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -55,7 +58,9 @@ const Inventory = () => {
         inventoryService.getExpiringItems()
       ]);
       setLowStockCount(lowStockRes.count || 0);
+      setLowStockItems(lowStockRes.data || []);
       setExpiringCount(expiringRes.count || 0);
+      setExpiringItems(expiringRes.data || []);
     } catch (err) {
       console.error('Error loading alerts:', err);
     }
@@ -67,6 +72,27 @@ const Inventory = () => {
       ...prev,
       [name]: value
     }));
+    setAlertFilter(null); // Clear alert filter when user changes other filters
+  };
+
+  const handleViewLowStock = () => {
+    setAlertFilter(alertFilter === 'lowStock' ? null : 'lowStock');
+    setCurrentPage(1);
+  };
+
+  const handleViewExpiring = () => {
+    setAlertFilter(alertFilter === 'expiring' ? null : 'expiring');
+    setCurrentPage(1);
+  };
+
+  const getFilteredInventory = () => {
+    if (alertFilter === 'lowStock') {
+      return lowStockItems;
+    }
+    if (alertFilter === 'expiring') {
+      return expiringItems;
+    }
+    return inventory;
   };
 
   const handleDelete = async (itemId) => {
@@ -102,7 +128,8 @@ const Inventory = () => {
   };
 
   const getPageNumbers = () => {
-    const totalPages = Math.ceil(inventory.length / itemsPerPage);
+    const filteredInventory = getFilteredInventory();
+    const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
     const pages = [];
     const maxPagesToShow = 7;
 
@@ -127,10 +154,11 @@ const Inventory = () => {
   };
 
   const getPaginatedInventory = () => {
-    const totalPages = Math.ceil(inventory.length / itemsPerPage);
+    const filteredInventory = getFilteredInventory();
+    const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return inventory.slice(startIndex, endIndex);
+    return filteredInventory.slice(startIndex, endIndex);
   };
 
   return (
@@ -186,13 +214,37 @@ const Inventory = () => {
       {(lowStockCount > 0 || expiringCount > 0) && (
         <div style={styles.alertContainer}>
           {lowStockCount > 0 && (
-            <div style={styles.alertDanger}>
-              <strong>{lowStockCount}</strong> item(s) are running low on stock
+            <div style={alertFilter === 'lowStock' ? styles.alertDangerActive : styles.alertDanger}>
+              <div style={styles.alertContent}>
+                <div>
+                  <strong>{lowStockCount}</strong> item(s) are running low on stock
+                </div>
+                <button
+                  onClick={handleViewLowStock}
+                  style={styles.alertButton}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b91c1c'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                >
+                  {alertFilter === 'lowStock' ? 'Show All' : 'View Items'}
+                </button>
+              </div>
             </div>
           )}
           {expiringCount > 0 && (
-            <div style={styles.alertWarning}>
-              <strong>{expiringCount}</strong> item(s) expiring within 90 days
+            <div style={alertFilter === 'expiring' ? styles.alertWarningActive : styles.alertWarning}>
+              <div style={styles.alertContent}>
+                <div>
+                  <strong>{expiringCount}</strong> item(s) expiring within 90 days
+                </div>
+                <button
+                  onClick={handleViewExpiring}
+                  style={styles.alertButtonWarning}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#b45309'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#d97706'}
+                >
+                  {alertFilter === 'expiring' ? 'Show All' : 'View Items'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -235,6 +287,33 @@ const Inventory = () => {
           <option value={false}>Inactive</option>
         </select>
       </div>
+
+      {/* Active Filter Indicator */}
+      {alertFilter && (
+        <div style={styles.activeFilterIndicator}>
+          <span style={styles.filterBadge}>
+            {alertFilter === 'lowStock' ? (
+              <>
+                <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
+                Showing Low Stock Items
+              </>
+            ) : (
+              <>
+                <i className="fas fa-clock" style={{ marginRight: '0.5rem' }}></i>
+                Showing Expiring Items
+              </>
+            )}
+          </span>
+          <button
+            onClick={() => setAlertFilter(null)}
+            style={styles.clearFilterButton}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#64748b'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#94a3b8'}
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       {/* Loading State */}
       {loading ? (
@@ -321,7 +400,7 @@ const Inventory = () => {
                 </table>
 
                 {/* Pagination */}
-                {Math.ceil(inventory.length / itemsPerPage) > 1 && (
+                {Math.ceil(getFilteredInventory().length / itemsPerPage) > 1 && (
                   <div style={styles.paginationContainer}>
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
@@ -356,13 +435,13 @@ const Inventory = () => {
 
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={currentPage === Math.ceil(inventory.length / itemsPerPage)}
-                      style={currentPage === Math.ceil(inventory.length / itemsPerPage) ? styles.paginationButtonDisabled : styles.paginationButton}
+                      disabled={currentPage === Math.ceil(getFilteredInventory().length / itemsPerPage)}
+                      style={currentPage === Math.ceil(getFilteredInventory().length / itemsPerPage) ? styles.paginationButtonDisabled : styles.paginationButton}
                       onMouseEnter={(e) => {
-                        if (currentPage !== Math.ceil(inventory.length / itemsPerPage)) e.currentTarget.style.backgroundColor = '#667eea';
+                        if (currentPage !== Math.ceil(getFilteredInventory().length / itemsPerPage)) e.currentTarget.style.backgroundColor = '#667eea';
                       }}
                       onMouseLeave={(e) => {
-                        if (currentPage !== Math.ceil(inventory.length / itemsPerPage)) e.currentTarget.style.backgroundColor = 'transparent';
+                        if (currentPage !== Math.ceil(getFilteredInventory().length / itemsPerPage)) e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
                       Next →
@@ -424,6 +503,15 @@ const styles = {
     borderLeft: '4px solid #ef4444',
     fontSize: '0.875rem',
   },
+  alertDangerActive: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#fecaca',
+    color: '#991b1b',
+    borderRadius: '8px',
+    borderLeft: '4px solid #dc2626',
+    fontSize: '0.875rem',
+    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+  },
   alertWarning: {
     padding: '1rem 1.5rem',
     backgroundColor: '#fef3c7',
@@ -431,6 +519,43 @@ const styles = {
     borderRadius: '8px',
     borderLeft: '4px solid #f59e0b',
     fontSize: '0.875rem',
+  },
+  alertWarningActive: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#fde68a',
+    color: '#92400e',
+    borderRadius: '8px',
+    borderLeft: '4px solid #d97706',
+    fontSize: '0.875rem',
+    boxShadow: '0 2px 4px rgba(217, 119, 6, 0.2)',
+  },
+  alertContent: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  alertButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#dc2626',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  alertButtonWarning: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#d97706',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   errorBox: {
     padding: '1rem',
@@ -461,6 +586,31 @@ const styles = {
     borderRadius: '8px',
     outline: 'none',
     backgroundColor: 'white',
+  },
+  activeFilterIndicator: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1rem 1.5rem',
+    backgroundColor: '#f8fafc',
+    borderRadius: '8px',
+    marginBottom: '1rem',
+    border: '1px solid #cbd5e1',
+  },
+  filterBadge: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#475569',
+  },
+  clearFilterButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#94a3b8',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
   loadingContainer: {
     display: 'flex',

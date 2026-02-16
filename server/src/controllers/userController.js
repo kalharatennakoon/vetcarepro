@@ -1,6 +1,7 @@
 import {
   getAllUsers,
   findById,
+  createUser,
   updateUser,
   deleteUser,
   emailExists
@@ -12,6 +13,60 @@ import { deleteImageFile } from '../config/multer.js';
  * User Controller
  * Handles CRUD operations for users
  */
+
+/**
+ * @route   POST /api/users
+ * @desc    Create new user (Admin only)
+ * @access  Private (Admin only)
+ */
+export const createUserByAdmin = async (req, res) => {
+  try {
+    const { first_name, last_name, email, phone, gender, role, specialization, license_number, password } = req.body;
+
+    // Check if email already exists
+    if (await emailExists(email)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email already exists'
+      });
+    }
+
+    // Use default password if not provided
+    const defaultPassword = password || 'VetCare123';
+    const password_hash = await hashPassword(defaultPassword);
+
+    // Prepare user data
+    const userData = {
+      first_name,
+      last_name,
+      email,
+      phone: phone || null,
+      gender: gender || null,
+      role,
+      specialization: specialization || null,
+      license_number: license_number || null,
+      password_hash,
+      password_must_change: true, // Force password change on first login
+      created_by: req.user.user_id
+    };
+
+    const newUser = await createUser(userData);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully',
+      data: {
+        user: sanitizeUser(newUser)
+      }
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while creating user'
+    });
+  }
+};
 
 /**
  * @route   GET /api/users

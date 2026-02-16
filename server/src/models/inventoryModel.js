@@ -325,7 +325,12 @@ const inventoryModel = {
       const query = `
         SELECT 
           i.*,
-          CONCAT(u.first_name, ' ', u.last_name) as created_by_name
+          CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
+          CASE 
+            WHEN i.quantity <= i.reorder_level THEN 'LOW'
+            WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
+            ELSE 'NORMAL'
+          END as stock_status
         FROM inventory i
         LEFT JOIN users u ON i.created_by = u.user_id
         WHERE i.quantity <= i.reorder_level
@@ -350,7 +355,12 @@ const inventoryModel = {
         SELECT 
           i.*,
           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          (i.expiry_date - CURRENT_DATE) as days_until_expiry
+          (i.expiry_date - CURRENT_DATE) as days_until_expiry,
+          CASE 
+            WHEN i.quantity <= i.reorder_level THEN 'LOW'
+            WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
+            ELSE 'NORMAL'
+          END as stock_status
         FROM inventory i
         LEFT JOIN users u ON i.created_by = u.user_id
         WHERE i.expiry_date IS NOT NULL

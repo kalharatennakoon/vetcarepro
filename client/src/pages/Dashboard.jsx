@@ -7,9 +7,10 @@ import { getCustomers } from '../services/customerService';
 import { getMedicalRecords } from '../services/medicalRecordService';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
+import PasswordChangeModal from '../components/PasswordChangeModal';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalPets: 0,
@@ -189,6 +190,26 @@ const Dashboard = () => {
     };
     return badges[status] || badges.scheduled;
   };
+
+  const handlePasswordChangeSuccess = async () => {
+    // Refresh user data to get updated password_must_change flag
+    await refreshUser();
+  };
+
+  const handlePasswordChangeLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  // Show password change modal if user must change password
+  if (user?.password_must_change) {
+    return (
+      <PasswordChangeModal 
+        onSuccess={handlePasswordChangeSuccess}
+        onLogout={handlePasswordChangeLogout}
+      />
+    );
+  }
 
   return (
     <Layout>

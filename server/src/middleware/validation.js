@@ -110,6 +110,70 @@ export const validateUserRegistration = [
 ];
 
 /**
+ * User creation by admin validation rules
+ */
+export const validateUserCreation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Must be a valid email address')
+    .normalizeEmail(),
+  
+  body('first_name')
+    .trim()
+    .notEmpty()
+    .withMessage('First name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('First name must be between 2 and 50 characters'),
+  
+  body('last_name')
+    .trim()
+    .notEmpty()
+    .withMessage('Last name is required')
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Last name must be between 2 and 50 characters'),
+  
+  body('phone')
+    .optional({ nullable: true })
+    .trim()
+    .matches(/^\+94[0-9]{9}$/)
+    .withMessage('Phone must be in format +94XXXXXXXXX'),
+  
+  body('gender')
+    .optional({ nullable: true })
+    .isIn(['male', 'female', 'other'])
+    .withMessage('Gender must be male, female, or other'),
+  
+  body('role')
+    .notEmpty()
+    .withMessage('Role is required')
+    .isIn(['admin', 'veterinarian', 'receptionist'])
+    .withMessage('Role must be admin, veterinarian, or receptionist'),
+  
+  body('specialization')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Specialization must not exceed 100 characters'),
+  
+  body('license_number')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('License number must not exceed 50 characters'),
+  
+  body('password')
+    .optional({ nullable: true })
+    .trim()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+  
+  handleValidationErrors
+];
+
+/**
  * User update validation rules
  */
 export const validateUserUpdate = [
@@ -137,6 +201,11 @@ export const validateUserUpdate = [
     .trim()
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Phone must be in format +94XXXXXXXXX'),
+  
+  body('gender')
+    .optional({ nullable: true })
+    .isIn(['male', 'female', 'other'])
+    .withMessage('Gender must be male, female, or other'),
   
   body('role')
     .optional()

@@ -48,29 +48,11 @@ const Layout = ({ children }) => {
     return isActive(path) ? { ...styles.navItem, ...styles.navItemActive } : styles.navItem;
   };
 
-  const detectGender = (firstName) => {
-    // Sri Lankan and common female name patterns
-    const femaleNames = [
-      'dulani', 'ayesha', 'kumari', 'chandani', 'thilini', 'dilini', 'sanduni', 
-      'chamari', 'amaya', 'nimali', 'nuwan', 'nisha', 'priya', 'malini', 'shalini'
-    ];
-    
-    const lowerName = firstName?.toLowerCase() || '';
-    
-    // Check if name is in female list or ends with common female suffixes
-    if (femaleNames.includes(lowerName) || lowerName.endsWith('ni') || lowerName.endsWith('sha')) {
-      return 'female';
-    }
-    
-    return 'male';
-  };
-
   const getNameWithPrefix = () => {
     if (!user) return '';
     
     const fullName = `${user.first_name} ${user.last_name}`;
     const initials = `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}`;
-    const gender = detectGender(user.first_name);
     
     let prefix = '';
     
@@ -78,7 +60,8 @@ const Layout = ({ children }) => {
     if (user.role === 'veterinarian') {
       prefix = 'Dr.';
     } else {
-      // For admin and receptionist, use Mr./Ms. based on gender
+      // For admin and receptionist, use Mr./Ms. based on gender from database
+      const gender = user.gender || 'male'; // Default to 'male' if not set
       prefix = gender === 'female' ? 'Ms.' : 'Mr.';
     }
     

@@ -34,9 +34,9 @@ export const findByEmail = async (email) => {
  */
 export const findById = async (userId) => {
   const query = `
-    SELECT user_id, first_name, last_name, email, phone, role, 
+    SELECT user_id, first_name, last_name, email, phone, gender, role, 
            specialization, license_number, is_active, profile_image,
-           last_login, created_at, updated_at
+           password_must_change, last_login, created_at, updated_at
     FROM users 
     WHERE user_id = $1
   `;
@@ -52,9 +52,9 @@ export const findById = async (userId) => {
  */
 export const getAllUsers = async (filters = {}) => {
   let query = `
-    SELECT user_id, first_name, last_name, email, phone, role, 
+    SELECT user_id, first_name, last_name, email, phone, gender, role, 
            specialization, license_number, is_active, profile_image,
-           last_login, created_at, updated_at
+           password_must_change, last_login, created_at, updated_at
     FROM users 
     WHERE 1=1
   `;
@@ -90,12 +90,12 @@ export const getAllUsers = async (filters = {}) => {
 export const createUser = async (userData) => {
   const query = `
     INSERT INTO users (
-      first_name, last_name, password_hash, email, phone, 
-      role, specialization, license_number, created_by
+      first_name, last_name, password_hash, email, phone, gender,
+      role, specialization, license_number, password_must_change, created_by
     ) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING user_id, first_name, last_name, email, phone, role, 
-              specialization, license_number, is_active, created_at
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING user_id, first_name, last_name, email, phone, gender, role, 
+              specialization, license_number, is_active, password_must_change, created_at
   `;
   
   const values = [
@@ -104,9 +104,11 @@ export const createUser = async (userData) => {
     userData.password_hash,
     userData.email,
     userData.phone || null,
+    userData.gender || null,
     userData.role,
     userData.specialization || null,
     userData.license_number || null,
+    userData.password_must_change !== undefined ? userData.password_must_change : true,
     userData.created_by || null
   ];
 
@@ -148,6 +150,11 @@ export const updateUser = async (userId, userData, updatedBy) => {
     values.push(userData.phone);
     paramCount++;
   }
+  if (userData.gender !== undefined) {
+    fields.push(`gender = $${paramCount}`);
+    values.push(userData.gender);
+    paramCount++;
+  }
   if (userData.role) {
     fields.push(`role = $${paramCount}`);
     values.push(userData.role);
@@ -178,6 +185,11 @@ export const updateUser = async (userId, userData, updatedBy) => {
     values.push(userData.profile_image);
     paramCount++;
   }
+  if (userData.password_must_change !== undefined) {
+    fields.push(`password_must_change = $${paramCount}`);
+    values.push(userData.password_must_change);
+    paramCount++;
+  }
 
   fields.push(`updated_by = $${paramCount}`);
   values.push(updatedBy);
@@ -190,8 +202,8 @@ export const updateUser = async (userId, userData, updatedBy) => {
     UPDATE users 
     SET ${fields.join(', ')}
     WHERE user_id = $${paramCount}
-    RETURNING user_id, first_name, last_name, email, phone, role, 
-              specialization, license_number, is_active, profile_image, updated_at
+    RETURNING user_id, first_name, last_name, email, phone, gender, role, 
+              specialization, license_number, is_active, profile_image, password_must_change, updated_at
   `;
 
   const result = await pool.query(query, values);

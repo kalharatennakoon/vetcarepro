@@ -2,7 +2,9 @@ import {
   findByEmail,
   createUser,
   updateLastLogin,
-  emailExists
+  emailExists,
+  updateUser,
+  findById
 } from '../models/userModel.js';
 import {
   hashPassword,
@@ -181,6 +183,55 @@ export const logout = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An error occurred during logout'
+    });
+  }
+};
+
+/**
+ * @route   POST /api/auth/change-password-first-login
+ * @desc    Change password for first-time login
+ * @access  Private
+ */
+export const changePasswordFirstLogin = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.user.user_id;
+
+    // Validate new password
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Get current user
+    const user = await findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // Hash new password
+    const password_hash = await hashPassword(newPassword);
+
+    // Update password and clear password_must_change flag
+    await updateUser(userId, {
+      password_hash,
+      password_must_change: false
+    }, userId);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while changing password'
     });
   }
 };
