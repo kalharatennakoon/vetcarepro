@@ -31,14 +31,18 @@ function Reports() {
     { value: 'outstanding-balances', label: 'Outstanding Balances' },
     { value: 'revenue-by-service', label: 'Revenue by Service' },
     { value: 'top-customers', label: 'Top Customers' },
-    { value: 'monthly-trend', label: 'Monthly Revenue Trend' }
+    { value: 'monthly-trend', label: 'Monthly Revenue Trend' },
+    { value: 'monthly-income', label: 'Monthly Income Report' },
+    { value: 'annual-income', label: 'Annual Income Report' },
+    { value: 'customer-growth', label: 'Customer Growth Report' }
   ];
 
   const operationalReports = [
     { value: 'appointment-stats', label: 'Appointment Statistics' },
     { value: 'appointments-by-type', label: 'Appointments by Type' },
     { value: 'patient-visits', label: 'Patient Visit Statistics' },
-    { value: 'inventory-usage', label: 'Inventory Usage' }
+    { value: 'inventory-usage', label: 'Inventory Usage' },
+    { value: 'veterinarian-performance', label: 'Veterinarian Performance' }
   ];
 
   // Load dashboard summary on mount
@@ -82,6 +86,15 @@ function Reports() {
     } catch (err) {
       setError(err.error || 'Failed to export report');
       console.error('Error exporting report:', err);
+    }
+  };
+
+  const handleExportReportPDF = async () => {
+    try {
+      await reportService.exportReportPDF(activeTab, reportType, startDate, endDate);
+    } catch (err) {
+      setError(err.error || 'Failed to export PDF report');
+      console.error('Error exporting PDF report:', err);
     }
   };
 
@@ -240,9 +253,14 @@ function Reports() {
       <div style={styles.reportTableContainer}>
         <div style={styles.reportHeader}>
           <h3 style={styles.reportTitle}>{financialReports.concat(operationalReports).find(r => r.value === reportType)?.label}</h3>
-          <button onClick={handleExportReport} style={styles.exportButton}>
-            <i className="fas fa-download"></i> Export
-          </button>
+          <div style={{display: 'flex', gap: '0.5rem'}}>
+            <button onClick={handleExportReport} style={styles.exportButton}>
+              <i className="fas fa-file-csv"></i> Export CSV
+            </button>
+            <button onClick={handleExportReportPDF} style={{...styles.exportButton, backgroundColor: '#e74c3c'}}>
+              <i className="fas fa-file-pdf"></i> Export PDF
+            </button>
+          </div>
         </div>
         <div style={styles.tableWrapper}>
           <table style={styles.reportTable}>

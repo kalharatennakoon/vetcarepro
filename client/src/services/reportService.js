@@ -130,6 +130,35 @@ const reportService = {
       console.error('Error fetching monthly revenue trend:', error);
       throw error.response?.data || error;
     }
+  },
+
+  /**
+   * Export report to PDF
+   */
+  exportReportPDF: async (category, reportType, startDate, endDate) => {
+    try {
+      const response = await axios.get(`${API_URL}/reports/export-pdf`, {
+        params: { category, reportType, startDate, endDate },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      // If response contains HTML, open it in a new window for printing
+      if (response.data.html) {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(response.data.html);
+        printWindow.document.close();
+        setTimeout(() => {
+          printWindow.print();
+        }, 250);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error exporting PDF report:', error);
+      throw error.response?.data || error;
+    }
   }
 };
 

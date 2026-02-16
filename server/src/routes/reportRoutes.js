@@ -31,4 +31,10 @@ router.get('/export',
   reportController.exportReport
 );
 
+// Export report to PDF (accessible by admin and veterinarian)
+router.get('/export-pdf', 
+  authorize('admin', 'veterinarian'), 
+  reportController.exportReportPDF
+);
+
 export default router;

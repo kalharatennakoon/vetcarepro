@@ -294,6 +294,120 @@ class ReportModel {
     const result = await pool.query(query);
     return result.rows;
   }
+
+  /**
+   * Get annual income report
+   */
+  static async getAnnualIncomeReport(year) {
+    const query = `
+      SELECT 
+        TO_CHAR(b.bill_date, 'Month') as month,
+        EXTRACT(MONTH FROM b.bill_date) as month_num,
+        COUNT(*) as invoice_count,
+        SUM(b.total_amount) as total_revenue,
+        SUM(b.paid_amount) as total_collected,
+        SUM(b.balance_amount) as total_outstanding,
+        COUNT(DISTINCT b.customer_id) as unique_customers,
+        ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
+      FROM billing b
+      WHERE EXTRACT(YEAR FROM b.bill_date) = $1
+      GROUP BY EXTRACT(MONTH FROM b.bill_date), TO_CHAR(b.bill_date, 'Month')
+      ORDER BY month_num ASC
+    `;
+    const result = await pool.query(query, [year]);
+    return result.rows;
+  }
+
+  /**
+   * Get customer growth report
+   */
+  static async getCustomerGrowthReport(startDate, endDate) {
+    const query = `
+      SELECT 
+        DATE(c.created_at) as registration_date,
+        COUNT(*) as new_customers,
+        SUM(COUNT(*)) OVER (ORDER BY DATE(c.created_at)) as cumulative_customers
+      FROM customers c
+      WHERE DATE(c.created_at) BETWEEN $1 AND $2
+      GROUP BY DATE(c.created_at)
+      ORDER BY registration_date ASC
+    `;
+    const result = await pool.query(query, [startDate, endDate]);
+    return result.rows;
+  }
+
+  /**
+   * Get veterinarian performance report
+   */
+  static async getVeterinarianPerformance(startDate, endDate) {
+    const query = `
+      SELECT 
+        u.user_id,
+        u.first_name || ' ' || u.last_name as veterinarian_name,
+        u.role,
+        COUNT(DISTINCT a.appointment_id) as total_appointments,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_appointments,
+        COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_appointments,
+        ROUND(
+          COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric / 
+          NULLIF(COUNT(*), 0) * 100, 2
+        ) as completion_rate,
+        COUNT(DISTINCT a.pet_id) as unique_patients,
+        COUNT(DISTINCT mr.record_id) as medical_records_created,
+        COALESCE(SUM(b.total_amount), 0) as total_revenue_generated
+      FROM users u
+      LEFT JOIN appointments a ON u.user_id = a.veterinarian_id 
+        AND a.appointment_date BETWEEN $1 AND $2
+      LEFT JOIN medical_records mr ON u.user_id = mr.created_by 
+        AND mr.visit_date BETWEEN $1 AND $2
+      LEFT JOIN billing b ON a.appointment_id = b.appointment_id
+        AND b.bill_date BETWEEN $1 AND $2
+      WHERE u.role IN ('veterinarian', 'admin')
+      GROUP BY u.user_id, u.first_name, u.last_name, u.role
+      ORDER BY total_appointments DESC
+    `;
+    const result = await pool.query(query, [startDate, endDate]);
+    return result.rows;
+  }
+
+  /**
+   * Get monthly income report
+   */
+  static async getMonthlyIncomeReport(month, year) {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
+    
+    const query = `
+      SELECT 
+        DATE(b.bill_date) as date,
+        COUNT(*) as invoice_count,
+        SUM(b.total_amount) as daily_revenue,
+        SUM(b.paid_amount) as daily_collected
+      FROM billing b
+      WHERE b.bill_date BETWEEN $1 AND $2
+      GROUP BY DATE(b.bill_date)
+      ORDER BY date ASC
+    `;
+    const result = await pool.query(query, [startDate, endDate]);
+    
+    // Also get summary totals
+    const summaryQuery = `
+      SELECT 
+        COUNT(*) as total_invoices,
+        SUM(b.total_amount) as total_revenue,
+        SUM(b.paid_amount) as total_collected,
+        SUM(b.balance_amount) as total_outstanding,
+        ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
+      FROM billing b
+      WHERE b.bill_date BETWEEN $1 AND $2
+    `;
+    const summaryResult = await pool.query(summaryQuery, [startDate, endDate]);
+    
+    return {
+      dailyBreakdown: result.rows,
+      summary: summaryResult.rows[0]
+    };
+  }
 }
 
 export default ReportModel;
