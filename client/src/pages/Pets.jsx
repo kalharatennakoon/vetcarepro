@@ -293,7 +293,7 @@ const Pets = () => {
                         <div style={styles.petCell}>
                           {pet.photo_url ? (
                             <img 
-                              src={`http://localhost:5001/uploads/${pet.photo_url}`} 
+                              src={`http://localhost:3000/uploads/${pet.photo_url}`} 
                               alt={pet.pet_name}
                               style={styles.avatarImage}
                             />

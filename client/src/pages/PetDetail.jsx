@@ -296,7 +296,7 @@ const PetDetail = () => {
           <div style={styles.titleSection}>
             {pet.photo_url ? (
               <img 
-                src={`http://localhost:5001/uploads/${pet.photo_url}`} 
+                src={`http://localhost:3000/uploads/${pet.photo_url}`} 
                 alt={pet.pet_name}
                 style={styles.headerAvatarImage}
               />
@@ -386,7 +386,7 @@ const PetDetail = () => {
                   <div style={styles.imageContainer}>
                     {imagePreview || pet?.photo_url ? (
                       <img 
-                        src={imagePreview || `http://localhost:5001/uploads/${pet.photo_url}`} 
+                        src={imagePreview || `http://localhost:3000/uploads/${pet.photo_url}`} 
                         alt={pet.pet_name}
                         style={styles.petImage}
                       />

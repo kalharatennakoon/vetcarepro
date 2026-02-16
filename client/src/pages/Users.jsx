@@ -409,7 +409,7 @@ const Users = () => {
                         <div style={styles.avatar}>
                           {user.profile_image ? (
                             <img 
-                              src={`http://localhost:5001/uploads/${user.profile_image}`} 
+                              src={`http://localhost:3000/uploads/${user.profile_image}`} 
                               alt={user.first_name}
                               style={styles.avatarImage}
                             />
@@ -482,7 +482,7 @@ const Users = () => {
                 <div style={styles.profileImageLarge}>
                   {viewingUser.profile_image ? (
                     <img 
-                      src={`http://localhost:5001/uploads/${viewingUser.profile_image}`} 
+                      src={`http://localhost:3000/uploads/${viewingUser.profile_image}`} 
                       alt={viewingUser.first_name}
                       style={styles.profileImageLargeImg}
                     />

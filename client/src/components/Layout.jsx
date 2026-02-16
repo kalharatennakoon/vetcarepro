@@ -114,7 +114,7 @@ const Layout = ({ children }) => {
             )}
             {user?.profile_image ? (
               <img
-                src={`http://localhost:5001/uploads/${user.profile_image}`}
+                src={`http://localhost:3000/uploads/${user.profile_image}`}
                 alt="Profile"
                 style={styles.userAvatarImage}
               />

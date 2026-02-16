@@ -357,7 +357,7 @@ function Profile() {
                 <div style={styles.avatarContainer}>
                   {imagePreview || profileData?.profile_image ? (
                     <img 
-                      src={imagePreview || `http://localhost:5001/uploads/${profileData.profile_image}`} 
+                      src={imagePreview || `http://localhost:3000/uploads/${profileData.profile_image}`} 
                       alt="Profile"
                       style={styles.avatarImage}
                     />
