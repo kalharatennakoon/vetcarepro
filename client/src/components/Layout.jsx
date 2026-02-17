@@ -177,15 +177,7 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-file-medical"></i> Medical Records
               </a>
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a 
-                  href="/disease-cases" 
-                  style={getNavItemStyle('/disease-cases')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/disease-cases'); }}
-                >
-                  <i className="fas fa-disease"></i> Disease Cases
-                </a>
-              )}
+
               <a 
                 href="/billing" 
                 style={getNavItemStyle('/billing')}
@@ -207,6 +199,15 @@ const Layout = ({ children }) => {
                   onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
                 >
                   <i className="fas fa-chart-bar"></i> Reports
+                </a>
+              )}
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a 
+                  href="/analytics" 
+                  style={getNavItemStyle('/analytics')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
+                >
+                  <i className="fas fa-chart-line"></i> Analytics & Insights
                 </a>
               )}
               {user?.role === 'admin' && (

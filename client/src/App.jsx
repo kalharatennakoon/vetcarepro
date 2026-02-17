@@ -19,7 +19,7 @@ import MedicalRecords from './pages/MedicalRecords';
 import MedicalRecordDetail from './pages/MedicalRecordDetail';
 import MedicalRecordCreate from './pages/MedicalRecordCreate';
 import MedicalRecordEdit from './pages/MedicalRecordEdit';
-import DiseaseCases from './pages/DiseaseCases';
+import Analytics from './pages/Analytics';
 import DiseaseCaseCreate from './pages/DiseaseCaseCreate';
 import DiseaseCaseDetail from './pages/DiseaseCaseDetail';
 import DiseaseCaseEdit from './pages/DiseaseCaseEdit';
@@ -32,6 +32,7 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -201,39 +202,13 @@ function App() {
         } 
       />
 
-      {/* Disease Cases routes */}
-      <Route 
-        path="/disease-cases" 
-        element={
-          <ProtectedRoute>
-            <DiseaseCases />
-          </ProtectedRoute>
-        } 
-      />
 
+      {/* Analytics & Insights page (unified) */}
       <Route 
-        path="/disease-cases/create" 
+        path="/analytics" 
         element={
-          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
-            <DiseaseCaseCreate />
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/disease-cases/:id" 
-        element={
-          <ProtectedRoute>
-            <DiseaseCaseDetail />
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/disease-cases/:id/edit" 
-        element={
-          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
-            <DiseaseCaseEdit />
+          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+            <Analytics />
           </ProtectedRoute>
         } 
       />
@@ -312,6 +287,8 @@ function App() {
           </ProtectedRoute>
         } 
       />
+
+
 
       {/* Profile route - accessible by all authenticated users */}
       <Route 

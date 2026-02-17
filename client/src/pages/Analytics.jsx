@@ -12,10 +12,16 @@ import {
   getMLHealth,
   testMLDatabase
 } from '../services/diseaseCaseService';
+import {
+  getSalesForecast,
+  getSalesTrends,
+  getInventoryForecast,
+  getReorderSuggestions
+} from '../services/predictionService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
-const DiseaseCases = () => {
+const Analytics = () => {
   const [activeTab, setActiveTab] = useState('cases');
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +56,20 @@ const DiseaseCases = () => {
   const [mlHealth, setMlHealth] = useState(null);
   const [dbTest, setDbTest] = useState(null);
 
+  // Sales Forecast State
+  const [salesData, setSalesData] = useState({
+    forecast: null,
+    trends: null
+  });
+  const [salesPeriod, setSalesPeriod] = useState(30);
+
+  // Inventory Forecast State
+  const [inventoryData, setInventoryData] = useState({
+    forecast: null,
+    reorderSuggestions: null
+  });
+  const [inventoryDays, setInventoryDays] = useState(30);
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const isVetOrAdmin = user?.role === 'admin' || user?.role === 'veterinarian';
@@ -63,6 +83,10 @@ const DiseaseCases = () => {
   useEffect(() => {
     if (activeTab === 'analytics') {
       fetchMLData();
+    } else if (activeTab === 'sales') {
+      fetchSalesData();
+    } else if (activeTab === 'inventory') {
+      fetchInventoryData();
     }
   }, [activeTab, riskFilters]);
 
@@ -145,6 +169,48 @@ const DiseaseCases = () => {
       setOutbreakRisk(response.risk_assessment);
     } catch (err) {
       console.error('Failed to assess outbreak risk:', err);
+    }
+  };
+
+  const fetchSalesData = async () => {
+    try {
+      setLoading(true);
+      const [forecastRes, trendsRes] = await Promise.all([
+        getSalesForecast(salesPeriod).catch(() => ({ success: false })),
+        getSalesTrends().catch(() => ({ success: false }))
+      ]);
+
+      setSalesData({
+        forecast: forecastRes,
+        trends: trendsRes
+      });
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load sales data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInventoryData = async () => {
+    try {
+      setLoading(true);
+      const [forecastRes, suggestionsRes] = await Promise.all([
+        getInventoryForecast(inventoryDays).catch(() => ({ success: false })),
+        getReorderSuggestions().catch(() => ({ success: false }))
+      ]);
+
+      setInventoryData({
+        forecast: forecastRes,
+        reorderSuggestions: suggestionsRes
+      });
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load inventory data');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -278,10 +344,10 @@ const DiseaseCases = () => {
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.pageHeader}>
-            <i className="fas fa-disease" style={styles.headerIcon}></i>
+            <i className="fas fa-chart-line" style={styles.headerIcon}></i>
             <div>
-              <h1 style={styles.title}>Disease Management</h1>
-              <p style={styles.subtitle}>Track disease cases and monitor outbreak risks with ML analytics ({totalCases} total cases)</p>
+              <h1 style={styles.title}>Analytics & Insights</h1>
+              <p style={styles.subtitle}>Disease tracking, outbreak predictions, sales forecasting, and inventory demand analysis</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -331,15 +397,29 @@ const DiseaseCases = () => {
               onClick={() => setActiveTab('cases')}
               style={activeTab === 'cases' ? styles.tabActive : styles.tab}
             >
-              <i className="fas fa-file-medical" style={{ marginRight: '0.5rem' }}></i>
-              Cases ({totalCases})
+              <i className="fas fa-virus" style={{ marginRight: '0.5rem' }}></i>
+              Disease Cases
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
               style={activeTab === 'analytics' ? styles.tabActive : styles.tab}
             >
-              <i className="fas fa-chart-line" style={{ marginRight: '0.5rem' }}></i>
-              ML Analytics
+              <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem' }}></i>
+              Disease Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('sales')}
+              style={activeTab === 'sales' ? styles.tabActive : styles.tab}
+            >
+              <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
+              Sales Forecasting
+            </button>
+            <button
+              onClick={() => setActiveTab('inventory')}
+              style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
+            >
+              <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
+              Inventory Demand
             </button>
           </div>
         </div>
@@ -1197,6 +1277,219 @@ const DiseaseCases = () => {
           </>
         )}
 
+        {/* Sales Forecasting Tab */}
+        {activeTab === 'sales' && (
+          <div style={styles.tabContentContainer}>
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>
+                  <i className="fas fa-chart-bar" style={{ marginRight: '0.5rem', color: '#10b981' }}></i>
+                  Sales Trend Analysis
+                </h3>
+              </div>
+              <div style={styles.cardBody}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <label style={styles.filterLabel}>Forecast Period</label>
+                    <select
+                      value={salesPeriod}
+                      onChange={(e) => setSalesPeriod(parseInt(e.target.value))}
+                      style={styles.filterInput}
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                      <option value={90}>90 days</option>
+                    </select>
+                  </div>
+                  <button onClick={fetchSalesData} style={styles.primaryButton}>
+                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
+                    Generate Forecast
+                  </button>
+                </div>
+
+                {loading ? (
+                  <div style={styles.loadingContainer}>
+                    <div style={styles.loadingSpinner}></div>
+                  </div>
+                ) : salesData.forecast?.success === false ? (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-clock" style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Coming Soon</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Sales forecasting model is currently under development.
+                      This feature will analyze historical billing data to predict future sales trends.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-chart-line" style={{ fontSize: '3rem', color: '#3b82f6', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Sales Trend Analysis</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Click "Generate Forecast" to analyze sales patterns and predict future trends
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Sales Metrics Cards */}
+            <div style={styles.metricsGridContainer}>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-dollar-sign" style={{ color: '#10b981' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Revenue Forecast</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-arrow-up" style={{ color: '#3b82f6' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Growth Trend</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-calendar-alt" style={{ color: '#8b5cf6' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Best Day</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-shopping-cart" style={{ color: '#f59e0b' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Top Services</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Inventory Demand Tab */}
+        {activeTab === 'inventory' && (
+          <div style={styles.tabContentContainer}>
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>
+                  <i className="fas fa-warehouse" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+                  Inventory Demand Forecasting
+                </h3>
+              </div>
+              <div style={styles.cardBody}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <label style={styles.filterLabel}>Forecast Period</label>
+                    <select
+                      value={inventoryDays}
+                      onChange={(e) => setInventoryDays(parseInt(e.target.value))}
+                      style={styles.filterInput}
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                    </select>
+                  </div>
+                  <button onClick={fetchInventoryData} style={styles.primaryButton}>
+                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
+                    Generate Forecast
+                  </button>
+                </div>
+                {loading ? (
+                  <div style={styles.loadingContainer}>
+                    <div style={styles.loadingSpinner}></div>
+                  </div>
+                ) : inventoryData.forecast?.success === false ? (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-clock" style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Coming Soon</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Inventory demand forecasting is currently under development.
+                      This feature will predict stock requirements based on usage patterns.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-boxes" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Inventory Demand Forecasting</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Click "Generate Forecast" to predict inventory demand and get reorder suggestions
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Reorder Suggestions */}
+            <div style={styles.card}>
+              <div style={styles.cardHeader}>
+                <h3 style={styles.cardTitle}>
+                  <i className="fas fa-shopping-cart" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+                  Smart Reorder Suggestions
+                </h3>
+              </div>
+              <div style={styles.cardBody}>
+                <div style={styles.comingSoonContainer}>
+                  <i className="fas fa-robot" style={{ fontSize: '2rem', color: '#6b7280', marginBottom: '1rem' }}></i>
+                  <p style={{ color: '#6b7280', margin: 0 }}>
+                    AI-powered reorder suggestions coming soon. This feature will recommend
+                    optimal reorder quantities based on usage patterns and lead times.
+                  </p>
+                </div>
+              </div>
+            </div>
+            {/* Inventory Metrics */}
+            <div style={styles.metricsGridContainer}>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Low Stock Items</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-chart-line" style={{ color: '#10b981' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Usage Trend</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-calendar-check" style={{ color: '#3b82f6' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Expiring Soon</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+              <div style={styles.metricCard}>
+                <div style={styles.metricIconBox}>
+                  <i className="fas fa-balance-scale" style={{ color: '#8b5cf6' }}></i>
+                </div>
+                <div>
+                  <div style={styles.metricLabel}>Optimal Stock Level</div>
+                  <div style={styles.metricValue}>Coming Soon</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </Layout>
   );
@@ -1214,8 +1507,6 @@ const styles = {
     alignItems: 'flex-start',
     marginBottom: '2rem',
     gap: '1rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
   },
   pageHeader: {
     display: 'flex',
@@ -1230,55 +1521,50 @@ const styles = {
   },
   title: {
     fontSize: '2rem',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#1f2937',
     margin: '0 0 0.5rem 0',
-    color: '#111827',
   },
   subtitle: {
     fontSize: '1rem',
     color: '#6b7280',
-    margin: '0',
-  },
-  error: {
-    backgroundColor: '#fef2f2',
-    color: '#dc2626',
-    padding: '8px',
-    borderRadius: '6px',
-    marginBottom: '0.75rem',
-    border: '1px solid #fecaca',
-    fontSize: '12px',
+    margin: 0,
   },
   primaryButton: {
+    padding: '0.75rem 1.5rem',
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    padding: '0.75rem 1.5rem',
-    fontSize: '0.875rem',
-    fontWeight: '600',
     borderRadius: '8px',
     cursor: 'pointer',
     transition: 'all 0.2s',
     whiteSpace: 'nowrap',
-    boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    fontWeight: '600',
+    fontSize: '0.875rem',
+  },
+  error: {
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '1rem',
+    border: '1px solid #fecaca',
   },
   tabsContainer: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
     marginBottom: '2rem',
-    border: '1px solid #e5e7eb',
+    borderBottom: '1px solid #e5e7eb',
   },
   tabsHeader: {
     display: 'flex',
-    borderBottom: '1px solid #e5e7eb',
-    padding: '0 1.5rem',
     gap: '2rem',
   },
   tab: {
+    padding: '1rem 0.25rem',
     backgroundColor: 'transparent',
     border: 'none',
     borderBottom: '2px solid transparent',
-    padding: '1rem 0.25rem',
     fontSize: '0.875rem',
     fontWeight: '500',
     color: '#6b7280',
@@ -1335,7 +1621,7 @@ const styles = {
     fontSize: '0.75rem',
     fontWeight: '600',
     color: '#6b7280',
-    marginBottom: '0.25rem',
+    marginBottom: '0.5rem',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
@@ -1349,50 +1635,50 @@ const styles = {
   },
   searchInput: {
     width: '100%',
-    padding: '0.75rem 1rem',
+    padding: '0.75rem',
     border: '1px solid #d1d5db',
     borderRadius: '8px',
     fontSize: '0.875rem',
     boxSizing: 'border-box',
   },
   infoBox: {
-    backgroundColor: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    borderRadius: '8px',
+    backgroundColor: '#f9fafb',
     padding: '1rem',
+    borderRadius: '8px',
     marginBottom: '1.5rem',
+    border: '1px solid #e5e7eb',
   },
   infoText: {
-    fontSize: '0.875rem',
-    color: '#1e40af',
     margin: 0,
+    fontSize: '0.875rem',
+    color: '#4b5563',
   },
   loadingContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '3rem 0',
+    padding: '3rem',
   },
   loadingSpinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid #e5e7eb',
-    borderTop: '4px solid #3B82F6',
+    border: '4px solid #f3f3f3',
+    borderTop: '4px solid #3b82f6',
     borderRadius: '50%',
+    width: '40px',
+    height: '40px',
     animation: 'spin 1s linear infinite',
   },
   emptyState: {
+    textAlign: 'center',
+    padding: '3rem',
     backgroundColor: 'white',
     borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    padding: '3rem 1rem',
-    textAlign: 'center',
+    border: '1px solid #e5e7eb',
   },
   emptyStateIcon: {
     width: '48px',
     height: '48px',
-    color: '#9ca3af',
-    margin: '0 auto 1rem',
+    color: '#d1d5db',
+    marginBottom: '1rem',
   },
   emptyStateTitle: {
     fontSize: '1.125rem',
@@ -1815,6 +2101,58 @@ const styles = {
     borderRadius: '4px',
     display: 'inline-block',
   },
+  comingSoonContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9fafb',
+    border: '1px dashed #d1d5db',
+    borderRadius: '12px',
+    padding: '2.5rem 1.5rem',
+    margin: '2rem 0',
+    minHeight: '220px',
+    textAlign: 'center',
+  },
+  metricsGridContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1.5rem',
+    margin: '2rem 0',
+  },
+  metricCard: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    border: '1px solid #e5e7eb',
+    borderRadius: '12px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    padding: '1.25rem 1rem',
+    gap: '1rem',
+    minHeight: '90px',
+  },
+  metricIconBox: {
+    width: '44px',
+    height: '44px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+    borderRadius: '50%',
+    fontSize: '1.5rem',
+    marginRight: '0.75rem',
+  },
+  metricLabel: {
+    fontSize: '0.85rem',
+    color: '#6b7280',
+    marginBottom: '0.15rem',
+    fontWeight: 500,
+  },
+  metricValue: {
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    color: '#1f2937',
+  },
 };
 
-export default DiseaseCases;
+export default Analytics;
