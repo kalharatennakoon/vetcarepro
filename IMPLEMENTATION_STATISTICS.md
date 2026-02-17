@@ -213,7 +213,7 @@
 
 ---
 
-## ❌ NOT IMPLEMENTED / PENDING MODULES
+## ❌ NOT IMPLEMENTED / PENDING MODULES - starting with ML Models
 
 ### 1. Machine Learning - Disease & Pandemic Prediction (Phase 2) - 0% Complete
 
