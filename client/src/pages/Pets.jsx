@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPets, deletePet, getSpeciesList } from '../services/petService';
+import { getPets, getSpeciesList } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -54,23 +54,6 @@ const Pets = () => {
       console.error(err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this pet? This will also delete all associated medical records.')) {
-      return;
-    }
-
-    try {
-      const response = await deletePet(id);
-      console.log('Delete response:', response);
-      alert('Pet deleted successfully');
-      fetchPets();
-    } catch (err) {
-      console.error('Delete error:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to delete pet';
-      alert(errorMessage);
     }
   };
 
@@ -332,26 +315,14 @@ const Pets = () => {
                         ) : '-'}
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <div style={styles.actions}>
-                          <button
-                            onClick={() => navigate(`/pets/${pet.pet_id}`)}
-                            style={styles.viewButton}
-                            onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
-                            onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
-                          >
-                            View
-                          </button>
-                          {user?.role === 'admin' && (
-                            <button
-                              onClick={() => handleDelete(pet.pet_id)}
-                              style={styles.deleteButton}
-                              onMouseOver={(e) => e.target.style.backgroundColor = styles.deleteButtonHover.backgroundColor}
-                              onMouseOut={(e) => e.target.style.backgroundColor = styles.deleteButton.backgroundColor}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => navigate(`/pets/${pet.pet_id}`)}
+                          style={styles.viewButton}
+                          onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
+                          onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   ))}

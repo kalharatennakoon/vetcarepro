@@ -8,7 +8,9 @@ import {
   assessOutbreakRisk,
   analyzeDiseasePatterns,
   getSpeciesTrends,
-  trainMLModel
+  trainMLModel,
+  getMLHealth,
+  testMLDatabase
 } from '../services/diseaseCaseService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -45,6 +47,8 @@ const DiseaseCases = () => {
     days_lookback: 60
   });
   const [training, setTraining] = useState(false);
+  const [mlHealth, setMlHealth] = useState(null);
+  const [dbTest, setDbTest] = useState(null);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -86,17 +90,21 @@ const DiseaseCases = () => {
   const fetchMLData = async () => {
     try {
       setLoading(true);
-      const [statsRes, categoriesRes, modelRes, patternsRes] = await Promise.all([
+      const [statsRes, categoriesRes, modelRes, patternsRes, healthRes] = await Promise.all([
         getDiseaseStatistics(),
         getDiseaseCasesByCategory(),
         getMLModelStatus(),
-        analyzeDiseasePatterns()
+        analyzeDiseasePatterns(),
+        getMLHealth().catch(() => null)
       ]);
 
       setStatistics(statsRes.data.statistics);
       setCategories(categoriesRes.data.categories);
       setModelStatus(modelRes.models.disease_prediction);
       setPatterns(patternsRes.patterns);
+      if (healthRes) {
+        setMlHealth(healthRes);
+      }
       
       await fetchTrends('Dog');
       await fetchOutbreakRisk();
@@ -107,6 +115,18 @@ const DiseaseCases = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testDatabaseConnection = async () => {
+    try {
+      const res = await testMLDatabase();
+      setDbTest(res);
+    } catch (err) {
+      setDbTest({ 
+        success: false, 
+        message: err.response?.data?.message || 'Database test failed' 
+      });
     }
   };
 
@@ -556,9 +576,13 @@ const DiseaseCases = () => {
                           </span>
                         </td>
                         <td style={styles.td}>
-                          {diseaseCase.is_contagious && (
+                          {diseaseCase.is_contagious ? (
                             <span style={{ ...styles.badge, backgroundColor: '#fee2e2', color: '#991b1b' }}>
                               Contagious
+                            </span>
+                          ) : (
+                            <span style={{ ...styles.badge, backgroundColor: '#dcfce7', color: '#166534' }}>
+                              Non-Contagious
                             </span>
                           )}
                         </td>
@@ -664,6 +688,130 @@ const DiseaseCases = () => {
                 )}
               </div>
             )}
+
+            {/* ML System Health Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              {/* Service Health Card */}
+              <div style={styles.tableContainer}>
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                    <i className="fas fa-heartbeat" style={{ marginRight: '0.5rem', color: '#10b981' }}></i>
+                    ML Service Health
+                  </h3>
+                </div>
+                <div style={{ padding: '1rem' }}>
+                  {mlHealth ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                        <span style={{ color: '#6b7280' }}>Service:</span>
+                        <span style={{ fontWeight: '600' }}>{mlHealth.service}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                        <span style={{ color: '#6b7280' }}>Status:</span>
+                        <span style={{ fontWeight: '600', color: mlHealth.status === 'healthy' ? '#10b981' : '#ef4444' }}>
+                          {mlHealth.status?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
+                        <span style={{ color: '#6b7280' }}>Version:</span>
+                        <span style={{ fontWeight: '600' }}>{mlHealth.version}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p style={{ color: '#6b7280', textAlign: 'center', margin: '1rem 0' }}>
+                      ML service not available
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Database Connection Test Card */}
+              <div style={styles.tableContainer}>
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                    <i className="fas fa-database" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
+                    Database Connection
+                  </h3>
+                </div>
+                <div style={{ padding: '1rem' }}>
+                  <button
+                    onClick={testDatabaseConnection}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    <i className="fas fa-plug"></i> Test Connection
+                  </button>
+                  
+                  {dbTest && (
+                    <div style={{
+                      marginTop: '1rem',
+                      padding: '1rem',
+                      borderRadius: '6px',
+                      backgroundColor: dbTest.success ? '#ecfdf5' : '#fef2f2',
+                      border: `1px solid ${dbTest.success ? '#10b981' : '#ef4444'}`
+                    }}>
+                      <div style={{ color: dbTest.success ? '#10b981' : '#ef4444', fontWeight: '600' }}>
+                        {dbTest.success ? 'SUCCESS' : 'FAILED'}
+                      </div>
+                      <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                        {dbTest.message}
+                      </div>
+                      {dbTest.timestamp && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                          {new Date(dbTest.timestamp).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ML Features Card */}
+              <div style={styles.tableContainer}>
+                <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: '#1f2937' }}>
+                    <i className="fas fa-brain" style={{ marginRight: '0.5rem', color: '#8b5cf6' }}></i>
+                    ML Features
+                  </h3>
+                </div>
+                <div style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                    <i className="fas fa-virus" style={{ color: '#3b82f6', marginTop: '0.25rem' }}></i>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.875rem' }}>Disease Prediction</div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Predict disease outbreaks and trends</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                    <i className="fas fa-chart-line" style={{ color: '#3b82f6', marginTop: '0.25rem' }}></i>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.875rem' }}>Sales Forecasting</div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Forecast future revenue and sales</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <i className="fas fa-boxes" style={{ color: '#3b82f6', marginTop: '0.25rem' }}></i>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#1f2937', fontSize: '0.875rem' }}>Inventory Optimization</div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Predict stock demand and reordering</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Statistics Overview */}
             {statistics && (

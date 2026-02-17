@@ -210,22 +210,13 @@ const Layout = ({ children }) => {
                 </a>
               )}
               {user?.role === 'admin' && (
-                <>
-                  <a 
-                    href="/users" 
-                    style={getNavItemStyle('/users')}
-                    onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
-                  >
-                    <i className="fas fa-user-md"></i> Staff
-                  </a>
-                  <a 
-                    href="/ml-dashboard" 
-                    style={getNavItemStyle('/ml-dashboard')}
-                    onClick={(e) => { e.preventDefault(); handleNavigation('/ml-dashboard'); }}
-                  >
-                    <i className="fas fa-brain"></i> ML Dashboard
-                  </a>
-                </>
+                <a 
+                  href="/users" 
+                  style={getNavItemStyle('/users')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+                >
+                  <i className="fas fa-user-md"></i> Staff
+                </a>
               )}
             </nav>
             

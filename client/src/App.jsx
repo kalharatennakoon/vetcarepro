@@ -32,7 +32,6 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
-import MLDashboard from './pages/MLDashboard';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -330,15 +329,6 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['admin']}>
             <Users />
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/ml-dashboard" 
-        element={
-          <ProtectedRoute requiredRoles={['admin']}>
-            <MLDashboard />
           </ProtectedRoute>
         } 
       />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCustomers, deleteCustomer } from '../services/customerService';
+import { getCustomers } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -34,19 +34,6 @@ const Customers = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer?')) {
-      return;
-    }
-
-    try {
-      await deleteCustomer(id);
-      fetchCustomers();
-    } catch (err) {
-      alert('Failed to delete customer');
-      console.error(err);
-    }
-  };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -260,26 +247,14 @@ const Customers = () => {
                         </span>
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <div style={styles.actions}>
-                          <button
-                            onClick={() => navigate(`/customers/${customer.customer_id}`)}
-                            style={styles.viewButton}
-                            onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
-                            onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
-                          >
-                            View
-                          </button>
-                          {user?.role === 'admin' && (
-                            <button
-                              onClick={() => handleDelete(customer.customer_id)}
-                              style={styles.deleteButton}
-                              onMouseOver={(e) => e.target.style.backgroundColor = styles.deleteButtonHover.backgroundColor}
-                              onMouseOut={(e) => e.target.style.backgroundColor = styles.deleteButton.backgroundColor}
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => navigate(`/customers/${customer.customer_id}`)}
+                          style={styles.viewButton}
+                          onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
+                          onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   ))}

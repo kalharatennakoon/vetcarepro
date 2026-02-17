@@ -206,3 +206,23 @@ export const trainMLModel = async () => {
   );
   return response.data;
 };
+
+/**
+ * Get ML service health status
+ */
+export const getMLHealth = async () => {
+  const response = await axios.get(
+    `${ML_API_URL}/health`
+  );
+  return response.data;
+};
+
+/**
+ * Test ML database connection
+ */
+export const testMLDatabase = async () => {
+  const response = await axios.get(
+    `${ML_API_URL}/test/db-connection`
+  );
+  return response.data;
+};
