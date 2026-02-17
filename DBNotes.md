@@ -133,13 +133,34 @@ psql postgresql://vetcarepro_admin:admin123@localhost/vetcarepro
 
 
 
+### Login Credentials for Testing
+
+**Admin Users:**
+- Email: `admin1@propet.lk` | Password: `admin1@pass` | Role: Admin
+- Email: `admin2@propet.lk` | Password: `admin2@pass` | Role: Admin
+
+**Other Users (Veterinarians & Receptionists):**
+- Email: `dulani@propet.lk` | Password: `password123` | Role: Veterinarian
+- Email: `nimal@propet.lk` | Password: `password123` | Role: Veterinarian
+- Email: `ayesha@propet.lk` | Password: `password123` | Role: Veterinarian
+- Email: `kumari@propet.lk` | Password: `password123` | Role: Receptionist
+- Email: `sanduni@propet.lk` | Password: `password123` | Role: Receptionist
+
 ### Test API endpoints with curl:
 
 ```bash
-curl http://localhost:5001/api
-    OR
-curl http://localhost:5001/api | jq
+# Test Node.js API
+curl http://localhost:3000/health
 
-curl http://localhost:5001/health
+# Test ML Service (Python Flask)
+curl http://localhost:5001/api/ml/health
 
+# Login and get token
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin1@propet.lk", "password": "admin1@pass"}'
+
+# Test ML endpoints with authentication
+TOKEN="your_jwt_token_here"
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/ml/models/status
 ```

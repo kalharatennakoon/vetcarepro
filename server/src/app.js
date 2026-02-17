@@ -52,6 +52,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import billingRoutes from './routes/billingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
+import mlRoutes from './routes/mlRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -70,7 +71,8 @@ app.get('/api', (req, res) => {
       inventory: '/api/inventory',
       billing: '/api/billing',
       payments: '/api/payments',
-      reports: '/api/reports'
+      reports: '/api/reports',
+      ml: '/api/ml'
     }
   });
 });
@@ -85,6 +87,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/ml', mlRoutes);
 app.use('/api/reports', reportRoutes);
 
 // 404 handler
