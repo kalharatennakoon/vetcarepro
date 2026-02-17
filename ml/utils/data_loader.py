@@ -93,9 +93,9 @@ class DataLoader:
             SELECT 
                 dc.case_id,
                 dc.pet_id,
-                p.species,
-                p.breed,
-                p.age_years,
+                dc.species,
+                dc.breed,
+                dc.age_at_diagnosis,
                 dc.disease_name,
                 dc.disease_category,
                 dc.severity,
@@ -103,7 +103,10 @@ class DataLoader:
                 dc.transmission_method,
                 dc.outcome,
                 dc.diagnosis_date,
-                c.city
+                dc.treatment_duration_days,
+                dc.symptoms,
+                dc.region,
+                c.city as customer_city
             FROM disease_cases dc
             JOIN pets p ON dc.pet_id = p.pet_id
             JOIN customers c ON p.customer_id = c.customer_id

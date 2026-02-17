@@ -19,6 +19,10 @@ import MedicalRecords from './pages/MedicalRecords';
 import MedicalRecordDetail from './pages/MedicalRecordDetail';
 import MedicalRecordCreate from './pages/MedicalRecordCreate';
 import MedicalRecordEdit from './pages/MedicalRecordEdit';
+import Analytics from './pages/Analytics';
+import DiseaseCaseCreate from './pages/DiseaseCaseCreate';
+import DiseaseCaseDetail from './pages/DiseaseCaseDetail';
+import DiseaseCaseEdit from './pages/DiseaseCaseEdit';
 import Inventory from './pages/Inventory';
 import InventoryDetail from './pages/InventoryDetail';
 import InventoryCreate from './pages/InventoryCreate';
@@ -28,7 +32,7 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
-import MLDashboard from './pages/MLDashboard';
+
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -198,6 +202,17 @@ function App() {
         } 
       />
 
+
+      {/* Analytics & Insights page (unified) */}
+      <Route 
+        path="/analytics" 
+        element={
+          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+            <Analytics />
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Inventory routes */}
       <Route 
         path="/inventory" 
@@ -273,6 +288,8 @@ function App() {
         } 
       />
 
+
+
       {/* Profile route - accessible by all authenticated users */}
       <Route 
         path="/profile" 
@@ -289,15 +306,6 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['admin']}>
             <Users />
-          </ProtectedRoute>
-        } 
-      />
-
-      <Route 
-        path="/ml-dashboard" 
-        element={
-          <ProtectedRoute requiredRoles={['admin']}>
-            <MLDashboard />
           </ProtectedRoute>
         } 
       />

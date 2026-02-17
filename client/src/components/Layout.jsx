@@ -177,6 +177,7 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-file-medical"></i> Medical Records
               </a>
+
               <a 
                 href="/billing" 
                 style={getNavItemStyle('/billing')}
@@ -200,23 +201,23 @@ const Layout = ({ children }) => {
                   <i className="fas fa-chart-bar"></i> Reports
                 </a>
               )}
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a 
+                  href="/analytics" 
+                  style={getNavItemStyle('/analytics')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
+                >
+                  <i className="fas fa-chart-line"></i> Analytics & Insights
+                </a>
+              )}
               {user?.role === 'admin' && (
-                <>
-                  <a 
-                    href="/users" 
-                    style={getNavItemStyle('/users')}
-                    onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
-                  >
-                    <i className="fas fa-user-md"></i> Staff
-                  </a>
-                  <a 
-                    href="/ml-dashboard" 
-                    style={getNavItemStyle('/ml-dashboard')}
-                    onClick={(e) => { e.preventDefault(); handleNavigation('/ml-dashboard'); }}
-                  >
-                    <i className="fas fa-brain"></i> ML Dashboard
-                  </a>
-                </>
+                <a 
+                  href="/users" 
+                  style={getNavItemStyle('/users')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+                >
+                  <i className="fas fa-user-md"></i> Staff
+                </a>
               )}
             </nav>
             
