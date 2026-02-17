@@ -177,6 +177,15 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-file-medical"></i> Medical Records
               </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a 
+                  href="/disease-cases" 
+                  style={getNavItemStyle('/disease-cases')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/disease-cases'); }}
+                >
+                  <i className="fas fa-disease"></i> Disease Cases
+                </a>
+              )}
               <a 
                 href="/billing" 
                 style={getNavItemStyle('/billing')}

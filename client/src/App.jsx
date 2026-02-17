@@ -19,6 +19,10 @@ import MedicalRecords from './pages/MedicalRecords';
 import MedicalRecordDetail from './pages/MedicalRecordDetail';
 import MedicalRecordCreate from './pages/MedicalRecordCreate';
 import MedicalRecordEdit from './pages/MedicalRecordEdit';
+import DiseaseCases from './pages/DiseaseCases';
+import DiseaseCaseCreate from './pages/DiseaseCaseCreate';
+import DiseaseCaseDetail from './pages/DiseaseCaseDetail';
+import DiseaseCaseEdit from './pages/DiseaseCaseEdit';
 import Inventory from './pages/Inventory';
 import InventoryDetail from './pages/InventoryDetail';
 import InventoryCreate from './pages/InventoryCreate';
@@ -194,6 +198,43 @@ function App() {
         element={
           <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <MedicalRecordEdit />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Disease Cases routes */}
+      <Route 
+        path="/disease-cases" 
+        element={
+          <ProtectedRoute>
+            <DiseaseCases />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/disease-cases/create" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <DiseaseCaseCreate />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/disease-cases/:id" 
+        element={
+          <ProtectedRoute>
+            <DiseaseCaseDetail />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/disease-cases/:id/edit" 
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <DiseaseCaseEdit />
           </ProtectedRoute>
         } 
       />

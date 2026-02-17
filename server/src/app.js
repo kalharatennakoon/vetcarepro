@@ -48,6 +48,7 @@ import customerRoutes from './routes/customerRoutes.js';
 import petRoutes from './routes/petRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import medicalRecordRoutes from './routes/medicalRecordRoutes.js';
+import diseaseCaseRoutes from './routes/diseaseCaseRoutes.js';
 import inventoryRoutes from './routes/inventoryRoutes.js';
 import billingRoutes from './routes/billingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
@@ -68,6 +69,7 @@ app.get('/api', (req, res) => {
       pets: '/api/pets',
       appointments: '/api/appointments',
       medicalRecords: '/api/medical-records',
+      diseaseCases: '/api/disease-cases',
       inventory: '/api/inventory',
       billing: '/api/billing',
       payments: '/api/payments',
@@ -83,6 +85,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
+app.use('/api/disease-cases', diseaseCaseRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/billing', billingRoutes);
