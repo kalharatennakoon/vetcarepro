@@ -31,7 +31,7 @@ import joblib
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.db_connection import get_db_connection
+from config.db_connection import get_raw_db_connection as get_db_connection
 from utils.model_base import BaseMLModel
 
 try:
@@ -85,7 +85,7 @@ class SalesForecastingModel(BaseMLModel):
                     SUM(CASE WHEN b.payment_method = 'card' THEN b.total_amount ELSE 0 END) AS card_revenue,
                     SUM(CASE WHEN b.payment_method = 'bank_transfer' THEN b.total_amount ELSE 0 END) AS bank_revenue
                 FROM billing b
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                   AND b.bill_date IS NOT NULL
                 GROUP BY DATE(b.bill_date)
                 ORDER BY sale_date
@@ -106,7 +106,7 @@ class SalesForecastingModel(BaseMLModel):
                     COUNT(bi.billing_item_id) AS item_count
                 FROM billing_items bi
                 JOIN billing b ON bi.bill_id = b.bill_id
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                   AND b.bill_date IS NOT NULL
                 GROUP BY DATE(b.bill_date), bi.item_type
                 ORDER BY sale_date, bi.item_type
@@ -126,7 +126,7 @@ class SalesForecastingModel(BaseMLModel):
                     COUNT(b.bill_id) AS appointment_count
                 FROM billing b
                 JOIN appointments a ON b.appointment_id = a.appointment_id
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                   AND b.bill_date IS NOT NULL
                 GROUP BY DATE(b.bill_date), a.appointment_type
                 ORDER BY sale_date
@@ -401,14 +401,15 @@ class SalesForecastingModel(BaseMLModel):
         }
 
         # Save model
-        self.save_model({
+        self.model = {
             'prophet_model': self.prophet_model,
             'demand_model': self.demand_model,
             'scaler': self.scaler,
             'feature_columns': self.feature_columns,
             'monthly_summary': self.monthly_summary.to_dict(orient='records') if self.monthly_summary is not None else [],
             'training_data': self.training_data
-        })
+        }
+        self.save_model()
 
         return {
             'status': 'success',
@@ -455,9 +456,9 @@ class SalesForecastingModel(BaseMLModel):
             future = self.prophet_model.make_future_dataframe(periods=periods, freq=freq)
             forecast = self.prophet_model.predict(future)
 
-            # Get only future dates
-            last_train_date = pd.Timestamp.now() - pd.Timedelta(days=1)
-            future_forecast = forecast[forecast['ds'] >= last_train_date].tail(periods)
+            # Get only future dates (after the last training date)
+            last_train_date = self.prophet_model.history['ds'].max()
+            future_forecast = forecast[forecast['ds'] > last_train_date].head(periods)
 
             result = []
             for _, row in future_forecast.iterrows():
@@ -481,6 +482,7 @@ class SalesForecastingModel(BaseMLModel):
                 upper_bound=('upper_bound', 'sum')
             ).reset_index()
             monthly_agg['month'] = monthly_agg['date'].astype(str)
+            monthly_agg = monthly_agg.drop(columns=['date'])
 
             return {
                 'daily_forecast': result,
@@ -684,7 +686,7 @@ class SalesForecastingModel(BaseMLModel):
                     COUNT(DISTINCT b.bill_id) AS times_billed
                 FROM billing_items bi
                 JOIN billing b ON bi.bill_id = b.bill_id
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                 GROUP BY bi.item_name, bi.item_type
                 ORDER BY total_revenue DESC
                 LIMIT %s
@@ -709,6 +711,11 @@ class SalesForecastingModel(BaseMLModel):
 
         except Exception as e:
             return {'error': f'Failed to fetch top services: {str(e)}'}
+
+    def predict(self, data):
+        """Implement abstract method. Routes to forecast_revenue."""
+        periods = data.get('periods', 90) if isinstance(data, dict) else 90
+        return self.forecast_revenue(periods=periods)
 
     def get_model_status(self):
         """Return model status and metadata."""

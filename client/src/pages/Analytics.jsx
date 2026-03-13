@@ -15,7 +15,6 @@ import {
 import {
   getSalesForecast,
   getSalesTrends,
-  getInventoryForecast,
   getReorderSuggestions
 } from '../services/predictionService';
 import { useAuth } from '../context/AuthContext';
@@ -196,13 +195,10 @@ const Analytics = () => {
   const fetchInventoryData = async () => {
     try {
       setLoading(true);
-      const [forecastRes, suggestionsRes] = await Promise.all([
-        getInventoryForecast(inventoryDays).catch(() => ({ success: false })),
-        getReorderSuggestions().catch(() => ({ success: false }))
-      ]);
+      const suggestionsRes = await getReorderSuggestions().catch(() => ({ success: false }));
 
       setInventoryData({
-        forecast: forecastRes,
+        forecast: null,
         reorderSuggestions: suggestionsRes
       });
       setError('');
@@ -1313,16 +1309,7 @@ const Analytics = () => {
                   <div style={styles.loadingContainer}>
                     <div style={styles.loadingSpinner}></div>
                   </div>
-                ) : salesData.forecast?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-clock" style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Coming Soon</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Sales forecasting model is currently under development.
-                      This feature will analyze historical billing data to predict future sales trends.
-                    </p>
-                  </div>
-                ) : (
+                ) : !salesData.forecast ? (
                   <div style={styles.comingSoonContainer}>
                     <i className="fas fa-chart-line" style={{ fontSize: '3rem', color: '#3b82f6', marginBottom: '1rem' }}></i>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Sales Trend Analysis</h4>
@@ -1330,49 +1317,123 @@ const Analytics = () => {
                       Click "Generate Forecast" to analyze sales patterns and predict future trends
                     </p>
                   </div>
-                )}
+                ) : salesData.forecast?.success === false ? (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Sales forecasting model is not loaded. Please train the model first.
+                    </p>
+                  </div>
+                ) : (() => {
+                  const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
+                  const trendsData = salesData.trends?.trends || {};
+                  const dayPatterns = trendsData.day_of_week_patterns || [];
+                  return (
+                    <div>
+                      {monthlyForecast.length > 0 && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <h4 style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
+                            Monthly Revenue Forecast ({salesData.forecast?.forecast?.model_used || 'ML Model'})
+                          </h4>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                              <thead>
+                                <tr style={{ backgroundColor: '#f9fafb' }}>
+                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Month</th>
+                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Forecast Revenue</th>
+                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Avg Daily</th>
+                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Lower Bound</th>
+                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Upper Bound</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {monthlyForecast.map((row, idx) => (
+                                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                    <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                      {dayPatterns.length > 0 && (
+                        <div>
+                          <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
+                            Revenue by Day of Week
+                          </h4>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {dayPatterns.map((d, idx) => (
+                              <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
             {/* Sales Metrics Cards */}
-            <div style={styles.metricsGridContainer}>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-dollar-sign" style={{ color: '#10b981' }}></i>
+            {salesData.forecast?.success !== false && salesData.forecast && (() => {
+              const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
+              const trendsData = salesData.trends?.trends || {};
+              const dayPatterns = trendsData.day_of_week_patterns || [];
+              const bestDay = dayPatterns.length > 0
+                ? dayPatterns.reduce((a, b) => (a.avg_revenue > b.avg_revenue ? a : b))
+                : null;
+              const totalForecastRevenue = monthlyForecast.reduce((sum, m) => sum + (m.monthly_revenue || 0), 0);
+              const yoy = trendsData.yoy_growth_percentage;
+              return (
+                <div style={styles.metricsGridContainer}>
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIconBox}>
+                      <i className="fas fa-dollar-sign" style={{ color: '#10b981' }}></i>
+                    </div>
+                    <div>
+                      <div style={styles.metricLabel}>Total Forecast Revenue</div>
+                      <div style={styles.metricValue}>LKR {totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                    </div>
+                  </div>
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIconBox}>
+                      <i className={`fas fa-arrow-${yoy >= 0 ? 'up' : 'down'}`} style={{ color: yoy >= 0 ? '#3b82f6' : '#dc2626' }}></i>
+                    </div>
+                    <div>
+                      <div style={styles.metricLabel}>YoY Growth</div>
+                      <div style={styles.metricValue}>{yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIconBox}>
+                      <i className="fas fa-calendar-alt" style={{ color: '#8b5cf6' }}></i>
+                    </div>
+                    <div>
+                      <div style={styles.metricLabel}>Best Day</div>
+                      <div style={styles.metricValue}>{bestDay ? bestDay.day_of_week : 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div style={styles.metricCard}>
+                    <div style={styles.metricIconBox}>
+                      <i className="fas fa-calendar-check" style={{ color: '#f59e0b' }}></i>
+                    </div>
+                    <div>
+                      <div style={styles.metricLabel}>Avg Monthly Revenue</div>
+                      <div style={styles.metricValue}>{trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div style={styles.metricLabel}>Revenue Forecast</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-arrow-up" style={{ color: '#3b82f6' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Growth Trend</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-calendar-alt" style={{ color: '#8b5cf6' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Best Day</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-shopping-cart" style={{ color: '#f59e0b' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Top Services</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1410,83 +1471,101 @@ const Analytics = () => {
                   <div style={styles.loadingContainer}>
                     <div style={styles.loadingSpinner}></div>
                   </div>
-                ) : inventoryData.forecast?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-clock" style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Coming Soon</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Inventory demand forecasting is currently under development.
-                      This feature will predict stock requirements based on usage patterns.
-                    </p>
-                  </div>
-                ) : (
+                ) : !inventoryData.reorderSuggestions ? (
                   <div style={styles.comingSoonContainer}>
                     <i className="fas fa-boxes" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '1rem' }}></i>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Inventory Demand Forecasting</h4>
                     <p style={{ color: '#6b7280', margin: 0 }}>
-                      Click "Generate Forecast" to predict inventory demand and get reorder suggestions
+                      Click "Generate Forecast" to get AI-powered reorder suggestions
                     </p>
                   </div>
-                )}
+                ) : inventoryData.reorderSuggestions?.success === false ? (
+                  <div style={styles.comingSoonContainer}>
+                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
+                    <p style={{ color: '#6b7280', margin: 0 }}>
+                      Inventory forecasting model is not loaded. Please train the model first.
+                    </p>
+                  </div>
+                ) : (() => {
+                  const recs = inventoryData.reorderSuggestions?.recommendations || {};
+                  const summary = recs.summary || {};
+                  return (
+                    <div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626' }}>{summary.urgent_count ?? 0}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Urgent Reorder</div>
+                        </div>
+                        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d97706' }}>{summary.upcoming_count ?? 0}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Reorder Soon</div>
+                        </div>
+                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#16a34a' }}>{summary.sufficient_count ?? 0}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Sufficient Stock</div>
+                        </div>
+                        <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1d4ed8' }}>LKR {Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Est. Reorder Cost</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
-            {/* Reorder Suggestions */}
-            <div style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>
-                  <i className="fas fa-shopping-cart" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
-                  Smart Reorder Suggestions
-                </h3>
-              </div>
-              <div style={styles.cardBody}>
-                <div style={styles.comingSoonContainer}>
-                  <i className="fas fa-robot" style={{ fontSize: '2rem', color: '#6b7280', marginBottom: '1rem' }}></i>
-                  <p style={{ color: '#6b7280', margin: 0 }}>
-                    AI-powered reorder suggestions coming soon. This feature will recommend
-                    optimal reorder quantities based on usage patterns and lead times.
-                  </p>
+
+            {/* Reorder Suggestions Tables */}
+            {inventoryData.reorderSuggestions?.success !== false && inventoryData.reorderSuggestions && (() => {
+              const recs = inventoryData.reorderSuggestions?.recommendations || {};
+              const urgent = recs.urgent_reorder || [];
+              const soon = recs.reorder_soon || [];
+              const renderTable = (items, color, label) => items.length === 0 ? null : (
+                <div style={styles.card} key={label}>
+                  <div style={styles.cardHeader}>
+                    <h3 style={{ ...styles.cardTitle, color }}>
+                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
+                      {label} ({items.length} items)
+                    </h3>
+                  </div>
+                  <div style={styles.cardBody}>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Current Stock</th>
+                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Reorder Qty</th>
+                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Est. Cost</th>
+                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
+                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
+                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
+                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>
+                                {item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}
+                              </td>
+                              <td style={{ padding: '0.6rem 1rem', color: '#6b7280' }}>{item.category || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            {/* Inventory Metrics */}
-            <div style={styles.metricsGridContainer}>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Low Stock Items</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-chart-line" style={{ color: '#10b981' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Usage Trend</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-calendar-check" style={{ color: '#3b82f6' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Expiring Soon</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-              <div style={styles.metricCard}>
-                <div style={styles.metricIconBox}>
-                  <i className="fas fa-balance-scale" style={{ color: '#8b5cf6' }}></i>
-                </div>
-                <div>
-                  <div style={styles.metricLabel}>Optimal Stock Level</div>
-                  <div style={styles.metricValue}>Coming Soon</div>
-                </div>
-              </div>
-            </div>
+              );
+              return (
+                <>
+                  {renderTable(urgent, '#dc2626', 'Urgent Reorder')}
+                  {renderTable(soon, '#d97706', 'Reorder Soon')}
+                </>
+              );
+            })()}
           </div>
         )}
 

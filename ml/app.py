@@ -97,15 +97,20 @@ def load_sales_model():
             print(f"Loading sales forecasting model: {latest_model}")
             loaded_data = joblib.load(latest_model)
 
+            # Support both save formats: flat dict and base-class-wrapped {'model': {...}}
+            model_components = loaded_data.get('model', loaded_data)
+            if not isinstance(model_components, dict):
+                model_components = loaded_data
+
             # Restore model components
-            sales_model.prophet_model = loaded_data.get('prophet_model')
-            sales_model.demand_model = loaded_data.get('demand_model')
-            sales_model.scaler = loaded_data.get('scaler')
-            sales_model.feature_columns = loaded_data.get('feature_columns', [])
-            sales_model.training_data = loaded_data.get('training_data', {})
+            sales_model.prophet_model = model_components.get('prophet_model')
+            sales_model.demand_model = model_components.get('demand_model')
+            sales_model.scaler = model_components.get('scaler')
+            sales_model.feature_columns = model_components.get('feature_columns', [])
+            sales_model.training_data = model_components.get('training_data', {})
 
             import pandas as pd
-            monthly_records = loaded_data.get('monthly_summary', [])
+            monthly_records = model_components.get('monthly_summary', [])
             if monthly_records:
                 sales_model.monthly_summary = pd.DataFrame(monthly_records)
 
@@ -146,12 +151,17 @@ def load_inventory_model():
             print(f"Loading inventory forecasting model: {latest_model}")
             loaded_data = joblib.load(latest_model)
 
+            # Support both save formats: flat dict and base-class-wrapped {'model': {...}}
+            model_components = loaded_data.get('model', loaded_data)
+            if not isinstance(model_components, dict):
+                model_components = loaded_data
+
             # Restore model components
-            inventory_model.demand_model = loaded_data.get('demand_model')
-            inventory_model.scaler = loaded_data.get('scaler')
-            inventory_model.feature_columns = loaded_data.get('feature_columns', [])
-            inventory_model.item_stats = loaded_data.get('item_stats', {})
-            inventory_model.category_map = loaded_data.get('category_map', {})
+            inventory_model.demand_model = model_components.get('demand_model')
+            inventory_model.scaler = model_components.get('scaler')
+            inventory_model.feature_columns = model_components.get('feature_columns', [])
+            inventory_model.item_stats = model_components.get('item_stats', {})
+            inventory_model.category_map = model_components.get('category_map', {})
 
             item_count = len(inventory_model.item_stats)
             print(f"✓ Inventory forecasting model loaded successfully ({item_count} items)")
@@ -921,16 +931,19 @@ def load_inventory_data():
 def test_db_connection():
     """Test database connection"""
     try:
-        from config.db_connection import get_db_connection
+        from config.db_connection import get_raw_db_connection
 
-        db = get_db_connection()
-        with db as connection:
-            result = connection.execute_query("SELECT NOW() as current_time")
+        conn = get_raw_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT NOW() as current_time")
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
         return jsonify({
             'success': True,
             'message': 'Database connection successful',
-            'timestamp': result[0]['current_time'].isoformat() if result else None
+            'timestamp': row[0].isoformat() if row else None
         }), 200
 
     except Exception as e:

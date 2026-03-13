@@ -29,7 +29,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.db_connection import get_db_connection
+from config.db_connection import get_raw_db_connection as get_db_connection
 from utils.model_base import BaseMLModel
 
 
@@ -105,7 +105,7 @@ class InventoryForecastingModel(BaseMLModel):
                     COUNT(bi.billing_item_id) AS transaction_count
                 FROM billing_items bi
                 JOIN billing b ON bi.bill_id = b.bill_id
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                   AND bi.item_id IS NOT NULL
                   AND b.bill_date IS NOT NULL
                 GROUP BY bi.item_id, bi.item_name, bi.item_type, DATE(b.bill_date)
@@ -128,7 +128,7 @@ class InventoryForecastingModel(BaseMLModel):
                     COUNT(DISTINCT bi.item_id) AS unique_items
                 FROM billing_items bi
                 JOIN billing b ON bi.bill_id = b.bill_id
-                WHERE b.payment_status IN ('paid', 'partial')
+                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
                   AND b.bill_date IS NOT NULL
                 GROUP BY bi.item_type, EXTRACT(YEAR FROM b.bill_date), EXTRACT(MONTH FROM b.bill_date)
                 ORDER BY year, month, category
@@ -350,7 +350,7 @@ class InventoryForecastingModel(BaseMLModel):
         }
 
         # Save model
-        self.save_model({
+        self.model = {
             'demand_model': self.demand_model,
             'scaler': self.scaler,
             'feature_columns': self.feature_columns,
@@ -361,7 +361,8 @@ class InventoryForecastingModel(BaseMLModel):
                 'consumption_records': len(consumption_df),
                 'items_with_history': len(training_df)
             }
-        })
+        }
+        self.save_model()
 
         return {
             'status': 'success',
@@ -599,6 +600,12 @@ class InventoryForecastingModel(BaseMLModel):
             'should_reorder_now': prediction['should_reorder'],
             'suggested_order_quantity': prediction['suggested_order_quantity']
         }
+
+    def predict(self, data):
+        """Implement abstract method. Routes to predict_item_demand."""
+        item_id = data.get('item_id') if isinstance(data, dict) else data
+        days = data.get('days', 30) if isinstance(data, dict) else 30
+        return self.predict_item_demand(item_id, days=days)
 
     def get_model_status(self):
         """Return model status and metadata."""

@@ -86,7 +86,15 @@ class DatabaseConnection:
         self.disconnect()
 
 
-# Convenience function for quick queries
+# Convenience function that returns a DatabaseConnection wrapper (used by DataLoader)
 def get_db_connection():
-    """Returns a new database connection instance"""
+    """Returns a DatabaseConnection instance (supports .execute_query(), context manager)"""
     return DatabaseConnection()
+
+
+# Convenience function that returns a raw psycopg2 connection
+# Used by scripts that call conn.cursor() / conn.close() / conn.commit() directly
+def get_raw_db_connection():
+    """Returns a raw psycopg2 connection (supports .cursor(), .close(), .commit(), .rollback())"""
+    db = DatabaseConnection()
+    return db.connect()
