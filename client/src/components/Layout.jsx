@@ -202,12 +202,30 @@ const Layout = ({ children }) => {
                 </a>
               )}
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a 
-                  href="/analytics" 
+                <a
+                  href="/analytics"
                   style={getNavItemStyle('/analytics')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
                 >
                   <i className="fas fa-chart-line"></i> Analytics & Insights
+                </a>
+              )}
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/sales-forecasting"
+                  style={getNavItemStyle('/sales-forecasting')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/sales-forecasting'); }}
+                >
+                  <i className="fas fa-chart-area"></i> Sales Forecasting
+                </a>
+              )}
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/inventory-forecasting"
+                  style={getNavItemStyle('/inventory-forecasting')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/inventory-forecasting'); }}
+                >
+                  <i className="fas fa-boxes"></i> Inventory Forecasting
                 </a>
               )}
               {user?.role === 'admin' && (
