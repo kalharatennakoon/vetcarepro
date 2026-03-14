@@ -202,8 +202,8 @@ const Layout = ({ children }) => {
                 </a>
               )}
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a 
-                  href="/analytics" 
+                <a
+                  href="/analytics"
                   style={getNavItemStyle('/analytics')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
                 >

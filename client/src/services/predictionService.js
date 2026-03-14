@@ -7,9 +7,9 @@ const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api
  * @param {number} period - Number of days to forecast
  */
 export const getSalesForecast = async (period = 30) => {
-  const response = await axios.post(
+  const response = await axios.get(
     `${ML_API_URL}/sales/forecast`,
-    { period }
+    { params: { periods: period } }
   );
   return response.data;
 };

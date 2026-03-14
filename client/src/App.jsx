@@ -32,6 +32,8 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import SalesForecasting from './pages/SalesForecasting';
+import InventoryForecasting from './pages/InventoryForecasting';
 
 
 function App() {
@@ -278,14 +280,66 @@ function App() {
         } 
       />
 
+      {/* Disease Case routes */}
+      <Route
+        path="/disease-cases"
+        element={<Navigate to="/analytics" replace />}
+      />
+
+      <Route
+        path="/disease-cases/create"
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <DiseaseCaseCreate />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/disease-cases/:id"
+        element={
+          <ProtectedRoute>
+            <DiseaseCaseDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/disease-cases/:id/edit"
+        element={
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+            <DiseaseCaseEdit />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ML Forecasting routes - accessible by admin and veterinarian */}
+      <Route
+        path="/sales-forecasting"
+        element={
+          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+            <SalesForecasting />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/inventory-forecasting"
+        element={
+          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+            <InventoryForecasting />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Reports routes - accessible by admin and veterinarian */}
-      <Route 
-        path="/reports" 
+      <Route
+        path="/reports"
         element={
           <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
             <Reports />
           </ProtectedRoute>
-        } 
+        }
       />
 
 

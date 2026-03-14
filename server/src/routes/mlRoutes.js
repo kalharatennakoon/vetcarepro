@@ -51,32 +51,75 @@ router.post('/disease/predict', mlController.predictDisease);
 router.get('/disease/trends', mlController.getDiseaseTrends);
 
 // ============================================
-// Sales Forecasting Routes
+// Sales Forecasting Routes (Phase 3)
 // ============================================
 
-// @route   POST /api/ml/sales/forecast
-// @desc    Forecast sales
+// @route   POST /api/ml/sales/train
+// @desc    Train or retrain the sales forecasting model
+// @access  Private (Admin only)
+router.post(
+  '/sales/train',
+  authorize('admin'),
+  mlController.trainSalesModel
+);
+
+// @route   GET /api/ml/sales/forecast
+// @desc    Forecast revenue for the next N days (?periods=90)
 // @access  Private
-router.post('/sales/forecast', mlController.forecastSales);
+router.get('/sales/forecast', mlController.forecastSales);
+
+// @route   POST /api/ml/sales/predict-month
+// @desc    Predict revenue for a specific month and year
+// @access  Private
+router.post('/sales/predict-month', mlController.predictMonthlyRevenue);
 
 // @route   GET /api/ml/sales/trends
-// @desc    Get sales trends
+// @desc    Get historical sales trends and seasonal patterns (?months=12)
 // @access  Private
 router.get('/sales/trends', mlController.getSalesTrends);
 
+// @route   GET /api/ml/sales/top-services
+// @desc    Get top revenue-generating services and products (?limit=10)
+// @access  Private
+router.get('/sales/top-services', mlController.getTopRevenueServices);
+
 // ============================================
-// Inventory Forecasting Routes
+// Inventory Forecasting Routes (Phase 3)
 // ============================================
 
+// @route   POST /api/ml/inventory/train
+// @desc    Train or retrain the inventory forecasting model
+// @access  Private (Admin only)
+router.post(
+  '/inventory/train',
+  authorize('admin'),
+  mlController.trainInventoryModel
+);
+
 // @route   POST /api/ml/inventory/forecast
-// @desc    Forecast inventory demand
+// @desc    Forecast inventory demand for a specific item
 // @access  Private
 router.post('/inventory/forecast', mlController.forecastInventory);
 
 // @route   GET /api/ml/inventory/reorder-suggestions
-// @desc    Get intelligent reorder suggestions
+// @desc    Get intelligent reorder suggestions for all items
 // @access  Private
 router.get('/inventory/reorder-suggestions', mlController.getReorderSuggestions);
+
+// @route   GET /api/ml/inventory/fast-moving
+// @desc    Get fast-moving and slow-moving items (?limit=10)
+// @access  Private
+router.get('/inventory/fast-moving', mlController.getFastMovingItems);
+
+// @route   GET /api/ml/inventory/category-analysis
+// @desc    Get demand analysis by inventory category
+// @access  Private
+router.get('/inventory/category-analysis', mlController.getCategoryDemandAnalysis);
+
+// @route   POST /api/ml/inventory/predict-restock
+// @desc    Predict restock date for a specific item
+// @access  Private
+router.post('/inventory/predict-restock', mlController.predictRestockDate);
 
 // ============================================
 // Data Loading Routes (for testing/development)

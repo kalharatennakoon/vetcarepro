@@ -108,17 +108,35 @@ const getDiseaseTrends = async (req, res) => {
 };
 
 // ============================================
-// Sales Forecasting Controllers
+// Sales Forecasting Controllers (Phase 3)
 // ============================================
 
 /**
- * @desc    Forecast sales
- * @route   POST /api/ml/sales/forecast
+ * @desc    Train or retrain the sales forecasting model
+ * @route   POST /api/ml/sales/train
+ * @access  Private (Admin only)
+ */
+const trainSalesModel = async (req, res) => {
+  try {
+    const result = await mlService.trainSalesModel();
+    res.json(result);
+  } catch (error) {
+    console.error('Sales model training error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Forecast revenue for the next N days
+ * @route   GET /api/ml/sales/forecast
  * @access  Private
  */
 const forecastSales = async (req, res) => {
   try {
-    const result = await mlService.forecastSales(req.body);
+    const result = await mlService.forecastSales(req.query);
     res.json(result);
   } catch (error) {
     console.error('Sales forecast error:', error);
@@ -130,7 +148,25 @@ const forecastSales = async (req, res) => {
 };
 
 /**
- * @desc    Get sales trends
+ * @desc    Predict revenue for a specific month and year
+ * @route   POST /api/ml/sales/predict-month
+ * @access  Private
+ */
+const predictMonthlyRevenue = async (req, res) => {
+  try {
+    const result = await mlService.predictMonthlyRevenue(req.body);
+    res.json(result);
+  } catch (error) {
+    console.error('Monthly revenue prediction error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get historical sales trends and seasonal patterns
  * @route   GET /api/ml/sales/trends
  * @access  Private
  */
@@ -147,12 +183,48 @@ const getSalesTrends = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get top revenue-generating services and products
+ * @route   GET /api/ml/sales/top-services
+ * @access  Private
+ */
+const getTopRevenueServices = async (req, res) => {
+  try {
+    const result = await mlService.getTopRevenueServices(req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('Get top revenue services error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // ============================================
-// Inventory Forecasting Controllers
+// Inventory Forecasting Controllers (Phase 3)
 // ============================================
 
 /**
- * @desc    Forecast inventory demand
+ * @desc    Train or retrain the inventory forecasting model
+ * @route   POST /api/ml/inventory/train
+ * @access  Private (Admin only)
+ */
+const trainInventoryModel = async (req, res) => {
+  try {
+    const result = await mlService.trainInventoryModel();
+    res.json(result);
+  } catch (error) {
+    console.error('Inventory model training error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Forecast inventory demand for a specific item
  * @route   POST /api/ml/inventory/forecast
  * @access  Private
  */
@@ -170,7 +242,7 @@ const forecastInventory = async (req, res) => {
 };
 
 /**
- * @desc    Get reorder suggestions
+ * @desc    Get intelligent reorder suggestions for all inventory items
  * @route   GET /api/ml/inventory/reorder-suggestions
  * @access  Private
  */
@@ -180,6 +252,60 @@ const getReorderSuggestions = async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('Get reorder suggestions error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get fast-moving and slow-moving inventory items
+ * @route   GET /api/ml/inventory/fast-moving
+ * @access  Private
+ */
+const getFastMovingItems = async (req, res) => {
+  try {
+    const result = await mlService.getFastMovingItems(req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('Get fast-moving items error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get demand analysis by inventory category
+ * @route   GET /api/ml/inventory/category-analysis
+ * @access  Private
+ */
+const getCategoryDemandAnalysis = async (req, res) => {
+  try {
+    const result = await mlService.getCategoryDemandAnalysis();
+    res.json(result);
+  } catch (error) {
+    console.error('Get category demand analysis error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Predict restock date for a specific item
+ * @route   POST /api/ml/inventory/predict-restock
+ * @access  Private
+ */
+const predictRestockDate = async (req, res) => {
+  try {
+    const result = await mlService.predictRestockDate(req.body);
+    res.json(result);
+  } catch (error) {
+    console.error('Predict restock date error:', error);
     res.status(500).json({
       success: false,
       message: error.message
@@ -232,19 +358,26 @@ export {
   checkHealth,
   getModelsStatus,
   testDatabaseConnection,
-  
+
   // Disease Prediction
   predictDisease,
   getDiseaseTrends,
-  
-  // Sales Forecasting
+
+  // Sales Forecasting (Phase 3)
+  trainSalesModel,
   forecastSales,
+  predictMonthlyRevenue,
   getSalesTrends,
-  
-  // Inventory Forecasting
+  getTopRevenueServices,
+
+  // Inventory Forecasting (Phase 3)
+  trainInventoryModel,
   forecastInventory,
   getReorderSuggestions,
-  
+  getFastMovingItems,
+  getCategoryDemandAnalysis,
+  predictRestockDate,
+
   // Data Loading
   loadSalesData,
   loadInventoryData
