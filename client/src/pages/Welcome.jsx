@@ -9,8 +9,7 @@ const Welcome = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -45,7 +44,7 @@ const Welcome = () => {
             </div>
             <div>
               <h2 style={styles.logoTitle}>VetCare Pro</h2>
-              <p style={styles.logoSubtitle}>Pro Pet Animal Hospital - Mawathagama, Kurunegala</p>
+              <p style={styles.logoSubtitle}>Pro Pet Animal Hospital</p>
             </div>
           </div>
           <button 
@@ -122,19 +121,7 @@ const Welcome = () => {
                 </div>
               </div>
 
-              <div style={styles.rememberForgotRow}>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={styles.checkbox}
-                  />
-                  <span style={styles.checkboxText}>Remember me</span>
-                </label>
-              </div>
-
-              <button 
+              <button
                 type="submit" 
                 style={{
                   ...styles.submitButton,
@@ -151,12 +138,12 @@ const Welcome = () => {
               <p style={styles.supportText}>
                 Need help accessing your account?
               </p>
-              <a href="#" style={styles.supportLink}>
+              <a href="mailto:support@vetcarepro.lk" style={styles.supportLink}>
                 <i className="fas fa-headset" style={styles.supportIconSmall}></i>
                 Contact Support
               </a>
               <p style={styles.footerText}>
-                © 2026 Pro Pet Animal Hospital - Mawathagama, Kurunegala. All rights reserved.
+                All rights reserved.
               </p>
             </div>
           </div>
@@ -187,7 +174,7 @@ const Welcome = () => {
           </div>
         </div>
         <div style={styles.headerRight}>
-          <a style={styles.supportLink} className="welcome-support-link" href="#">
+          <a style={styles.supportLink} className="welcome-support-link" href="mailto:support@vetcarepro.lk">
             <span>IT Support</span>
           </a>
         </div>
@@ -208,7 +195,7 @@ const Welcome = () => {
                   <span style={styles.heroHighlight}>VetCare Pro</span>
                 </h1>
                 <p style={styles.heroDescription} className="welcome-hero-description">
-                  The comprehensive management system for <span style={styles.hospitalName}>Pro Pet Animal Hospital</span> - Mawathagama, Kurunegala.
+                  The comprehensive management system for <span style={styles.hospitalName}><br />Pro Pet Animal Hospital</span>
                 </p>
                 <p style={styles.heroSubtext} className="welcome-hero-subtext">
                   Securely manage patient records, pharmacy inventory, and appointments in one place.
@@ -228,7 +215,7 @@ const Welcome = () => {
 
               <div style={styles.disclaimer}>
                 <p style={styles.disclaimerText}>
-                  Unauthorized access is prohibited. All activity on this system is monitored for security purposes.
+                  Unauthorized access is prohibited. <br />All activity on this system is monitored for security purposes.
                 </p>
               </div>
             </div>
