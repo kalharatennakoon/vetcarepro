@@ -32,8 +32,6 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
-import SalesForecasting from './pages/SalesForecasting';
-import InventoryForecasting from './pages/InventoryForecasting';
 
 
 function App() {
@@ -313,26 +311,7 @@ function App() {
         }
       />
 
-      {/* ML Forecasting routes - accessible by admin and veterinarian */}
-      <Route
-        path="/sales-forecasting"
-        element={
-          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
-            <SalesForecasting />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/inventory-forecasting"
-        element={
-          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
-            <InventoryForecasting />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Reports routes - accessible by admin and veterinarian */}
+{/* Reports routes - accessible by admin and veterinarian */}
       <Route
         path="/reports"
         element={

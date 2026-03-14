@@ -50,7 +50,7 @@ const Analytics = () => {
     days_lookback: 60
   });
   const [training, setTraining] = useState(false);
-const [trainSuccess, setTrainSuccess] = useState(false);
+  const [trainSuccess, setTrainSuccess] = useState(false);
 
   // Sales Forecast State
   const [salesData, setSalesData] = useState({
@@ -203,7 +203,7 @@ const [trainSuccess, setTrainSuccess] = useState(false);
       await trainMLModel();
       await fetchMLData();
       setTrainSuccess(true);
-      setTimeout(() => setTrainSuccess(false), 2000);
+      setTimeout(() => setTrainSuccess(false), 4000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to train model');
     } finally {

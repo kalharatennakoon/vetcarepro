@@ -9,8 +9,7 @@ const Welcome = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -45,7 +44,7 @@ const Welcome = () => {
             </div>
             <div>
               <h2 style={styles.logoTitle}>VetCare Pro</h2>
-              <p style={styles.logoSubtitle}>Pro Pet Animal Hospital - Mawathagama, Kurunegala</p>
+              <p style={styles.logoSubtitle}>Pro Pet Animal Hospital</p>
             </div>
           </div>
           <button 
@@ -122,20 +121,7 @@ const Welcome = () => {
                 </div>
               </div>
 
-              <div style={styles.rememberForgotRow}>
-                <label style={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={styles.checkbox}
-                  />
-                  <span style={styles.checkboxText}>Remember me</span>
-                </label>
-                <a href="#" style={styles.forgotLink} className="welcome-forgot-link">Forgot password?</a>
-              </div>
-
-              <button 
+              <button
                 type="submit" 
                 style={{
                   ...styles.submitButton,
@@ -152,12 +138,12 @@ const Welcome = () => {
               <p style={styles.supportText}>
                 Need help accessing your account?
               </p>
-              <a href="#" style={styles.supportLink}>
+              <a href="mailto:support@vetcarepro.lk" style={styles.supportLink}>
                 <i className="fas fa-headset" style={styles.supportIconSmall}></i>
                 Contact Support
               </a>
               <p style={styles.footerText}>
-                © 2026 Pro Pet Animal Hospital - Mawathagama, Kurunegala. All rights reserved.
+                All rights reserved.
               </p>
             </div>
           </div>
@@ -166,7 +152,7 @@ const Welcome = () => {
         <footer style={styles.footer}>
           <div style={styles.footerContent}>
             <p style={styles.footerCopyright}>
-              © 2026 VetCare Systems. v1.0
+              © 2026 VetCare Systems
             </p>
           </div>
         </footer>
@@ -188,7 +174,7 @@ const Welcome = () => {
           </div>
         </div>
         <div style={styles.headerRight}>
-          <a style={styles.supportLink} className="welcome-support-link" href="#">
+          <a style={styles.supportLink} className="welcome-support-link" href="mailto:support@vetcarepro.lk">
             <span>IT Support</span>
           </a>
         </div>
@@ -196,7 +182,7 @@ const Welcome = () => {
 
       <main style={styles.main} className="welcome-main">
         <div style={styles.contentWrapper} className="welcome-content-wrapper">
-          <div style={styles.leftPanel} className="welcome-left-panel">
+          <div style={styles.centerPanel} className="welcome-left-panel">
             <div style={styles.leftContent}>
               <div style={styles.badge}>
                 <i className="fas fa-check" style={styles.badgeIcon}></i>
@@ -209,7 +195,7 @@ const Welcome = () => {
                   <span style={styles.heroHighlight}>VetCare Pro</span>
                 </h1>
                 <p style={styles.heroDescription} className="welcome-hero-description">
-                  The comprehensive management system for <span style={styles.hospitalName}>Pro Pet Animal Hospital</span> - Mawathagama, Kurunegala.
+                  The comprehensive management system for <span style={styles.hospitalName}><br />Pro Pet Animal Hospital</span>
                 </p>
                 <p style={styles.heroSubtext} className="welcome-hero-subtext">
                   Securely manage patient records, pharmacy inventory, and appointments in one place.
@@ -217,7 +203,7 @@ const Welcome = () => {
               </div>
 
               <div style={styles.actionSection}>
-                <button 
+                <button
                   style={styles.loginButton}
                   className="welcome-login-button"
                   onClick={handleLoginClick}
@@ -225,34 +211,12 @@ const Welcome = () => {
                 >
                   Log In to System
                 </button>
-                <div style={styles.forgotPassword}>
-                  <i className="fas fa-lock" style={styles.lockIcon}></i>
-                  <a href="#" style={styles.forgotLink} className="welcome-forgot-link">Forgot your password?</a>
-                </div>
               </div>
 
               <div style={styles.disclaimer}>
                 <p style={styles.disclaimerText}>
-                  Unauthorized access is prohibited. All activity on this system is monitored for security purposes.
+                  Unauthorized access is prohibited. <br />All activity on this system is monitored for security purposes.
                 </p>
-              </div>
-            </div>
-          </div>
-
-          <div style={styles.rightPanel} className="welcome-right-panel">
-            <div 
-              style={styles.imageContainer}
-              className="welcome-image-container"
-            >
-              <div style={styles.imageOverlay}></div>
-              <div style={styles.imageCard}>
-                <div style={styles.imageCardIcon}>
-                  <i className="fas fa-heart" style={styles.heartIcon}></i>
-                </div>
-                <div>
-                  <p style={styles.imageCardTitle}>Compassionate Care</p>
-                  <p style={styles.imageCardSubtitle}>Excellence in Veterinary Medicine</p>
-                </div>
               </div>
             </div>
           </div>
@@ -262,7 +226,7 @@ const Welcome = () => {
       <footer style={styles.footer} className="welcome-footer">
         <div style={styles.footerContent} className="welcome-footer-content">
           <p style={styles.footerCopyright}>
-            © 2026 VetCare Systems. v1.0
+            © 2026 VetCare Systems
           </p>
         </div>
       </footer>
@@ -361,31 +325,28 @@ const styles = {
   },
   contentWrapper: {
     width: '100%',
-    maxWidth: '1400px',
+    maxWidth: '560px',
     backgroundColor: '#ffffff',
     borderRadius: '1.5rem',
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
     overflow: 'hidden',
     display: 'flex',
-    minHeight: '500px',
-    maxHeight: 'calc(100vh - 180px)',
     border: '1px solid #f1f5f9',
   },
-  leftPanel: {
-    flex: '0 0 42%',
+  centerPanel: {
+    flex: 1,
     padding: '2.5rem 2rem',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#ffffff',
-    position: 'relative',
-    zIndex: 10,
   },
   leftContent: {
-    maxWidth: '480px',
-    margin: '0 auto',
+    width: '100%',
     display: 'flex',
     flexDirection: 'column',
+    alignItems: 'center',
     gap: '1.5rem',
   },
   badge: {
@@ -397,7 +358,6 @@ const styles = {
     backgroundColor: '#eff6ff',
     border: '1px solid #dbeafe',
     width: 'fit-content',
-    alignSelf: 'flex-start',
   },
   badgeIcon: {
     fontSize: '0.875rem',
@@ -414,6 +374,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
+    textAlign: 'center',
+    width: '100%',
   },
   heroTitle: {
     fontSize: '2.5rem',
@@ -422,6 +384,7 @@ const styles = {
     letterSpacing: '-0.02em',
     color: '#1e293b',
     margin: 0,
+    textAlign: 'center',
   },
   heroHighlight: {
     color: '#137fec',
@@ -446,6 +409,7 @@ const styles = {
     flexDirection: 'column',
     gap: '0.75rem',
     paddingTop: '0.75rem',
+    width: '100%',
   },
   loginButton: {
     width: '100%',
@@ -461,17 +425,6 @@ const styles = {
     boxShadow: '0 10px 15px -3px rgba(19, 127, 236, 0.25)',
     transition: 'all 0.2s',
   },
-  forgotPassword: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.5rem',
-    paddingTop: '0.25rem',
-  },
-  lockIcon: {
-    fontSize: '0.875rem',
-    color: '#94a3b8',
-  },
   forgotLink: {
     fontSize: '0.875rem',
     color: '#64748b',
@@ -483,68 +436,13 @@ const styles = {
     borderTop: '1px solid #f1f5f9',
     paddingTop: '1.5rem',
     marginTop: '1rem',
+    width: '100%',
+    textAlign: 'center',
   },
   disclaimerText: {
     fontSize: '0.75rem',
     lineHeight: '1.5',
     color: '#94a3b8',
-    margin: 0,
-  },
-  rightPanel: {
-    flex: '0 0 58%',
-    position: 'relative',
-    backgroundColor: '#f1f5f9',
-    overflow: 'hidden',
-  },
-  imageContainer: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: '#137fec',
-    background: 'linear-gradient(135deg, #137fec 0%, #0c6fd9 100%)',
-    transition: 'transform 2s ease-out',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(to right, rgba(0, 0, 0, 0.05), transparent)',
-  },
-  imageCard: {
-    position: 'absolute',
-    bottom: '2rem',
-    left: '2rem',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '1rem',
-    padding: '1rem',
-    borderRadius: '0.75rem',
-    backdropFilter: 'blur(16px)',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    border: '1px solid rgba(255, 255, 255, 0.25)',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-    zIndex: 10,
-  },
-  imageCardIcon: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '9999px',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#ffffff',
-  },
-  heartIcon: {
-    fontSize: '1.25rem',
-  },
-  imageCardTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '700',
-    color: '#ffffff',
-    margin: 0,
-  },
-  imageCardSubtitle: {
-    fontSize: '0.75rem',
-    color: 'rgba(255, 255, 255, 0.8)',
     margin: 0,
   },
   footer: {
@@ -557,11 +455,8 @@ const styles = {
     maxWidth: '1400px',
     margin: '0 auto',
     display: 'flex',
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '1rem',
-    textAlign: 'center',
+    justifyContent: 'center',
     padding: '0 1.5rem',
   },
   footerCopyright: {
