@@ -53,3 +53,13 @@ export const deleteCustomer = async (id) => {
   const response = await axios.delete(`${API_URL}/customers/${id}`);
   return response.data;
 };
+
+export const checkCustomerDeletability = async (id) => {
+  const response = await axios.get(`${API_URL}/customers/${id}/deletability`);
+  return response.data;
+};
+
+export const inactivateCustomer = async (id, data) => {
+  const response = await axios.patch(`${API_URL}/customers/${id}/inactivate`, data);
+  return response.data;
+};

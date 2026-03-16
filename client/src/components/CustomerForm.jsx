@@ -1,10 +1,21 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
+import { getSpeciesList, createPet } from '../services/petService';
 
 const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [speciesList, setSpeciesList] = useState([]);
+  const [petData, setPetData] = useState({
+    pet_name: '',
+    species: '',
+    breed: '',
+    gender: '',
+    date_of_birth: '',
+    color: '',
+    weight_current: ''
+  });
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -25,10 +36,14 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const isEditMode = !!customerId;
   const { showSuccess } = useNotification();
 
-  // Load customer data if editing
   useEffect(() => {
     if (customerId) {
       loadCustomer();
+    }
+    if (!customerId) {
+      getSpeciesList().then(res => {
+        setSpeciesList(res.data.species?.map(s => s.species) || []);
+      }).catch(() => {});
     }
   }, [customerId]);
 
@@ -65,11 +80,14 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError(''); // Clear error on input change
+    setFormData(prev => ({ ...prev, [name]: value }));
+    setError('');
+  };
+
+  const handlePetChange = (e) => {
+    const { name, value } = e.target;
+    setPetData(prev => ({ ...prev, [name]: value }));
+    setError('');
   };
 
   const validateForm = () => {
@@ -115,39 +133,53 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       }
     }
 
+    if (!isEditMode) {
+      if (!petData.pet_name.trim()) { setError('Pet name is required'); return false; }
+      if (!petData.species) { setError('Pet species is required'); return false; }
+      if (!petData.gender) { setError('Pet gender is required'); return false; }
+      if (!petData.date_of_birth) { setError('Pet date of birth is required'); return false; }
+      if (new Date(petData.date_of_birth) > new Date()) { setError('Pet date of birth cannot be in the future'); return false; }
+      if (petData.weight_current && (isNaN(petData.weight_current) || parseFloat(petData.weight_current) <= 0)) {
+        setError('Pet weight must be a positive number'); return false;
+      }
+    }
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
       setError('');
 
       const token = localStorage.getItem('token');
-      const config = {
-        headers: { Authorization: `Bearer ${token}` }
-      };
+      const config = { headers: { Authorization: `Bearer ${token}` } };
 
-      // Clean up empty strings to null for optional fields
       const cleanedData = { ...formData };
       ['email', 'alternate_phone', 'emergency_phone', 'emergency_contact', 'address', 'city', 'postal_code', 'nic', 'notes'].forEach(field => {
-        if (cleanedData[field] === '') {
-          cleanedData[field] = null;
-        }
+        if (cleanedData[field] === '') cleanedData[field] = null;
       });
 
       if (isEditMode) {
         await axios.put(`${API_URL}/customers/${customerId}`, cleanedData, config);
         showSuccess('Customer details updated successfully');
       } else {
-        await axios.post(`${API_URL}/customers`, cleanedData, config);
-        showSuccess('Customer created successfully');
+        const res = await axios.post(`${API_URL}/customers`, cleanedData, config);
+        const newCustomerId = res.data.data.customer.customer_id;
+        await createPet({
+          customer_id: newCustomerId,
+          pet_name: petData.pet_name.trim(),
+          species: petData.species,
+          breed: petData.breed.trim() || null,
+          gender: petData.gender,
+          date_of_birth: petData.date_of_birth,
+          color: petData.color.trim() || null,
+          weight_current: petData.weight_current ? parseFloat(petData.weight_current) : null
+        });
+        showSuccess('Customer and pet added successfully');
       }
 
       onSuccess?.();
@@ -383,6 +415,124 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
             />
           </div>
         </div>
+
+        {/* Pet Information (new customers only) */}
+        {!isEditMode && (
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>Pet Information</h3>
+
+            <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  Pet Name <span style={styles.required}>*</span>
+                </label>
+                <input
+                  type="text"
+                  name="pet_name"
+                  value={petData.pet_name}
+                  onChange={handlePetChange}
+                  placeholder="Enter pet name"
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  Species <span style={styles.required}>*</span>
+                </label>
+                <select
+                  name="species"
+                  value={petData.species}
+                  onChange={handlePetChange}
+                  style={styles.input}
+                >
+                  <option value="">Select species</option>
+                  {speciesList.length > 0
+                    ? speciesList.map(s => <option key={s} value={s}>{s}</option>)
+                    : ['Dog', 'Cat', 'Bird', 'Rabbit', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Breed</label>
+                <input
+                  type="text"
+                  name="breed"
+                  value={petData.breed}
+                  onChange={handlePetChange}
+                  placeholder="Enter breed"
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  Gender <span style={styles.required}>*</span>
+                </label>
+                <select
+                  name="gender"
+                  value={petData.gender}
+                  onChange={handlePetChange}
+                  style={styles.input}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={styles.row}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>
+                  Date of Birth <span style={styles.required}>*</span>
+                </label>
+                <input
+                  type="date"
+                  name="date_of_birth"
+                  value={petData.date_of_birth}
+                  onChange={handlePetChange}
+                  max={new Date().toISOString().split('T')[0]}
+                  style={styles.input}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Color</label>
+                <input
+                  type="text"
+                  name="color"
+                  value={petData.color}
+                  onChange={handlePetChange}
+                  placeholder="e.g. Brown, Black & White"
+                  style={styles.input}
+                />
+              </div>
+            </div>
+
+            <div style={{ maxWidth: '50%' }}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Weight (kg)</label>
+                <input
+                  type="number"
+                  name="weight_current"
+                  value={petData.weight_current}
+                  onChange={handlePetChange}
+                  placeholder="e.g. 4.5"
+                  min="0"
+                  step="0.1"
+                  style={styles.input}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Form Actions */}
         <div style={styles.actions}>

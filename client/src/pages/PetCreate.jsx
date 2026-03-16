@@ -29,7 +29,7 @@ const PetCreate = () => {
     <Layout>
     <div style={styles.container}>
       <PetForm
-        customerId={customerId ? parseInt(customerId) : null}
+        customerId={customerId || null}
         onSuccess={handleSuccess}
         onCancel={handleCancel}
       />

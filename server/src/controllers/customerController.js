@@ -3,7 +3,9 @@ import {
   getCustomerById,
   createCustomer,
   updateCustomer,
-  deleteCustomer,
+  checkCustomerDeletability,
+  inactivateCustomer,
+  hardDeleteCustomer,
   phoneExists,
   getCustomerCount
 } from '../models/customerModel.js';
@@ -170,33 +172,102 @@ export const updateCustomerById = async (req, res) => {
 
 /**
  * @route   DELETE /api/customers/:id
- * @desc    Delete customer (soft delete)
- * @access  Private
+ * @desc    Hard delete customer (admin only, no related data)
+ * @access  Private (Admin only)
  */
 export const deleteCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if customer exists
     const existingCustomer = await getCustomerById(id);
     if (!existingCustomer) {
-      return res.status(404).json({
+      return res.status(404).json({ status: 'error', message: 'Customer not found' });
+    }
+
+    const data = await checkCustomerDeletability(id);
+
+    if (data.active_appointments > 0) {
+      return res.status(409).json({
         status: 'error',
-        message: 'Customer not found'
+        message: `Cannot delete customer with ${data.active_appointments} active appointment(s). Please cancel or complete them first.`
       });
     }
 
-    await deleteCustomer(id);
+    const hasRelatedData = data.total_appointments > 0 || data.medical_records > 0 || data.vaccinations > 0 || data.billing_records > 0;
+    if (hasRelatedData) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Customer has related records and cannot be permanently deleted. Use inactivation instead.'
+      });
+    }
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Customer deactivated successfully'
-    });
+    await hardDeleteCustomer(id);
+    res.status(200).json({ status: 'success', message: 'Customer permanently deleted' });
   } catch (error) {
     console.error('Delete customer error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'An error occurred while deleting customer'
+    res.status(500).json({ status: 'error', message: 'An error occurred while deleting customer' });
+  }
+};
+
+export const getCustomerDeletabilityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existingCustomer = await getCustomerById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ status: 'error', message: 'Customer not found' });
+    }
+    const data = await checkCustomerDeletability(id);
+    const hasRelatedData = data.total_appointments > 0 || data.medical_records > 0 || data.vaccinations > 0 || data.billing_records > 0;
+    res.status(200).json({
+      status: 'success',
+      data: {
+        activeAppointments: data.active_appointments,
+        hasRelatedData,
+        counts: {
+          appointments: data.total_appointments,
+          medicalRecords: data.medical_records,
+          vaccinations: data.vaccinations,
+          billingRecords: data.billing_records,
+          pets: data.total_pets
+        }
+      }
     });
+  } catch (error) {
+    console.error('Check customer deletability error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred' });
+  }
+};
+
+export const inactivateCustomerById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, additional_note } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ status: 'error', message: 'Reason is required' });
+    }
+
+    const existingCustomer = await getCustomerById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ status: 'error', message: 'Customer not found' });
+    }
+
+    const data = await checkCustomerDeletability(id);
+    if (data.active_appointments > 0) {
+      return res.status(409).json({
+        status: 'error',
+        message: `Cannot inactivate customer with ${data.active_appointments} active appointment(s). Please cancel or complete them first.`
+      });
+    }
+
+    const updatedCustomer = await inactivateCustomer(id, { reason, additionalNote: additional_note }, req.user.user_id);
+    res.status(200).json({
+      status: 'success',
+      message: 'Customer inactivated successfully',
+      data: { customer: updatedCustomer }
+    });
+  } catch (error) {
+    console.error('Inactivate customer error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while inactivating customer' });
   }
 };

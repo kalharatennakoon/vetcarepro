@@ -3,7 +3,9 @@ import {
   getPetById,
   createPet,
   updatePet,
-  deletePet,
+  checkPetDeletability,
+  inactivatePet,
+  hardDeletePet,
   getPetMedicalHistory,
   getPetVaccinations,
   getPetCount,
@@ -143,7 +145,7 @@ export const updatePetById = async (req, res) => {
     }
 
     const updatedPet = await updatePet(
-      parseInt(id),
+      id,
       petData,
       req.user.user_id
     );
@@ -164,36 +166,108 @@ export const updatePetById = async (req, res) => {
   }
 };
 
+export const getPetDeletabilityById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existingPet = await getPetById(id);
+    if (!existingPet) {
+      return res.status(404).json({ status: 'error', message: 'Pet not found' });
+    }
+    const data = await checkPetDeletability(id);
+    const hasRelatedData = data.total_appointments > 0 || data.medical_records > 0 || data.vaccinations > 0 || data.billing_records > 0;
+    res.status(200).json({
+      status: 'success',
+      data: {
+        activeAppointments: data.active_appointments,
+        hasRelatedData,
+        counts: {
+          appointments: data.total_appointments,
+          medicalRecords: data.medical_records,
+          vaccinations: data.vaccinations,
+          billingRecords: data.billing_records
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Check pet deletability error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred' });
+  }
+};
+
+export const inactivatePetById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, deceased_date, additional_note } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ status: 'error', message: 'Reason is required' });
+    }
+
+    const existingPet = await getPetById(id);
+    if (!existingPet) {
+      return res.status(404).json({ status: 'error', message: 'Pet not found' });
+    }
+
+    const data = await checkPetDeletability(id);
+    if (data.active_appointments > 0) {
+      return res.status(409).json({
+        status: 'error',
+        message: `Cannot inactivate pet with ${data.active_appointments} active appointment(s). Please cancel or complete them first.`
+      });
+    }
+
+    if (reason === 'deceased' && !deceased_date) {
+      return res.status(400).json({ status: 'error', message: 'Date of death is required when reason is Deceased' });
+    }
+
+    const updatedPet = await inactivatePet(id, { reason, deceasedDate: deceased_date, additionalNote: additional_note }, req.user.user_id);
+    res.status(200).json({
+      status: 'success',
+      message: 'Pet inactivated successfully',
+      data: { pet: updatedPet }
+    });
+  } catch (error) {
+    console.error('Inactivate pet error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while inactivating pet' });
+  }
+};
+
 /**
  * @route   DELETE /api/pets/:id
- * @desc    Delete pet (soft delete)
- * @access  Private
+ * @desc    Delete pet
+ * @access  Private (Admin only)
  */
 export const deletePetById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check if pet exists
     const existingPet = await getPetById(id);
     if (!existingPet) {
-      return res.status(404).json({
+      return res.status(404).json({ status: 'error', message: 'Pet not found' });
+    }
+
+    const data = await checkPetDeletability(id);
+
+    if (data.active_appointments > 0) {
+      return res.status(409).json({
         status: 'error',
-        message: 'Pet not found'
+        message: `Cannot delete pet with ${data.active_appointments} active appointment(s). Please cancel or complete them first.`
       });
     }
 
-    await deletePet(parseInt(id));
+    const hasRelatedData = data.total_appointments > 0 || data.medical_records > 0 || data.vaccinations > 0 || data.billing_records > 0;
+    if (hasRelatedData) {
+      return res.status(409).json({
+        status: 'error',
+        message: 'Pet has related records and cannot be permanently deleted. Use inactivation instead.'
+      });
+    }
 
-    res.status(200).json({
-      status: 'success',
-      message: 'Pet deactivated successfully'
-    });
+    await hardDeletePet(id);
+    res.status(200).json({ status: 'success', message: 'Pet permanently deleted' });
   } catch (error) {
     console.error('Delete pet error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'An error occurred while deleting pet'
-    });
+    res.status(500).json({ status: 'error', message: 'An error occurred while deleting pet' });
   }
 };
 

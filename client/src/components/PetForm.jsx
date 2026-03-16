@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getPetById, createPet, updatePet, getSpeciesList } from '../services/petService';
 import { getCustomers } from '../services/customerService';
+import { useNotification } from '../context/NotificationContext';
 
 const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
+  const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [customers, setCustomers] = useState([]);
@@ -144,7 +146,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
       // Prepare data
       const petData = {
         ...formData,
-        customer_id: parseInt(formData.customer_id),
         weight_current: formData.weight_current ? parseFloat(formData.weight_current) : null,
         // Convert empty strings to null for optional fields
         breed: formData.breed.trim() || null,
@@ -158,8 +159,10 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
 
       if (isEditMode) {
         await updatePet(petId, petData);
+        showSuccess('Pet updated successfully');
       } else {
         await createPet(petData);
+        showSuccess('Pet added successfully');
       }
 
       onSuccess();

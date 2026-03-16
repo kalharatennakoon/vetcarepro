@@ -143,6 +143,11 @@ export const updatePet = async (petId, petData, updatedBy) => {
   const values = [];
   let paramCount = 1;
 
+  if (petData.customer_id) {
+    fields.push(`customer_id = $${paramCount}`);
+    values.push(petData.customer_id);
+    paramCount++;
+  }
   if (petData.pet_name) {
     fields.push(`pet_name = $${paramCount}`);
     values.push(petData.pet_name);
@@ -293,6 +298,70 @@ export const getPetCount = async () => {
   const query = 'SELECT COUNT(*) as count FROM pets WHERE is_active = true';
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
+};
+
+/**
+ * Check if pet can be deleted or must be inactivated
+ */
+export const checkPetDeletability = async (petId) => {
+  const query = `
+    SELECT
+      (SELECT COUNT(*) FROM appointments WHERE pet_id = $1 AND status IN ('scheduled','confirmed','in_progress'))::int AS active_appointments,
+      (SELECT COUNT(*) FROM appointments WHERE pet_id = $1)::int AS total_appointments,
+      (SELECT COUNT(*) FROM medical_records WHERE pet_id = $1)::int AS medical_records,
+      (SELECT COUNT(*) FROM vaccinations WHERE pet_id = $1)::int AS vaccinations,
+      (SELECT COUNT(*) FROM billing b JOIN appointments a ON b.appointment_id = a.appointment_id WHERE a.pet_id = $1)::int AS billing_records
+  `;
+  const result = await pool.query(query, [petId]);
+  return result.rows[0];
+};
+
+/**
+ * Inactivate pet with reason (audit trail)
+ */
+export const inactivatePet = async (petId, { reason, deceasedDate, additionalNote }, updatedBy) => {
+  const reasonLabels = {
+    deceased: 'Deceased',
+    no_longer_patient: 'No longer a patient',
+    transferred: 'Transferred to another clinic',
+    other: 'Other'
+  };
+  const label = reasonLabels[reason] || reason;
+  const dateStr = new Date().toISOString().split('T')[0];
+  const auditEntry = `\nINACTIVATED (${label}) on ${dateStr}${additionalNote ? ': ' + additionalNote : ''}`;
+
+  const values = [auditEntry, updatedBy];
+  let paramCount = 3;
+  let deceasedClause = '';
+
+  if (reason === 'deceased' && deceasedDate) {
+    deceasedClause = `deceased_date = $${paramCount},`;
+    values.push(deceasedDate);
+    paramCount++;
+  }
+
+  values.push(petId);
+
+  const query = `
+    UPDATE pets
+    SET
+      is_active = false,
+      ${deceasedClause}
+      notes = COALESCE(notes, '') || $1,
+      updated_by = $2
+    WHERE pet_id = $${paramCount}
+    RETURNING *
+  `;
+  const result = await pool.query(query, values);
+  return result.rows[0];
+};
+
+/**
+ * Hard delete pet (only when no related data)
+ */
+export const hardDeletePet = async (petId) => {
+  const result = await pool.query('DELETE FROM pets WHERE pet_id = $1', [petId]);
+  return result.rowCount > 0;
 };
 
 /**

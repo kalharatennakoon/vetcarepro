@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
+import { checkCustomerDeletability, inactivateCustomer, deleteCustomer } from '../services/customerService';
 import CustomerForm from '../components/CustomerForm';
 import Layout from '../components/Layout';
 
@@ -10,10 +12,17 @@ const CustomerDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showEditForm, setShowEditForm] = useState(false);
-  
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletability, setDeletability] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const [deactivateNote, setDeactivateNote] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useNotification();
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
@@ -32,25 +41,58 @@ const CustomerDetail = () => {
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load customer');
-      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const openDeleteModal = async () => {
+    try {
+      const response = await checkCustomerDeletability(id);
+      setDeletability(response.data);
+      setDeactivateReason('');
+      setDeactivateNote('');
+      setShowDeleteModal(true);
+    } catch (err) {
+      showError('Failed to check customer status');
+    }
+  };
+
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this customer? This action cannot be undone.')) {
+    if (!deactivateReason) {
+      showWarning('Please select a reason for deletion');
       return;
     }
-
+    setDeleting(true);
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${API_URL}/customers/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await deleteCustomer(id);
+      showSuccess(`${customer.first_name} ${customer.last_name} has been permanently deleted`);
       navigate('/customers');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete customer');
+      showError(err.response?.data?.message || 'Failed to delete customer');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleInactivate = async () => {
+    if (!deactivateReason) {
+      showWarning('Please select a reason for inactivation');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await inactivateCustomer(id, {
+        reason: deactivateReason,
+        additional_note: deactivateNote || undefined
+      });
+      showSuccess(`${customer.first_name} ${customer.last_name} has been inactivated`);
+      setShowDeleteModal(false);
+      fetchCustomer();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to inactivate customer');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -123,11 +165,9 @@ const CustomerDetail = () => {
           <button onClick={() => setShowEditForm(true)} style={styles.editButton}>
             Edit Customer
           </button>
-          {user?.role === 'admin' && (
-            <button onClick={handleDelete} style={styles.deleteButton}>
-              Delete Customer
-            </button>
-          )}
+          <button onClick={openDeleteModal} style={styles.deleteButton}>
+            {user?.role === 'admin' ? 'Delete / Inactivate' : 'Inactivate'}
+          </button>
         </div>
       </div>
 
@@ -140,14 +180,18 @@ const CustomerDetail = () => {
             </h1>
             <p style={styles.customerId}>Customer ID: #{customer.customer_id}</p>
           </div>
-          <div style={styles.statusBadge}>
+          <div style={{
+            ...styles.statusBadge,
+            backgroundColor: customer.is_active ? '#d1fae5' : '#fee2e2',
+            color: customer.is_active ? '#065f46' : '#991b1b'
+          }}>
             {customer.is_active ? 'Active' : 'Inactive'}
           </div>
         </div>
 
         {/* Contact Information */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}><i className="fas fa-phone"></i> Contact Information</h2>
+          <h2 style={styles.sectionTitle}>Contact Information</h2>
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Phone:</span>
@@ -176,7 +220,7 @@ const CustomerDetail = () => {
 
         {/* Personal Information */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Personal Information</h2>
+          <h2 style={styles.sectionTitle}>Personal Information</h2>
           <div style={styles.infoGrid}>
             {customer.nic && (
               <div style={styles.infoItem}>
@@ -208,7 +252,7 @@ const CustomerDetail = () => {
         {/* Emergency Contact */}
         {(customer.emergency_contact || customer.emergency_phone) && (
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}><i className="fas fa-exclamation-circle"></i> Emergency Contact</h2>
+            <h2 style={styles.sectionTitle}>Emergency Contact</h2>
             <div style={styles.infoGrid}>
               {customer.emergency_contact && (
                 <div style={styles.infoItem}>
@@ -229,7 +273,7 @@ const CustomerDetail = () => {
         {/* Notes */}
         {customer.notes && (
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}><i className="fas fa-sticky-note"></i> Notes</h2>
+            <h2 style={styles.sectionTitle}>Notes</h2>
             <p style={styles.notesText}>{customer.notes}</p>
           </div>
         )}
@@ -250,8 +294,8 @@ const CustomerDetail = () => {
       {/* Pets Section */}
       <div style={styles.petsSection}>
         <div style={styles.petsSectionHeader}>
-          <h2 style={styles.sectionTitle}><i className="fas fa-paw"></i> Registered Pets ({customer.pets?.length || 0})</h2>
-          <button 
+          <h2 style={styles.sectionTitle}>Registered Pets ({customer.pets?.length || 0})</h2>
+          <button
             onClick={() => navigate(`/pets/new?customer_id=${customer.customer_id}`)}
             style={styles.addPetButton}
           >
@@ -282,7 +326,7 @@ const CustomerDetail = () => {
                     <p style={styles.petDetail}>
                       <strong>Age:</strong>{' '}
                       {Math.floor(
-                        (new Date() - new Date(pet.date_of_birth)) / 
+                        (new Date() - new Date(pet.date_of_birth)) /
                         (365.25 * 24 * 60 * 60 * 1000)
                       )}{' '}
                       years
@@ -310,6 +354,132 @@ const CustomerDetail = () => {
         )}
       </div>
     </div>
+
+    {/* Delete / Inactivate Modal */}
+    {showDeleteModal && deletability && (
+      <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+        <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              {deletability.activeAppointments > 0
+                ? 'Cannot Remove Customer'
+                : (deletability.hasRelatedData || user?.role !== 'admin')
+                ? 'Inactivate Customer'
+                : 'Permanently Delete Customer'}
+            </h3>
+            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCloseButton}>×</button>
+          </div>
+
+          <div style={{ padding: '1.5rem' }}>
+            {deletability.activeAppointments > 0 ? (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    {customer.first_name} {customer.last_name} has {deletability.activeAppointments} active appointment(s).
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    Please cancel or complete all active appointments before {user?.role === 'admin' ? 'deleting or inactivating' : 'inactivating'} this customer.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal}>Close</button>
+                </div>
+              </>
+            ) : (deletability.hasRelatedData || user?.role !== 'admin') ? (
+              <>
+                {deletability.hasRelatedData && user?.role === 'admin' && (
+                  <div style={{ padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                    <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>
+                      {customer.first_name} {customer.last_name} has existing records and cannot be permanently deleted.
+                    </p>
+                    <p style={{ margin: '0.5rem 0 0', color: '#78350f', fontSize: '0.875rem' }}>
+                      Records: {deletability.counts.appointments} appointment(s), {deletability.counts.medicalRecords} medical record(s), {deletability.counts.vaccinations} vaccination(s), {deletability.counts.billingRecords} billing record(s).
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => setDeactivateReason(e.target.value)}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="no_longer_customer">No longer a customer</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleInactivate} style={styles.inactivateBtn} disabled={deleting}>
+                    {deleting ? 'Inactivating...' : 'Inactivate Customer'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    Permanently delete {customer.first_name} {customer.last_name}?
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    This customer has no records. This action is irreversible and will also delete their associated pets.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => setDeactivateReason(e.target.value)}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="no_longer_customer">No longer a customer</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleDelete} style={styles.deleteConfirmBtn} disabled={deleting || !deactivateReason}>
+                    {deleting ? 'Deleting...' : 'Permanently Delete'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     </Layout>
   );
 };
@@ -362,7 +532,6 @@ const styles = {
     fontSize: '1rem',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
   },
   headerActions: {
     display: 'flex',
@@ -377,18 +546,16 @@ const styles = {
     fontSize: '1rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
   },
   deleteButton: {
     padding: '0.75rem 1.5rem',
-    backgroundColor: '#dc2626',
+    backgroundColor: '#ef4444',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
     fontSize: '1rem',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
   },
   mainCard: {
     backgroundColor: '#ffffff',
@@ -418,8 +585,6 @@ const styles = {
   },
   statusBadge: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
     borderRadius: '9999px',
     fontSize: '0.875rem',
     fontWeight: '600',
@@ -492,7 +657,6 @@ const styles = {
     fontSize: '1rem',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
   },
   petsGrid: {
     display: 'grid',
@@ -504,7 +668,6 @@ const styles = {
     backgroundColor: '#f9fafb',
     borderRadius: '8px',
     border: '1px solid #e5e7eb',
-    transition: 'transform 0.2s, box-shadow 0.2s',
   },
   petCardHeader: {
     display: 'flex',
@@ -544,12 +707,100 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '500',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
   },
   emptyState: {
     textAlign: 'center',
     padding: '3rem',
     color: '#6b7280',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+    width: '90%',
+    maxWidth: '480px',
+    maxHeight: '90vh',
+    overflow: 'auto',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.25rem 1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.5rem',
+    color: '#6b7280',
+    cursor: 'pointer',
+    padding: '0',
+    lineHeight: 1,
+  },
+  modalLabel: {
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '0.5rem',
+  },
+  modalInput: {
+    width: '100%',
+    padding: '0.625rem 0.75rem',
+    fontSize: '0.875rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  cancelBtnModal: {
+    padding: '0.625rem 1.25rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#374151',
+    backgroundColor: '#ffffff',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  inactivateBtn: {
+    padding: '0.625rem 1.25rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#ffffff',
+    backgroundColor: '#f59e0b',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  deleteConfirmBtn: {
+    padding: '0.625rem 1.25rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#ffffff',
+    backgroundColor: '#dc2626',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
 };
 

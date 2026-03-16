@@ -16,9 +16,10 @@ const Customers = () => {
   const [emailModal, setEmailModal] = useState({ open: false, customer: null });
   const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
   const [emailSending, setEmailSending] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  useAuth();
   const { showSuccess, showError } = useNotification();
 
   const handleOpenEmail = (customer) => {
@@ -64,16 +65,6 @@ const Customers = () => {
   };
 
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchCustomers();
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
@@ -88,11 +79,26 @@ const Customers = () => {
     return phone;
   };
 
+  const activeCount = customers.filter(c => c.is_active !== false).length;
+  const inactiveCount = customers.filter(c => c.is_active === false).length;
+
+  const filteredCustomers = customers.filter(c => {
+    if (statusFilter === 'active') return c.is_active !== false;
+    if (statusFilter === 'inactive') return c.is_active === false;
+    return true;
+  });
+
+  const statusTabs = [
+    { key: 'all', label: 'All', count: customers.length },
+    { key: 'active', label: 'Active', count: activeCount },
+    { key: 'inactive', label: 'Inactive', count: inactiveCount },
+  ];
+
   // Pagination calculations
-  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCustomers = customers.slice(startIndex, endIndex);
+  const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -177,20 +183,36 @@ const Customers = () => {
             <span style={styles.statValue}>{customers.length}</span>
           </div>
           <div style={styles.statItem}>
+            <span style={styles.statLabel}>Active</span>
+            <span style={{ ...styles.statValue, color: '#059669' }}>{activeCount}</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Inactive</span>
+            <span style={{ ...styles.statValue, color: '#dc2626' }}>{inactiveCount}</span>
+          </div>
+          <div style={styles.statItem}>
             <span style={styles.statLabel}>Showing</span>
             <span style={styles.statValue}>
-              {customers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, customers.length)}` : '0'}
+              {filteredCustomers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredCustomers.length)}` : '0'}
             </span>
           </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Active</span>
-            <span style={styles.statValue}>{customers.filter(c => c.is_active !== false).length}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>With Pets</span>
-            <span style={styles.statValue}>{customers.filter(c => c.pet_count > 0).length}</span>
-          </div>
         </div>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div style={styles.statusTabs}>
+        {statusTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
+            style={{ ...styles.statusTab, ...(statusFilter === tab.key ? styles.statusTabActive : {}) }}
+          >
+            {tab.label}
+            <span style={{ ...styles.tabCount, ...(statusFilter === tab.key ? styles.tabCountActive : {}) }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Error Message */}
@@ -249,8 +271,11 @@ const Customers = () => {
                             {getInitials(customer.first_name, customer.last_name)}
                           </div>
                           <div style={styles.customerInfo}>
-                            <div style={styles.customerName}>
-                              {customer.first_name} {customer.last_name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={styles.customerName}>
+                                {customer.first_name} {customer.last_name}
+                              </span>
+                              {customer.is_active === false && <span style={styles.inactiveBadge}>Inactive</span>}
                             </div>
                           </div>
                         </div>
@@ -305,7 +330,7 @@ const Customers = () => {
           </div>
 
           {/* Pagination */}
-          {customers.length > itemsPerPage && (
+          {filteredCustomers.length > itemsPerPage && (
             <div style={styles.paginationContainer}>
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -774,6 +799,57 @@ const styles = {
     padding: '0.5rem',
     color: '#9ca3af',
     fontSize: '0.875rem',
+  },
+  statusTabs: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  statusTab: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 1rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: '#ffffff',
+    color: '#6b7280',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  statusTabActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+    color: '#ffffff',
+  },
+  tabCount: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '20px',
+    padding: '0 0.375rem',
+    height: '20px',
+    borderRadius: '10px',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+  },
+  tabCountActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    color: '#ffffff',
+  },
+  inactiveBadge: {
+    display: 'inline-block',
+    padding: '0.125rem 0.5rem',
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    borderRadius: '4px',
+    fontSize: '0.65rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
 };
 

@@ -5,6 +5,8 @@ import {
   createNewPet,
   updatePetById,
   deletePetById,
+  getPetDeletabilityById,
+  inactivatePetById,
   getPetMedicalHistoryById,
   getPetVaccinationsById,
   getSpecies,
@@ -54,6 +56,16 @@ router.post('/', validatePetCreate, createNewPet);
 // @desc    Update pet
 // @access  Private
 router.put('/:id', validatePetUpdate, updatePetById);
+
+// @route   GET /api/pets/:id/deletability
+// @desc    Check if pet can be deleted or must be inactivated
+// @access  Private
+router.get('/:id/deletability', getPetDeletabilityById);
+
+// @route   PATCH /api/pets/:id/inactivate
+// @desc    Inactivate pet with reason
+// @access  Private
+router.patch('/:id/inactivate', inactivatePetById);
 
 // @route   DELETE /api/pets/:id
 // @desc    Delete pet (soft delete)

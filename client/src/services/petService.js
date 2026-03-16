@@ -102,6 +102,22 @@ export const deletePetImage = async (id) => {
   return response.data;
 };
 
+/**
+ * Check pet deletability
+ */
+export const checkPetDeletability = async (id) => {
+  const response = await axios.get(`${API_URL}/pets/${id}/deletability`);
+  return response.data;
+};
+
+/**
+ * Inactivate pet with reason
+ */
+export const inactivatePet = async (id, data) => {
+  const response = await axios.patch(`${API_URL}/pets/${id}/inactivate`, data);
+  return response.data;
+};
+
 export default {
   getPets,
   getPetById,
@@ -112,5 +128,7 @@ export default {
   getPetVaccinations,
   getSpeciesList,
   uploadPetImage,
-  deletePetImage
+  deletePetImage,
+  checkPetDeletability,
+  inactivatePet
 };

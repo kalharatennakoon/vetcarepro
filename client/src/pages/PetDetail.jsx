@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPetById, deletePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
+import { getPetById, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 import ImageCropModal from '../components/ImageCropModal';
 
@@ -19,9 +20,17 @@ const PetDetail = () => {
   const [imageToCrop, setImageToCrop] = useState(null);
   const [success, setSuccess] = useState('');
   
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletability, setDeletability] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const [deceasedDate, setDeceasedDate] = useState('');
+  const [deactivateNote, setDeactivateNote] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useNotification();
 
   useEffect(() => {
     fetchPetDetails();
@@ -61,16 +70,55 @@ const PetDetail = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this pet? This will also delete all associated medical records.')) {
-      return;
+  const openDeleteModal = async () => {
+    try {
+      const response = await checkPetDeletability(id);
+      setDeletability(response.data);
+      setDeactivateReason('');
+      setDeceasedDate('');
+      setDeactivateNote('');
+      setShowDeleteModal(true);
+    } catch (err) {
+      showError('Failed to check pet status');
     }
+  };
 
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
       await deletePet(id);
+      showSuccess(`${pet.pet_name} has been permanently deleted`);
       navigate('/pets');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete pet');
+      showError(err.response?.data?.message || 'Failed to delete pet');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleInactivate = async () => {
+    if (!deactivateReason) {
+      showWarning('Please select a reason for inactivation');
+      return;
+    }
+    if (deactivateReason === 'deceased' && !deceasedDate) {
+      showWarning('Please provide the date of death');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await inactivatePet(id, {
+        reason: deactivateReason,
+        deceased_date: deactivateReason === 'deceased' ? deceasedDate : undefined,
+        additional_note: deactivateNote || undefined
+      });
+      showSuccess(`${pet.pet_name} has been inactivated`);
+      setShowDeleteModal(false);
+      fetchPetDetails();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to inactivate pet');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -101,20 +149,6 @@ const PetDetail = () => {
     });
   };
 
-  const getSpeciesIcon = (species) => {
-    const icons = {
-      'Dog': 'fa-dog',
-      'Cat': 'fa-cat',
-      'Bird': 'fa-dove',
-      'Rabbit': 'fa-rabbit',
-      'Hamster': 'fa-hamster',
-      'Guinea Pig': 'fa-hamster',
-      'Fish': 'fa-fish',
-      'Reptile': 'fa-dragon',
-      'Other': 'fa-paw'
-    };
-    return icons[species] || 'fa-paw';
-  };
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -268,11 +302,10 @@ const PetDetail = () => {
           <button onClick={() => navigate(`/pets/${id}/edit`)} style={styles.editButton}>
             Edit Pet
           </button>
-          {user?.role === 'admin' && (
-            <button onClick={handleDelete} style={styles.deleteButton}>
-              Delete Pet
-            </button>
-          )}
+          <button onClick={openDeleteModal} style={styles.deleteButton}>
+            <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+            {user?.role === 'admin' ? 'Delete / Inactivate' : 'Inactivate'}
+          </button>
         </div>
       </div>
 
@@ -602,6 +635,152 @@ const PetDetail = () => {
         </div>
       </div>
     </div>
+
+    {/* Delete / Inactivate Modal */}
+    {showDeleteModal && deletability && (
+      <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+        <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+              {deletability.activeAppointments > 0
+                ? 'Cannot Remove Pet'
+                : (deletability.hasRelatedData || user?.role !== 'admin')
+                ? 'Inactivate Pet'
+                : 'Permanently Delete Pet'}
+            </h3>
+            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={{ padding: '1.5rem' }}>
+            {deletability.activeAppointments > 0 ? (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    <i className="fas fa-ban" style={{ marginRight: '0.5rem' }}></i>
+                    {pet.pet_name} has {deletability.activeAppointments} active appointment(s).
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    Please cancel or complete all active appointments before {user?.role === 'admin' ? 'deleting or inactivating' : 'inactivating'} this pet.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal}>Close</button>
+                </div>
+              </>
+            ) : (deletability.hasRelatedData || user?.role !== 'admin') ? (
+              <>
+                {deletability.hasRelatedData && user?.role === 'admin' && (
+                  <div style={{ padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                    <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                      {pet.pet_name} has existing records and cannot be permanently deleted.
+                    </p>
+                    <p style={{ margin: '0.5rem 0 0', color: '#78350f', fontSize: '0.875rem' }}>
+                      Records: {deletability.counts.appointments} appointment(s), {deletability.counts.medicalRecords} medical record(s), {deletability.counts.vaccinations} vaccination(s), {deletability.counts.billingRecords} billing record(s).
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => { setDeactivateReason(e.target.value); setDeceasedDate(''); }}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="no_longer_patient">No longer a patient</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {deactivateReason === 'deceased' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={styles.modalLabel}>Date of death <span style={{ color: '#dc2626' }}>*</span></label>
+                    <input
+                      type="date"
+                      value={deceasedDate}
+                      onChange={e => setDeceasedDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      style={styles.modalInput}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleInactivate} style={styles.inactivateBtn} disabled={deleting}>
+                    {deleting ? 'Inactivating...' : 'Inactivate Pet'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    Permanently delete {pet.pet_name}?
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    This pet has no records in the system. This action is irreversible.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => setDeactivateReason(e.target.value)}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="no_longer_patient">No longer a patient</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleDelete} style={styles.deleteConfirmBtn} disabled={deleting || !deactivateReason}>
+                    {deleting ? 'Deleting...' : 'Permanently Delete'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
     </Layout>
   );
 };
@@ -1065,6 +1244,92 @@ const styles = {
     fontSize: '0.75rem',
     color: '#6B7280',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    width: '90%',
+    maxWidth: '480px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.25rem 1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.25rem',
+    color: '#6b7280',
+    cursor: 'pointer',
+    padding: '0.25rem',
+  },
+  modalLabel: {
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '0.5rem',
+  },
+  modalInput: {
+    width: '100%',
+    padding: '0.625rem 0.75rem',
+    fontSize: '0.9375rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    backgroundColor: '#fff',
+  },
+  cancelBtnModal: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  inactivateBtn: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#d97706',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  deleteConfirmBtn: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#dc2626',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
 };
 

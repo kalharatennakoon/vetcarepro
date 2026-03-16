@@ -413,10 +413,7 @@ const Dashboard = () => {
                   <i className="fas fa-plus-circle"></i>
                   <span>New Appointment</span>
                 </button>
-                <button onClick={() => navigate('/appointments')} style={styles.secondaryButton}>
-                  <i className="fas fa-check-circle" style={{color: '#10b981'}}></i>
-                  <span>Check-in Patient</span>
-                </button>
+
                 <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
                   <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
                   <span>New Client</span>
