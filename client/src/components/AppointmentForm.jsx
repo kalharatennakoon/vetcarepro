@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getCustomers } from '../services/customerService';
 import { createAppointment, updateAppointment, getAppointmentById } from '../services/appointmentService';
 import { getVeterinarians } from '../services/userService';
+import { useNotification } from '../context/NotificationContext';
 import axios from 'axios';
 
 const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
@@ -23,6 +24,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
   const isEditMode = !!appointmentId;
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+  const { showSuccess } = useNotification();
 
   useEffect(() => {
     fetchCustomers();
@@ -177,8 +179,10 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
       if (isEditMode) {
         await updateAppointment(appointmentId, appointmentData);
+        showSuccess('Appointment updated successfully');
       } else {
         await createAppointment(appointmentData);
+        showSuccess('Appointment created successfully');
       }
 
       onSuccess();
@@ -351,7 +355,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
               <option value="">No preference</option>
               {veterinarians.map(vet => (
                 <option key={vet.user_id} value={vet.user_id}>
-                  {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
+                  Dr. {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
                 </option>
               ))}
             </select>

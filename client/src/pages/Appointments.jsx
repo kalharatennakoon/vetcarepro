@@ -22,6 +22,7 @@ const Appointments = () => {
   const [lastSearchQuery, setLastSearchQuery] = useState('');
   const [lastFilterStatus, setLastFilterStatus] = useState('');
   const [lastSelectedVet, setLastSelectedVet] = useState('');
+  const [listTab, setListTab] = useState('upcoming');
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDayAppointments, setSelectedDayAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
@@ -186,7 +187,8 @@ const Appointments = () => {
       const month = currentMonth.getMonth();
       const firstDay = new Date(year, month, 1);
       const startDate = new Date(firstDay);
-      startDate.setDate(startDate.getDate() - firstDay.getDay());
+      // Offset so week starts on Monday (Mon=0 ... Sun=6)
+      startDate.setDate(startDate.getDate() - (firstDay.getDay() + 6) % 7);
       
       const days = [];
       const current = new Date(startDate);
@@ -211,7 +213,7 @@ const Appointments = () => {
         }
       });
       
-      for (let i = 0; i < 35; i++) {
+      for (let i = 0; i < 42; i++) {
         const dateStr = formatDateLocal(current);
         const dayAppointments = calendarAppointments.filter(apt => {
           try {
@@ -354,6 +356,21 @@ const Appointments = () => {
     );
   }
 
+  const today = formatDateLocal(new Date());
+  const upcomingAppointments = filteredAppointments
+    .filter(a => getISTDate(a.appointment_date) >= today)
+    .sort((a, b) => {
+      const d = new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
+      return d !== 0 ? d : a.appointment_time.localeCompare(b.appointment_time);
+    });
+  const pastAppointments = filteredAppointments
+    .filter(a => getISTDate(a.appointment_date) < today)
+    .sort((a, b) => {
+      const d = new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
+      return d !== 0 ? d : b.appointment_time.localeCompare(a.appointment_time);
+    });
+  const tabAppointments = listTab === 'upcoming' ? upcomingAppointments : pastAppointments;
+
   return (
     <Layout>
           {/* Page Header */}
@@ -413,14 +430,16 @@ const Appointments = () => {
                   style={styles.filterInput}
                   placeholder="Filter by date"
                 />
-                <button
-                  onClick={() => setFilterDate(formatDateLocal(new Date()))}
-                  style={styles.todayButton}
-                  title="Filter today's appointments"
-                >
-                  <i className="fas fa-calendar-day" style={{ marginRight: '0.25rem' }}></i>
-                  Today
-                </button>
+                {viewMode === 'list' && (
+                  <button
+                    onClick={() => setFilterDate(formatDateLocal(new Date()))}
+                    style={styles.todayButton}
+                    title="Filter today's appointments"
+                  >
+                    <i className="fas fa-calendar-day" style={{ marginRight: '0.25rem' }}></i>
+                    Today
+                  </button>
+                )}
               </div>
             </div>
 
@@ -557,7 +576,7 @@ const Appointments = () => {
                   )}
 
                   <div style={styles.calendarGrid}>
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                       <div key={day} style={styles.dayHeader}>{day}</div>
                     ))}
 
@@ -623,55 +642,59 @@ const Appointments = () => {
               ) : (
                 /* List View */
                 <>
-                  {/* Appointment Count */}
-                  <div style={styles.countInfo}>
-                    <i className="fas fa-calendar-check" style={{ marginRight: '0.5rem' }}></i>
-                    Total Appointments: <strong>{filteredAppointments.length}</strong>
+                  {/* Tabs */}
+                  <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: '1.5rem' }}>
+                    {[
+                      { key: 'upcoming', label: 'Upcoming', count: upcomingAppointments.length, icon: 'fa-calendar-alt' },
+                      { key: 'past',     label: 'Past',     count: pastAppointments.length,     icon: 'fa-calendar-check' }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setListTab(tab.key)}
+                        style={{
+                          padding: '0.6rem 1.25rem',
+                          border: 'none',
+                          borderBottom: listTab === tab.key ? '2px solid #2563eb' : '2px solid transparent',
+                          marginBottom: '-2px',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: listTab === tab.key ? '600' : '400',
+                          color: listTab === tab.key ? '#2563eb' : '#6b7280',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem'
+                        }}
+                      >
+                        <i className={`fas ${tab.icon}`}></i>
+                        {tab.label}
+                        <span style={{
+                          backgroundColor: listTab === tab.key ? '#dbeafe' : '#f3f4f6',
+                          color: listTab === tab.key ? '#1d4ed8' : '#6b7280',
+                          borderRadius: '10px',
+                          padding: '1px 7px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600'
+                        }}>{tab.count}</span>
+                      </button>
+                    ))}
                   </div>
 
-              {/* Appointments List */}
-              <div style={styles.appointmentsList}>
-                {filteredAppointments.length === 0 ? (
-                  <div style={styles.emptyState}>
-                    <i className="far fa-calendar-times" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
-                    <p>No appointments found</p>
-                    <button 
-                      onClick={() => setShowForm(true)}
-                      style={styles.emptyButton}
-                    >
-                      Schedule Your First Appointment
-                    </button>
-                  </div>
-                ) : (
-                  <div style={styles.cardsGrid}>
-                    {filteredAppointments
-                      .sort((a, b) => {
-                        const today = formatDateLocal(new Date());
-                        const dateA = getISTDate(a.appointment_date);
-                        const dateB = getISTDate(b.appointment_date);
-                        
-                        // Separate upcoming and past appointments
-                        const aIsUpcoming = dateA >= today;
-                        const bIsUpcoming = dateB >= today;
-                        
-                        // Upcoming appointments come first
-                        if (aIsUpcoming && !bIsUpcoming) return -1;
-                        if (!aIsUpcoming && bIsUpcoming) return 1;
-                        
-                        // Within same category (both upcoming or both past)
-                        // Upcoming: sort ascending (earliest first)
-                        // Past: sort descending (most recent first)
-                        const dateCompare = new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
-                        if (dateCompare !== 0) {
-                          return aIsUpcoming ? dateCompare : -dateCompare;
-                        }
-                        // If dates are equal, sort by time
-                        return aIsUpcoming 
-                          ? a.appointment_time.localeCompare(b.appointment_time)
-                          : b.appointment_time.localeCompare(a.appointment_time);
-                      })
-                      .map((appointment) => (
-                      <div key={appointment.appointment_id} style={styles.card}>
+                  <div style={styles.appointmentsList}>
+                    {tabAppointments.length === 0 ? (
+                      <div style={styles.emptyState}>
+                        <i className="far fa-calendar-times" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
+                        <p>No {listTab} appointments found</p>
+                        {listTab === 'upcoming' && (
+                          <button onClick={() => setShowForm(true)} style={styles.emptyButton}>
+                            Schedule an Appointment
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={styles.cardsGrid}>
+                        {tabAppointments.map((appointment) => (
+                        <div key={appointment.appointment_id} style={styles.card}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
@@ -715,7 +738,7 @@ const Appointments = () => {
                           {appointment.veterinarian_name && (
                             <div style={styles.infoRow}>
                               <span style={styles.infoLabel}><i className="fas fa-user-md"></i> Vet:</span>
-                              <span style={styles.infoValue}>{appointment.veterinarian_name}</span>
+                              <span style={styles.infoValue}>Dr. {appointment.veterinarian_name}</span>
                             </div>
                           )}
                           <div style={styles.reasonBox}>

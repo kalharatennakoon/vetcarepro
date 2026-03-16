@@ -12,7 +12,7 @@ const getAuthHeader = () => ({
  * Get all veterinarians
  */
 export const getVeterinarians = async () => {
-  const response = await axios.get(`${API_URL}/users?role=veterinarian`, getAuthHeader());
+  const response = await axios.get(`${API_URL}/users/veterinarians`, getAuthHeader());
   return response.data;
 };
 

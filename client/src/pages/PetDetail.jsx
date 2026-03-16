@@ -555,7 +555,7 @@ const PetDetail = () => {
                         <p><strong>Reason:</strong> {record.chief_complaint || 'N/A'}</p>
                         {record.diagnosis && <p><strong>Diagnosis:</strong> {record.diagnosis}</p>}
                         {record.treatment && <p><strong>Treatment:</strong> {record.treatment}</p>}
-                        {record.veterinarian_name && <p><strong>Vet:</strong> {record.veterinarian_name}</p>}
+                        {record.veterinarian_name && <p><strong>Vet:</strong> Dr. {record.veterinarian_name}</p>}
                       </div>
                     </div>
                   ))}

@@ -521,7 +521,7 @@ function Reports() {
     // Veterinarian Performance Chart
     if (reportType === 'veterinarian-performance') {
       const chartData = data.slice(0, 10).map(item => ({
-        name: item.veterinarian_name || 'Unknown',
+        name: item.veterinarian_name ? `Dr. ${item.veterinarian_name}` : 'Unknown',
         appointments: parseInt(item.total_appointments || 0),
         completed: parseInt(item.completed_appointments || 0),
         revenue: parseFloat(item.total_revenue_generated || 0)

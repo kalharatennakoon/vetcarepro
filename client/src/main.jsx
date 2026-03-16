@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { NotificationProvider } from './context/NotificationContext'
 import NotificationToast from './components/NotificationToast'
+import AppointmentReminder from './components/AppointmentReminder'
 import './index.css'
 import App from './App.jsx'
 
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <NotificationProvider>
           <App />
+          <AppointmentReminder />
           <NotificationToast />
         </NotificationProvider>
       </AuthProvider>

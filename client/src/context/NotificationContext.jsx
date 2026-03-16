@@ -10,9 +10,12 @@ export const NotificationProvider = ({ children }) => {
   const addNotification = useCallback((type, message, duration = 4000) => {
     const id = ++idCounter;
     setNotifications(prev => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, duration);
+    if (duration > 0) {
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }, duration);
+    }
+    // duration = 0 means persistent — only dismissed by user clicking ×
   }, []);
 
   const removeNotification = useCallback((id) => {
@@ -21,10 +24,10 @@ export const NotificationProvider = ({ children }) => {
 
   return (
     <NotificationContext.Provider value={{
-      showSuccess: (msg) => addNotification('success', msg),
-      showError: (msg) => addNotification('error', msg),
-      showInfo: (msg) => addNotification('info', msg),
-      showWarning: (msg) => addNotification('warning', msg),
+      showSuccess: (msg, duration) => addNotification('success', msg, duration),
+      showError: (msg, duration) => addNotification('error', msg, duration),
+      showInfo: (msg, duration) => addNotification('info', msg, duration),
+      showWarning: (msg, duration) => addNotification('warning', msg, duration),
       notifications,
       removeNotification
     }}>

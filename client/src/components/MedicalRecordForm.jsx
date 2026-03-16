@@ -280,7 +280,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                 <option value="">Select Veterinarian</option>
                 {veterinarians.map(vet => (
                   <option key={vet.user_id} value={vet.user_id}>
-                    {vet.first_name} {vet.last_name}
+                    Dr. {vet.first_name} {vet.last_name}
                   </option>
                 ))}
               </select>

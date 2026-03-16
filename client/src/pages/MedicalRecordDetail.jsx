@@ -161,7 +161,7 @@ const MedicalRecordDetail = () => {
             </div>
             <div style={styles.infoItem}>
               <span style={styles.label}>Veterinarian:</span>
-              <span style={styles.value}>{record.veterinarian_name}</span>
+              <span style={styles.value}>{record.veterinarian_name ? `Dr. ${record.veterinarian_name}` : '—'}</span>
             </div>
             {record.appointment_id && (
               <div style={styles.infoItem}>

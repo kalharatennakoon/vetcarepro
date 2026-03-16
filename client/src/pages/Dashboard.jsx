@@ -149,12 +149,19 @@ const Dashboard = () => {
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         recentAppointments: todayAppointments,
         upcomingAppointments: appointments.filter(a => {
+          if (a.status === 'cancelled' || a.status === 'completed') return false;
           const appointmentDate = getLocalDateString(a.appointment_date);
-          return appointmentDate > todayString && a.status === 'scheduled';
+          if (appointmentDate > todayString) return true;
+          if (appointmentDate === todayString) {
+            const [h, m] = (a.appointment_time || '00:00').split(':').map(Number);
+            return h * 60 + m > currentTime;
+          }
+          return false;
         }).sort((a, b) => {
           const dateA = getLocalDateString(a.appointment_date);
           const dateB = getLocalDateString(b.appointment_date);
-          return dateA.localeCompare(dateB);
+          if (dateA !== dateB) return dateA.localeCompare(dateB);
+          return (a.appointment_time || '').localeCompare(b.appointment_time || '');
         }).slice(0, 5)
       });
     } catch (err) {
@@ -162,13 +169,6 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
   };
 
   const formatTime = (timeString) => {
@@ -485,7 +485,7 @@ const Dashboard = () => {
                                     </div>
                                   </div>
                                 </td>
-                                <td style={styles.td}>{appointment.veterinarian_name || 'Not assigned'}</td>
+                                <td style={styles.td}>{appointment.veterinarian_name ? `Dr. ${appointment.veterinarian_name}` : 'Not assigned'}</td>
                                 <td style={styles.td}>
                                   <span style={{
                                     ...styles.badge,
@@ -573,9 +573,9 @@ const Dashboard = () => {
                           <div style={{flex: 1}}>
                             <div style={styles.upcomingPet}>{apt.pet_name}</div>
                             <div style={styles.upcomingDate}>
-                              {new Date(apt.appointment_date).toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric' 
+                              {new Date(apt.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
                               })} at {formatTime(apt.appointment_time)}
                             </div>
                           </div>
@@ -620,7 +620,7 @@ const Dashboard = () => {
                     <div style={styles.modalRow}>
                       <span style={styles.modalLabel}>Date & Time:</span>
                       <span style={styles.modalValue}>
-                        {new Date(selectedAppointment.appointment_date).toLocaleDateString()} at {formatTime(selectedAppointment.appointment_time)}
+                        {new Date(selectedAppointment.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString()} at {formatTime(selectedAppointment.appointment_time)}
                       </span>
                     </div>
                     <div style={styles.modalRow}>
@@ -633,7 +633,7 @@ const Dashboard = () => {
                     </div>
                     <div style={styles.modalRow}>
                       <span style={styles.modalLabel}>Veterinarian:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.veterinarian_name || 'Not assigned'}</span>
+                      <span style={styles.modalValue}>{selectedAppointment.veterinarian_name ? `Dr. ${selectedAppointment.veterinarian_name}` : 'Not assigned'}</span>
                     </div>
                     <div style={styles.modalRow}>
                       <span style={styles.modalLabel}>Status:</span>
