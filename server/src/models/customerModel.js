@@ -238,7 +238,7 @@ export const phoneExists = async (phone, excludeCustomerId = null) => {
   const params = [phone];
 
   if (excludeCustomerId) {
-    query += ' AND customer_id != $2';
+    query += ' AND customer_id <> $2';
     params.push(excludeCustomerId);
   }
 

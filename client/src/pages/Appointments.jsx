@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
+import { sendAppointmentConfirmationEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import AppointmentForm from '../components/AppointmentForm';
 import Layout from '../components/Layout';
 
@@ -27,6 +29,16 @@ const Appointments = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { showSuccess, showError } = useNotification();
+
+  const handleSendConfirmation = async (appointmentId) => {
+    try {
+      const res = await sendAppointmentConfirmationEmail(appointmentId);
+      showSuccess(res.message || 'Confirmation email sent successfully');
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send confirmation email');
+    }
+  };
 
   // Helper functions - defined early to avoid hoisting issues
   // Helper function to format date as YYYY-MM-DD without timezone conversion
@@ -770,6 +782,14 @@ const Appointments = () => {
                               Cancel
                             </button>
                           )}
+                          <button
+                            onClick={() => handleSendConfirmation(appointment.appointment_id)}
+                            style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}
+                            title="Send confirmation email to customer"
+                          >
+                            <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>
+                            Send Email
+                          </button>
                           <button
                             onClick={() => handleEdit(appointment.appointment_id)}
                             style={styles.editButton}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNotification } from '../context/NotificationContext';
 
 const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
@@ -22,6 +23,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
   const isEditMode = !!customerId;
+  const { showSuccess } = useNotification();
 
   // Load customer data if editing
   useEffect(() => {
@@ -141,11 +143,11 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       });
 
       if (isEditMode) {
-        // Update existing customer
         await axios.put(`${API_URL}/customers/${customerId}`, cleanedData, config);
+        showSuccess('Customer details updated successfully');
       } else {
-        // Create new customer
         await axios.post(`${API_URL}/customers`, cleanedData, config);
+        showSuccess('Customer created successfully');
       }
 
       onSuccess?.();

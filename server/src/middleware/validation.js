@@ -359,8 +359,8 @@ export const validateCustomerUpdate = [
   
   body('preferred_contact_method')
     .optional()
-    .isIn(['PHONE', 'EMAIL', 'SMS'])
-    .withMessage('Preferred contact method must be PHONE, EMAIL, or SMS'),
+    .isIn(['phone', 'email', 'sms'])
+    .withMessage('Preferred contact method must be phone, email, or sms'),
   
   body('is_active')
     .optional()

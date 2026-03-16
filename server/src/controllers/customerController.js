@@ -138,7 +138,7 @@ export const updateCustomerById = async (req, res) => {
 
     // Check if phone is being changed and if it already exists
     if (customerData.phone && customerData.phone !== existingCustomer.phone) {
-      if (await phoneExists(customerData.phone, parseInt(id))) {
+      if (await phoneExists(customerData.phone, id)) {
         return res.status(400).json({
           status: 'error',
           message: 'Phone number already exists'
@@ -147,7 +147,7 @@ export const updateCustomerById = async (req, res) => {
     }
 
     const updatedCustomer = await updateCustomer(
-      parseInt(id),
+      id,
       customerData,
       req.user.user_id
     );
@@ -186,7 +186,7 @@ export const deleteCustomerById = async (req, res) => {
       });
     }
 
-    await deleteCustomer(parseInt(id));
+    await deleteCustomer(id);
 
     res.status(200).json({
       status: 'success',
