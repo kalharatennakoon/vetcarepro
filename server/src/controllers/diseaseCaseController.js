@@ -4,6 +4,7 @@ import {
   createDiseaseCase,
   updateDiseaseCase,
   deleteDiseaseCase,
+  logAuditEntry,
   getDiseaseCasesByPetId,
   getDiseaseStatistics,
   getDiseaseCasesByCategory,
@@ -214,8 +215,16 @@ export const modifyDiseaseCase = async (req, res) => {
 export const removeDiseaseCase = async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason, additional_notes } = req.body;
+    const userId = req.user.user_id;
 
-    // Check if disease case exists
+    if (!reason) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A deletion reason is required'
+      });
+    }
+
     const existingCase = await getDiseaseCaseById(id);
     if (!existingCase) {
       return res.status(404).json({
@@ -223,6 +232,17 @@ export const removeDiseaseCase = async (req, res) => {
         message: 'Disease case not found'
       });
     }
+
+    await logAuditEntry({
+      userId,
+      action: 'DELETE',
+      tableName: 'disease_cases',
+      recordId: parseInt(id),
+      oldValues: existingCase,
+      newValues: { reason, additional_notes: additional_notes || null },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     await deleteDiseaseCase(id);
 

@@ -21,10 +21,10 @@ from datetime import datetime, timedelta
 from collections import Counter, defaultdict
 
 # ML Libraries
-from sklearn.naive_bayes import GaussianNB, MultinomialNB
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, classification_report, silhouette_score
 
 # Add parent directory to path
@@ -32,6 +32,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from utils.model_base import BaseMLModel
 from utils.data_loader import DataLoader
+from config.db_connection import get_raw_db_connection as get_db_connection
 
 class DiseasePredictionModel(BaseMLModel):
     """
@@ -220,27 +221,41 @@ class DiseasePredictionModel(BaseMLModel):
         
         # Train classification model (if enough diverse data)
         if len(df['disease_category'].unique()) >= 3 and self.data_size >= 30:
-            print("🤖 Training Classification Model (Naive Bayes)...")
-            
+            print("🤖 Training Classification Model (Random Forest)...")
+
             # Scale features
             X_scaled = self.scaler.fit_transform(X)
-            
-            # Split data (80-20)
-            X_train, X_test, y_train, y_test = train_test_split(
-                X_scaled, y, test_size=0.2, random_state=42, stratify=y if len(np.unique(y)) > 1 else None
+
+            # K-fold cross-validation for honest accuracy estimate
+            n_splits = min(5, self.data_size // 10) if self.data_size >= 50 else 3
+            rf = RandomForestClassifier(
+                n_estimators=100, max_depth=8,
+                min_samples_leaf=2, random_state=42, class_weight='balanced'
             )
-            
-            # Train Naive Bayes (works well with small datasets)
-            self.classification_model = GaussianNB()
+            cv_scores = cross_val_score(rf, X_scaled, y, cv=n_splits, scoring='accuracy')
+            cv_accuracy = float(cv_scores.mean())
+            print(f"   ✓ CV accuracy ({n_splits}-fold): {cv_accuracy:.2%} ± {cv_scores.std():.2%}")
+
+            # Train final model on 80% split
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_scaled, y, test_size=0.2, random_state=42,
+                stratify=y if len(np.unique(y)) > 1 else None
+            )
+            self.classification_model = RandomForestClassifier(
+                n_estimators=100, max_depth=8,
+                min_samples_leaf=2, random_state=42, class_weight='balanced'
+            )
             self.classification_model.fit(X_train, y_train)
-            
-            # Evaluate
+
+            # Held-out test accuracy
             y_pred = self.classification_model.predict(X_test)
             accuracy = accuracy_score(y_test, y_pred)
-            
-            print(f"   ✓ Training accuracy: {accuracy:.2%}")
+            print(f"   ✓ Test accuracy (held-out 20%%): {accuracy:.2%}")
+
             results['models_trained'].append('classification')
             results['classification_accuracy'] = accuracy
+            results['cv_accuracy'] = cv_accuracy
+            results['cv_folds'] = n_splits
         else:
             print("⚠️  Skipping classification model (insufficient diverse data)")
         
@@ -302,13 +317,44 @@ class DiseasePredictionModel(BaseMLModel):
         model_path = self.save_model()
         results['model_path'] = model_path
         print(f"   ✓ Model saved to: {model_path}")
-        
+
+        # Update model_metadata
+        self._update_model_metadata(
+            record_count=self.data_size,
+            accuracy=results.get('classification_accuracy'),
+            cv_accuracy=results.get('cv_accuracy')
+        )
+
         print("\n" + "=" * 70)
         print("✅ Training Complete!")
         print("=" * 70)
         print()
-        
+
         return results
+
+    def _update_model_metadata(self, record_count, accuracy=None, cv_accuracy=None):
+        """Write training stats to model_metadata table."""
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE model_metadata
+                SET last_trained_at      = NOW(),
+                    records_at_last_train = %s,
+                    current_accuracy     = %s,
+                    cv_accuracy          = %s,
+                    model_version        = model_version + 1,
+                    updated_at           = NOW()
+                WHERE model_name = 'disease_prediction'
+            """, (record_count, accuracy, cv_accuracy))
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("   ✓ model_metadata updated")
+        except Exception as e:
+            print(f"   ⚠ Could not update model_metadata: {e}")
     
     def predict(self, data):
         """

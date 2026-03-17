@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 
@@ -18,6 +18,7 @@ const Inventory = () => {
   const [expiringCount, setExpiringCount] = useState(0);
   const [expiringItems, setExpiringItems] = useState([]);
   const [alertFilter, setAlertFilter] = useState(null); // 'lowStock' or 'expiring'
+  const [inactiveCount, setInactiveCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -36,6 +37,12 @@ const Inventory = () => {
     loadInventory();
     loadAlerts();
   }, [filters]);
+
+  useEffect(() => {
+    inventoryService.getAll({ isActive: false })
+      .then(res => setInactiveCount(res.data?.length || 0))
+      .catch(() => {});
+  }, []);
 
   const loadInventory = async () => {
     try {
@@ -72,7 +79,8 @@ const Inventory = () => {
       ...prev,
       [name]: value
     }));
-    setAlertFilter(null); // Clear alert filter when user changes other filters
+    setCurrentPage(1);
+    setAlertFilter(null);
   };
 
   const handleViewLowStock = () => {
@@ -155,7 +163,6 @@ const Inventory = () => {
 
   const getPaginatedInventory = () => {
     const filteredInventory = getFilteredInventory();
-    const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredInventory.slice(startIndex, endIndex);
@@ -184,27 +191,33 @@ const Inventory = () => {
         <div style={styles.summaryContainer}>
           <h3 style={styles.summaryTitle}>Inventory Summary</h3>
           <div style={styles.summaryGrid}>
-            <div style={styles.summaryCardBlue}>
-              <p style={styles.summaryLabel}>Total Items</p>
-              <p style={styles.summaryValue}>{inventory.length}</p>
+            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #3b82f6' }}>
+              <span style={styles.summarySubLabel}>Total Items</span>
+              <strong style={styles.summarySubValue}>{inventory.length}</strong>
             </div>
-            <div style={styles.summaryCardGreen}>
-              <p style={styles.summaryLabel}>Total Value</p>
-              <p style={styles.summaryValue}>
+            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #10b981' }}>
+              <span style={styles.summarySubLabel}>Total Value</span>
+              <strong style={{ ...styles.summarySubValue, fontSize: '0.95rem' }}>
                 {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
-              </p>
+              </strong>
             </div>
-            <div style={styles.summaryCardPurple}>
-              <p style={styles.summaryLabel}>Active Items</p>
-              <p style={styles.summaryValue}>
+            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #8b5cf6' }}>
+              <span style={styles.summarySubLabel}>Active Items</span>
+              <strong style={{ ...styles.summarySubValue, color: '#059669' }}>
                 {inventory.filter(item => item.is_active && item.quantity > 0).length}
-              </p>
+              </strong>
             </div>
-            <div style={styles.summaryCardYellow}>
-              <p style={styles.summaryLabel}>Out of Stock</p>
-              <p style={styles.summaryValue}>
+            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #f59e0b' }}>
+              <span style={styles.summarySubLabel}>Out of Stock</span>
+              <strong style={{ ...styles.summarySubValue, color: '#d97706' }}>
                 {inventory.filter(item => item.quantity === 0).length}
-              </p>
+              </strong>
+            </div>
+            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #ef4444' }}>
+              <span style={styles.summarySubLabel}>Inactive Items</span>
+              <strong style={{ ...styles.summarySubValue, color: '#dc2626' }}>
+                {inactiveCount}
+              </strong>
             </div>
           </div>
         </div>
@@ -398,6 +411,13 @@ const Inventory = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Results Summary */}
+                {getFilteredInventory().length > 0 && (
+                  <div style={{ padding: '0.6rem 1rem', fontSize: '0.85rem', color: '#6b7280', borderTop: '1px solid #e5e7eb' }}>
+                    Showing <strong>{(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, getFilteredInventory().length)}</strong> of <strong>{getFilteredInventory().length}</strong> items
+                  </div>
+                )}
 
                 {/* Pagination */}
                 {Math.ceil(getFilteredInventory().length / itemsPerPage) > 1 && (
@@ -778,43 +798,30 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
     gap: '1.5rem',
   },
-  summaryCardBlue: {
-    backgroundColor: '#eff6ff',
-    borderRadius: '8px',
-    padding: '1.25rem 1.5rem',
-    border: '1px solid #dbeafe',
+  summarySubCard: {
+    background: '#ffffff',
+    padding: '1rem 1.25rem',
+    borderRadius: '10px',
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.3rem',
   },
-  summaryCardGreen: {
-    backgroundColor: '#f0fdf4',
-    borderRadius: '8px',
-    padding: '1.25rem 1.5rem',
-    border: '1px solid #d1fae5',
-  },
-  summaryCardPurple: {
-    backgroundColor: '#faf5ff',
-    borderRadius: '8px',
-    padding: '1.25rem 1.5rem',
-    border: '1px solid #e9d5ff',
-  },
-  summaryCardYellow: {
-    backgroundColor: '#fef3c7',
-    borderRadius: '8px',
-    padding: '1.25rem 1.5rem',
-    border: '1px solid #fde68a',
-  },
-  summaryLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: '0 0 0.5rem 0',
+  summarySubLabel: {
+    fontSize: '0.72rem',
     fontWeight: '600',
+    color: '#6b7280',
     textTransform: 'uppercase',
-    letterSpacing: '0.05em',
+    letterSpacing: '0.04em',
   },
-  summaryValue: {
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
+  summarySubValue: {
+    fontSize: '1.375rem',
+    fontWeight: '700',
     color: '#111827',
-    margin: 0,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   paginationContainer: {
     display: 'flex',
@@ -822,7 +829,6 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
     padding: '1rem',
-    borderTop: '1px solid #e5e7eb',
     backgroundColor: 'white',
   },
   paginationButton: {

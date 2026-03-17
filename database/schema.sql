@@ -4,6 +4,8 @@
 -- Supports: Functional, Non-functional, Domain, Hidden & Future requirements
 
 -- Drop tables if they exist (for clean reinstall)
+DROP TABLE IF EXISTS model_metadata CASCADE;
+DROP TABLE IF EXISTS inventory_transactions CASCADE;
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS system_settings CASCADE;
 DROP TABLE IF EXISTS disease_cases CASCADE;
@@ -218,6 +220,7 @@ CREATE TABLE inventory (
     supplier_contact VARCHAR(50),
     reorder_level INTEGER DEFAULT 10,
     reorder_quantity INTEGER DEFAULT 50,
+    lead_time_days INTEGER DEFAULT 7,
     expiry_date DATE,
     manufacturing_date DATE,
     batch_number VARCHAR(50),
@@ -400,3 +403,38 @@ CREATE TRIGGER update_inventory_updated_at BEFORE UPDATE ON inventory FOR EACH R
 CREATE TRIGGER update_billing_updated_at BEFORE UPDATE ON billing FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_daily_sales_updated_at BEFORE UPDATE ON daily_sales_summary FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_system_settings_updated_at BEFORE UPDATE ON system_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Supports: Accurate inventory consumption tracking separate from billing
+CREATE TABLE inventory_transactions (
+    transaction_id   SERIAL PRIMARY KEY,
+    item_id          INTEGER NOT NULL REFERENCES inventory(item_id),
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('dispensed','restocked','adjusted','expired','wasted')),
+    quantity         NUMERIC(10,2) NOT NULL,
+    transaction_date TIMESTAMP NOT NULL DEFAULT NOW(),
+    reference_id     INTEGER,
+    reference_type   VARCHAR(20) CHECK (reference_type IN ('billing','appointment','manual')),
+    notes            TEXT,
+    created_by       INTEGER REFERENCES users(user_id),
+    created_at       TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_inv_tx_item_id ON inventory_transactions(item_id);
+CREATE INDEX idx_inv_tx_date    ON inventory_transactions(transaction_date);
+CREATE INDEX idx_inv_tx_type    ON inventory_transactions(transaction_type);
+
+-- Supports: ML model retraining drift detection
+CREATE TABLE model_metadata (
+    id                    SERIAL PRIMARY KEY,
+    model_name            VARCHAR(50) NOT NULL UNIQUE,
+    last_trained_at       TIMESTAMP,
+    records_at_last_train INTEGER DEFAULT 0,
+    current_accuracy      NUMERIC(6,4),
+    cv_accuracy           NUMERIC(6,4),
+    model_version         INTEGER DEFAULT 1,
+    notes                 TEXT,
+    updated_at            TIMESTAMP DEFAULT NOW()
+);
+INSERT INTO model_metadata (model_name, records_at_last_train) VALUES
+    ('disease_prediction', 0),
+    ('sales_forecasting', 0),
+    ('inventory_forecasting', 0)
+ON CONFLICT (model_name) DO NOTHING;

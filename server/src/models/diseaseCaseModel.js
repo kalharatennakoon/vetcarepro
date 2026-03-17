@@ -171,7 +171,7 @@ export const getDiseaseCaseById = async (caseId) => {
       p.gender as pet_gender,
       p.date_of_birth,
       p.color,
-      p.image_url as pet_image_url,
+      p.photo_url as pet_image_url,
       c.customer_id,
       c.first_name as owner_first_name,
       c.last_name as owner_last_name,
@@ -179,8 +179,6 @@ export const getDiseaseCaseById = async (caseId) => {
       c.email as owner_email,
       c.address as owner_address,
       c.city as owner_city,
-      c.state as owner_state,
-      c.zip_code as owner_zip,
       CONCAT(created_user.first_name, ' ', created_user.last_name) as created_by_name,
       CONCAT(updated_user.first_name, ' ', updated_user.last_name) as updated_by_name
     FROM disease_cases dc
@@ -321,6 +319,28 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
 export const deleteDiseaseCase = async (caseId) => {
   const query = 'DELETE FROM disease_cases WHERE case_id = $1 RETURNING *';
   const result = await pool.query(query, [caseId]);
+  return result.rows[0];
+};
+
+/**
+ * Write a record to audit_logs
+ */
+export const logAuditEntry = async ({ userId, action, tableName, recordId, oldValues, newValues, ipAddress, userAgent }) => {
+  const query = `
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING log_id
+  `;
+  const result = await pool.query(query, [
+    userId,
+    action,
+    tableName,
+    recordId,
+    oldValues ? JSON.stringify(oldValues) : null,
+    newValues ? JSON.stringify(newValues) : null,
+    ipAddress || null,
+    userAgent || null
+  ]);
   return result.rows[0];
 };
 

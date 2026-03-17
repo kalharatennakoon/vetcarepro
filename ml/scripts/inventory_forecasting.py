@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
 
@@ -65,7 +65,7 @@ class InventoryForecastingModel(BaseMLModel):
         try:
             cursor = conn.cursor()
 
-            # Current inventory snapshot
+            # Current inventory snapshot (includes lead_time_days)
             cursor.execute("""
                 SELECT
                     item_id,
@@ -77,6 +77,7 @@ class InventoryForecastingModel(BaseMLModel):
                     selling_price,
                     reorder_level,
                     reorder_quantity,
+                    COALESCE(lead_time_days, 7) AS lead_time_days,
                     last_restock_date,
                     expiry_date,
                     is_active,
@@ -89,28 +90,51 @@ class InventoryForecastingModel(BaseMLModel):
             inventory_df = pd.DataFrame(inv_rows, columns=[
                 'item_id', 'item_code', 'item_name', 'category',
                 'quantity', 'unit_cost', 'selling_price', 'reorder_level',
-                'reorder_quantity', 'last_restock_date', 'expiry_date',
-                'is_active', 'created_at'
+                'reorder_quantity', 'lead_time_days', 'last_restock_date',
+                'expiry_date', 'is_active', 'created_at'
             ])
 
-            # Consumption history from billing_items (proxy for usage)
-            cursor.execute("""
-                SELECT
-                    bi.item_id,
-                    bi.item_name,
-                    bi.item_type,
-                    DATE(b.bill_date) AS usage_date,
-                    SUM(bi.quantity) AS quantity_used,
-                    SUM(bi.total_price) AS revenue_generated,
-                    COUNT(bi.billing_item_id) AS transaction_count
-                FROM billing_items bi
-                JOIN billing b ON bi.bill_id = b.bill_id
-                WHERE b.payment_status IN ('fully_paid', 'partially_paid')
-                  AND bi.item_id IS NOT NULL
-                  AND b.bill_date IS NOT NULL
-                GROUP BY bi.item_id, bi.item_name, bi.item_type, DATE(b.bill_date)
-                ORDER BY bi.item_id, usage_date
-            """)
+            # Prefer direct dispensing records from inventory_transactions; fall back to billing proxy
+            cursor.execute("SELECT COUNT(*) FROM inventory_transactions WHERE transaction_type = 'dispensed'")
+            tx_count = cursor.fetchone()[0]
+
+            if tx_count > 0:
+                cursor.execute("""
+                    SELECT
+                        it.item_id,
+                        i.item_name,
+                        i.category AS item_type,
+                        DATE(it.transaction_date) AS usage_date,
+                        SUM(it.quantity) AS quantity_used,
+                        0 AS revenue_generated,
+                        COUNT(it.transaction_id) AS transaction_count
+                    FROM inventory_transactions it
+                    JOIN inventory i ON it.item_id = i.item_id
+                    WHERE it.transaction_type = 'dispensed'
+                    GROUP BY it.item_id, i.item_name, i.category, DATE(it.transaction_date)
+                    ORDER BY it.item_id, usage_date
+                """)
+                print("   Using inventory_transactions for consumption data")
+            else:
+                cursor.execute("""
+                    SELECT
+                        bi.item_id,
+                        bi.item_name,
+                        bi.item_type,
+                        DATE(b.bill_date) AS usage_date,
+                        SUM(bi.quantity) AS quantity_used,
+                        SUM(bi.total_price) AS revenue_generated,
+                        COUNT(bi.billing_item_id) AS transaction_count
+                    FROM billing_items bi
+                    JOIN billing b ON bi.bill_id = b.bill_id
+                    WHERE b.payment_status IN ('fully_paid', 'partially_paid')
+                      AND bi.item_id IS NOT NULL
+                      AND b.bill_date IS NOT NULL
+                    GROUP BY bi.item_id, bi.item_name, bi.item_type, DATE(b.bill_date)
+                    ORDER BY bi.item_id, usage_date
+                """)
+                print("   Using billing_items as consumption proxy (no dispensing records yet)")
+
             usage_rows = cursor.fetchall()
             consumption_df = pd.DataFrame(usage_rows, columns=[
                 'item_id', 'item_name', 'item_type', 'usage_date',
@@ -170,7 +194,7 @@ class InventoryForecastingModel(BaseMLModel):
                     'std_daily_demand': 0,
                     'total_consumed': 0,
                     'days_observed': 0,
-                    'lead_time_days': 7  # default
+                    'lead_time_days': int(row.get('lead_time_days', 7) or 7)
                 }
             return stats
 
@@ -222,7 +246,7 @@ class InventoryForecastingModel(BaseMLModel):
                 'total_consumed': round(total_consumed, 2),
                 'days_observed': days_obs,
                 'demand_trend': round(trend, 6),
-                'lead_time_days': 7  # configurable default
+                'lead_time_days': int(inv_row.get('lead_time_days', 7) or 7)
             }
 
         return stats
@@ -284,29 +308,40 @@ class InventoryForecastingModel(BaseMLModel):
         X = df[available].values
         y = df['demand_30d'].values
 
-        if len(X) >= 6:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        else:
-            X_train, X_test, y_train, y_test = X, X, y, y
+        X_all_s = self.scaler.fit_transform(X)
 
-        X_train_s = self.scaler.fit_transform(X_train)
-        X_test_s = self.scaler.transform(X_test)
+        gb = GradientBoostingRegressor(
+            n_estimators=100, max_depth=4,
+            learning_rate=0.1, min_samples_leaf=2, random_state=42
+        )
+
+        # K-fold CV for honest error estimate (when enough samples)
+        cv_mae = None
+        if len(X) >= 6:
+            n_splits = min(5, len(X) // 2)
+            cv_scores = cross_val_score(gb, X_all_s, y, cv=n_splits, scoring='neg_mean_absolute_error')
+            cv_mae = round(float(-cv_scores.mean()), 4)
+            print(f"   ✓ CV MAE ({n_splits}-fold): {cv_mae:.4f}")
+
+        # Train final model on 80/20 split (or full set when < 6 items)
+        if len(X) >= 6:
+            X_train, X_test, y_train, y_test = train_test_split(X_all_s, y, test_size=0.2, random_state=42)
+        else:
+            X_train, X_test, y_train, y_test = X_all_s, X_all_s, y, y
 
         model = GradientBoostingRegressor(
-            n_estimators=100,
-            max_depth=4,
-            learning_rate=0.1,
-            min_samples_leaf=2,
-            random_state=42
+            n_estimators=100, max_depth=4,
+            learning_rate=0.1, min_samples_leaf=2, random_state=42
         )
-        model.fit(X_train_s, y_train)
+        model.fit(X_train, y_train)
 
-        y_pred = model.predict(X_test_s)
+        y_pred = model.predict(X_test)
         mae = mean_absolute_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
 
         metrics = {
             'mae': round(float(mae), 4),
+            'cv_mae': cv_mae,
             'r2_score': round(float(r2), 4),
             'train_samples': int(len(X_train)),
             'items_trained': int(len(df))
@@ -364,6 +399,12 @@ class InventoryForecastingModel(BaseMLModel):
         }
         self.save_model()
 
+        self._update_model_metadata(
+            inventory_items=len(inventory_df),
+            consumption_records=len(consumption_df),
+            cv_mae=self.metrics.get('demand_model', {}).get('cv_mae')
+        )
+
         return {
             'status': 'success',
             'message': 'Inventory forecasting model trained successfully',
@@ -374,6 +415,34 @@ class InventoryForecastingModel(BaseMLModel):
                 'items_with_history': len(training_df)
             }
         }
+
+    def _update_model_metadata(self, inventory_items, consumption_records, cv_mae=None):
+        """Write training stats to model_metadata table."""
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE model_metadata
+                SET last_trained_at       = NOW(),
+                    records_at_last_train  = %s,
+                    cv_accuracy            = %s,
+                    model_version          = model_version + 1,
+                    notes                  = %s,
+                    updated_at             = NOW()
+                WHERE model_name = 'inventory_forecasting'
+            """, (
+                consumption_records,
+                cv_mae,
+                f"{inventory_items} items, {consumption_records} consumption records"
+            ))
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("   ✓ model_metadata updated")
+        except Exception as e:
+            print(f"   ⚠ Could not update model_metadata: {e}")
 
     def load_trained_model(self):
         """Load persisted model from disk."""

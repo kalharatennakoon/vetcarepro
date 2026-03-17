@@ -9,7 +9,7 @@ const DiseaseCaseEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [pets, setPets] = useState([]);
+  const [petLabel, setPetLabel] = useState('');
   const [formData, setFormData] = useState({
     pet_id: '',
     disease_name: '',
@@ -35,7 +35,6 @@ const DiseaseCaseEdit = () => {
       navigate('/disease-cases');
       return;
     }
-    
     fetchData();
   }, [id]);
 
@@ -47,9 +46,16 @@ const DiseaseCaseEdit = () => {
         getPets()
       ]);
 
-      const caseData = casesResponse.data.diseaseCase;
-      setPets(petsResponse.data.pets || []);
-      
+      const caseData = casesResponse.data.case;
+      const petsList = petsResponse.data.pets || [];
+
+      const matchedPet = petsList.find(p => p.pet_id === caseData.pet_id);
+      if (matchedPet) {
+        setPetLabel(`${matchedPet.name || caseData.pet_name} — ${matchedPet.species} (${matchedPet.owner_first_name} ${matchedPet.owner_last_name})`);
+      } else {
+        setPetLabel(`${caseData.pet_name} — ${caseData.species}`);
+      }
+
       setFormData({
         pet_id: caseData.pet_id || '',
         disease_name: caseData.disease_name || '',
@@ -59,11 +65,11 @@ const DiseaseCaseEdit = () => {
         severity: caseData.severity || 'moderate',
         is_contagious: caseData.is_contagious || false,
         outcome: caseData.outcome || '',
-        treatment_duration: caseData.treatment_duration || '',
+        treatment_duration: caseData.treatment_duration_days || caseData.treatment_duration || '',
         notes: caseData.notes || '',
         region: caseData.region || ''
       });
-      
+
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load disease case');
@@ -83,26 +89,25 @@ const DiseaseCaseEdit = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.disease_name) {
-      setError('Please enter disease name');
+
+    if (!formData.disease_name.trim()) {
+      setError('Please enter a disease name');
       return;
     }
-    
     if (!formData.disease_category) {
-      setError('Please select disease category');
+      setError('Please select a disease category');
       return;
     }
 
     try {
       setSaving(true);
       setError('');
-      
+
       const dataToSubmit = {
         ...formData,
         treatment_duration: formData.treatment_duration ? parseInt(formData.treatment_duration) : null
       };
-      
+
       await updateDiseaseCase(id, dataToSubmit);
       navigate(`/disease-cases/${id}`);
     } catch (err) {
@@ -116,8 +121,9 @@ const DiseaseCaseEdit = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+        <div style={styles.loadingWrapper}>
+          <i className="fas fa-circle-notch fa-spin" style={styles.loadingIcon}></i>
+          <p style={styles.loadingText}>Loading disease case...</p>
         </div>
       </Layout>
     );
@@ -125,249 +131,486 @@ const DiseaseCaseEdit = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-800">Edit Disease Case</h1>
-            <button
-              onClick={() => navigate(`/disease-cases/${id}`)}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              ← Back to Details
+      <div style={styles.container}>
+
+        {/* Header */}
+        <div style={styles.header}>
+          <div>
+            <button onClick={() => navigate(`/disease-cases/${id}`)} style={styles.backButton}>
+              <i className="fas fa-arrow-left" style={{ marginRight: '0.4rem' }}></i>
+              Back to Details
             </button>
+            <h1 style={styles.title}>Edit Disease Case</h1>
+            <p style={styles.subtitle}>
+              <i className="fas fa-hashtag" style={{ marginRight: '0.3rem', fontSize: '0.85rem' }}></i>
+              Case ID: {id}
+            </p>
           </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 space-y-6">
-            {/* Pet Selection - Disabled */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pet <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="pet_id"
-                value={formData.pet_id}
-                disabled
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-              >
-                {pets.map(pet => (
-                  <option key={pet.pet_id} value={pet.pet_id}>
-                    {pet.name} - {pet.species} ({pet.owner_first_name} {pet.owner_last_name})
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">Pet cannot be changed after creation</p>
-            </div>
-
-            {/* Disease Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Disease Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="disease_name"
-                value={formData.disease_name}
-                onChange={handleChange}
-                required
-                placeholder="e.g., Parvovirus, Hip Dysplasia"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Disease Category */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Disease Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="disease_category"
-                value={formData.disease_category}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select category</option>
-                <option value="infectious">Infectious</option>
-                <option value="parasitic">Parasitic</option>
-                <option value="metabolic">Metabolic</option>
-                <option value="genetic">Genetic</option>
-                <option value="immune_mediated">Immune Mediated</option>
-                <option value="neoplastic">Neoplastic (Cancer)</option>
-                <option value="traumatic">Traumatic</option>
-                <option value="nutritional">Nutritional</option>
-              </select>
-            </div>
-
-            {/* Diagnosis Date and Severity */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Diagnosis Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="diagnosis_date"
-                  value={formData.diagnosis_date}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Severity <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="severity"
-                  value={formData.severity}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="mild">Mild</option>
-                  <option value="moderate">Moderate</option>
-                  <option value="severe">Severe</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Symptoms */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Symptoms
-              </label>
-              <textarea
-                name="symptoms"
-                value={formData.symptoms}
-                onChange={handleChange}
-                rows="3"
-                placeholder="Describe observed symptoms..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Outcome and Treatment Duration */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Outcome
-                </label>
-                <select
-                  name="outcome"
-                  value={formData.outcome}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Not yet determined</option>
-                  <option value="recovered">Recovered</option>
-                  <option value="ongoing">Ongoing Treatment</option>
-                  <option value="deceased">Deceased</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Treatment Duration (days)
-                </label>
-                <input
-                  type="number"
-                  name="treatment_duration"
-                  value={formData.treatment_duration}
-                  onChange={handleChange}
-                  min="0"
-                  placeholder="e.g., 14"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Region and Contagious */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Region/Location
-                </label>
-                <input
-                  type="text"
-                  name="region"
-                  value={formData.region}
-                  onChange={handleChange}
-                  placeholder="e.g., Colombo, Kandy"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex items-center pt-8">
-                <input
-                  type="checkbox"
-                  name="is_contagious"
-                  checked={formData.is_contagious}
-                  onChange={handleChange}
-                  className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label className="ml-2 text-sm font-medium text-gray-700">
-                  Contagious Disease
-                </label>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Additional Notes
-              </label>
-              <textarea
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows="4"
-                placeholder="Any additional information about the case..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-4 pt-4">
-              <button
-                type="button"
-                onClick={() => navigate(`/disease-cases/${id}`)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors flex items-center gap-2"
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Save Changes
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
         </div>
+
+        {error && (
+          <div style={styles.errorBox}>
+            <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit}>
+          <div style={styles.grid}>
+
+            {/* Left column */}
+            <div style={styles.leftColumn}>
+
+              {/* Pet (read-only) */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-paw" style={styles.cardTitleIcon}></i>
+                  Patient
+                </h2>
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Pet</label>
+                  <div style={styles.readOnlyField}>
+                    <i className="fas fa-lock" style={styles.lockIcon}></i>
+                    {petLabel}
+                  </div>
+                  <p style={styles.hint}>Pet cannot be changed after a case is created</p>
+                </div>
+              </div>
+
+              {/* Disease Details */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-virus" style={styles.cardTitleIcon}></i>
+                  Disease Details
+                </h2>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>
+                    Disease Name <span style={styles.required}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="disease_name"
+                    value={formData.disease_name}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g., Parvovirus, Hip Dysplasia"
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>
+                    Disease Category <span style={styles.required}>*</span>
+                  </label>
+                  <select
+                    name="disease_category"
+                    value={formData.disease_category}
+                    onChange={handleChange}
+                    required
+                    style={styles.input}
+                  >
+                    <option value="">Select category</option>
+                    <option value="infectious">Infectious</option>
+                    <option value="parasitic">Parasitic</option>
+                    <option value="metabolic">Metabolic</option>
+                    <option value="genetic">Genetic</option>
+                    <option value="immune_mediated">Immune Mediated</option>
+                    <option value="neoplastic">Neoplastic (Cancer)</option>
+                    <option value="traumatic">Traumatic</option>
+                    <option value="nutritional">Nutritional</option>
+                  </select>
+                </div>
+
+                <div style={styles.twoCol}>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>
+                      Diagnosis Date <span style={styles.required}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="diagnosis_date"
+                      value={formData.diagnosis_date}
+                      onChange={handleChange}
+                      required
+                      style={styles.input}
+                    />
+                  </div>
+                  <div style={styles.fieldGroup}>
+                    <label style={styles.label}>
+                      Severity <span style={styles.required}>*</span>
+                    </label>
+                    <select
+                      name="severity"
+                      value={formData.severity}
+                      onChange={handleChange}
+                      required
+                      style={styles.input}
+                    >
+                      <option value="mild">Mild</option>
+                      <option value="moderate">Moderate</option>
+                      <option value="severe">Severe</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Symptoms</label>
+                  <textarea
+                    name="symptoms"
+                    value={formData.symptoms}
+                    onChange={handleChange}
+                    rows={3}
+                    placeholder="Describe observed symptoms..."
+                    style={styles.textarea}
+                  />
+                </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Additional Notes</label>
+                  <textarea
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    rows={4}
+                    placeholder="Any additional information about the case..."
+                    style={styles.textarea}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right column */}
+            <div style={styles.rightColumn}>
+
+              {/* Outcome & Treatment */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-stethoscope" style={styles.cardTitleIcon}></i>
+                  Outcome & Treatment
+                </h2>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Outcome</label>
+                  <select
+                    name="outcome"
+                    value={formData.outcome}
+                    onChange={handleChange}
+                    style={styles.input}
+                  >
+                    <option value="">Not yet determined</option>
+                    <option value="recovered">Recovered</option>
+                    <option value="ongoing">Ongoing Treatment</option>
+                    <option value="deceased">Deceased</option>
+                  </select>
+                </div>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Treatment Duration (days)</label>
+                  <input
+                    type="number"
+                    name="treatment_duration"
+                    value={formData.treatment_duration}
+                    onChange={handleChange}
+                    min="0"
+                    placeholder="e.g., 14"
+                    style={styles.input}
+                  />
+                </div>
+              </div>
+
+              {/* Location & Contagion */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-location-dot" style={styles.cardTitleIcon}></i>
+                  Location & Contagion
+                </h2>
+
+                <div style={styles.fieldGroup}>
+                  <label style={styles.label}>Region / Location</label>
+                  <input
+                    type="text"
+                    name="region"
+                    value={formData.region}
+                    onChange={handleChange}
+                    placeholder="e.g., Colombo, Kandy"
+                    style={styles.input}
+                  />
+                </div>
+
+                <div style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    id="is_contagious"
+                    name="is_contagious"
+                    checked={formData.is_contagious}
+                    onChange={handleChange}
+                    style={styles.checkbox}
+                  />
+                  <label htmlFor="is_contagious" style={styles.checkboxLabel}>
+                    <i className="fas fa-biohazard" style={{ marginRight: '0.4rem', color: '#dc2626' }}></i>
+                    Mark as Contagious Disease
+                  </label>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={styles.actionsCard}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/disease-cases/${id}`)}
+                  style={styles.cancelButton}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  style={{ ...styles.saveButton, opacity: saving ? 0.7 : 1 }}
+                >
+                  {saving ? (
+                    <>
+                      <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '0.4rem' }}></i>
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-floppy-disk" style={{ marginRight: '0.4rem' }}></i>
+                      Save Changes
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </form>
       </div>
     </Layout>
   );
+};
+
+const styles = {
+  container: {
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    maxWidth: '1100px',
+    margin: '0 auto',
+    padding: '2rem 1.5rem',
+  },
+  loadingWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '60vh',
+    gap: '1rem',
+  },
+  loadingIcon: {
+    fontSize: '2.5rem',
+    color: '#2563eb',
+  },
+  loadingText: {
+    color: '#6b7280',
+    fontSize: '1rem',
+    margin: 0,
+  },
+  header: {
+    marginBottom: '1.75rem',
+  },
+  backButton: {
+    backgroundColor: 'transparent',
+    color: '#2563eb',
+    border: 'none',
+    padding: '0',
+    fontSize: '0.9rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    marginBottom: '0.75rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: '1.875rem',
+    fontWeight: '700',
+    color: '#111827',
+    margin: '0 0 0.35rem 0',
+  },
+  subtitle: {
+    fontSize: '0.9rem',
+    color: '#6b7280',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  errorBox: {
+    backgroundColor: '#fef2f2',
+    color: '#dc2626',
+    padding: '0.875rem 1rem',
+    borderRadius: '8px',
+    border: '1px solid #fecaca',
+    marginBottom: '1.5rem',
+    fontSize: '0.95rem',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 320px',
+    gap: '1.5rem',
+    alignItems: 'start',
+  },
+  leftColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  rightColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 8px rgba(0,0,0,0.04)',
+    padding: '1.5rem',
+  },
+  cardTitle: {
+    fontSize: '1rem',
+    fontWeight: '700',
+    color: '#111827',
+    margin: '0 0 1.25rem 0',
+    paddingBottom: '0.75rem',
+    borderBottom: '2px solid #f3f4f6',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  cardTitleIcon: {
+    marginRight: '0.5rem',
+    color: '#2563eb',
+    fontSize: '0.95rem',
+  },
+  fieldGroup: {
+    marginBottom: '1.1rem',
+  },
+  twoCol: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+  },
+  label: {
+    display: 'block',
+    fontSize: '0.78rem',
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    marginBottom: '0.4rem',
+  },
+  required: {
+    color: '#dc2626',
+  },
+  input: {
+    width: '100%',
+    padding: '0.6rem 0.75rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    color: '#111827',
+    backgroundColor: 'white',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  textarea: {
+    width: '100%',
+    padding: '0.6rem 0.75rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '0.9rem',
+    color: '#111827',
+    resize: 'vertical',
+    outline: 'none',
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    lineHeight: '1.5',
+  },
+  readOnlyField: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.6rem 0.75rem',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    backgroundColor: '#f9fafb',
+    fontSize: '0.9rem',
+    color: '#6b7280',
+  },
+  lockIcon: {
+    color: '#9ca3af',
+    fontSize: '0.75rem',
+    flexShrink: 0,
+  },
+  hint: {
+    fontSize: '0.78rem',
+    color: '#9ca3af',
+    margin: '0.3rem 0 0 0',
+  },
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.6rem',
+    padding: '0.75rem',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    backgroundColor: '#fef2f2',
+    cursor: 'pointer',
+  },
+  checkbox: {
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  checkboxLabel: {
+    fontSize: '0.9rem',
+    fontWeight: '500',
+    color: '#374151',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  actionsCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  saveButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    padding: '0.75rem',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  cancelButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    padding: '0.75rem',
+    backgroundColor: 'white',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '0.95rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
 };
 
 export default DiseaseCaseEdit;

@@ -27,6 +27,11 @@ router.get('/health', mlController.checkHealth);
 // @access  Private
 router.get('/models/status', mlController.getModelsStatus);
 
+// @route   GET /api/ml/retrain-check
+// @desc    Check if any model needs retraining based on new record growth
+// @access  Private (Admin only)
+router.get('/retrain-check', authorize('admin'), mlController.getRetrainCheck);
+
 // @route   GET /api/ml/test/db-connection
 // @desc    Test ML service database connection
 // @access  Private (Admin only)

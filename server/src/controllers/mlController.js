@@ -353,10 +353,29 @@ const loadInventoryData = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Check if any ML model needs retraining based on new record growth
+ * @route   GET /api/ml/retrain-check
+ * @access  Private/Admin
+ */
+const getRetrainCheck = async (_req, res) => {
+  try {
+    const result = await mlService.getRetrainCheck();
+    if (result.success) {
+      res.json(result.data);
+    } else {
+      res.status(500).json({ success: false, message: result.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   // Health & Status
   checkHealth,
   getModelsStatus,
+  getRetrainCheck,
   testDatabaseConnection,
 
   // Disease Prediction

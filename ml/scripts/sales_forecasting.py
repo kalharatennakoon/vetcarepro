@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, date
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
 
@@ -320,29 +320,40 @@ class SalesForecastingModel(BaseMLModel):
         X = monthly_df[available_cols].values
         y = monthly_df['monthly_revenue'].values
 
-        # Split if enough data
-        if len(X) >= 6:
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        else:
-            X_train, X_test, y_train, y_test = X, X, y, y
+        X_all_scaled = self.scaler.fit_transform(X)
 
-        X_train_scaled = self.scaler.fit_transform(X_train)
-        X_test_scaled = self.scaler.transform(X_test)
+        rf = RandomForestRegressor(
+            n_estimators=100, max_depth=6,
+            min_samples_leaf=2, random_state=42
+        )
+
+        # K-fold CV for honest error estimate (when enough months)
+        cv_mae = None
+        if len(X) >= 6:
+            n_splits = min(5, len(X) // 2)
+            cv_scores = cross_val_score(rf, X_all_scaled, y, cv=n_splits, scoring='neg_mean_absolute_error')
+            cv_mae = round(float(-cv_scores.mean()), 2)
+            print(f"   ✓ CV MAE ({n_splits}-fold): {cv_mae:.2f}")
+
+        # Train final model on 80/20 split (or full set when < 6 months)
+        if len(X) >= 6:
+            X_train, X_test, y_train, y_test = train_test_split(X_all_scaled, y, test_size=0.2, random_state=42)
+        else:
+            X_train, X_test, y_train, y_test = X_all_scaled, X_all_scaled, y, y
 
         model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=6,
-            min_samples_leaf=2,
-            random_state=42
+            n_estimators=100, max_depth=6,
+            min_samples_leaf=2, random_state=42
         )
-        model.fit(X_train_scaled, y_train)
+        model.fit(X_train, y_train)
 
-        y_pred = model.predict(X_test_scaled)
+        y_pred = model.predict(X_test)
         mae = mean_absolute_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
 
         metrics = {
             'mae': round(float(mae), 2),
+            'cv_mae': cv_mae,
             'r2_score': round(float(r2), 4),
             'train_samples': int(len(X_train)),
             'test_samples': int(len(X_test)),
@@ -411,12 +422,40 @@ class SalesForecastingModel(BaseMLModel):
         }
         self.save_model()
 
+        self._update_model_metadata(
+            record_count=self.training_data.get('daily_records', 0),
+            cv_mae=self.metrics.get('demand_model', {}).get('cv_mae')
+        )
+
         return {
             'status': 'success',
             'message': 'Sales forecasting models trained successfully',
             'metrics': self.metrics,
             'training_data': self.training_data
         }
+
+    def _update_model_metadata(self, record_count, cv_mae=None):
+        """Write training stats to model_metadata table."""
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE model_metadata
+                SET last_trained_at       = NOW(),
+                    records_at_last_train  = %s,
+                    cv_accuracy            = %s,
+                    model_version          = model_version + 1,
+                    updated_at             = NOW()
+                WHERE model_name = 'sales_forecasting'
+            """, (record_count, cv_mae))
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("   ✓ model_metadata updated")
+        except Exception as e:
+            print(f"   ⚠ Could not update model_metadata: {e}")
 
     def load_trained_model(self):
         """Load persisted model from disk."""

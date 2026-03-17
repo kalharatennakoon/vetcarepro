@@ -552,7 +552,7 @@ const Analytics = () => {
         {/* Results Summary */}
         <div style={styles.infoBox}>
           <p style={styles.infoText}>
-            Showing <strong>{currentCases.length}</strong> of{' '}
+            Showing <strong>{startIndex + 1}–{Math.min(endIndex, filteredCases.length)}</strong> of{' '}
             <strong>{filteredCases.length}</strong> disease cases
             {totalCases > filteredCases.length && ` (${totalCases} total in database)`}
           </p>

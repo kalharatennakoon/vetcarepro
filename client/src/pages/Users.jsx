@@ -342,6 +342,40 @@ const Users = () => {
         </div>
       )}
 
+      {/* Role Tabs */}
+      <div style={styles.roleTabs}>
+        {[
+          { label: 'All', value: '', color: '#6b7280' },
+          { label: 'Admin', value: 'admin', color: '#dc2626' },
+          { label: 'Veterinarian', value: 'veterinarian', color: '#3b82f6' },
+          { label: 'Receptionist', value: 'receptionist', color: '#10b981' },
+        ].map(tab => {
+          const count = tab.value === '' ? users.length : users.filter(u => u.role === tab.value).length;
+          const isActive = filterRole === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setFilterRole(tab.value)}
+              style={{
+                ...styles.roleTab,
+                borderBottom: isActive ? `3px solid ${tab.color}` : '3px solid transparent',
+                color: isActive ? tab.color : '#6b7280',
+                fontWeight: isActive ? '700' : '500',
+              }}
+            >
+              {tab.label}
+              <span style={{
+                ...styles.roleTabBadge,
+                backgroundColor: isActive ? tab.color : '#e5e7eb',
+                color: isActive ? '#ffffff' : '#6b7280',
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Filters */}
       <div style={styles.toolbar}>
         <div style={styles.searchContainer}>
@@ -354,16 +388,6 @@ const Users = () => {
             style={styles.searchInput}
           />
         </div>
-        <select
-          value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
-          style={styles.filterSelect}
-        >
-          <option value="">All Roles</option>
-          <option value="admin">Admin</option>
-          <option value="veterinarian">Veterinarian</option>
-          <option value="receptionist">Receptionist</option>
-        </select>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -757,6 +781,33 @@ const styles = {
     borderRadius: '6px',
     outline: 'none',
     backgroundColor: 'white',
+  },
+  roleTabs: {
+    display: 'flex',
+    gap: '0',
+    marginBottom: '1rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  roleTab: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.65rem 1.25rem',
+    background: 'none',
+    border: 'none',
+    borderBottom: '3px solid transparent',
+    fontSize: '0.875rem',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    marginBottom: '-1px',
+  },
+  roleTabBadge: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    padding: '0.15rem 0.5rem',
+    borderRadius: '10px',
+    minWidth: '20px',
+    textAlign: 'center',
   },
   loadingContainer: {
     display: 'flex',
