@@ -165,9 +165,12 @@ const CustomerDetail = () => {
           <button onClick={() => setShowEditForm(true)} style={styles.editButton}>
             Edit Customer
           </button>
-          <button onClick={openDeleteModal} style={styles.deleteButton}>
-            {user?.role === 'admin' ? 'Delete / Inactivate' : 'Inactivate'}
-          </button>
+          {(customer.is_active || user?.role === 'admin') && (
+            <button onClick={openDeleteModal} style={styles.deleteButton}>
+              <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+              {!customer.is_active ? 'Delete' : user?.role === 'admin' ? 'Delete / Inactivate' : 'Inactivate'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -361,8 +364,11 @@ const CustomerDetail = () => {
         <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
           <div style={styles.modalHeader}>
             <h3 style={styles.modalTitle}>
+              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
               {deletability.activeAppointments > 0
-                ? 'Cannot Remove Customer'
+                ? `Cannot ${user?.role === 'admin' ? 'Delete or Inactivate' : 'Inactivate'} Customer`
+                : (!customer.is_active && deletability.hasRelatedData)
+                ? 'Cannot Delete Customer'
                 : (deletability.hasRelatedData || user?.role !== 'admin')
                 ? 'Inactivate Customer'
                 : 'Permanently Delete Customer'}
@@ -375,10 +381,26 @@ const CustomerDetail = () => {
               <>
                 <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1rem' }}>
                   <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    <i className="fas fa-ban" style={{ marginRight: '0.5rem' }}></i>
                     {customer.first_name} {customer.last_name} has {deletability.activeAppointments} active appointment(s).
                   </p>
                   <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
-                    Please cancel or complete all active appointments before {user?.role === 'admin' ? 'deleting or inactivating' : 'inactivating'} this customer.
+                    Please cancel or complete all active appointments before {user?.role === 'admin' ? 'deleting or inactivating' : 'inactivating'} this customer from the system.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal}>Close</button>
+                </div>
+              </>
+            ) : (!customer.is_active && deletability.hasRelatedData) ? (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>
+                    <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                    {customer.first_name} {customer.last_name} is already inactive and has existing records in the system.
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#78350f', fontSize: '0.875rem' }}>
+                    Permanent deletion is not possible. Records: {deletability.counts.appointments} appointment(s), {deletability.counts.medicalRecords} medical record(s), {deletability.counts.vaccinations} vaccination(s), {deletability.counts.billingRecords} billing record(s).
                   </p>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
