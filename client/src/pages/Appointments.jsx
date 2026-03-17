@@ -231,7 +231,7 @@ const Appointments = () => {
           isCurrentMonth: current.getMonth() === month,
           isToday: dateStr === formatDateLocal(new Date()),
           isSelectedDate: filterDate && dateStr === filterDate,
-          appointments: dayAppointments
+          appointments: dayAppointments.sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
         });
         
         current.setDate(current.getDate() + 1);

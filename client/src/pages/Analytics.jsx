@@ -110,21 +110,26 @@ const Analytics = () => {
   const fetchMLData = async () => {
     try {
       setLoading(true);
-      const [statsRes, categoriesRes, modelRes, patternsRes] = await Promise.all([
+      const [statsRes, categoriesRes, modelRes] = await Promise.all([
         getDiseaseStatistics(),
         getDiseaseCasesByCategory(),
-        getMLModelStatus(),
-        analyzeDiseasePatterns()
+        getMLModelStatus()
       ]);
 
       setStatistics(statsRes.data.statistics);
       setCategories(categoriesRes.data.categories);
       setModelStatus(modelRes.models.disease_prediction);
-      setPatterns(patternsRes.patterns);
-      
+
+      try {
+        const patternsRes = await analyzeDiseasePatterns();
+        setPatterns(patternsRes.patterns);
+      } catch (patternsErr) {
+        setPatterns({ status: 'failed', reason: patternsErr.response?.data?.message || 'Pattern analysis unavailable' });
+      }
+
       await fetchTrends('Dog');
       await fetchOutbreakRisk();
-      
+
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load ML data');
@@ -391,20 +396,24 @@ const Analytics = () => {
               <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem' }}></i>
               Disease Analytics
             </button>
-            <button
-              onClick={() => setActiveTab('sales')}
-              style={activeTab === 'sales' ? styles.tabActive : styles.tab}
-            >
-              <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
-              Sales Forecasting
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
-            >
-              <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
-              Inventory Demand
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('sales')}
+                style={activeTab === 'sales' ? styles.tabActive : styles.tab}
+              >
+                <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
+                Sales Forecasting
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('inventory')}
+                style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
+              >
+                <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
+                Inventory Demand
+              </button>
+            )}
           </div>
         </div>
 
@@ -708,7 +717,7 @@ const Analytics = () => {
         {activeTab === 'analytics' && (
           <>
             {/* Model Status Card */}
-            {modelStatus && (
+            {modelStatus && (isAdmin || (modelStatus.loaded && modelStatus.trained)) && (
               <div style={styles.modelStatusCard}>
                 <div style={styles.modelStatusHeader}>
                   <div>
@@ -1022,9 +1031,9 @@ const Analytics = () => {
                               </div>
                             ))}
                           </div>
-                        ) : (
+                        ) : isAdmin ? (
                           <p style={{ color: '#4b5563' }}>{patterns.reason || 'Pattern analysis unavailable'}</p>
-                        )}
+                        ) : null}
                       </div>
                     )}
 
@@ -1138,7 +1147,7 @@ const Analytics = () => {
         )}
 
         {/* Sales Forecasting Tab */}
-        {activeTab === 'sales' && (
+        {isAdmin && activeTab === 'sales' && (
           <div style={styles.tabContentContainer}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -1302,7 +1311,7 @@ const Analytics = () => {
         )}
 
         {/* Inventory Demand Tab */}
-        {activeTab === 'inventory' && (
+        {isAdmin && activeTab === 'inventory' && (
           <div style={styles.tabContentContainer}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>

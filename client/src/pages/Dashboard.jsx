@@ -147,7 +147,7 @@ const Dashboard = () => {
         pendingInvoices: pendingBills.length,
         lowStockItems: lowStockItems.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
-        recentAppointments: todayAppointments,
+        recentAppointments: [...todayAppointments].sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || '')),
         upcomingAppointments: appointments.filter(a => {
           if (a.status === 'cancelled' || a.status === 'completed') return false;
           const appointmentDate = getLocalDateString(a.appointment_date);

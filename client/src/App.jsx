@@ -311,11 +311,11 @@ function App() {
         }
       />
 
-{/* Reports routes - accessible by admin and veterinarian */}
+{/* Reports routes - accessible by admin only */}
       <Route
         path="/reports"
         element={
-          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+          <ProtectedRoute requiredRoles={['admin']}>
             <Reports />
           </ProtectedRoute>
         }

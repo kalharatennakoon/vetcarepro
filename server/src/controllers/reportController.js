@@ -39,33 +39,33 @@ export const getFinancialReports = async (req, res) => {
         reportData = await ReportModel.getPaymentsByMethod(startDate, endDate);
         break;
       case 'outstanding-balances':
-        reportData = await ReportModel.getOutstandingBalances();
+        reportData = await ReportModel.getOutstandingBalances(startDate, endDate);
         break;
       case 'revenue-by-service':
         reportData = await ReportModel.getRevenueByService(startDate, endDate);
         break;
-      case 'top-customers':
+      case 'top-customers': {
         const limit = parseInt(req.query.limit) || 10;
         reportData = await ReportModel.getTopCustomers(startDate, endDate, limit);
         break;
+      }
       case 'monthly-trend':
-        reportData = await ReportModel.getMonthlyRevenueTrend();
+        reportData = await ReportModel.getMonthlyRevenueTrend(startDate, endDate);
         break;
-      case 'monthly-income':
-        const month = parseInt(req.query.month) || new Date().getMonth() + 1;
-        const year = parseInt(req.query.year) || new Date().getFullYear();
-        reportData = await ReportModel.getMonthlyIncomeReport(month, year);
+      case 'monthly-income': {
+        const monthlyData = await ReportModel.getMonthlyIncomeReport(startDate, endDate);
+        reportData = monthlyData.dailyBreakdown;
         break;
+      }
       case 'annual-income':
-        const reportYear = parseInt(req.query.year) || new Date().getFullYear();
-        reportData = await ReportModel.getAnnualIncomeReport(reportYear);
+        reportData = await ReportModel.getAnnualIncomeReport(startDate, endDate);
         break;
       case 'customer-growth':
         reportData = await ReportModel.getCustomerGrowthReport(startDate, endDate);
         break;
       default:
-        return res.status(400).json({ 
-          error: 'Invalid report type' 
+        return res.status(400).json({
+          error: 'Invalid report type'
         });
     }
 
@@ -212,6 +212,8 @@ export const exportReport = async (req, res) => {
 
     let reportData;
 
+    const startDateObj = new Date(startDate);
+
     // Get the appropriate report data
     if (category === 'financial') {
       switch (reportType) {
@@ -222,7 +224,7 @@ export const exportReport = async (req, res) => {
           reportData = await ReportModel.getPaymentsByMethod(startDate, endDate);
           break;
         case 'outstanding-balances':
-          reportData = await ReportModel.getOutstandingBalances();
+          reportData = await ReportModel.getOutstandingBalances(startDate, endDate);
           break;
         case 'revenue-by-service':
           reportData = await ReportModel.getRevenueByService(startDate, endDate);
@@ -230,15 +232,16 @@ export const exportReport = async (req, res) => {
         case 'top-customers':
           reportData = await ReportModel.getTopCustomers(startDate, endDate, 50);
           break;
-        case 'monthly-income':
-          const month = parseInt(req.query.month) || new Date().getMonth() + 1;
-          const year = parseInt(req.query.year) || new Date().getFullYear();
-          const monthlyData = await ReportModel.getMonthlyIncomeReport(month, year);
+        case 'monthly-income': {
+          const monthlyData = await ReportModel.getMonthlyIncomeReport(startDate, endDate);
           reportData = monthlyData.dailyBreakdown;
           break;
+        }
         case 'annual-income':
-          const reportYear = parseInt(req.query.year) || new Date().getFullYear();
-          reportData = await ReportModel.getAnnualIncomeReport(reportYear);
+          reportData = await ReportModel.getAnnualIncomeReport(startDate, endDate);
+          break;
+        case 'monthly-trend':
+          reportData = await ReportModel.getMonthlyRevenueTrend(startDate, endDate);
           break;
         case 'customer-growth':
           reportData = await ReportModel.getCustomerGrowthReport(startDate, endDate);
@@ -255,7 +258,7 @@ export const exportReport = async (req, res) => {
           reportData = await ReportModel.getAppointmentsByType(startDate, endDate);
           break;
         case 'patient-visits':
-          reportData = [await ReportModel.getPatientVisitStats(startDate, endDate)];
+          reportData = await ReportModel.getPatientVisitStats(startDate, endDate);
           break;
         case 'inventory-usage':
           reportData = await ReportModel.getInventoryUsage(startDate, endDate);
@@ -290,6 +293,13 @@ export const exportReport = async (req, res) => {
 };
 
 /**
+ * Convert a snake_case key to Title Case label
+ */
+function toTitleCase(str) {
+  return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
  * Helper function to convert JSON to CSV
  */
 function convertToCSV(data) {
@@ -298,8 +308,8 @@ function convertToCSV(data) {
   }
 
   const headers = Object.keys(data[0]);
-  const csvHeaders = headers.join(',');
-  
+  const csvHeaders = headers.map(h => toTitleCase(h)).join(',');
+
   const csvRows = data.map(row => {
     return headers.map(header => {
       const value = row[header];
@@ -347,7 +357,7 @@ export const exportReportPDF = async (req, res) => {
           reportTitle = 'Payments by Method Report';
           break;
         case 'outstanding-balances':
-          reportData = await ReportModel.getOutstandingBalances();
+          reportData = await ReportModel.getOutstandingBalances(startDate, endDate);
           reportTitle = 'Outstanding Balances Report';
           break;
         case 'revenue-by-service':
@@ -358,17 +368,21 @@ export const exportReportPDF = async (req, res) => {
           reportData = await ReportModel.getTopCustomers(startDate, endDate, 50);
           reportTitle = 'Top Customers Report';
           break;
-        case 'monthly-income':
-          const month = parseInt(req.query.month) || new Date().getMonth() + 1;
-          const year = parseInt(req.query.year) || new Date().getFullYear();
-          const monthlyData = await ReportModel.getMonthlyIncomeReport(month, year);
-          reportData = [monthlyData.summary];
-          reportTitle = `Monthly Income Report - ${month}/${year}`;
+        case 'monthly-income': {
+          const monthlyData = await ReportModel.getMonthlyIncomeReport(startDate, endDate);
+          reportData = monthlyData.dailyBreakdown.length > 0
+            ? monthlyData.dailyBreakdown
+            : [monthlyData.summary];
+          reportTitle = `Daily Income Report (${startDate} to ${endDate})`;
           break;
+        }
         case 'annual-income':
-          const reportYear = parseInt(req.query.year) || new Date().getFullYear();
-          reportData = await ReportModel.getAnnualIncomeReport(reportYear);
-          reportTitle = `Annual Income Report - ${reportYear}`;
+          reportData = await ReportModel.getAnnualIncomeReport(startDate, endDate);
+          reportTitle = `Annual Income Report (${startDate} to ${endDate})`;
+          break;
+        case 'monthly-trend':
+          reportData = await ReportModel.getMonthlyRevenueTrend(startDate, endDate);
+          reportTitle = 'Monthly Revenue Trend Report';
           break;
         case 'customer-growth':
           reportData = await ReportModel.getCustomerGrowthReport(startDate, endDate);
@@ -388,7 +402,7 @@ export const exportReportPDF = async (req, res) => {
           reportTitle = 'Appointments by Type Report';
           break;
         case 'patient-visits':
-          reportData = [await ReportModel.getPatientVisitStats(startDate, endDate)];
+          reportData = await ReportModel.getPatientVisitStats(startDate, endDate);
           reportTitle = 'Patient Visit Statistics Report';
           break;
         case 'inventory-usage':
@@ -412,7 +426,8 @@ export const exportReportPDF = async (req, res) => {
     }
 
     // Generate simple HTML for PDF conversion
-    const html = generateHTMLReport(reportTitle, reportData, startDate, endDate);
+    const generatedBy = req.user ? `${req.user.first_name} ${req.user.last_name}` : 'Admin';
+    const html = generateHTMLReport(reportTitle, reportData, startDate, endDate, generatedBy);
     const filename = `${reportType}_${startDate}_${endDate}.pdf`;
 
     // For now, send HTML that can be converted to PDF on client side
@@ -432,83 +447,78 @@ export const exportReportPDF = async (req, res) => {
 };
 
 /**
+/**
  * Helper function to generate HTML report
  */
-function generateHTMLReport(title, data, startDate, endDate) {
+function generateHTMLReport(title, data, startDate, endDate, generatedBy = 'Admin') {
   const headers = data.length > 0 ? Object.keys(data[0]) : [];
-  
-  let html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${title}</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 20px;
-        }
-        h1 {
-          color: #2c3e50;
-          border-bottom: 2px solid #3498db;
-          padding-bottom: 10px;
-        }
-        .date-range {
-          color: #7f8c8d;
-          margin-bottom: 20px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        th {
-          background-color: #3498db;
-          color: white;
-          padding: 12px;
-          text-align: left;
-        }
-        td {
-          padding: 10px;
-          border-bottom: 1px solid #ddd;
-        }
-        tr:hover {
-          background-color: #f5f5f5;
-        }
-        .footer {
-          margin-top: 30px;
-          text-align: center;
-          color: #7f8c8d;
-          font-size: 12px;
-        }
-      </style>
-    </head>
-    <body>
-      <h1>${title}</h1>
-      <div class="date-range">
-        Report Period: ${startDate} to ${endDate}
-      </div>
-      <table>
-        <thead>
-          <tr>
-            ${headers.map(h => `<th>${h.replace(/_/g, ' ').toUpperCase()}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map(row => `
-            <tr>
-              ${headers.map(h => `<td>${row[h] !== null && row[h] !== undefined ? row[h] : ''}</td>`).join('')}
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-      <div class="footer">
-        <p>Generated on ${new Date().toLocaleString()}</p>
-        <p>VetCarePro - Veterinary Management System</p>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return html;
+
+  const rows = data.map((row, i) => {
+    const bg = i % 2 === 0 ? '#ffffff' : '#eff6ff';
+    const cells = headers.map(h => {
+      const val = row[h] !== null && row[h] !== undefined ? row[h] : '—';
+      return `<td style="background:${bg}">${val}</td>`;
+    }).join('');
+    return `<tr>${cells}</tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    @page { size: A4 landscape; margin: 1.2cm 1cm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; color: #111827; font-size: 11px; }
+    .report-header { border-bottom: 3px solid #1e40af; padding-bottom: 10px; margin-bottom: 14px; }
+    h1 { color: #1e40af; margin: 0 0 3px 0; font-size: 17px; font-weight: 700; }
+    .date-range { color: #6b7280; font-size: 11px; margin: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    thead tr { background-color: #1e40af; }
+    th {
+      color: #ffffff;
+      padding: 9px 11px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      border-right: 1px solid #2563eb;
+    }
+    th:last-child { border-right: none; }
+    td {
+      padding: 7px 11px;
+      border-bottom: 1px solid #e5e7eb;
+      border-right: 1px solid #e5e7eb;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    td:last-child { border-right: none; }
+    .footer {
+      margin-top: 18px;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 8px;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 9.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="report-header">
+    <h1>${title}</h1>
+    <p class="date-range">Report Period: ${startDate} &nbsp;to&nbsp; ${endDate}</p>
+  </div>
+  <table>
+    <thead>
+      <tr>${headers.map(h => `<th>${toTitleCase(h)}</th>`).join('')}</tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <p>Generated on ${new Date().toLocaleString()} by ${generatedBy} &nbsp;|&nbsp; VetCare Pro &ndash; Pro Pet Animal Hospital</p>
+  </div>
+</body>
+</html>`;
 }

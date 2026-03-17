@@ -192,9 +192,9 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-boxes"></i> Inventory
               </a>
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a 
-                  href="/reports" 
+              {user?.role === 'admin' && (
+                <a
+                  href="/reports"
                   style={getNavItemStyle('/reports')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
                 >

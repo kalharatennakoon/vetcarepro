@@ -144,14 +144,15 @@ const reportService = {
         }
       });
 
-      // If response contains HTML, open it in a new window for printing
+      // Open HTML via a Blob URL so the print footer shows the document title, not "about:blank"
       if (response.data.html) {
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(response.data.html);
-        printWindow.document.close();
+        const blob = new Blob([response.data.html], { type: 'text/html;charset=utf-8' });
+        const blobUrl = URL.createObjectURL(blob);
+        const printWindow = window.open(blobUrl, '_blank');
         setTimeout(() => {
           printWindow.print();
-        }, 250);
+          URL.revokeObjectURL(blobUrl);
+        }, 500);
       }
 
       return { success: true };
