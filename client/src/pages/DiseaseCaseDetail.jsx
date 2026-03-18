@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getDiseaseCaseById, deleteDiseaseCase } from '../services/diseaseCaseService';
+import { getLabReports, uploadLabReport, openLabReport, deleteLabReport } from '../services/labReportService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -12,6 +13,14 @@ const DiseaseCaseDetail = () => {
   const [deleting, setDeleting] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteNotes, setDeleteNotes] = useState('');
+  const [labReports, setLabReports] = useState([]);
+  const [labReportsLoading, setLabReportsLoading] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadForm, setUploadForm] = useState({ report_name: '', report_type: '', notes: '' });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [labError, setLabError] = useState('');
+  const [labSuccess, setLabSuccess] = useState('');
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -28,8 +37,10 @@ const DiseaseCaseDetail = () => {
     try {
       setLoading(true);
       const response = await getDiseaseCaseById(id);
-      setDiseaseCase(response.data.case);
+      const c = response.data.case;
+      setDiseaseCase(c);
       setError('');
+      fetchLabReports(c.pet_id, c.case_id);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load disease case');
       console.error(err);
@@ -54,6 +65,60 @@ const DiseaseCaseDetail = () => {
     setDeleteReason('');
     setDeleteNotes('');
     setShowDeleteModal(true);
+  };
+
+  const fetchLabReports = async (petId, caseId) => {
+    try {
+      setLabReportsLoading(true);
+      const response = await getLabReports(petId);
+      const caseReports = (response.reports || []).filter(r => r.related_case_id === caseId);
+      setLabReports(caseReports);
+    } catch (err) {
+      console.error('Failed to load lab reports', err);
+    } finally {
+      setLabReportsLoading(false);
+    }
+  };
+
+  const handleUploadFormChange = (e) => {
+    setUploadForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleLabReportUpload = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) { setLabError('Please select a file'); return; }
+    if (!uploadForm.report_name || !uploadForm.report_type) { setLabError('Report name and type are required'); return; }
+    try {
+      setUploading(true);
+      setLabError('');
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('report_name', uploadForm.report_name);
+      formData.append('report_type', uploadForm.report_type);
+      formData.append('related_case_id', diseaseCase.case_id);
+      if (uploadForm.notes) formData.append('notes', uploadForm.notes);
+      await uploadLabReport(diseaseCase.pet_id, formData);
+      setLabSuccess('Lab report uploaded successfully');
+      setShowUploadForm(false);
+      setUploadForm({ report_name: '', report_type: '', notes: '' });
+      setUploadFile(null);
+      fetchLabReports(diseaseCase.pet_id, diseaseCase.case_id);
+      setTimeout(() => setLabSuccess(''), 3000);
+    } catch (err) {
+      setLabError(err.response?.data?.message || 'Failed to upload lab report');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteLabReport = async (reportId) => {
+    if (!window.confirm('Delete this lab report?')) return;
+    try {
+      await deleteLabReport(reportId);
+      fetchLabReports(diseaseCase.pet_id, diseaseCase.case_id);
+    } catch (err) {
+      setLabError(err.response?.data?.message || 'Failed to delete lab report');
+    }
   };
 
   const formatDate = (dateString) => {
@@ -270,6 +335,121 @@ const DiseaseCaseDetail = () => {
               </div>
             </div>
 
+            {/* Lab Reports */}
+            <div style={styles.card}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '0.75rem', borderBottom: '2px solid #f3f4f6' }}>
+                <h2 style={{ ...styles.cardTitle, margin: 0, paddingBottom: 0, borderBottom: 'none' }}>
+                  <i className="fas fa-flask" style={styles.cardTitleIcon}></i>
+                  Lab Reports
+                  {labReports.length > 0 && (
+                    <span style={{ marginLeft: '0.5rem', background: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '9999px' }}>
+                      {labReports.length}
+                    </span>
+                  )}
+                </h2>
+                {isVetOrAdmin && (
+                  <button onClick={() => { setShowUploadForm(v => !v); setLabError(''); }} style={styles.uploadToggleBtn}>
+                    <i className={`fas fa-${showUploadForm ? 'minus' : 'plus'}`} style={{ marginRight: '0.35rem' }}></i>
+                    {showUploadForm ? 'Cancel' : 'Upload'}
+                  </button>
+                )}
+              </div>
+
+              {labError && (
+                <div style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.6rem 0.85rem', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  {labError}
+                </div>
+              )}
+              {labSuccess && (
+                <div style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.6rem 0.85rem', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  {labSuccess}
+                </div>
+              )}
+
+              {showUploadForm && (
+                <form onSubmit={handleLabReportUpload} style={styles.labUploadForm}>
+                  <div style={styles.labFormGrid}>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>Report Name <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input name="report_name" value={uploadForm.report_name} onChange={handleUploadFormChange} placeholder="e.g. Blood Panel – March 2026" style={styles.labFormInput} required />
+                    </div>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>Report Type <span style={{ color: '#dc2626' }}>*</span></label>
+                      <select name="report_type" value={uploadForm.report_type} onChange={handleUploadFormChange} style={styles.labFormInput} required>
+                        <option value="">Select type...</option>
+                        <option value="blood_test">Blood Test</option>
+                        <option value="kidney_panel">Kidney Panel</option>
+                        <option value="urinalysis">Urinalysis</option>
+                        <option value="x_ray">X-Ray</option>
+                        <option value="ultrasound">Ultrasound</option>
+                        <option value="cytology">Cytology</option>
+                        <option value="biopsy">Biopsy</option>
+                        <option value="culture">Culture</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={styles.labFormGroup}>
+                    <label style={styles.labFormLabel}>File <span style={{ color: '#dc2626' }}>*</span> <span style={{ color: '#9ca3af', fontWeight: '400', textTransform: 'none' }}>(PDF or image, max 10MB)</span></label>
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={e => setUploadFile(e.target.files[0])} style={styles.labFormInput} required />
+                  </div>
+                  <div style={styles.labFormGroup}>
+                    <label style={styles.labFormLabel}>Notes <span style={{ color: '#9ca3af', fontWeight: '400', textTransform: 'none' }}>(optional)</span></label>
+                    <input name="notes" value={uploadForm.notes} onChange={handleUploadFormChange} placeholder="Any additional notes..." style={styles.labFormInput} />
+                  </div>
+                  <button type="submit" disabled={uploading} style={{ ...styles.labUploadBtn, opacity: uploading ? 0.6 : 1 }}>
+                    <i className={`fas fa-${uploading ? 'circle-notch fa-spin' : 'upload'}`} style={{ marginRight: '0.4rem' }}></i>
+                    {uploading ? 'Uploading...' : 'Upload Report'}
+                  </button>
+                </form>
+              )}
+
+              {labReportsLoading ? (
+                <div style={{ textAlign: 'center', padding: '1.5rem', color: '#9ca3af', fontSize: '0.9rem' }}>
+                  <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '0.4rem' }}></i>
+                  Loading reports...
+                </div>
+              ) : labReports.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '1.5rem', color: '#9ca3af', fontSize: '0.88rem' }}>
+                  <i className="fas fa-folder-open" style={{ fontSize: '1.5rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                  No lab reports linked to this case yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {labReports.map(report => (
+                    <div key={report.report_id} style={styles.labReportCard}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                        <div style={styles.labReportIcon}>
+                          <i className={`fas fa-file-${report.file_type === 'pdf' ? 'pdf' : 'image'}`} style={{ color: report.file_type === 'pdf' ? '#dc2626' : '#7c3aed' }}></i>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={styles.labReportName}>{report.report_name}</span>
+                            <span style={styles.labReportTypeBadge}>{report.report_type.replace(/_/g, ' ')}</span>
+                          </div>
+                          <div style={styles.labReportMeta}>
+                            <span><i className="fas fa-user" style={{ marginRight: '0.25rem' }}></i>{report.uploaded_by_name || 'Unknown'}</span>
+                            <span><i className="fas fa-calendar" style={{ marginRight: '0.25rem' }}></i>{formatDate(report.created_at)}</span>
+                          </div>
+                          {report.notes && <div style={styles.labReportNotes}>{report.notes}</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                          <button onClick={() => openLabReport(report.report_id, report.file_type)} style={styles.labViewBtn} title="View">
+                            <i className="fas fa-eye"></i>
+                          </button>
+                          {isVetOrAdmin && (
+                            <button onClick={() => handleDeleteLabReport(report.report_id)} style={styles.labDeleteBtn} title="Delete">
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Right Column (Sidebar) */}
@@ -368,6 +548,60 @@ const DiseaseCaseDetail = () => {
               </div>
             )}
 
+            {/* Follow-up Monitoring */}
+            {diseaseCase.requires_followup && (
+              <div style={{ ...styles.card, borderTop: '4px solid #f59e0b' }}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-calendar-check" style={{ ...styles.cardTitleIcon, color: '#f59e0b' }}></i>
+                  Follow-up Monitoring
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {diseaseCase.followup_type && (
+                    <div style={styles.detailRow}>
+                      <span style={styles.detailLabel}>
+                        <i className="fas fa-tag" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                        Type
+                      </span>
+                      <span style={{ ...styles.value, textTransform: 'capitalize' }}>
+                        {diseaseCase.followup_type.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  )}
+                  {diseaseCase.next_followup_date && (
+                    <div style={styles.detailRow}>
+                      <span style={styles.detailLabel}>
+                        <i className="fas fa-calendar-alt" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                        Next Follow-up
+                      </span>
+                      <span style={{
+                        ...styles.value,
+                        color: new Date(diseaseCase.next_followup_date) < new Date() ? '#dc2626' : '#111827',
+                        fontWeight: '600'
+                      }}>
+                        {formatDate(diseaseCase.next_followup_date)}
+                        {new Date(diseaseCase.next_followup_date) < new Date() && (
+                          <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: '#dc2626' }}>
+                            <i className="fas fa-circle-exclamation" style={{ marginRight: '0.2rem' }}></i>
+                            Overdue
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+                  {diseaseCase.followup_notes && (
+                    <div>
+                      <span style={{ ...styles.detailLabel, display: 'block', marginBottom: '0.35rem' }}>
+                        <i className="fas fa-notes-medical" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                        Instructions
+                      </span>
+                      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.6rem 0.75rem', fontSize: '0.85rem', color: '#374151', lineHeight: '1.5' }}>
+                        {diseaseCase.followup_notes}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
@@ -853,6 +1087,146 @@ const styles = {
     fontSize: '0.9rem',
     fontWeight: '500',
     cursor: 'pointer',
+  },
+  uploadToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    color: '#0369a1',
+    border: '1px solid #bae6fd',
+    padding: '0.35rem 0.85rem',
+    fontSize: '0.82rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  labUploadForm: {
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    padding: '1rem',
+    marginBottom: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  labFormGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '0.75rem',
+  },
+  labFormGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.3rem',
+  },
+  labFormLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  labFormInput: {
+    padding: '0.45rem 0.65rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.88rem',
+    color: '#111827',
+    backgroundColor: 'white',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  labUploadBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    color: 'white',
+    border: 'none',
+    padding: '0.55rem 1.25rem',
+    fontSize: '0.88rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    alignSelf: 'flex-start',
+  },
+  labReportCard: {
+    backgroundColor: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    padding: '0.85rem 1rem',
+  },
+  labReportIcon: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '6px',
+    backgroundColor: 'white',
+    border: '1px solid #e5e7eb',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1rem',
+    flexShrink: 0,
+  },
+  labReportName: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  labReportTypeBadge: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    backgroundColor: '#ede9fe',
+    color: '#5b21b6',
+    padding: '0.1rem 0.5rem',
+    borderRadius: '9999px',
+    textTransform: 'capitalize',
+  },
+  labReportMeta: {
+    display: 'flex',
+    gap: '1rem',
+    fontSize: '0.78rem',
+    color: '#6b7280',
+    marginTop: '0.25rem',
+  },
+  labReportNotes: {
+    fontSize: '0.82rem',
+    color: '#374151',
+    marginTop: '0.35rem',
+    fontStyle: 'italic',
+  },
+  labViewBtn: {
+    padding: '0.35rem 0.6rem',
+    backgroundColor: '#eff6ff',
+    color: '#2563eb',
+    border: '1px solid #bfdbfe',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+  },
+  labDeleteBtn: {
+    padding: '0.35rem 0.6rem',
+    backgroundColor: '#fef2f2',
+    color: '#dc2626',
+    border: '1px solid #fecaca',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+  },
+  detailRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem',
+  },
+  detailLabel: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
 };
 

@@ -197,8 +197,32 @@ CREATE TABLE disease_cases (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES users(user_id),
-    updated_by INTEGER REFERENCES users(user_id)
+    updated_by INTEGER REFERENCES users(user_id),
+    -- Follow-up tracking (e.g. post snake bite kidney monitoring)
+    requires_followup BOOLEAN DEFAULT false,
+    followup_type VARCHAR(100),
+    next_followup_date DATE,
+    followup_notes TEXT
 );
+
+-- Lab Reports Table
+-- Supports: Per-pet lab report uploads (blood tests, urinalysis, x-rays, kidney panels, etc.)
+CREATE TABLE lab_reports (
+    report_id SERIAL PRIMARY KEY,
+    pet_id VARCHAR(50) NOT NULL REFERENCES pets(pet_id) ON DELETE CASCADE,
+    report_name VARCHAR(255) NOT NULL,
+    report_type VARCHAR(50) NOT NULL CHECK (report_type IN ('blood_test', 'urinalysis', 'kidney_panel', 'x_ray', 'ultrasound', 'cytology', 'biopsy', 'culture', 'other')),
+    file_path VARCHAR(500) NOT NULL,
+    file_type VARCHAR(10) NOT NULL CHECK (file_type IN ('pdf', 'image')),
+    notes TEXT,
+    related_case_id INTEGER REFERENCES disease_cases(case_id) ON DELETE SET NULL,
+    uploaded_by INTEGER REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_lab_reports_pet_id ON lab_reports(pet_id);
+CREATE INDEX idx_lab_reports_type ON lab_reports(report_type);
+CREATE INDEX idx_lab_reports_created ON lab_reports(created_at);
 
 -- Inventory Table (Medicines, Vaccines, Accessories, Pet Food, Supplies)
 -- Supports: Stock management, Reorder alerts, Expiry tracking, Sales forecasting data

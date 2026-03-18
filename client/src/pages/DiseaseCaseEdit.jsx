@@ -21,7 +21,11 @@ const DiseaseCaseEdit = () => {
     outcome: '',
     treatment_duration: '',
     notes: '',
-    region: ''
+    region: '',
+    requires_followup: false,
+    followup_type: '',
+    next_followup_date: '',
+    followup_notes: ''
   });
 
   const { id } = useParams();
@@ -67,7 +71,11 @@ const DiseaseCaseEdit = () => {
         outcome: caseData.outcome || '',
         treatment_duration: caseData.treatment_duration_days || caseData.treatment_duration || '',
         notes: caseData.notes || '',
-        region: caseData.region || ''
+        region: caseData.region || '',
+        requires_followup: caseData.requires_followup || false,
+        followup_type: caseData.followup_type || '',
+        next_followup_date: caseData.next_followup_date ? caseData.next_followup_date.split('T')[0] : '',
+        followup_notes: caseData.followup_notes || ''
       });
 
       setError('');
@@ -353,6 +361,72 @@ const DiseaseCaseEdit = () => {
                     Mark as Contagious Disease
                   </label>
                 </div>
+              </div>
+
+              {/* Follow-up Monitoring */}
+              <div style={styles.card}>
+                <h2 style={styles.cardTitle}>
+                  <i className="fas fa-calendar-check" style={{ ...styles.cardTitleIcon, color: '#f59e0b' }}></i>
+                  Follow-up Monitoring
+                </h2>
+
+                <div style={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    id="requires_followup"
+                    name="requires_followup"
+                    checked={formData.requires_followup}
+                    onChange={handleChange}
+                    style={styles.checkbox}
+                  />
+                  <label htmlFor="requires_followup" style={styles.checkboxLabel}>
+                    <i className="fas fa-bell" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
+                    This case requires follow-up monitoring
+                  </label>
+                </div>
+
+                {formData.requires_followup && (
+                  <>
+                    <div style={{ ...styles.fieldGroup, marginTop: '0.75rem' }}>
+                      <label style={styles.label}>Follow-up Type</label>
+                      <select
+                        name="followup_type"
+                        value={formData.followup_type}
+                        onChange={handleChange}
+                        style={styles.input}
+                      >
+                        <option value="">Select type...</option>
+                        <option value="kidney_monitoring">Kidney Monitoring (post snake bite)</option>
+                        <option value="blood_test">Blood Test</option>
+                        <option value="general_checkup">General Checkup</option>
+                        <option value="wound_inspection">Wound Inspection</option>
+                        <option value="medication_review">Medication Review</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Next Follow-up Date</label>
+                      <input
+                        type="date"
+                        name="next_followup_date"
+                        value={formData.next_followup_date}
+                        onChange={handleChange}
+                        style={styles.input}
+                      />
+                    </div>
+                    <div style={styles.fieldGroup}>
+                      <label style={styles.label}>Follow-up Notes</label>
+                      <textarea
+                        name="followup_notes"
+                        value={formData.followup_notes}
+                        onChange={handleChange}
+                        rows={3}
+                        placeholder="e.g. Monitor BUN/creatinine levels weekly for 4 weeks..."
+                        style={styles.textarea}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Actions */}

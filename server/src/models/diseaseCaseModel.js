@@ -234,9 +234,13 @@ export const createDiseaseCase = async (caseData, userId) => {
       is_contagious,
       transmission_method,
       notes,
+      requires_followup,
+      followup_type,
+      next_followup_date,
+      followup_notes,
       created_by,
       updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20)
     RETURNING *
   `;
 
@@ -256,6 +260,10 @@ export const createDiseaseCase = async (caseData, userId) => {
     caseData.is_contagious || false,
     caseData.transmission_method,
     caseData.notes,
+    caseData.requires_followup || false,
+    caseData.followup_type || null,
+    caseData.next_followup_date || null,
+    caseData.followup_notes || null,
     userId
   ];
 
@@ -284,9 +292,13 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
       is_contagious = $12,
       transmission_method = $13,
       notes = $14,
-      updated_by = $15,
+      requires_followup = $15,
+      followup_type = $16,
+      next_followup_date = $17,
+      followup_notes = $18,
+      updated_by = $19,
       updated_at = CURRENT_TIMESTAMP
-    WHERE case_id = $16
+    WHERE case_id = $20
     RETURNING *
   `;
 
@@ -305,6 +317,10 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
     caseData.is_contagious,
     caseData.transmission_method,
     caseData.notes,
+    caseData.requires_followup || false,
+    caseData.followup_type || null,
+    caseData.next_followup_date || null,
+    caseData.followup_notes || null,
     userId,
     caseId
   ];

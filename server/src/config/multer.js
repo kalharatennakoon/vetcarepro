@@ -10,8 +10,9 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '../../uploads');
 const profileImagesDir = path.join(uploadsDir, 'profile-images');
 const petImagesDir = path.join(uploadsDir, 'pet-images');
+const labReportsDir = path.join(uploadsDir, 'lab-reports');
 
-[uploadsDir, profileImagesDir, petImagesDir].forEach(dir => {
+[uploadsDir, profileImagesDir, petImagesDir, labReportsDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -69,6 +70,33 @@ export const uploadPetImage = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: imageFilter
+});
+
+// Configure storage for lab reports (images + PDFs)
+const labReportStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, labReportsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'lab-' + uniqueSuffix + ext);
+  }
+});
+
+// File filter - allow images and PDFs
+const labReportFilter = (req, file, cb) => {
+  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+  if (allowedMimes.includes(file.mimetype)) {
+    return cb(null, true);
+  }
+  cb(new Error('Only image files (JPEG, PNG, WebP) and PDF files are allowed'));
+};
+
+export const uploadLabReport = multer({
+  storage: labReportStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for lab reports
+  fileFilter: labReportFilter
 });
 
 // Helper function to delete old image file
