@@ -93,6 +93,8 @@ CREATE TABLE pets (
     is_active BOOLEAN DEFAULT true,
     deceased_date DATE,
     notes TEXT,
+    breeding_available BOOLEAN DEFAULT false,
+    breeding_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES users(user_id),

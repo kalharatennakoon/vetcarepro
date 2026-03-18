@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPetById, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
+import { getPetById, updatePet, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport, emailLabReport } from '../services/labReportService';
 import { sendCustomerEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +32,9 @@ const PetDetail = () => {
   const [success, setSuccess] = useState('');
   
   const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [breedingAvailable, setBreedingAvailable] = useState(false);
+  const [breedingNotes, setBreedingNotes] = useState('');
+  const [savingBreeding, setSavingBreeding] = useState(false);
   const [ownerEmailOpen, setOwnerEmailOpen] = useState(false);
   const [ownerEmailForm, setOwnerEmailForm] = useState({ subject: '', message: '' });
   const [ownerEmailSending, setOwnerEmailSending] = useState(false);
@@ -58,7 +61,10 @@ const PetDetail = () => {
     try {
       setLoading(true);
       const response = await getPetById(id);
-      setPet(response.data.pet);
+      const p = response.data.pet;
+      setPet(p);
+      setBreedingAvailable(p.breeding_available || false);
+      setBreedingNotes(p.breeding_notes || '');
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load pet details');
@@ -310,6 +316,19 @@ const PetDetail = () => {
       fetchLabReports();
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to delete lab report');
+    }
+  };
+
+  const handleSaveBreeding = async () => {
+    try {
+      setSavingBreeding(true);
+      await updatePet(id, { breeding_available: breedingAvailable, breeding_notes: breedingNotes || null });
+      showSuccess(breedingAvailable ? 'Pet listed in breeding registry' : 'Pet removed from breeding registry');
+      fetchPetDetails();
+    } catch (err) {
+      showError('Failed to update breeding status');
+    } finally {
+      setSavingBreeding(false);
     }
   };
 
@@ -637,6 +656,57 @@ const PetDetail = () => {
                     <p style={styles.notes}>{pet.notes}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Breeding Registry */}
+              <div style={styles.section}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <h2 style={{ ...styles.sectionTitle, margin: 0 }}>
+                    <i className="fas fa-heart" style={{ marginRight: '0.4rem', color: '#ec4899' }}></i>
+                    Breeding Registry
+                  </h2>
+                  <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Owner opt-in only</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', backgroundColor: breedingAvailable ? '#fdf2f8' : '#f9fafb', border: `1px solid ${breedingAvailable ? '#f9a8d4' : '#e5e7eb'}`, borderRadius: '8px', marginBottom: '0.85rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', flex: 1, userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={breedingAvailable}
+                      onChange={e => setBreedingAvailable(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#ec4899' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: breedingAvailable ? '#be185d' : '#374151' }}>
+                        {breedingAvailable ? 'Listed in breeding registry' : 'Not listed in breeding registry'}
+                      </span>
+                      <p style={{ margin: 0, fontSize: '0.78rem', color: '#9ca3af' }}>
+                        {breedingAvailable ? 'Owner has opted in — this pet will appear in breeding searches.' : 'Check to list this pet for breeding enquiries (with owner consent).'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                {breedingAvailable && (
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Notes for enquiries <span style={{ color: '#9ca3af', fontWeight: '400', textTransform: 'none' }}>(optional)</span>
+                    </label>
+                    <textarea
+                      value={breedingNotes}
+                      onChange={e => setBreedingNotes(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Vaccinated, prefers same breed, contact after 6pm..."
+                      style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={handleSaveBreeding}
+                  disabled={savingBreeding}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.1rem', backgroundColor: savingBreeding ? '#e5e7eb' : '#ec4899', color: savingBreeding ? '#9ca3af' : 'white', border: 'none', borderRadius: '7px', fontSize: '0.875rem', fontWeight: '600', cursor: savingBreeding ? 'not-allowed' : 'pointer' }}
+                >
+                  <i className={`fas fa-${savingBreeding ? 'circle-notch fa-spin' : 'floppy-disk'}`}></i>
+                  {savingBreeding ? 'Saving...' : 'Save'}
+                </button>
               </div>
 
               {/* Owner Information */}

@@ -11,7 +11,8 @@ import {
   getPetVaccinationsById,
   getSpecies,
   uploadPetImageHandler,
-  deletePetImageHandler
+  deletePetImageHandler,
+  getBreedingRegistry
 } from '../controllers/petController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -36,6 +37,11 @@ router.use(authenticate);
 // @desc    Get list of species
 // @access  Private
 router.get('/species/list', getSpecies);
+
+// @route   GET /api/pets/breeding/registry
+// @desc    Get pets available for breeding
+// @access  Private
+router.get('/breeding/registry', getBreedingRegistry);
 
 // @route   GET /api/pets
 // @desc    Get all pets

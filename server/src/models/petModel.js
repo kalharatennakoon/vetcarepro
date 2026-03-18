@@ -228,6 +228,16 @@ export const updatePet = async (petId, petData, updatedBy) => {
     values.push(petData.deceased_date);
     paramCount++;
   }
+  if (petData.breeding_available !== undefined) {
+    fields.push(`breeding_available = $${paramCount}`);
+    values.push(petData.breeding_available);
+    paramCount++;
+  }
+  if (petData.breeding_notes !== undefined) {
+    fields.push(`breeding_notes = $${paramCount}`);
+    values.push(petData.breeding_notes);
+    paramCount++;
+  }
 
   fields.push(`updated_by = $${paramCount}`);
   values.push(updatedBy);
@@ -377,5 +387,45 @@ export const getSpeciesList = async () => {
   `;
   
   const result = await pool.query(query);
+  return result.rows;
+};
+/**
+ * Get pets available for breeding with optional filters
+ */
+export const getBreedingPets = async (filters = {}) => {
+  let query = `
+    SELECT
+      p.pet_id, p.pet_name, p.species, p.breed, p.gender,
+      p.date_of_birth, p.color, p.photo_url, p.breeding_notes,
+      p.is_neutered,
+      EXTRACT(YEAR FROM AGE(CURRENT_DATE, p.date_of_birth))::INTEGER as age_years,
+      c.first_name as owner_first_name, c.city as owner_city, c.phone as owner_phone
+    FROM pets p
+    INNER JOIN customers c ON p.customer_id = c.customer_id
+    WHERE p.breeding_available = true AND p.is_active = true
+  `;
+
+  const values = [];
+  let paramCount = 1;
+
+  if (filters.species) {
+    query += ` AND p.species = $${paramCount}`;
+    values.push(filters.species);
+    paramCount++;
+  }
+  if (filters.gender) {
+    query += ` AND p.gender = $${paramCount}`;
+    values.push(filters.gender);
+    paramCount++;
+  }
+  if (filters.breed) {
+    query += ` AND p.breed ILIKE $${paramCount}`;
+    values.push(`%${filters.breed}%`);
+    paramCount++;
+  }
+
+  query += ` ORDER BY p.species, p.breed, p.pet_name`;
+
+  const result = await pool.query(query, values);
   return result.rows;
 };

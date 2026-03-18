@@ -118,6 +118,18 @@ export const inactivatePet = async (id, data) => {
   return response.data;
 };
 
+export const getBreedingRegistry = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.species) params.append('species', filters.species);
+  if (filters.gender) params.append('gender', filters.gender);
+  if (filters.breed) params.append('breed', filters.breed);
+  const token = localStorage.getItem('token');
+  const response = await axios.get(`${API_URL}/pets/breeding/registry?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 export default {
   getPets,
   getPetById,

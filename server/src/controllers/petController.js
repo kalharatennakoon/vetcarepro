@@ -9,7 +9,8 @@ import {
   getPetMedicalHistory,
   getPetVaccinations,
   getPetCount,
-  getSpeciesList
+  getSpeciesList,
+  getBreedingPets
 } from '../models/petModel.js';
 import { getCustomerById } from '../models/customerModel.js';
 import { deleteImageFile } from '../config/multer.js';
@@ -465,5 +466,15 @@ export const deletePetImageHandler = async (req, res) => {
       status: 'error',
       message: 'An error occurred while deleting pet image'
     });
+  }
+};
+export const getBreedingRegistry = async (req, res) => {
+  try {
+    const { species, gender, breed } = req.query;
+    const pets = await getBreedingPets({ species, gender, breed });
+    res.status(200).json({ status: 'success', data: { pets } });
+  } catch (error) {
+    console.error('Get breeding registry error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch breeding registry' });
   }
 };
