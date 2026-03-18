@@ -117,7 +117,8 @@ export const emailLabReport = async (req, res) => {
       senderName: `${req.user.first_name} ${req.user.last_name}`
     });
 
-    res.status(200).json({ status: 'success', message: `Lab report sent to ${pet.owner_email}` });
+    const ownerName = `${pet.owner_first_name} ${pet.owner_last_name}`;
+    res.status(200).json({ status: 'success', message: `Lab report sent to ${ownerName} (${pet.owner_email})` });
   } catch (err) {
     console.error('❌ emailLabReport error:', err);
     res.status(500).json({ status: 'error', message: 'Failed to send email' });

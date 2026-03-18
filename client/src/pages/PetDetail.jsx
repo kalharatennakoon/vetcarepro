@@ -861,12 +861,12 @@ const PetDetail = () => {
                         <button onClick={() => handleOpenReport(report.report_id, report.file_type)} style={styles.labViewBtn}>
                           <i className="fas fa-eye" style={{ marginRight: '0.3rem' }}></i>View
                         </button>
-                        <button onClick={() => { setEmailModal({ open: true, report }); setEmailMessage(''); }} style={styles.labEmailBtn} title="Email to owner">
-                          <i className="fas fa-envelope"></i>
+                        <button onClick={() => { setEmailModal({ open: true, report }); setEmailMessage(''); }} style={styles.labEmailBtn}>
+                          <i className="fas fa-envelope" style={{ marginRight: '0.3rem' }}></i>Email
                         </button>
                         {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                           <button onClick={() => handleDeleteLabReport(report.report_id, report.report_name)} style={styles.labDeleteBtn}>
-                            <i className="fas fa-trash"></i>
+                            <i className="fas fa-trash" style={{ marginRight: '0.3rem' }}></i>Delete
                           </button>
                         )}
                       </div>
@@ -1103,7 +1103,7 @@ const PetDetail = () => {
             <button
               onClick={handleEmailReport}
               disabled={sending || !pet?.owner_email}
-              style={{ ...styles.ownerModalFullBtn, backgroundColor: sending ? '#f0fdf4' : '#16a34a', color: 'white', border: 'none', opacity: (!pet?.owner_email) ? 0.5 : 1, cursor: (!pet?.owner_email || sending) ? 'not-allowed' : 'pointer' }}
+              style={{ ...styles.ownerModalFullBtn, backgroundColor: sending ? '#15803d' : '#16a34a', color: 'white', border: 'none', opacity: (!pet?.owner_email) ? 0.5 : 1, cursor: (!pet?.owner_email || sending) ? 'not-allowed' : 'pointer' }}
             >
               <i className={`fas fa-${sending ? 'circle-notch fa-spin' : 'paper-plane'}`} style={{ marginRight: '0.4rem' }}></i>
               {sending ? 'Sending...' : 'Send to Owner'}
@@ -1900,22 +1900,30 @@ const styles = {
     whiteSpace: 'nowrap',
   },
   labEmailBtn: {
-    padding: '0.4rem 0.6rem',
+    padding: '0.4rem 0.85rem',
     backgroundColor: '#f0fdf4',
     color: '#16a34a',
     border: 'none',
     borderRadius: '6px',
     fontSize: '0.8rem',
+    fontWeight: '500',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   labDeleteBtn: {
-    padding: '0.4rem 0.6rem',
+    padding: '0.4rem 0.85rem',
     backgroundColor: '#fee2e2',
     color: '#dc2626',
     border: 'none',
     borderRadius: '6px',
     fontSize: '0.8rem',
+    fontWeight: '500',
     cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   ownerModalOverlay: {
     position: 'fixed',
