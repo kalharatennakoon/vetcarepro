@@ -7,6 +7,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [speciesList, setSpeciesList] = useState([]);
+  const [addPet, setAddPet] = useState(false);
   const [petData, setPetData] = useState({
     pet_name: '',
     species: '',
@@ -133,7 +134,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       }
     }
 
-    if (!isEditMode) {
+    if (!isEditMode && addPet) {
       if (!petData.pet_name.trim()) { setError('Pet name is required'); return false; }
       if (!petData.species) { setError('Pet species is required'); return false; }
       if (!petData.gender) { setError('Pet gender is required'); return false; }
@@ -169,17 +170,21 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       } else {
         const res = await axios.post(`${API_URL}/customers`, cleanedData, config);
         const newCustomerId = res.data.data.customer.customer_id;
-        await createPet({
-          customer_id: newCustomerId,
-          pet_name: petData.pet_name.trim(),
-          species: petData.species,
-          breed: petData.breed.trim() || null,
-          gender: petData.gender,
-          date_of_birth: petData.date_of_birth,
-          color: petData.color.trim() || null,
-          weight_current: petData.weight_current ? parseFloat(petData.weight_current) : null
-        });
-        showSuccess('Customer and pet added successfully');
+        if (addPet) {
+          await createPet({
+            customer_id: newCustomerId,
+            pet_name: petData.pet_name.trim(),
+            species: petData.species,
+            breed: petData.breed.trim() || null,
+            gender: petData.gender,
+            date_of_birth: petData.date_of_birth,
+            color: petData.color.trim() || null,
+            weight_current: petData.weight_current ? parseFloat(petData.weight_current) : null
+          });
+          showSuccess('Customer and pet added successfully');
+        } else {
+          showSuccess('Customer added successfully');
+        }
       }
 
       onSuccess?.();
@@ -416,121 +421,141 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        {/* Pet Information (new customers only) */}
+        {/* Pet Information (new customers only — optional) */}
         {!isEditMode && (
           <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>Pet Information</h3>
-
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Pet Name <span style={styles.required}>*</span>
-                </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: addPet ? '1.25rem' : 0 }}>
+              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Pet Information</h3>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: '#374151', userSelect: 'none' }}>
                 <input
-                  type="text"
-                  name="pet_name"
-                  value={petData.pet_name}
-                  onChange={handlePetChange}
-                  placeholder="Enter pet name"
-                  style={styles.input}
+                  type="checkbox"
+                  checked={addPet}
+                  onChange={e => setAddPet(e.target.checked)}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                 />
-              </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Species <span style={styles.required}>*</span>
-                </label>
-                <select
-                  name="species"
-                  value={petData.species}
-                  onChange={handlePetChange}
-                  style={styles.input}
-                >
-                  <option value="">Select species</option>
-                  {speciesList.length > 0
-                    ? speciesList.map(s => <option key={s} value={s}>{s}</option>)
-                    : ['Dog', 'Cat', 'Bird', 'Rabbit', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other'].map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))
-                  }
-                </select>
-              </div>
+                Register a pet now
+              </label>
             </div>
+            {!addPet && (
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '0.35rem' }}></i>
+                You can add pets to this customer later from the customer profile.
+              </p>
+            )}
+            {addPet && (
+              <>
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Pet Name <span style={styles.required}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="pet_name"
+                      value={petData.pet_name}
+                      onChange={handlePetChange}
+                      placeholder="Enter pet name"
+                      style={styles.input}
+                    />
+                  </div>
 
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Breed</label>
-                <input
-                  type="text"
-                  name="breed"
-                  value={petData.breed}
-                  onChange={handlePetChange}
-                  placeholder="Enter breed"
-                  style={styles.input}
-                />
-              </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Species <span style={styles.required}>*</span>
+                    </label>
+                    <select
+                      name="species"
+                      value={petData.species}
+                      onChange={handlePetChange}
+                      style={styles.input}
+                    >
+                      <option value="">Select species</option>
+                      {speciesList.length > 0
+                        ? speciesList.map(s => <option key={s} value={s}>{s}</option>)
+                        : ['Dog', 'Cat', 'Bird', 'Rabbit', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other'].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))
+                      }
+                    </select>
+                  </div>
+                </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Gender <span style={styles.required}>*</span>
-                </label>
-                <select
-                  name="gender"
-                  value={petData.gender}
-                  onChange={handlePetChange}
-                  style={styles.input}
-                >
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="unknown">Unknown</option>
-                </select>
-              </div>
-            </div>
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Breed</label>
+                    <input
+                      type="text"
+                      name="breed"
+                      value={petData.breed}
+                      onChange={handlePetChange}
+                      placeholder="Enter breed"
+                      style={styles.input}
+                    />
+                  </div>
 
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Date of Birth <span style={styles.required}>*</span>
-                </label>
-                <input
-                  type="date"
-                  name="date_of_birth"
-                  value={petData.date_of_birth}
-                  onChange={handlePetChange}
-                  max={new Date().toISOString().split('T')[0]}
-                  style={styles.input}
-                />
-              </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Gender <span style={styles.required}>*</span>
+                    </label>
+                    <select
+                      name="gender"
+                      value={petData.gender}
+                      onChange={handlePetChange}
+                      style={styles.input}
+                    >
+                      <option value="">Select gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="unknown">Unknown</option>
+                    </select>
+                  </div>
+                </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Color</label>
-                <input
-                  type="text"
-                  name="color"
-                  value={petData.color}
-                  onChange={handlePetChange}
-                  placeholder="e.g. Brown, Black & White"
-                  style={styles.input}
-                />
-              </div>
-            </div>
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Date of Birth <span style={styles.required}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      name="date_of_birth"
+                      value={petData.date_of_birth}
+                      onChange={handlePetChange}
+                      max={new Date().toISOString().split('T')[0]}
+                      style={styles.input}
+                    />
+                  </div>
 
-            <div style={{ maxWidth: '50%' }}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Weight (kg)</label>
-                <input
-                  type="number"
-                  name="weight_current"
-                  value={petData.weight_current}
-                  onChange={handlePetChange}
-                  placeholder="e.g. 4.5"
-                  min="0"
-                  step="0.1"
-                  style={styles.input}
-                />
-              </div>
-            </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Color</label>
+                    <input
+                      type="text"
+                      name="color"
+                      value={petData.color}
+                      onChange={handlePetChange}
+                      placeholder="e.g. Brown, Black & White"
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ maxWidth: '50%' }}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Weight (kg)</label>
+                    <input
+                      type="number"
+                      name="weight_current"
+                      value={petData.weight_current}
+                      onChange={handlePetChange}
+                      placeholder="e.g. 4.5"
+                      min="0"
+                      step="0.1"
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 

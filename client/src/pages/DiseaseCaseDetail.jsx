@@ -296,6 +296,16 @@ const DiseaseCaseDetail = () => {
                   </div>
                 )}
               </div>
+
+              <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #f3f4f6' }}>
+                <button
+                  onClick={() => navigate(`/pets/${diseaseCase.pet_id}`)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-paw"></i>
+                  View Pet Profile
+                </button>
+              </div>
             </div>
 
             {/* Disease Information */}
