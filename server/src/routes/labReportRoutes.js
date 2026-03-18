@@ -5,7 +5,8 @@ import {
   listLabReports,
   uploadReport,
   viewReport,
-  removeLabReport
+  removeLabReport,
+  emailLabReport
 } from '../controllers/labReportController.js';
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.post('/pet/:petId/upload', authenticate, uploadLabReport.single('file'), 
 
 // GET  /api/lab-reports/:reportId/view    — serve the file
 router.get('/:reportId/view', authenticate, viewReport);
+
+// POST /api/lab-reports/:reportId/email   — email report to pet owner
+router.post('/:reportId/email', authenticate, emailLabReport);
 
 // DELETE /api/lab-reports/:reportId       — delete a report (admin/vet only)
 router.delete('/:reportId', authenticate, removeLabReport);

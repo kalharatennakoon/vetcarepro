@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPetById, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
-import { getLabReports, uploadLabReport, openLabReport, deleteLabReport } from '../services/labReportService';
+import { getLabReports, uploadLabReport, openLabReport, deleteLabReport, emailLabReport } from '../services/labReportService';
+import { sendCustomerEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
@@ -20,6 +21,9 @@ const PetDetail = () => {
   const [uploadForm, setUploadForm] = useState({ report_name: '', report_type: '', notes: '', related_case_id: '' });
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [emailModal, setEmailModal] = useState({ open: false, report: null });
+  const [emailMessage, setEmailMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -27,6 +31,10 @@ const PetDetail = () => {
   const [imageToCrop, setImageToCrop] = useState(null);
   const [success, setSuccess] = useState('');
   
+  const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [ownerEmailOpen, setOwnerEmailOpen] = useState(false);
+  const [ownerEmailForm, setOwnerEmailForm] = useState({ subject: '', message: '' });
+  const [ownerEmailSending, setOwnerEmailSending] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletability, setDeletability] = useState(null);
   const [deactivateReason, setDeactivateReason] = useState('');
@@ -43,11 +51,8 @@ const PetDetail = () => {
     fetchPetDetails();
     fetchMedicalHistory();
     fetchVaccinations();
+    fetchLabReports();
   }, [id]);
-
-  useEffect(() => {
-    if (activeTab === 'labReports') fetchLabReports();
-  }, [activeTab]);
 
   const fetchPetDetails = async () => {
     try {
@@ -308,6 +313,39 @@ const PetDetail = () => {
     }
   };
 
+  const handleSendOwnerEmail = async () => {
+    if (!ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) return;
+    setOwnerEmailSending(true);
+    try {
+      const res = await sendCustomerEmail({
+        customerId: pet.customer_id,
+        subject: ownerEmailForm.subject,
+        message: ownerEmailForm.message
+      });
+      showSuccess(res.message || 'Email sent successfully');
+      setOwnerEmailOpen(false);
+      setOwnerEmailForm({ subject: '', message: '' });
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setOwnerEmailSending(false);
+    }
+  };
+
+  const handleEmailReport = async () => {
+    try {
+      setSending(true);
+      const res = await emailLabReport(emailModal.report.report_id, emailMessage);
+      showSuccess(res.message || 'Lab report sent successfully');
+      setEmailModal({ open: false, report: null });
+      setEmailMessage('');
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleOpenReport = async (reportId, fileType) => {
     try {
       await openLabReport(reportId, fileType);
@@ -564,30 +602,6 @@ const PetDetail = () => {
                 </div>
               </div>
 
-              {/* Owner Information */}
-              <div style={styles.section}>
-                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
-                <div style={styles.infoGrid}>
-                  <div style={styles.infoItem}>
-                    <span style={styles.infoLabel}>Owner:</span>
-                    <span 
-                      style={styles.ownerLink}
-                      onClick={() => navigate(`/customers/${pet.customer_id}`)}
-                    >
-                      {pet.owner_first_name && pet.owner_last_name 
-                        ? `${pet.owner_first_name} ${pet.owner_last_name}` 
-                        : 'Unknown'}
-                    </span>
-                  </div>
-                  {pet.owner_phone && (
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>Phone:</span>
-                      <span style={styles.infoValue}>{pet.owner_phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Medical Information */}
               <div style={styles.section}>
                 <h2 style={styles.sectionTitle}><i className="fas fa-pills"></i> Medical Information</h2>
@@ -623,6 +637,30 @@ const PetDetail = () => {
                     <p style={styles.notes}>{pet.notes}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Owner Information */}
+              <div style={styles.section}>
+                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
+                <div style={styles.infoGrid}>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoLabel}>Owner:</span>
+                    <span
+                      style={styles.ownerLink}
+                      onClick={() => setShowOwnerModal(true)}
+                    >
+                      {pet.owner_first_name && pet.owner_last_name
+                        ? `${pet.owner_first_name} ${pet.owner_last_name}`
+                        : 'Unknown'}
+                    </span>
+                  </div>
+                  {pet.owner_phone && (
+                    <div style={styles.infoItem}>
+                      <span style={styles.infoLabel}>Phone:</span>
+                      <span style={styles.infoValue}>{pet.owner_phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -823,6 +861,9 @@ const PetDetail = () => {
                         <button onClick={() => handleOpenReport(report.report_id, report.file_type)} style={styles.labViewBtn}>
                           <i className="fas fa-eye" style={{ marginRight: '0.3rem' }}></i>View
                         </button>
+                        <button onClick={() => { setEmailModal({ open: true, report }); setEmailMessage(''); }} style={styles.labEmailBtn} title="Email to owner">
+                          <i className="fas fa-envelope"></i>
+                        </button>
                         {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                           <button onClick={() => handleDeleteLabReport(report.report_id, report.report_name)} style={styles.labDeleteBtn}>
                             <i className="fas fa-trash"></i>
@@ -1001,6 +1042,209 @@ const PetDetail = () => {
         </div>
       </div>
     )}
+    {/* Email Lab Report Modal */}
+    {emailModal.open && emailModal.report && (
+      <div style={styles.ownerModalOverlay} onClick={() => setEmailModal({ open: false, report: null })}>
+        <div style={styles.ownerModal} onClick={e => e.stopPropagation()}>
+          <div style={styles.ownerModalHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ ...styles.ownerModalAvatar, backgroundColor: '#f0fdf4', border: '2px solid #bbf7d0' }}>
+                <i className="fas fa-envelope" style={{ color: '#16a34a', fontSize: '1rem' }}></i>
+              </div>
+              <div>
+                <h3 style={styles.ownerModalName}>Email Lab Report</h3>
+                <span style={styles.ownerModalId}>{emailModal.report.report_name}</span>
+              </div>
+            </div>
+            <button onClick={() => setEmailModal({ open: false, report: null })} style={styles.ownerModalClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={styles.ownerModalBody}>
+            <div style={styles.ownerModalRow}>
+              <span style={styles.ownerModalLabel}>
+                <i className="fas fa-user" style={styles.ownerModalIcon}></i>
+                Recipient
+              </span>
+              <span style={styles.ownerModalValue}>
+                {pet?.owner_first_name} {pet?.owner_last_name}
+                {pet?.owner_email && <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '0.85rem' }}> — {pet.owner_email}</span>}
+              </span>
+            </div>
+            <div style={styles.ownerModalRow}>
+              <span style={styles.ownerModalLabel}>
+                <i className="fas fa-file" style={styles.ownerModalIcon}></i>
+                Report
+              </span>
+              <span style={styles.ownerModalValue}>
+                {emailModal.report.report_name}
+                <span style={{ marginLeft: '0.4rem', fontSize: '0.78rem', background: '#ede9fe', color: '#5b21b6', padding: '0.1rem 0.45rem', borderRadius: '9999px', fontWeight: '600' }}>
+                  {emailModal.report.report_type.replace(/_/g, ' ')}
+                </span>
+              </span>
+            </div>
+            <div style={styles.ownerModalRow}>
+              <label style={styles.ownerModalLabel}>
+                <i className="fas fa-comment" style={styles.ownerModalIcon}></i>
+                Optional message
+              </label>
+              <textarea
+                value={emailMessage}
+                onChange={e => setEmailMessage(e.target.value)}
+                rows={4}
+                placeholder="Add a note for the owner (e.g. results summary, next steps)..."
+                style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.88rem', color: '#111827', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          <div style={styles.ownerModalFooter}>
+            <button
+              onClick={handleEmailReport}
+              disabled={sending || !pet?.owner_email}
+              style={{ ...styles.ownerModalFullBtn, backgroundColor: sending ? '#f0fdf4' : '#16a34a', color: 'white', border: 'none', opacity: (!pet?.owner_email) ? 0.5 : 1, cursor: (!pet?.owner_email || sending) ? 'not-allowed' : 'pointer' }}
+            >
+              <i className={`fas fa-${sending ? 'circle-notch fa-spin' : 'paper-plane'}`} style={{ marginRight: '0.4rem' }}></i>
+              {sending ? 'Sending...' : 'Send to Owner'}
+            </button>
+            {!pet?.owner_email && (
+              <p style={{ textAlign: 'center', color: '#dc2626', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>
+                Owner has no email address on file.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Owner Details Modal */}
+    {showOwnerModal && pet && (
+      <div style={styles.ownerModalOverlay} onClick={() => setShowOwnerModal(false)}>
+        <div style={styles.ownerModal} onClick={e => e.stopPropagation()}>
+          <div style={styles.ownerModalHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={styles.ownerModalAvatar}>
+                <i className="fas fa-user" style={{ color: '#2563eb', fontSize: '1.1rem' }}></i>
+              </div>
+              <div>
+                <h3 style={styles.ownerModalName}>
+                  {pet.owner_first_name} {pet.owner_last_name}
+                </h3>
+                <span style={styles.ownerModalId}>ID: {pet.customer_id}</span>
+              </div>
+            </div>
+            <button onClick={() => setShowOwnerModal(false)} style={styles.ownerModalClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={styles.ownerModalBody}>
+            {pet.owner_phone && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-phone" style={styles.ownerModalIcon}></i>
+                  Phone
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_phone}</span>
+              </div>
+            )}
+            {pet.owner_email && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-envelope" style={styles.ownerModalIcon}></i>
+                  Email
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_email}</span>
+              </div>
+            )}
+            {pet.owner_address && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-location-dot" style={styles.ownerModalIcon}></i>
+                  Address
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_address}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ ...styles.ownerModalFooter, display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => { setShowOwnerModal(false); setOwnerEmailForm({ subject: '', message: '' }); setOwnerEmailOpen(true); }}
+              disabled={!pet.owner_email}
+              title={!pet.owner_email ? 'No email address on file' : ''}
+              style={{ ...styles.ownerModalFullBtn, flex: 1, backgroundColor: '#2563eb', color: 'white', border: 'none', opacity: !pet.owner_email ? 0.5 : 1, cursor: !pet.owner_email ? 'not-allowed' : 'pointer' }}
+            >
+              <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
+              Send Email
+            </button>
+            <button onClick={() => { setShowOwnerModal(false); navigate(`/customers/${pet.customer_id}`); }} style={{ ...styles.ownerModalFullBtn, flex: 1 }}>
+              <i className="fas fa-arrow-up-right-from-square" style={{ marginRight: '0.4rem' }}></i>
+              Full Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Owner Email Compose Modal */}
+    {ownerEmailOpen && pet && (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        onClick={() => setOwnerEmailOpen(false)}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '2rem', width: '100%', maxWidth: '520px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1f2937' }}>
+              <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>
+              Send Email to {pet.owner_first_name} {pet.owner_last_name}
+            </h3>
+            <button onClick={() => setOwnerEmailOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}>
+              <i className="fas fa-xmark"></i>
+            </button>
+          </div>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <i className="fas fa-circle-info" style={{ marginRight: '0.4rem' }}></i>
+            Sending to: <strong>{pet.owner_email}</strong>
+          </p>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Subject</label>
+            <input
+              type="text"
+              value={ownerEmailForm.subject}
+              onChange={e => setOwnerEmailForm(f => ({ ...f, subject: e.target.value }))}
+              placeholder="Email subject"
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Message</label>
+            <textarea
+              value={ownerEmailForm.message}
+              onChange={e => setOwnerEmailForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Type your message here..."
+              rows={6}
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setOwnerEmailOpen(false)}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem' }}>
+              Cancel
+            </button>
+            <button
+              onClick={handleSendOwnerEmail}
+              disabled={ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: 'none', background: (ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) ? '#9ca3af' : '#2563eb', color: '#fff', cursor: (ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
+              {ownerEmailSending
+                ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '0.4rem' }}></i>Sending...</>
+                : <><i className="fas fa-paper-plane" style={{ marginRight: '0.4rem' }}></i>Send Email</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </Layout>
   );
 };
@@ -1655,6 +1899,15 @@ const styles = {
     alignItems: 'center',
     whiteSpace: 'nowrap',
   },
+  labEmailBtn: {
+    padding: '0.4rem 0.6rem',
+    backgroundColor: '#f0fdf4',
+    color: '#16a34a',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  },
   labDeleteBtn: {
     padding: '0.4rem 0.6rem',
     backgroundColor: '#fee2e2',
@@ -1663,6 +1916,110 @@ const styles = {
     borderRadius: '6px',
     fontSize: '0.8rem',
     cursor: 'pointer',
+  },
+  ownerModalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '1rem',
+  },
+  ownerModal: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+    width: '100%',
+    maxWidth: '400px',
+    overflow: 'hidden',
+  },
+  ownerModalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.25rem 1.5rem',
+    borderBottom: '1px solid #f3f4f6',
+  },
+  ownerModalAvatar: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    backgroundColor: '#eff6ff',
+    border: '2px solid #bfdbfe',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  ownerModalName: {
+    fontSize: '1.05rem',
+    fontWeight: '700',
+    color: '#111827',
+    margin: 0,
+  },
+  ownerModalId: {
+    fontSize: '0.78rem',
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  ownerModalClose: {
+    background: 'none',
+    border: 'none',
+    color: '#9ca3af',
+    fontSize: '1.1rem',
+    cursor: 'pointer',
+    padding: '0.25rem',
+    lineHeight: 1,
+  },
+  ownerModalBody: {
+    padding: '1.25rem 1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.85rem',
+  },
+  ownerModalRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem',
+  },
+  ownerModalLabel: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+  },
+  ownerModalIcon: {
+    color: '#9ca3af',
+    fontSize: '0.75rem',
+  },
+  ownerModalValue: {
+    fontSize: '0.95rem',
+    color: '#111827',
+    fontWeight: '500',
+  },
+  ownerModalFooter: {
+    padding: '1rem 1.5rem',
+    borderTop: '1px solid #f3f4f6',
+  },
+  ownerModalFullBtn: {
+    width: '100%',
+    padding: '0.6rem',
+    backgroundColor: 'white',
+    color: '#2563eb',
+    border: '1px solid #bfdbfe',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 };
 

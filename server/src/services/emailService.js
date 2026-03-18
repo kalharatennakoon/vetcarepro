@@ -134,6 +134,39 @@ export const sendBillEmail = async ({ to, customerName, billId, billDate, items,
   });
 };
 
+export const sendLabReportEmail = async ({ to, ownerName, petName, reportName, reportType, reportDate, filePath, fileName, message, senderName }) => {
+  const transporter = createTransporter();
+
+  const formattedDate = reportDate
+    ? new Date(reportDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '';
+  const formattedType = reportType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const html = baseTemplate(`
+    <h2>Lab Report: ${reportName}</h2>
+    <p>Dear ${ownerName},</p>
+    <p>Please find attached the lab report for <strong>${petName}</strong> from <strong>${CLINIC_NAME}</strong>.</p>
+    <table class="info-table">
+      <tr><td>Patient (Pet)</td><td>${petName}</td></tr>
+      <tr><td>Report Name</td><td>${reportName}</td></tr>
+      <tr><td>Report Type</td><td>${formattedType}</td></tr>
+      ${formattedDate ? `<tr><td>Date</td><td>${formattedDate}</td></tr>` : ''}
+    </table>
+    ${message ? `<p><strong>Message from your veterinary team:</strong></p><div style="background:#f0f9ff; border-left:4px solid #2563eb; padding:12px 16px; margin:16px 0; color:#1e40af; white-space:pre-line; font-size:14px;">${message}</div>` : ''}
+    <hr class="divider">
+    <p style="color:#6b7280; font-size:13px;">This report was sent by <strong>${senderName}</strong> at ${CLINIC_NAME}.<br>
+    For any questions, contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
+  `);
+
+  await transporter.sendMail({
+    from: `"${CLINIC_NAME}" <${CLINIC_EMAIL}>`,
+    to,
+    subject: `Lab Report: ${reportName} – ${petName}`,
+    html,
+    attachments: [{ filename: fileName, path: filePath }]
+  });
+};
+
 export const sendCustomEmail = async ({ to, customerName, subject, message, senderName }) => {
   const transporter = createTransporter();
 

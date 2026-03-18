@@ -38,3 +38,12 @@ export const deleteLabReport = async (reportId) => {
   const response = await axios.delete(`${API_URL}/lab-reports/${reportId}`, getAuthHeader());
   return response.data;
 };
+
+export const emailLabReport = async (reportId, message) => {
+  const response = await axios.post(
+    `${API_URL}/lab-reports/${reportId}/email`,
+    { message },
+    getAuthHeader()
+  );
+  return response.data;
+};
