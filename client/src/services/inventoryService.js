@@ -32,7 +32,7 @@ const inventoryService = {
       const params = new URLSearchParams();
       if (filters.category) params.append('category', filters.category);
       if (filters.search) params.append('search', filters.search);
-      if (filters.isActive !== undefined) params.append('isActive', filters.isActive);
+      if (filters.isActive !== undefined && filters.isActive !== '') params.append('isActive', filters.isActive);
 
       const response = await axios.get(
         `${API_URL}/inventory?${params.toString()}`,

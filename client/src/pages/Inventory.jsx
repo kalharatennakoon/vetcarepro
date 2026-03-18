@@ -11,7 +11,7 @@ const Inventory = () => {
   const [filters, setFilters] = useState({
     category: '',
     search: '',
-    isActive: true
+    isActive: ''
   });
   const [lowStockCount, setLowStockCount] = useState(0);
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -296,6 +296,7 @@ const Inventory = () => {
           onChange={handleFilterChange}
           style={styles.filterSelect}
         >
+          <option value="">All</option>
           <option value={true}>Active</option>
           <option value={false}>Inactive</option>
         </select>
