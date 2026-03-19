@@ -1096,282 +1096,237 @@ const Analytics = () => {
 
         {/* Sales Forecasting Tab */}
         {isAdmin && activeTab === 'sales' && (
-          <div style={styles.tabContentContainer}>
-            <div style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>
-                  <i className="fas fa-chart-bar" style={{ marginRight: '0.5rem', color: '#10b981' }}></i>
-                  Sales Trend Analysis
-                </h3>
-              </div>
-              <div style={styles.cardBody}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <label style={styles.filterLabel}>Forecast Period</label>
-                    <select
-                      value={salesPeriod}
-                      onChange={(e) => setSalesPeriod(parseInt(e.target.value))}
-                      style={styles.filterInput}
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={14}>14 days</option>
-                      <option value={30}>30 days</option>
-                      <option value={60}>60 days</option>
-                      <option value={90}>90 days</option>
-                    </select>
+          <>
+            {/* Monthly Revenue Forecast */}
+            <div style={styles.analyticsCard}>
+              <div style={styles.analyticsCardHeader}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={styles.analyticsCardTitle}>
+                    <i className="fas fa-chart-bar" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
+                    Monthly Revenue Forecast
+                  </h3>
+                  <div style={styles.filterBar}>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Forecast Period</label>
+                      <select value={salesPeriod} onChange={(e) => setSalesPeriod(parseInt(e.target.value))} style={styles.compactSelect}>
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={60}>60 days</option>
+                        <option value={90}>90 days</option>
+                      </select>
+                    </div>
+                    <button onClick={fetchSalesData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className="fas fa-sync-alt"></i> Generate
+                    </button>
                   </div>
-                  <button onClick={fetchSalesData} style={styles.primaryButton}>
-                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Generate Forecast
-                  </button>
                 </div>
-
+                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Predicted revenue for each upcoming month based on past billing data. <strong>Lower/Upper Bound</strong> shows the expected range actual revenue will likely fall within.
+                </p>
+              </div>
+              <div style={styles.analyticsCardContent}>
                 {loading ? (
-                  <div style={styles.loadingContainer}>
-                    <div style={styles.loadingSpinner}></div>
-                  </div>
+                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
                 ) : !salesData.forecast ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-chart-line" style={{ fontSize: '3rem', color: '#3b82f6', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Sales Trend Analysis</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Click "Generate Forecast" to analyze sales patterns and predict future trends
-                    </p>
-                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load the sales forecast.</p>
                 ) : salesData.forecast?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Sales forecasting model is not loaded. Please train the model first.
-                    </p>
-                  </div>
+                  <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Sales forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
                   const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
-                  const trendsData = salesData.trends?.trends || {};
-                  const dayPatterns = trendsData.day_of_week_patterns || [];
-                  return (
-                    <div>
-                      {monthlyForecast.length > 0 && (
-                        <div style={{ marginBottom: '1.5rem' }}>
-                          <h4 style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
-                            Monthly Revenue Forecast ({salesData.forecast?.forecast?.model_used || 'ML Model'})
-                          </h4>
-                          <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                              <thead>
-                                <tr style={{ backgroundColor: '#f9fafb' }}>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Month</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Forecast Revenue</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Avg Daily</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Lower Bound</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Upper Bound</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {monthlyForecast.map((row, idx) => (
-                                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                      {dayPatterns.length > 0 && (
-                        <div>
-                          <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
-                            Revenue by Day of Week
-                          </h4>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {dayPatterns.map((d, idx) => (
-                              <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                              </div>
+                  return monthlyForecast.length > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 0.5rem' }}>Model: {salesData.forecast?.forecast?.model_used || 'ML Model'}</p>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            {['Month', 'Forecast Revenue', 'Avg Daily', 'Lower Bound', 'Upper Bound'].map((h, i) => (
+                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
                             ))}
-                          </div>
-                        </div>
-                      )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyForecast.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  );
+                  ) : null;
                 })()}
               </div>
             </div>
 
-            {/* Sales Metrics Cards */}
+            {/* Sales Summary Metrics + Day of Week */}
             {salesData.forecast?.success !== false && salesData.forecast && (() => {
               const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
               const trendsData = salesData.trends?.trends || {};
               const dayPatterns = trendsData.day_of_week_patterns || [];
-              const bestDay = dayPatterns.length > 0
-                ? dayPatterns.reduce((a, b) => (a.avg_revenue > b.avg_revenue ? a : b))
-                : null;
+              const bestDay = dayPatterns.length > 0 ? dayPatterns.reduce((a, b) => (a.avg_revenue > b.avg_revenue ? a : b)) : null;
               const totalForecastRevenue = monthlyForecast.reduce((sum, m) => sum + (m.monthly_revenue || 0), 0);
               const yoy = trendsData.yoy_growth_percentage;
               return (
-                <div style={styles.metricsGridContainer}>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-dollar-sign" style={{ color: '#10b981' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Total Forecast Revenue</div>
-                      <div style={styles.metricValue}>LKR {totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                    </div>
+                <>
+                  <div style={styles.statsGrid}>
+                    {[
+                      { label: 'Total Forecast Revenue', value: `LKR ${totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#10b981', bg: '#dcfce7', icon: 'fa-sack-dollar' },
+                      { label: 'YoY Growth', value: yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A', color: yoy >= 0 ? '#2563eb' : '#dc2626', bg: yoy >= 0 ? '#dbeafe' : '#fee2e2', icon: yoy >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down' },
+                      { label: 'Best Day', value: bestDay ? bestDay.day_of_week : 'N/A', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-calendar-star' },
+                      { label: 'Avg Monthly Revenue', value: trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A', color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-check' },
+                    ].map((s, i) => (
+                      <div key={i} style={styles.statCard}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                        </div>
+                        <div>
+                          <p style={styles.statLabel}>{s.label}</p>
+                          <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className={`fas fa-arrow-${yoy >= 0 ? 'up' : 'down'}`} style={{ color: yoy >= 0 ? '#3b82f6' : '#dc2626' }}></i>
+                  <p style={{ ...styles.cardHint, borderTop: 'none', marginBottom: '1rem' }}>
+                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                    <strong>YoY Growth</strong> compares this year's revenue to last year's. <strong>Best Day</strong> shows which day historically earns the most — useful for scheduling.
+                  </p>
+
+                  {dayPatterns.length > 0 && (
+                    <div style={styles.analyticsCard}>
+                      <div style={styles.analyticsCardHeader}>
+                        <h3 style={styles.analyticsCardTitle}>
+                          <i className="fas fa-calendar-week" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
+                          Revenue by Day of Week
+                        </h3>
+                        <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                          <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                          Average revenue per day of the week based on past billing. Useful for planning appointments and staffing levels.
+                        </p>
+                      </div>
+                      <div style={styles.analyticsCardContent}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {dayPatterns.map((d, idx) => (
+                            <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
+                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={styles.metricLabel}>YoY Growth</div>
-                      <div style={styles.metricValue}>{yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-calendar-alt" style={{ color: '#8b5cf6' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Best Day</div>
-                      <div style={styles.metricValue}>{bestDay ? bestDay.day_of_week : 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-calendar-check" style={{ color: '#f59e0b' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Avg Monthly Revenue</div>
-                      <div style={styles.metricValue}>{trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
               );
             })()}
-          </div>
+          </>
         )}
 
         {/* Inventory Demand Tab */}
         {isAdmin && activeTab === 'inventory' && (
-          <div style={styles.tabContentContainer}>
-            <div style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>
-                  <i className="fas fa-warehouse" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
-                  Inventory Demand Forecasting
-                </h3>
-              </div>
-              <div style={styles.cardBody}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <label style={styles.filterLabel}>Forecast Period</label>
-                    <select
-                      value={inventoryDays}
-                      onChange={(e) => setInventoryDays(parseInt(e.target.value))}
-                      style={styles.filterInput}
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={14}>14 days</option>
-                      <option value={30}>30 days</option>
-                      <option value={60}>60 days</option>
-                    </select>
+          <>
+            {/* Summary + controls */}
+            <div style={styles.analyticsCard}>
+              <div style={styles.analyticsCardHeader}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={styles.analyticsCardTitle}>
+                    <i className="fas fa-warehouse" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
+                    Inventory Reorder Summary
+                  </h3>
+                  <div style={styles.filterBar}>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Forecast Period</label>
+                      <select value={inventoryDays} onChange={(e) => setInventoryDays(parseInt(e.target.value))} style={styles.compactSelect}>
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={60}>60 days</option>
+                      </select>
+                    </div>
+                    <button onClick={fetchInventoryData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className="fas fa-sync-alt"></i> Generate
+                    </button>
                   </div>
-                  <button onClick={fetchInventoryData} style={styles.primaryButton}>
-                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Generate Forecast
-                  </button>
                 </div>
+                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Reorder recommendations based on current stock and expected demand. <strong>Urgent</strong> items are critically low — order these right away.
+                </p>
+              </div>
+              <div style={styles.analyticsCardContent}>
                 {loading ? (
-                  <div style={styles.loadingContainer}>
-                    <div style={styles.loadingSpinner}></div>
-                  </div>
+                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
                 ) : !inventoryData.reorderSuggestions ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-boxes" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Inventory Demand Forecasting</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Click "Generate Forecast" to get AI-powered reorder suggestions
-                    </p>
-                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load inventory reorder suggestions.</p>
                 ) : inventoryData.reorderSuggestions?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Inventory forecasting model is not loaded. Please train the model first.
-                    </p>
-                  </div>
+                  <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Inventory forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
-                  const recs = inventoryData.reorderSuggestions?.recommendations || {};
-                  const summary = recs.summary || {};
+                  const summary = (inventoryData.reorderSuggestions?.recommendations || {}).summary || {};
                   return (
-                    <div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626' }}>{summary.urgent_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Urgent Reorder</div>
+                    <div style={styles.statsGrid}>
+                      {[
+                        { label: 'Urgent Reorder', value: summary.urgent_count ?? 0, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
+                        { label: 'Reorder Soon', value: summary.upcoming_count ?? 0, color: '#d97706', bg: '#fef3c7', icon: 'fa-clock' },
+                        { label: 'Sufficient Stock', value: summary.sufficient_count ?? 0, color: '#16a34a', bg: '#dcfce7', icon: 'fa-circle-check' },
+                        { label: 'Est. Reorder Cost', value: `LKR ${Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#1d4ed8', bg: '#dbeafe', icon: 'fa-receipt' },
+                      ].map((s, i) => (
+                        <div key={i} style={styles.statCard}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                          </div>
+                          <div>
+                            <p style={styles.statLabel}>{s.label}</p>
+                            <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                          </div>
                         </div>
-                        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d97706' }}>{summary.upcoming_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Reorder Soon</div>
-                        </div>
-                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#16a34a' }}>{summary.sufficient_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Sufficient Stock</div>
-                        </div>
-                        <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1d4ed8' }}>LKR {Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Est. Reorder Cost</div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   );
                 })()}
               </div>
             </div>
 
-            {/* Reorder Suggestions Tables */}
+            {/* Reorder Suggestion Tables */}
             {inventoryData.reorderSuggestions?.success !== false && inventoryData.reorderSuggestions && (() => {
               const recs = inventoryData.reorderSuggestions?.recommendations || {};
               const urgent = recs.urgent_reorder || [];
               const soon = recs.reorder_soon || [];
-              const renderTable = (items, color, label) => items.length === 0 ? null : (
-                <div style={styles.card} key={label}>
-                  <div style={styles.cardHeader}>
-                    <h3 style={{ ...styles.cardTitle, color }}>
-                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
-                      {label} ({items.length} items)
+              const renderTable = (items, color, icon, label, hint) => items.length === 0 ? null : (
+                <div style={styles.analyticsCard} key={label}>
+                  <div style={styles.analyticsCardHeader}>
+                    <h3 style={{ ...styles.analyticsCardTitle, color }}>
+                      <i className={`fas ${icon}`} style={{ marginRight: '0.4rem' }}></i>
+                      {label}
+                      <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: color === '#dc2626' ? '#fee2e2' : '#fef3c7', color, marginLeft: '0.5rem' }}>{items.length} items</span>
                     </h3>
+                    <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                      <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                      {hint}
+                    </p>
                   </div>
-                  <div style={styles.cardBody}>
+                  <div style={styles.analyticsCardContent}>
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                         <thead>
                           <tr style={{ backgroundColor: '#f9fafb' }}>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Current Stock</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Reorder Qty</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Est. Cost</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                            {['Item', 'Current Stock', 'Reorder Qty', 'Est. Cost', 'Category'].map((h, i) => (
+                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 || i === 4 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
                           {items.map((item, idx) => (
                             <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>
-                                {item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}
-                              </td>
-                              <td style={{ padding: '0.6rem 1rem', color: '#6b7280' }}>{item.category || '—'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280' }}>{item.category || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1382,12 +1337,12 @@ const Analytics = () => {
               );
               return (
                 <>
-                  {renderTable(urgent, '#dc2626', 'Urgent Reorder')}
-                  {renderTable(soon, '#d97706', 'Reorder Soon')}
+                  {renderTable(urgent, '#dc2626', 'fa-triangle-exclamation', 'Urgent Reorder', 'Stock is critically low. Place orders for these items as soon as possible.')}
+                  {renderTable(soon, '#d97706', 'fa-clock', 'Reorder Soon', 'Stock is getting low. Plan to reorder these within the next few days.')}
                 </>
               );
             })()}
-          </div>
+          </>
         )}
 
       </div>
