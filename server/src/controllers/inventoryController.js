@@ -212,7 +212,7 @@ const inventoryController = {
     try {
       const { id } = req.params;
       const { quantityChange } = req.body;
-      const userId = req.user.userId;
+      const userId = req.user.user_id;
 
       if (!quantityChange || isNaN(quantityChange)) {
         return res.status(400).json({

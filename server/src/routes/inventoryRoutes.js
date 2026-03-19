@@ -40,11 +40,11 @@ router.put(
   inventoryController.updateItem
 );
 
-// Update inventory quantity (restock or usage) - only admin and veterinarian
+// Update inventory quantity (restock or usage) - admin, veterinarian, receptionist
 router.patch(
   '/:id/quantity',
   authenticate,
-  authorize('admin', 'veterinarian'),
+  authorize('admin', 'veterinarian', 'receptionist'),
   validateQuantityUpdate,
   inventoryController.updateQuantity
 );

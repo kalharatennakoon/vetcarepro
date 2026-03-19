@@ -3,12 +3,14 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
 const InventoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { showSuccess, showError } = useNotification();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,24 +43,26 @@ const InventoryDetail = () => {
 
     try {
       await inventoryService.delete(id);
+      showSuccess('Item deactivated successfully');
       navigate('/inventory');
     } catch (err) {
-      alert(err.message || 'Failed to delete item');
+      showError(err.response?.data?.message || err.message || 'Failed to deactivate item');
     }
   };
 
   const handleQuantityUpdate = async () => {
     try {
-      const change = quantityOperation === 'add' 
-        ? parseInt(quantityChange) 
+      const change = quantityOperation === 'add'
+        ? parseInt(quantityChange)
         : -parseInt(quantityChange);
-      
+
       await inventoryService.updateQuantity(id, change);
       setShowQuantityModal(false);
       setQuantityChange('');
       loadItem();
+      showSuccess('Quantity updated successfully');
     } catch (err) {
-      alert(err.message || 'Failed to update quantity');
+      showError(err.response?.data?.message || err.message || 'Failed to update quantity');
     }
   };
 
@@ -216,6 +220,7 @@ const InventoryDetail = () => {
                 {item.requires_prescription && (
                   <div style={{gridColumn: 'span 2'}}>
                     <span style={styles.prescriptionBadge}>
+                      <i className="fas fa-exclamation-circle" style={{ marginRight: '0.35rem' }}></i>
                       Requires Prescription
                     </span>
                   </div>
@@ -264,12 +269,14 @@ const InventoryDetail = () => {
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Pricing Information</h2>
               <dl style={styles.pricingGrid}>
-                <div>
-                  <dt style={styles.detailLabel}>Unit Cost</dt>
-                  <dd style={styles.priceValue}>
-                    {formatCurrency(item.unit_cost)}
-                  </dd>
-                </div>
+                {isAdmin && (
+                  <div>
+                    <dt style={styles.detailLabel}>Unit Cost</dt>
+                    <dd style={styles.priceValue}>
+                      {formatCurrency(item.unit_cost)}
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt style={styles.detailLabel}>Selling Price</dt>
                   <dd style={styles.priceValue}>
@@ -742,12 +749,13 @@ const styles = {
   prescriptionBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '0.125rem 0.625rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    padding: '0.3rem 0.75rem',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    border: '1px solid #fca5a5',
   },
   modalOverlay: {
     position: 'fixed',

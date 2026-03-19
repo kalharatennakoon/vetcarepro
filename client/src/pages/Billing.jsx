@@ -168,25 +168,27 @@ const Billing = () => {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div style={styles.statsContainer}>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Invoices</div>
-          <div style={styles.statValue}>{stats.total}</div>
+      {/* Stats Cards — admin only */}
+      {user?.role === 'admin' && (
+        <div style={styles.statsContainer}>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Invoices</div>
+            <div style={styles.statValue}>{stats.total}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Revenue</div>
+            <div style={{...styles.statValue, color: '#059669'}}>{formatCurrency(stats.totalRevenue)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Paid</div>
+            <div style={{...styles.statValue, color: '#0891B2'}}>{formatCurrency(stats.totalPaid)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Pending Payment</div>
+            <div style={{...styles.statValue, color: '#DC2626'}}>{formatCurrency(stats.totalPending)}</div>
+          </div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Revenue</div>
-          <div style={{...styles.statValue, color: '#059669'}}>{formatCurrency(stats.totalRevenue)}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Paid</div>
-          <div style={{...styles.statValue, color: '#0891B2'}}>{formatCurrency(stats.totalPaid)}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Pending Payment</div>
-          <div style={{...styles.statValue, color: '#DC2626'}}>{formatCurrency(stats.totalPending)}</div>
-        </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div style={styles.filtersContainer}>

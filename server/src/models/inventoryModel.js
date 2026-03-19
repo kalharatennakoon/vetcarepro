@@ -16,9 +16,9 @@ const inventoryModel = {
       let query = `
         SELECT 
           i.*,
-          CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          CONCAT(u2.first_name, ' ', u2.last_name) as updated_by_name,
-          CASE 
+          NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as created_by_name,
+          NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), '') as updated_by_name,
+          CASE
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'
@@ -76,9 +76,9 @@ const inventoryModel = {
       const query = `
         SELECT 
           i.*,
-          CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          CONCAT(u2.first_name, ' ', u2.last_name) as updated_by_name,
-          CASE 
+          NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as created_by_name,
+          NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), '') as updated_by_name,
+          CASE
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'

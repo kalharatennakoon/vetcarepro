@@ -205,12 +205,14 @@ const Inventory = () => {
               <span style={styles.summarySubLabel}>Total Items</span>
               <strong style={styles.summarySubValue}>{inventory.length}</strong>
             </div>
-            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #10b981' }}>
-              <span style={styles.summarySubLabel}>Total Value</span>
-              <strong style={{ ...styles.summarySubValue, fontSize: '0.95rem' }}>
-                {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
-              </strong>
-            </div>
+            {canManageInventory && (
+              <div style={{ ...styles.summarySubCard, borderTop: '4px solid #10b981' }}>
+                <span style={styles.summarySubLabel}>Total Value</span>
+                <strong style={{ ...styles.summarySubValue, fontSize: '0.95rem' }}>
+                  {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
+                </strong>
+              </div>
+            )}
             <div style={{ ...styles.summarySubCard, borderTop: '4px solid #8b5cf6' }}>
               <span style={styles.summarySubLabel}>Active Items</span>
               <strong style={{ ...styles.summarySubValue, color: '#059669' }}>
@@ -369,7 +371,7 @@ const Inventory = () => {
                       <th style={styles.th}>Item</th>
                       <th style={styles.th}>Category</th>
                       <th style={styles.th}>Quantity</th>
-                      <th style={styles.th}>Unit Cost</th>
+                      {canManageInventory && <th style={styles.th}>Unit Cost</th>}
                       <th style={styles.th}>Selling Price</th>
                       <th style={styles.th}>Status</th>
                       <th style={styles.th}>Actions</th>
@@ -389,9 +391,11 @@ const Inventory = () => {
                       <td style={styles.td}>
                         {item.quantity} {item.unit}
                       </td>
-                      <td style={styles.td}>
-                        {formatCurrency(item.unit_cost)}
-                      </td>
+                      {canManageInventory && (
+                        <td style={styles.td}>
+                          {formatCurrency(item.unit_cost)}
+                        </td>
+                      )}
                       <td style={styles.td}>
                         {formatCurrency(item.selling_price)}
                       </td>
@@ -403,19 +407,19 @@ const Inventory = () => {
                           <button
                             onClick={() => navigate(`/inventory/${item.item_id}`)}
                             style={styles.viewButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
                           >
                             View
                           </button>
-                          <button
-                            onClick={() => handleDelete(item.item_id)}
-                            style={styles.deleteButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                          >
-                            Delete
-                          </button>
+                          {canManageInventory && (
+                            <button
+                              onClick={() => handleDelete(item.item_id)}
+                              style={styles.deleteButton}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -774,7 +778,7 @@ const styles = {
   },
   viewButton: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2563eb',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
