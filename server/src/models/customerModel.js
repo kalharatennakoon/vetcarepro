@@ -225,7 +225,7 @@ export const updateCustomer = async (customerId, customerData, updatedBy) => {
  * Delete customer (soft delete)
  */
 export const deleteCustomer = async (customerId) => {
-  const query = 'UPDATE customers SET is_active = false WHERE customer_id = $1';
+  const query = 'UPDATE customers SET is_active = false, deactivated_at = NOW() WHERE customer_id = $1';
   const result = await pool.query(query, [customerId]);
   return result.rowCount > 0;
 };
@@ -290,6 +290,7 @@ export const inactivateCustomer = async (customerId, { reason, additionalNote },
     UPDATE customers
     SET
       is_active = false,
+      deactivated_at = NOW(),
       notes = COALESCE(notes, '') || $1,
       updated_by = $2
     WHERE customer_id = $3

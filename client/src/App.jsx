@@ -129,11 +129,11 @@ function App() {
         } 
       />
 
-      {/* Breeding Registry */}
+      {/* Breeding Registry - vet/admin only */}
       <Route
         path="/breeding-registry"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <BreedingRegistry />
           </ProtectedRoute>
         }
@@ -176,32 +176,32 @@ function App() {
         } 
       />
 
-      {/* Medical Records routes */}
-      <Route 
-        path="/medical-records" 
+      {/* Medical Records routes - clinical data, vet/admin only */}
+      <Route
+        path="/medical-records"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <MedicalRecords />
           </ProtectedRoute>
-        } 
+        }
       />
 
-      <Route 
-        path="/medical-records/new" 
+      <Route
+        path="/medical-records/new"
         element={
           <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <MedicalRecordCreate />
           </ProtectedRoute>
-        } 
+        }
       />
 
-      <Route 
-        path="/medical-records/:id" 
+      <Route
+        path="/medical-records/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <MedicalRecordDetail />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route 
@@ -234,13 +234,13 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/inventory/create" 
+      <Route
+        path="/inventory/create"
         element={
-          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+          <ProtectedRoute requiredRoles={['admin']}>
             <InventoryCreate />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route 
@@ -252,13 +252,13 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/inventory/:id/edit" 
+      <Route
+        path="/inventory/:id/edit"
         element={
-          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
+          <ProtectedRoute requiredRoles={['admin']}>
             <InventoryEdit />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Billing routes */}
@@ -271,13 +271,13 @@ function App() {
         } 
       />
 
-      <Route 
-        path="/billing/new" 
+      <Route
+        path="/billing/new"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
             <BillingCreate />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route 
@@ -307,7 +307,7 @@ function App() {
       <Route
         path="/disease-cases/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['veterinarian', 'admin']}>
             <DiseaseCaseDetail />
           </ProtectedRoute>
         }

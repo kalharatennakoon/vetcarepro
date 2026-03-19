@@ -26,33 +26,33 @@ router.use(authenticate);
 
 // @route   GET /api/disease-cases/statistics/overview
 // @desc    Get disease statistics overview
-// @access  Private
-router.get('/statistics/overview', getStatistics);
+// @access  Private (Veterinarian, Admin)
+router.get('/statistics/overview', vetOrAdmin, getStatistics);
 
 // @route   GET /api/disease-cases/statistics/by-category
 // @desc    Get disease cases grouped by category
-// @access  Private
-router.get('/statistics/by-category', getCasesByCategory);
+// @access  Private (Veterinarian, Admin)
+router.get('/statistics/by-category', vetOrAdmin, getCasesByCategory);
 
 // @route   GET /api/disease-cases/recent
 // @desc    Get recent disease cases
-// @access  Private
-router.get('/recent', getRecentCases);
+// @access  Private (Veterinarian, Admin)
+router.get('/recent', vetOrAdmin, getRecentCases);
 
 // @route   GET /api/disease-cases/pet/:petId
 // @desc    Get all disease cases for a specific pet
-// @access  Private
-router.get('/pet/:petId', getDiseaseCasesByPet);
+// @access  Private (Veterinarian, Admin)
+router.get('/pet/:petId', vetOrAdmin, getDiseaseCasesByPet);
 
 // @route   GET /api/disease-cases
 // @desc    Get all disease cases with filters
-// @access  Private
-router.get('/', getDiseaseCases);
+// @access  Private (Veterinarian, Admin)
+router.get('/', vetOrAdmin, getDiseaseCases);
 
 // @route   GET /api/disease-cases/:id
 // @desc    Get disease case by ID
-// @access  Private
-router.get('/:id', getDiseaseCase);
+// @access  Private (Veterinarian, Admin)
+router.get('/:id', vetOrAdmin, getDiseaseCase);
 
 // @route   POST /api/disease-cases
 // @desc    Create new disease case

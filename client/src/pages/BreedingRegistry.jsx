@@ -248,7 +248,7 @@ const styles = {
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' },
   card: { backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 8px rgba(0,0,0,0.04)', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
   cardImageWrap: { position: 'relative', height: '160px', backgroundColor: '#f9fafb' },
-  cardImage: { width: '100%', height: '100%', objectFit: 'cover' },
+  cardImage: { width: '100%', height: '100%', objectFit: 'contain' },
   cardImagePlaceholder: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   genderBadge: { position: 'absolute', top: '0.6rem', right: '0.6rem', fontSize: '0.75rem', fontWeight: '700', padding: '0.2rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center' },
   cardBody: { padding: '1rem 1.1rem', flex: 1 },

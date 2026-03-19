@@ -42,6 +42,7 @@ CREATE TABLE users (
     is_active BOOLEAN DEFAULT true,
     password_must_change BOOLEAN DEFAULT false, -- Flag for first-time login password change
     last_login TIMESTAMP,
+    deactivated_at TIMESTAMP,                   -- Set when is_active is set to false
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES users(user_id),
@@ -66,6 +67,7 @@ CREATE TABLE customers (
     preferred_contact_method VARCHAR(20) CHECK (preferred_contact_method IN ('phone', 'email', 'sms')),
     notes TEXT,
     is_active BOOLEAN DEFAULT true,
+    deactivated_at TIMESTAMP,                   -- Set when is_active is set to false
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_by INTEGER REFERENCES users(user_id),
@@ -92,6 +94,7 @@ CREATE TABLE pets (
     special_needs TEXT,
     is_active BOOLEAN DEFAULT true,
     deceased_date DATE,
+    deactivated_at TIMESTAMP,                   -- Set when is_active is set to false
     notes TEXT,
     breeding_available BOOLEAN DEFAULT false,
     breeding_notes TEXT,
@@ -254,6 +257,7 @@ CREATE TABLE inventory (
     requires_prescription BOOLEAN DEFAULT false,
     description TEXT,
     is_active BOOLEAN DEFAULT true,
+    deactivated_at TIMESTAMP,                   -- Set when is_active is set to false
     last_restock_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -287,6 +291,28 @@ CREATE TABLE billing (
     created_by INTEGER NOT NULL REFERENCES users(user_id),
     updated_by INTEGER REFERENCES users(user_id)
 );
+
+-- Payments Table (Individual payment transactions against a bill)
+-- Supports: Payment tracking, Multiple partial payments, Audit trail
+CREATE TABLE payments (
+    payment_id SERIAL PRIMARY KEY,
+    bill_id INTEGER NOT NULL REFERENCES billing(bill_id) ON DELETE CASCADE,
+    payment_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(20) NOT NULL CHECK (payment_method IN ('cash', 'card', 'bank_transfer')),
+    payment_reference VARCHAR(100),
+    card_type VARCHAR(20),
+    bank_name VARCHAR(100),
+    notes TEXT,
+    received_by INTEGER NOT NULL REFERENCES users(user_id),
+    created_by INTEGER REFERENCES users(user_id),
+    updated_by INTEGER REFERENCES users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_payments_bill ON payments(bill_id);
+CREATE INDEX idx_payments_date ON payments(payment_date);
 
 -- Billing Items Table (Individual items in each bill)
 -- Supports: Itemized billing, Sales analysis, Inventory deduction

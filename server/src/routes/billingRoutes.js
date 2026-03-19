@@ -50,18 +50,18 @@ router.get('/:id', getBill);
 
 // @route   POST /api/billing
 // @desc    Create new bill
-// @access  Private
-router.post('/', createNewBill);
+// @access  Private (Admin, Receptionist)
+router.post('/', adminOrReceptionist, createNewBill);
 
 // @route   PUT /api/billing/:id
 // @desc    Update bill
-// @access  Private
-router.put('/:id', updateExistingBill);
+// @access  Private (Admin, Receptionist)
+router.put('/:id', adminOrReceptionist, updateExistingBill);
 
 // @route   POST /api/billing/:id/payments
 // @desc    Record payment for a bill
-// @access  Private
-router.post('/:id/payments', addPayment);
+// @access  Private (Admin, Receptionist)
+router.post('/:id/payments', adminOrReceptionist, addPayment);
 
 // @route   DELETE /api/billing/:id
 // @desc    Delete (cancel) bill

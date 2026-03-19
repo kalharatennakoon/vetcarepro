@@ -276,6 +276,7 @@ const inventoryModel = {
         UPDATE inventory
         SET 
           is_active = false,
+          deactivated_at = NOW(),
           updated_at = CURRENT_TIMESTAMP,
           updated_by = $1
         WHERE item_id = $2

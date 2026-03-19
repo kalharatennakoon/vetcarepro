@@ -1,7 +1,7 @@
 import express from 'express';
 import inventoryController from '../controllers/inventoryController.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorize } from '../middleware/roleCheck.js';
+import { authorize, adminOnly } from '../middleware/roleCheck.js';
 import { validateInventoryItem, validateQuantityUpdate } from '../middleware/validation.js';
 
 const router = express.Router();
@@ -22,20 +22,20 @@ router.get('/', authenticate, inventoryController.getAllItems);
 // Get specific inventory item - all authenticated users can view
 router.get('/:id', authenticate, inventoryController.getItemById);
 
-// Create new inventory item - only admin and veterinarian
+// Create new inventory item - admin only
 router.post(
   '/',
   authenticate,
-  authorize('admin', 'veterinarian'),
+  adminOnly,
   validateInventoryItem,
   inventoryController.createItem
 );
 
-// Update inventory item - only admin and veterinarian
+// Update inventory item details - admin only
 router.put(
   '/:id',
   authenticate,
-  authorize('admin', 'veterinarian'),
+  adminOnly,
   validateInventoryItem,
   inventoryController.updateItem
 );

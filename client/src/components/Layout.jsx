@@ -170,13 +170,15 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-calendar-alt"></i> Appointments
               </a>
-              <a 
-                href="/medical-records" 
-                style={getNavItemStyle('/medical-records')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
-              >
-                <i className="fas fa-file-medical"></i> Medical Records
-              </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/medical-records"
+                  style={getNavItemStyle('/medical-records')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+                >
+                  <i className="fas fa-file-medical"></i> Medical Records
+                </a>
+              )}
 
               <a 
                 href="/billing" 
@@ -201,13 +203,15 @@ const Layout = ({ children }) => {
                   <i className="fas fa-chart-bar"></i> Reports
                 </a>
               )}
-              <a
-                href="/breeding-registry"
-                style={getNavItemStyle('/breeding-registry')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
-              >
-                <i className="fas fa-heart"></i> Breeding Registry
-              </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/breeding-registry"
+                  style={getNavItemStyle('/breeding-registry')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
+                >
+                  <i className="fas fa-heart"></i> Breeding Registry
+                </a>
+              )}
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                 <a
                   href="/analytics"

@@ -217,7 +217,7 @@ export const updateUser = async (userId, userData, updatedBy) => {
  * @returns {Promise<boolean>} Success status
  */
 export const deleteUser = async (userId) => {
-  const query = 'UPDATE users SET is_active = false WHERE user_id = $1';
+  const query = 'UPDATE users SET is_active = false, deactivated_at = NOW() WHERE user_id = $1';
   const result = await pool.query(query, [userId]);
   return result.rowCount > 0;
 };

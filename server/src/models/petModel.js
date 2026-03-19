@@ -260,7 +260,7 @@ export const updatePet = async (petId, petData, updatedBy) => {
  * Delete pet (soft delete)
  */
 export const deletePet = async (petId) => {
-  const query = 'UPDATE pets SET is_active = false WHERE pet_id = $1';
+  const query = 'UPDATE pets SET is_active = false, deactivated_at = NOW() WHERE pet_id = $1';
   const result = await pool.query(query, [petId]);
   return result.rowCount > 0;
 };
@@ -356,6 +356,7 @@ export const inactivatePet = async (petId, { reason, deceasedDate, additionalNot
     UPDATE pets
     SET
       is_active = false,
+      deactivated_at = NOW(),
       ${deceasedClause}
       notes = COALESCE(notes, '') || $1,
       updated_by = $2
