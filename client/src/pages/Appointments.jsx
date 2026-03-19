@@ -26,6 +26,7 @@ const Appointments = () => {
   const [showDayModal, setShowDayModal] = useState(false);
   const [selectedDayAppointments, setSelectedDayAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
+  const [apptDetailModal, setApptDetailModal] = useState(null);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,9 +117,10 @@ const Appointments = () => {
   const handleStatusUpdate = async (id, newStatus) => {
     try {
       await updateAppointmentStatus(id, newStatus);
+      showSuccess(`Appointment ${newStatus.replace('_', ' ')}`);
       fetchAppointments();
     } catch (err) {
-      alert('Failed to update status');
+      showError('Failed to update appointment status');
       console.error(err);
     }
   };
@@ -270,9 +272,8 @@ const Appointments = () => {
     setSelectedDate('');
   };
 
-  const handleAppointmentClick = (appointmentId) => {
-    setShowDayModal(false);
-    handleEdit(appointmentId);
+  const handleAppointmentClick = (appointment) => {
+    setApptDetailModal(appointment);
   };
 
   const getStatusColor = (status) => {
@@ -614,8 +615,8 @@ const Appointments = () => {
                                 borderLeftColor: getStatusBorderColor(apt.status)
                               }}
                               onClick={(e) => {
-                                e.stopPropagation(); // Prevent day click when clicking appointment
-                                handleEdit(apt.appointment_id);
+                                e.stopPropagation();
+                                handleAppointmentClick(apt);
                               }}
                             >
                               <div style={styles.appointmentCardTime}>
@@ -747,87 +748,48 @@ const Appointments = () => {
                         </div>
 
                         <div style={styles.cardFooter}>
-                          {appointment.status === 'scheduled' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')}
-                                style={styles.confirmButton}
-                              >
-                                <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
-                                style={styles.completeButton}
-                              >
-                                <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
-                                Complete
-                              </button>
-                            </>
-                          )}
-                          {appointment.status === 'confirmed' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')}
-                                style={styles.startButton}
-                              >
-                                <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>
-                                Start
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
-                                style={styles.completeButton}
-                              >
-                                <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
-                                Complete
-                              </button>
-                            </>
-                          )}
-                          {appointment.status === 'in_progress' && (
-                            <button
-                              onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')}
-                              style={styles.completeButton}
-                            >
-                              <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>
-                              Complete
+                          {/* Confirm — scheduled or rescheduled */}
+                          {(appointment.status === 'scheduled' || appointment.status === 'rescheduled') && (
+                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')} style={styles.confirmButton}>
+                              <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>Confirm
                             </button>
                           )}
-                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
+                          {/* Start — confirmed only */}
+                          {appointment.status === 'confirmed' && (
+                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')} style={styles.startButton}>
+                              <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
+                            </button>
+                          )}
+                          {/* Complete — confirmed or in_progress */}
+                          {(appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
+                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')} style={styles.completeButton}>
+                              <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
+                            </button>
+                          )}
+                          {/* Cancel — scheduled, confirmed, rescheduled only (not in_progress, not completed) */}
+                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
                             <button
-                              onClick={() => {
-                                if (window.confirm('Are you sure you want to cancel this appointment?')) {
-                                  handleStatusUpdate(appointment.appointment_id, 'cancelled');
-                                }
-                              }}
+                              onClick={() => { if (window.confirm('Are you sure you want to cancel this appointment?')) handleStatusUpdate(appointment.appointment_id, 'cancelled'); }}
                               style={styles.cancelButton}
                             >
-                              <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>
-                              Cancel
+                              <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
                             </button>
                           )}
-                          <button
-                            onClick={() => handleSendConfirmation(appointment.appointment_id)}
-                            style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}
-                            title="Send confirmation email to customer"
-                          >
-                            <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>
-                            Send Email
-                          </button>
-                          <button
-                            onClick={() => handleEdit(appointment.appointment_id)}
-                            style={styles.editButton}
-                            title="Edit or reschedule appointment"
-                          >
-                            <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>
-                            Edit/Reschedule
-                          </button>
+                          {/* Send Email — only before appointment is completed/cancelled */}
+                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
+                            <button onClick={() => handleSendConfirmation(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
+                              <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>Send Email
+                            </button>
+                          )}
+                          {/* Edit/Reschedule — not for completed, cancelled, no_show, in_progress */}
+                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
+                            <button onClick={() => handleEdit(appointment.appointment_id)} style={styles.editButton}>
+                              <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit/Reschedule
+                            </button>
+                          )}
                           {user?.role === 'admin' && (
-                            <button
-                              onClick={() => handleDelete(appointment.appointment_id)}
-                              style={styles.deleteButton}
-                            >
-                              <i className="fas fa-trash" style={{ marginRight: '0.25rem' }}></i>
-                              Delete
+                            <button onClick={() => handleDelete(appointment.appointment_id)} style={styles.deleteButton}>
+                              <i className="fas fa-trash" style={{ marginRight: '0.25rem' }}></i>Delete
                             </button>
                           )}
                         </div>
@@ -839,6 +801,104 @@ const Appointments = () => {
                 </>
               )}
             </>
+          )}
+
+          {/* Appointment Detail Modal (calendar click) */}
+          {apptDetailModal && (
+            <div style={styles.modalOverlay} onClick={() => setApptDetailModal(null)}>
+              <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className={`fas ${getTypeIcon(apptDetailModal.appointment_type)}`} style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
+                    Appointment Details
+                  </h3>
+                  <button onClick={() => setApptDetailModal(null)} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={styles.modalBody}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <span style={{ ...styles.statusBadge, backgroundColor: `${getStatusColor(apptDetailModal.status)}20`, color: getStatusColor(apptDetailModal.status), fontSize: '0.875rem', padding: '0.3rem 0.75rem' }}>
+                      {apptDetailModal.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{apptDetailModal.appointment_type}</span>
+                  </div>
+                  {[
+                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.pet_name },
+                    { icon: 'fa-user', label: 'Owner', value: `${apptDetailModal.customer_first_name} ${apptDetailModal.customer_last_name}` },
+                    apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
+                    { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
+                    { icon: 'fa-clock', label: 'Time', value: formatTime(apptDetailModal.appointment_time) },
+                    { icon: 'fa-hourglass-half', label: 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                  ].filter(Boolean).map((row, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                      <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#9ca3af', fontSize: '0.8rem' }}></i>
+                      <span style={{ fontSize: '0.8rem', color: '#6b7280', minWidth: '80px' }}>{row.label}</span>
+                      <span style={{ fontSize: '0.875rem', color: '#111827', fontWeight: '500' }}>{row.value}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
+                    <strong>Reason:</strong> {apptDetailModal.reason}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'rescheduled') && (
+                      <button
+                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'confirmed'); setApptDetailModal(null); }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-check"></i> Confirm
+                      </button>
+                    )}
+                    {apptDetailModal.status === 'confirmed' && (
+                      <button
+                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress'); setApptDetailModal(null); }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-play"></i> Start
+                      </button>
+                    )}
+                    {(apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'in_progress') && (
+                      <button
+                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'completed'); setApptDetailModal(null); }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-check-double"></i> Complete
+                      </button>
+                    )}
+                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                      <button
+                        onClick={async () => { if (window.confirm('Cancel this appointment?')) { await handleStatusUpdate(apptDetailModal.appointment_id, 'cancelled'); setApptDetailModal(null); } }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-times"></i> Cancel
+                      </button>
+                    )}
+                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                      <button
+                        onClick={() => { handleSendConfirmation(apptDetailModal.appointment_id); setApptDetailModal(null); }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-envelope"></i> Send Email
+                      </button>
+                    )}
+                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                      <button
+                        onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
+                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <i className="fas fa-edit"></i> Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setApptDetailModal(null); setShowDayModal(false); setViewMode('list'); }}
+                      style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                    >
+                      <i className="fas fa-list"></i> View in List
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Day Appointments Modal */}
@@ -871,7 +931,7 @@ const Appointments = () => {
                       <div 
                         key={appointment.appointment_id} 
                         style={styles.modalAppointmentCard}
-                        onClick={() => handleAppointmentClick(appointment.appointment_id)}
+                        onClick={() => handleAppointmentClick(appointment)}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = '#ffffff';
                           e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';

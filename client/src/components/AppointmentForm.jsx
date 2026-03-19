@@ -241,7 +241,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
                 required
               >
                 <option value="">Select Customer</option>
-                {customers.map(customer => (
+                {[...customers].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(customer => (
                   <option key={customer.customer_id} value={customer.customer_id}>
                     {customer.first_name} {customer.last_name} - {customer.phone}
                   </option>
@@ -353,7 +353,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
               style={styles.select}
             >
               <option value="">No preference</option>
-              {veterinarians.map(vet => (
+              {[...veterinarians].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(vet => (
                 <option key={vet.user_id} value={vet.user_id}>
                   Dr. {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
                 </option>

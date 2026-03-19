@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getDiseaseCaseById, updateDiseaseCase } from '../services/diseaseCaseService';
 import { getPets } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 
 const DiseaseCaseEdit = () => {
@@ -31,6 +32,7 @@ const DiseaseCaseEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess } = useNotification();
 
   const isVetOrAdmin = user?.role === 'veterinarian' || user?.role === 'admin';
 
@@ -68,7 +70,7 @@ const DiseaseCaseEdit = () => {
         symptoms: caseData.symptoms || '',
         severity: caseData.severity || 'moderate',
         is_contagious: caseData.is_contagious || false,
-        outcome: caseData.outcome || '',
+        outcome: caseData.outcome === 'ongoing' ? 'ongoing_treatment' : (caseData.outcome || ''),
         treatment_duration: caseData.treatment_duration_days || caseData.treatment_duration || '',
         notes: caseData.notes || '',
         region: caseData.region || '',
@@ -117,6 +119,7 @@ const DiseaseCaseEdit = () => {
       };
 
       await updateDiseaseCase(id, dataToSubmit);
+      showSuccess('Disease case updated successfully');
       navigate(`/disease-cases/${id}`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update disease case');
@@ -309,8 +312,10 @@ const DiseaseCaseEdit = () => {
                   >
                     <option value="">Not yet determined</option>
                     <option value="recovered">Recovered</option>
-                    <option value="ongoing">Ongoing Treatment</option>
+                    <option value="ongoing_treatment">Ongoing Treatment</option>
+                    <option value="chronic">Chronic</option>
                     <option value="deceased">Deceased</option>
+                    <option value="transferred">Transferred</option>
                   </select>
                 </div>
 
