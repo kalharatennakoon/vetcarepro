@@ -25,7 +25,7 @@ export const getDiseaseCases = async (filters = {}) => {
   if (filters.species) params.append('species', filters.species);
   if (filters.disease_category) params.append('disease_category', filters.disease_category);
   if (filters.severity) params.append('severity', filters.severity);
-  if (filters.is_contagious !== undefined) params.append('is_contagious', filters.is_contagious);
+  if (filters.is_contagious !== undefined && filters.is_contagious !== '') params.append('is_contagious', filters.is_contagious);
   if (filters.outcome) params.append('outcome', filters.outcome);
   if (filters.region) params.append('region', filters.region);
   if (filters.diagnosis_date_from) params.append('diagnosis_date_from', filters.diagnosis_date_from);

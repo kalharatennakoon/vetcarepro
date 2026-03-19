@@ -746,7 +746,7 @@ const Analytics = () => {
                       {modelStatus.training_date && (
                         <p style={styles.modelStatusText}>
                           Last Trained: <span style={styles.modelStatusHighlight}>
-                            {new Date(modelStatus.training_date).toLocaleDateString()}
+                            {new Date(modelStatus.training_date).toLocaleString()}
                           </span>
                         </p>
                       )}
