@@ -30,14 +30,30 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
   const isEditMode = !!itemId;
 
   const categories = [
-    { value: 'medicine', label: 'Medicine' },
-    { value: 'vaccine', label: 'Vaccine' },
-    { value: 'accessory', label: 'Accessory' },
-    { value: 'surgical_supply', label: 'Surgical Supply' },
-    { value: 'diagnostic_equipment', label: 'Diagnostic Equipment' },
-    { value: 'pet_food', label: 'Pet Food' },
-    { value: 'supplements', label: 'Supplements' }
+    { value: 'pharmaceuticals',       label: 'Pharmaceuticals' },
+    { value: 'consumables',           label: 'Consumables' },
+    { value: 'surgical_clinical',     label: 'Surgical & Clinical Supplies' },
+    { value: 'laboratory_diagnostic', label: 'Laboratory / Diagnostic Supplies' },
+    { value: 'pet_food_nutrition',    label: 'Pet Food & Nutrition' },
+    { value: 'retail_otc',            label: 'Retail / OTC Products' },
+    { value: 'equipment',             label: 'Equipment' },
+    { value: 'accessories',           label: 'Accessories' },
+    { value: 'supplements',           label: 'Supplements' },
+    { value: 'cleaning_maintenance',  label: 'Cleaning & Maintenance Supplies' },
   ];
+
+  const subCategories = {
+    pharmaceuticals:       ['Medicines', 'Vaccines', 'Dewormers & Flea/Tick Treatments', 'Ointments & Injections'],
+    consumables:           ['Syringes & Needles', 'Gloves, Cotton & Gauze', 'Bandages & Tapes', 'IV Fluids & Catheters'],
+    surgical_clinical:     ['Surgical Instruments/Kits', 'Sutures', 'Antiseptics & Disinfectants', 'E-Collars (Cones)'],
+    laboratory_diagnostic: ['Test Kits', 'Slides & Reagents', 'Sample Collection Tubes'],
+    pet_food_nutrition:    ['Prescription Diets', 'Therapeutic Foods', 'Nutritional Supplements'],
+    retail_otc:            ['Shampoos & Grooming Items', 'Collars & Leashes', 'Toys & Treats'],
+    equipment:             ['Thermometers', 'Weighing Scales', 'Microscopes', 'Surgical Machines'],
+    accessories:           ['Pet Carriers', 'Bowls & Cages', 'General Accessories'],
+    supplements:           ['Vitamins', 'Skin/Coat Supplements', 'Joint Care Products'],
+    cleaning_maintenance:  ['Disinfectants', 'Cleaning Liquids', 'Waste Disposal Items'],
+  };
 
   const units = [
     { value: 'pcs', label: 'Pieces' },
@@ -96,7 +112,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (type === 'checkbox') {
       setFormData(prev => ({
         ...prev,
@@ -105,7 +121,8 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: value,
+        ...(name === 'category' ? { subCategory: '' } : {}),
       }));
       
       // Auto-calculate markup percentage when unit cost or selling price changes
@@ -245,17 +262,19 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
             </div>
 
             <div>
-              <label style={styles.label}>
-                Sub-Category
-              </label>
-              <input
-                type="text"
+              <label style={styles.label}>Sub-Category</label>
+              <select
                 name="subCategory"
                 value={formData.subCategory}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Antibiotic"
-              />
+                style={styles.select}
+                disabled={!formData.category}
+              >
+                <option value="">Select Sub-Category</option>
+                {(subCategories[formData.category] || []).map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

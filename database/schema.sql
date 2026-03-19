@@ -236,8 +236,9 @@ CREATE TABLE inventory (
     item_code VARCHAR(50) UNIQUE,
     item_name VARCHAR(100) NOT NULL,
     category VARCHAR(50) NOT NULL CHECK (category IN (
-        'medicine', 'vaccine', 'accessory', 'surgical_supply', 
-        'diagnostic_equipment', 'pet_food', 'supplements'
+        'pharmaceuticals', 'consumables', 'surgical_clinical', 'laboratory_diagnostic',
+        'pet_food_nutrition', 'retail_otc', 'equipment', 'accessories',
+        'supplements', 'cleaning_maintenance'
     )),
     sub_category VARCHAR(50),
     quantity INTEGER NOT NULL DEFAULT 0,
@@ -319,7 +320,7 @@ CREATE INDEX idx_payments_date ON payments(payment_date);
 CREATE TABLE billing_items (
     billing_item_id SERIAL PRIMARY KEY,
     bill_id INTEGER NOT NULL REFERENCES billing(bill_id) ON DELETE CASCADE,
-    item_type VARCHAR(20) CHECK (item_type IN ('service', 'inventory_item', 'vaccination', 'consultation')),
+    item_type VARCHAR(20) CHECK (item_type IN ('consultation', 'service', 'inventory_item')),
     item_id INTEGER REFERENCES inventory(item_id),
     item_name VARCHAR(100) NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,

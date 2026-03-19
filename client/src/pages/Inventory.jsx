@@ -9,10 +9,12 @@ const Inventory = () => {
   const { user } = useAuth();
   const canManageInventory = user?.role === 'admin';
   const [inventory, setInventory] = useState([]);
+  const [allItems, setAllItems] = useState([]); // unfiltered, used for subcategory dropdown options
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     category: '',
+    subCategory: '',
     search: '',
     isActive: ''
   });
@@ -27,25 +29,32 @@ const Inventory = () => {
 
   const categories = [
     { value: '', label: 'All Categories' },
-    { value: 'medicine', label: 'Medicine' },
-    { value: 'vaccine', label: 'Vaccine' },
-    { value: 'accessory', label: 'Accessory' },
-    { value: 'surgical_supply', label: 'Surgical Supply' },
-    { value: 'diagnostic_equipment', label: 'Diagnostic Equipment' },
-    { value: 'pet_food', label: 'Pet Food' },
-    { value: 'supplements', label: 'Supplements' }
+    { value: 'pharmaceuticals',       label: 'Pharmaceuticals' },
+    { value: 'consumables',           label: 'Consumables' },
+    { value: 'surgical_clinical',     label: 'Surgical & Clinical Supplies' },
+    { value: 'laboratory_diagnostic', label: 'Laboratory / Diagnostic Supplies' },
+    { value: 'pet_food_nutrition',    label: 'Pet Food & Nutrition' },
+    { value: 'retail_otc',            label: 'Retail / OTC Products' },
+    { value: 'equipment',             label: 'Equipment' },
+    { value: 'accessories',           label: 'Accessories' },
+    { value: 'supplements',           label: 'Supplements' },
+    { value: 'cleaning_maintenance',  label: 'Cleaning & Maintenance Supplies' },
   ];
+
+  useEffect(() => {
+    // Load all items once for subcategory dropdown population
+    inventoryService.getAll({})
+      .then(res => setAllItems(res.data || []))
+      .catch(() => {});
+    inventoryService.getAll({ isActive: false })
+      .then(res => setInactiveCount(res.data?.length || 0))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadInventory();
     loadAlerts();
   }, [filters]);
-
-  useEffect(() => {
-    inventoryService.getAll({ isActive: false })
-      .then(res => setInactiveCount(res.data?.length || 0))
-      .catch(() => {});
-  }, []);
 
   const loadInventory = async () => {
     try {
@@ -76,11 +85,19 @@ const Inventory = () => {
     }
   };
 
+  const getSubcategoryOptions = () => {
+    const source = filters.category
+      ? allItems.filter(i => i.category === filters.category)
+      : allItems;
+    return [...new Set(source.map(i => i.sub_category).filter(Boolean))].sort();
+  };
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === 'category' ? { subCategory: '' } : {}),
     }));
     setCurrentPage(1);
     setAlertFilter(null);
@@ -97,13 +114,15 @@ const Inventory = () => {
   };
 
   const getFilteredInventory = () => {
-    if (alertFilter === 'lowStock') {
-      return lowStockItems;
+    let base;
+    if (alertFilter === 'lowStock') base = lowStockItems;
+    else if (alertFilter === 'expiring') base = expiringItems;
+    else base = inventory;
+
+    if (filters.subCategory) {
+      return base.filter(i => i.sub_category === filters.subCategory);
     }
-    if (alertFilter === 'expiring') {
-      return expiringItems;
-    }
-    return inventory;
+    return base;
   };
 
   const handleDelete = async (itemId) => {
@@ -300,6 +319,18 @@ const Inventory = () => {
         >
           {categories.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
+        </select>
+        <select
+          name="subCategory"
+          value={filters.subCategory}
+          onChange={handleFilterChange}
+          style={styles.filterSelect}
+          disabled={getSubcategoryOptions().length === 0}
+        >
+          <option value="">All Sub-Categories</option>
+          {getSubcategoryOptions().map(sub => (
+            <option key={sub} value={sub}>{sub}</option>
           ))}
         </select>
         <select

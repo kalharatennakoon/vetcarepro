@@ -367,7 +367,7 @@ const BillingDetail = () => {
                     <td style={styles.td}>{item.item_name}</td>
                     <td style={styles.td}>
                       <span style={styles.itemTypeBadge}>
-                        {item.item_type ? item.item_type.replace('_', ' ') : '-'}
+                        {item.item_type ? ({ consultation: 'Consultation', service: 'Service / Procedure', inventory_item: 'Inventory Item', vaccination: 'Inventory Item' }[item.item_type] || item.item_type) : '-'}
                       </span>
                     </td>
                     <td style={styles.tdRight}>{item.quantity}</td>

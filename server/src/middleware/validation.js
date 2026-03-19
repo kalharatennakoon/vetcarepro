@@ -563,7 +563,7 @@ export const validateInventoryItem = [
   body('category')
     .notEmpty()
     .withMessage('Category is required')
-    .isIn(['medicine', 'vaccine', 'accessory', 'surgical_supply', 'diagnostic_equipment', 'pet_food', 'supplements'])
+    .isIn(['pharmaceuticals', 'consumables', 'surgical_clinical', 'laboratory_diagnostic', 'pet_food_nutrition', 'retail_otc', 'equipment', 'accessories', 'supplements', 'cleaning_maintenance'])
     .withMessage('Invalid category'),
   
   body('subCategory')

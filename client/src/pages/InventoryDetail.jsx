@@ -68,13 +68,16 @@ const InventoryDetail = () => {
 
   const getCategoryLabel = (category) => {
     const categories = {
-      'medicine': 'Medicine',
-      'vaccine': 'Vaccine',
-      'accessory': 'Accessory',
-      'surgical_supply': 'Surgical Supply',
-      'diagnostic_equipment': 'Diagnostic Equipment',
-      'pet_food': 'Pet Food',
-      'supplements': 'Supplements'
+      pharmaceuticals:       'Pharmaceuticals',
+      consumables:           'Consumables',
+      surgical_clinical:     'Surgical & Clinical Supplies',
+      laboratory_diagnostic: 'Laboratory / Diagnostic Supplies',
+      pet_food_nutrition:    'Pet Food & Nutrition',
+      retail_otc:            'Retail / OTC Products',
+      equipment:             'Equipment',
+      accessories:           'Accessories',
+      supplements:           'Supplements',
+      cleaning_maintenance:  'Cleaning & Maintenance Supplies',
     };
     return categories[category] || category;
   };
