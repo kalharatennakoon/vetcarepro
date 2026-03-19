@@ -9,6 +9,7 @@ import {
 import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { deleteImageFile } from '../config/multer.js';
+import pool from '../config/database.js';
 
 /**
  * User Controller
@@ -291,6 +292,63 @@ export const getVeterinarians = async (req, res) => {
       status: 'error',
       message: 'An error occurred while fetching veterinarians'
     });
+  }
+};
+
+/**
+ * @route   GET /api/users/:id/stats
+ * @desc    Get activity stats for a user (role-specific)
+ * @access  Private (Admin or own profile)
+ */
+export const getUserStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    const user = await findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    if (req.user.role !== 'admin' && req.user.user_id !== userId) {
+      return res.status(403).json({ status: 'error', message: 'Access denied' });
+    }
+
+    let stats = {};
+
+    if (user.role === 'veterinarian') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM appointments WHERE veterinarian_id = $1) AS total_appointments,
+          (SELECT COUNT(*) FROM medical_records WHERE veterinarian_id = $1) AS total_medical_records,
+          (SELECT COUNT(*) FROM disease_cases WHERE created_by = $1) AS total_disease_cases`,
+        [userId]
+      );
+      stats = result.rows[0];
+    } else if (user.role === 'receptionist') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM appointments WHERE created_by = $1) AS total_appointments_booked,
+          (SELECT COUNT(*) FROM customers WHERE created_by = $1) AS total_customers_registered,
+          (SELECT COUNT(*) FROM pets WHERE created_by = $1) AS total_pets_registered`,
+        [userId]
+      );
+      stats = result.rows[0];
+    } else if (user.role === 'admin') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM users WHERE created_by = $1) AS total_users_created,
+          (SELECT COUNT(*) FROM customers WHERE created_by = $1) AS total_customers_registered,
+          (SELECT COUNT(*) FROM audit_logs WHERE user_id = $1) AS total_actions_logged`,
+        [userId]
+      );
+      stats = result.rows[0];
+    }
+
+    res.status(200).json({ status: 'success', data: { stats } });
+  } catch (error) {
+    console.error('Get user stats error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while fetching stats' });
   }
 };
 

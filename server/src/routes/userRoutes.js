@@ -7,7 +7,8 @@ import {
   deleteUserById,
   getVeterinarians,
   uploadUserProfileImage,
-  deleteUserProfileImage
+  deleteUserProfileImage,
+  getUserStats
 } from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly, vetOrAdmin } from '../middleware/roleCheck.js';
@@ -39,6 +40,11 @@ router.get('/veterinarians', getVeterinarians);
 // @desc    Get all users
 // @access  Private (Admin, Veterinarian)
 router.get('/', vetOrAdmin, getUsers);
+
+// @route   GET /api/users/:id/stats
+// @desc    Get activity stats for a user
+// @access  Private (Admin or own profile)
+router.get('/:id/stats', getUserStats);
 
 // @route   GET /api/users/:id
 // @desc    Get user by ID

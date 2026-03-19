@@ -1,8 +1,9 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRoles }) => {
   const { isAuthenticated, user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,6 +16,11 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  // Force password change before accessing any other page
+  if (user?.password_must_change && location.pathname !== '/profile') {
+    return <Navigate to="/profile" replace />;
   }
 
   // Check if user has required role

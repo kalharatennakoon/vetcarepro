@@ -44,8 +44,6 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [upcomingPreview, setUpcomingPreview] = useState(null);
 
   useEffect(() => {
@@ -663,7 +661,6 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Type</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={styles.th}></th>
                               </tr>
                             </thead>
                             <tbody>
@@ -684,9 +681,6 @@ const Dashboard = () => {
                                     <td style={styles.td}>{appt.appointment_type}</td>
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
-                                    </td>
-                                    <td style={styles.td}>
-                                      <button onClick={() => { setSelectedAppointment(appt); setShowModal(true); }} style={styles.viewButton}>View</button>
                                     </td>
                                   </tr>
                                 );
@@ -745,14 +739,11 @@ const Dashboard = () => {
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
                                     </td>
                                     <td style={styles.td}>
-                                      <div style={{display: 'flex', gap: '0.4rem'}}>
-                                        <button onClick={() => { setSelectedAppointment(appt); setShowModal(true); }} style={styles.viewButton}>View</button>
-                                        <button
-                                          onClick={() => handleAssignToMe(appt)}
-                                          style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
-                                          title="Add this appointment to your schedule"
-                                        >Assign to Me</button>
-                                      </div>
+                                      <button
+                                        onClick={() => handleAssignToMe(appt)}
+                                        style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
+                                        title="Add this appointment to your schedule"
+                                      >Assign to Me</button>
                                     </td>
                                   </tr>
                                 );
@@ -1005,97 +996,6 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Appointment Details Modal */}
-            {showModal && selectedAppointment && (
-              <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-                <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                  <div style={styles.modalHeader}>
-                    <h3 style={styles.modalTitle}>Appointment Details</h3>
-                    <button 
-                      style={styles.modalCloseButton}
-                      onClick={() => setShowModal(false)}
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
-                  </div>
-                  <div style={styles.modalBody}>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Appointment ID:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.appointment_id}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Patient:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.pet_name} ({selectedAppointment.species})</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Owner:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.customer_first_name} {selectedAppointment.customer_last_name}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Phone:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.customer_phone}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Date & Time:</span>
-                      <span style={styles.modalValue}>
-                        {new Date(selectedAppointment.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString()} at {formatTime(selectedAppointment.appointment_time)}
-                      </span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Type:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.appointment_type}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Reason:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.reason || 'Not specified'}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Veterinarian:</span>
-                      <span style={styles.modalValue}>{selectedAppointment.veterinarian_name ? `Dr. ${selectedAppointment.veterinarian_name}` : 'Not assigned'}</span>
-                    </div>
-                    <div style={styles.modalRow}>
-                      <span style={styles.modalLabel}>Status:</span>
-                      <span style={{
-                        ...styles.modalValue,
-                        ...styles.badge,
-                        backgroundColor: getStatusBadge(selectedAppointment.status).bg,
-                        color: getStatusBadge(selectedAppointment.status).color,
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.75rem'
-                      }}>
-                        {getStatusBadge(selectedAppointment.status).text}
-                      </span>
-                    </div>
-                    {selectedAppointment.notes && (
-                      <div style={styles.modalRow}>
-                        <span style={styles.modalLabel}>Notes:</span>
-                        <span style={styles.modalValue}>{selectedAppointment.notes}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={styles.modalFooter}>
-                    <button 
-                      style={styles.modalAction}
-                      onClick={() => {
-                        setShowModal(false);
-                        navigate('/appointments', { 
-                          state: { editAppointmentId: selectedAppointment.appointment_id } 
-                        });
-                      }}
-                    >
-                      Go to Appointment
-                    </button>
-                    <button 
-                      style={styles.modalCancel}
-                      onClick={() => setShowModal(false)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
