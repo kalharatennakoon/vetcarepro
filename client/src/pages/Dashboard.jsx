@@ -785,7 +785,6 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Vet</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={styles.th}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -806,9 +805,6 @@ const Dashboard = () => {
                                     <td style={styles.td}>{appointment.veterinarian_name ? `Dr. ${appointment.veterinarian_name}` : 'Not assigned'}</td>
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
-                                    </td>
-                                    <td style={styles.td}>
-                                      <button onClick={() => { setSelectedAppointment(appointment); setShowModal(true); }} style={styles.viewButton}>View</button>
                                     </td>
                                   </tr>
                                 );
