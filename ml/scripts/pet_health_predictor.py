@@ -91,58 +91,55 @@ class PetHealthPredictor:
     def predict_individual_risk(self, species, breed=None, age_months=None,
                                 past_diseases=None, time_horizons=None):
         """
-        Predict disease risk for a pet over multiple time horizons using
-        cohort-based survival analysis on historical case data.
+        Predict disease recurrence risk for a specific pet based solely on
+        that pet's own past disease records.
         """
+        from collections import Counter
+
         if time_horizons is None:
             time_horizons = [1, 6, 12, 24]
 
-        df = self._load()
         result = {
             'species': species, 'breed': breed, 'age_months': age_months,
             'time_horizons': time_horizons, 'risks': {},
             'top_risks': [], 'data_confidence': 'low', 'notes': []
         }
 
-        if df.empty:
-            result['notes'].append('Insufficient historical data for predictions.')
+        if not past_diseases:
             return result
 
-        cohort = df[df['species'] == species].copy()
-        if cohort.empty:
-            result['notes'].append(f'No historical cases found for species: {species}.')
+        cat_counts = Counter(
+            d.get('disease_category') for d in past_diseases
+            if d.get('disease_category')
+        )
+
+        if not cat_counts:
             return result
 
-        if age_months is not None:
-            age_cohort = cohort[cohort['age_at_diagnosis'].between(
-                max(0, age_months - 18), age_months + 18)]
-            if len(age_cohort) >= 5:
-                cohort = age_cohort
-            else:
-                result['notes'].append('Limited age-matched cases; using species-wide data.')
+        total_records = len(past_diseases)
+        result['data_confidence'] = (
+            'high' if total_records >= 10 else
+            'medium' if total_records >= 4 else
+            'low'
+        )
 
-        cat_counts = cohort['disease_category'].dropna().value_counts()
-        total = len(cohort)
+        def base_12mo_risk(count):
+            """Recurrence probability at 12 months based on occurrence count."""
+            if count == 1: return 0.25
+            if count == 2: return 0.45
+            return min(0.25 + count * 0.15, 0.80)
 
-        if total >= 100:
-            result['data_confidence'] = 'high'
-        elif total >= 30:
-            result['data_confidence'] = 'medium'
-
-        SCALE = 0.08
         category_risks = {}
         for cat, count in cat_counts.items():
-            rel = count / total
-            if past_diseases:
-                for pd_item in past_diseases:
-                    if pd_item.get('disease_category') == cat:
-                        rel = min(rel * 1.5, 0.95)
-                        result['notes'].append(f'Elevated {cat} risk due to prior history.')
-            hazard = rel * SCALE
+            risk_12mo = base_12mo_risk(count)
             category_risks[cat] = {
-                f'{t}mo': round((1 - np.exp(-hazard * t)) * 100, 1)
+                f'{t}mo': round(min(risk_12mo * (t / 12.0), 0.90) * 100, 1)
                 for t in time_horizons
             }
+            if count >= 3:
+                result['notes'].append(
+                    f'{cat.replace("_", " ").title()} recorded {count} times — elevated recurrence risk.'
+                )
 
         result['risks'] = category_risks
         sorted_risks = sorted(category_risks.items(), key=lambda x: x[1].get('12mo', 0), reverse=True)
@@ -150,9 +147,9 @@ class PetHealthPredictor:
             {
                 'category': cat,
                 'risk_12mo': data.get('12mo', 0),
-                'risk_level': 'high' if data.get('12mo', 0) > 30 else 'medium' if data.get('12mo', 0) > 15 else 'low'
+                'risk_level': 'high' if data.get('12mo', 0) > 40 else 'medium' if data.get('12mo', 0) > 20 else 'low'
             }
-            for cat, data in sorted_risks[:5]
+            for cat, data in sorted_risks
         ]
         return result
 

@@ -17,6 +17,7 @@ const PetHealthPredictions = ({ pet }) => {
   const [cancerRisk, setCancerRisk] = useState(null);
   const [error, setError] = useState('');
   const [ran, setRan] = useState(false);
+  const [noRecords, setNoRecords] = useState(false);
 
   const getAgeMonths = () => {
     if (!pet?.date_of_birth) return null;
@@ -29,6 +30,7 @@ const PetHealthPredictions = ({ pet }) => {
     if (!pet) return;
     setLoading(true);
     setError('');
+    setNoRecords(false);
     try {
       const ageMonths = getAgeMonths();
       let pastDiseases = [];
@@ -39,6 +41,14 @@ const PetHealthPredictions = ({ pet }) => {
           disease_category: c.disease_category,
         }));
       } catch (_) {}
+
+      if (pastDiseases.length === 0) {
+        setDiseaseRisk(null);
+        setCancerRisk(null);
+        setNoRecords(true);
+        setRan(true);
+        return;
+      }
 
       const payload = {
         pet_id: pet.pet_id,
@@ -93,7 +103,16 @@ const PetHealthPredictions = ({ pet }) => {
         <div style={s.emptyState}>
           <i className="fas fa-microscope" style={{ fontSize: '2.5rem', color: '#c4b5fd', marginBottom: '0.75rem' }}></i>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-            Click <strong>Run Predictions</strong> to generate health risk estimates for {pet.pet_name} based on species, breed, age, and past disease history.
+            Click <strong>Run Predictions</strong> to generate health risk estimates for {pet.pet_name} based on their own disease history.
+          </p>
+        </div>
+      )}
+
+      {ran && noRecords && !loading && (
+        <div style={{ ...s.emptyState, backgroundColor: '#fffbeb', borderColor: '#fde68a' }}>
+          <i className="fas fa-folder-open" style={{ fontSize: '2.5rem', color: '#f59e0b', marginBottom: '0.75rem' }}></i>
+          <p style={{ margin: 0, color: '#92400e', fontSize: '0.875rem' }}>
+            No disease records found for <strong>{pet.pet_name}</strong>. Health predictions require at least one recorded disease case for this pet.
           </p>
         </div>
       )}
@@ -115,7 +134,7 @@ const PetHealthPredictions = ({ pet }) => {
                 </h3>
                 <p style={s.hint}>
                   <i className="fas fa-circle-info" style={s.hintIcon}></i>
-                  Likelihood of {pet.pet_name} developing each disease category, based on historical cases of similar {pet.species.toLowerCase()}s. Adjusted for age and past conditions.
+                  Recurrence likelihood for each disease category based on {pet.pet_name}'s own recorded disease history. More records improve prediction accuracy.
                 </p>
               </div>
               <div style={s.cardBody}>
