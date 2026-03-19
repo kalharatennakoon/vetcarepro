@@ -226,13 +226,13 @@ function App() {
       />
 
       {/* Inventory routes */}
-      <Route 
-        path="/inventory" 
+      <Route
+        path="/inventory"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
             <Inventory />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route
@@ -244,13 +244,13 @@ function App() {
         }
       />
 
-      <Route 
-        path="/inventory/:id" 
+      <Route
+        path="/inventory/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
             <InventoryDetail />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route
@@ -263,13 +263,13 @@ function App() {
       />
 
       {/* Billing routes */}
-      <Route 
-        path="/billing" 
+      <Route
+        path="/billing"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
             <Billing />
           </ProtectedRoute>
-        } 
+        }
       />
 
       <Route
@@ -281,13 +281,13 @@ function App() {
         }
       />
 
-      <Route 
-        path="/billing/:id" 
+      <Route
+        path="/billing/:id"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requiredRoles={['admin', 'receptionist']}>
             <BillingDetail />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* Disease Case routes */}

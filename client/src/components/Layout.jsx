@@ -180,20 +180,24 @@ const Layout = ({ children }) => {
                 </a>
               )}
 
-              <a 
-                href="/billing" 
-                style={getNavItemStyle('/billing')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
-              >
-                <i className="fas fa-dollar-sign"></i> Billing
-              </a>
-              <a 
-                href="/inventory" 
-                style={getNavItemStyle('/inventory')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
-              >
-                <i className="fas fa-boxes"></i> Inventory
-              </a>
+              {user?.role !== 'veterinarian' && (
+                <a
+                  href="/billing"
+                  style={getNavItemStyle('/billing')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
+                >
+                  <i className="fas fa-dollar-sign"></i> Billing
+                </a>
+              )}
+              {user?.role !== 'veterinarian' && (
+                <a
+                  href="/inventory"
+                  style={getNavItemStyle('/inventory')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
+                >
+                  <i className="fas fa-boxes"></i> Inventory
+                </a>
+              )}
               {user?.role === 'admin' && (
                 <a
                   href="/reports"
