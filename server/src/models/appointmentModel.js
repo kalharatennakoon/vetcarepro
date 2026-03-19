@@ -17,7 +17,7 @@ export const getAllAppointments = async (filters = {}) => {
       c.phone as customer_phone,
       p.pet_name,
       p.species,
-      CONCAT(u.first_name, ' ', u.last_name) as veterinarian_name
+      NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as veterinarian_name
     FROM appointments a
     INNER JOIN customers c ON a.customer_id = c.customer_id
     INNER JOIN pets p ON a.pet_id = p.pet_id
@@ -88,7 +88,7 @@ export const getAppointmentById = async (appointmentId) => {
       c.phone as customer_phone,
       p.pet_name,
       p.species,
-      CONCAT(u.first_name, ' ', u.last_name) as veterinarian_name
+      NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as veterinarian_name
     FROM appointments a
     INNER JOIN customers c ON a.customer_id = c.customer_id
     INNER JOIN pets p ON a.pet_id = p.pet_id

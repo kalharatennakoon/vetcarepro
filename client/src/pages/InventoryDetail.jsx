@@ -615,6 +615,7 @@ const styles = {
     cursor: 'not-allowed',
     display: 'inline-flex',
     alignItems: 'center',
+    opacity: 0.5,
   },
   gridContainer: {
     display: 'grid',
@@ -866,10 +867,6 @@ const styles = {
     borderRadius: '0.375rem',
     fontSize: '0.875rem',
     cursor: 'pointer',
-  },
-  disabledButton: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
   },
 };
 
