@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api/ml';
 
 /**
@@ -88,12 +88,15 @@ export const updateDiseaseCase = async (id, caseData) => {
 };
 
 /**
- * Delete disease case
+ * Delete disease case (requires reason for audit trail)
  */
-export const deleteDiseaseCase = async (id) => {
+export const deleteDiseaseCase = async (id, reason, additionalNotes = '') => {
   const response = await axios.delete(
     `${API_URL}/disease-cases/${id}`,
-    getAuthHeader()
+    {
+      headers: getAuthHeader().headers,
+      data: { reason, additional_notes: additionalNotes }
+    }
   );
   return response.data;
 };

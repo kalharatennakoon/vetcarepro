@@ -32,6 +32,7 @@ import BillingDetail from './pages/BillingDetail';
 import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
+import BreedingRegistry from './pages/BreedingRegistry';
 
 
 function App() {
@@ -128,8 +129,18 @@ function App() {
         } 
       />
 
+      {/* Breeding Registry */}
+      <Route
+        path="/breeding-registry"
+        element={
+          <ProtectedRoute>
+            <BreedingRegistry />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Pet routes */}
-      <Route 
+      <Route
         path="/pets" 
         element={
           <ProtectedRoute>
@@ -311,11 +322,11 @@ function App() {
         }
       />
 
-{/* Reports routes - accessible by admin and veterinarian */}
+{/* Reports routes - accessible by admin only */}
       <Route
         path="/reports"
         element={
-          <ProtectedRoute requiredRoles={['admin', 'veterinarian']}>
+          <ProtectedRoute requiredRoles={['admin']}>
             <Reports />
           </ProtectedRoute>
         }

@@ -8,32 +8,33 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
-// Financial reports (accessible by admin and veterinarian)
-router.get('/financial', 
-  authorize('admin', 'veterinarian'), 
+// Financial reports (admin only)
+router.get('/financial',
+  authorize('admin'),
   reportController.getFinancialReports
 );
 
-// Operational reports (accessible by admin and veterinarian)
-router.get('/operational', 
-  authorize('admin', 'veterinarian'), 
+// Operational reports (admin only)
+router.get('/operational',
+  authorize('admin'),
   reportController.getOperationalReports
 );
 
-// Dashboard summary (accessible by all authenticated users)
-router.get('/dashboard-summary', 
+// Dashboard summary (admin only)
+router.get('/dashboard-summary',
+  authorize('admin'),
   reportController.getDashboardSummary
 );
 
-// Export report to CSV (accessible by admin and veterinarian)
-router.get('/export', 
-  authorize('admin', 'veterinarian'), 
+// Export report to CSV (admin only)
+router.get('/export',
+  authorize('admin'),
   reportController.exportReport
 );
 
-// Export report to PDF (accessible by admin and veterinarian)
-router.get('/export-pdf', 
-  authorize('admin', 'veterinarian'), 
+// Export report to PDF (admin only)
+router.get('/export-pdf',
+  authorize('admin'),
   reportController.exportReportPDF
 );
 

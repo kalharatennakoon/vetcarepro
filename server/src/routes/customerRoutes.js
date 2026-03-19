@@ -4,7 +4,9 @@ import {
   getCustomer,
   createNewCustomer,
   updateCustomerById,
-  deleteCustomerById
+  deleteCustomerById,
+  getCustomerDeletabilityById,
+  inactivateCustomerById
 } from '../controllers/customerController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -43,6 +45,16 @@ router.post('/', validateCustomerCreate, createNewCustomer);
 // @desc    Update customer
 // @access  Private
 router.put('/:id', validateCustomerUpdate, updateCustomerById);
+
+// @route   GET /api/customers/:id/deletability
+// @desc    Check if customer can be deleted or must be inactivated
+// @access  Private
+router.get('/:id/deletability', getCustomerDeletabilityById);
+
+// @route   PATCH /api/customers/:id/inactivate
+// @desc    Inactivate customer with reason
+// @access  Private
+router.patch('/:id/inactivate', inactivateCustomerById);
 
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer (soft delete)

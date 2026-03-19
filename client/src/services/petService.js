@@ -102,6 +102,34 @@ export const deletePetImage = async (id) => {
   return response.data;
 };
 
+/**
+ * Check pet deletability
+ */
+export const checkPetDeletability = async (id) => {
+  const response = await axios.get(`${API_URL}/pets/${id}/deletability`);
+  return response.data;
+};
+
+/**
+ * Inactivate pet with reason
+ */
+export const inactivatePet = async (id, data) => {
+  const response = await axios.patch(`${API_URL}/pets/${id}/inactivate`, data);
+  return response.data;
+};
+
+export const getBreedingRegistry = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (filters.species) params.append('species', filters.species);
+  if (filters.gender) params.append('gender', filters.gender);
+  if (filters.breed) params.append('breed', filters.breed);
+  const token = localStorage.getItem('token');
+  const response = await axios.get(`${API_URL}/pets/breeding/registry?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 export default {
   getPets,
   getPetById,
@@ -112,5 +140,7 @@ export default {
   getPetVaccinations,
   getSpeciesList,
   uploadPetImage,
-  deletePetImage
+  deletePetImage,
+  checkPetDeletability,
+  inactivatePet
 };

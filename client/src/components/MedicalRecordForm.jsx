@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNotification } from '../context/NotificationContext';
 
 const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { showSuccess } = useNotification();
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [veterinarians, setVeterinarians] = useState([]);
@@ -180,8 +182,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       };
 
       const recordData = {
-        pet_id: parseInt(formData.pet_id),
-        appointment_id: formData.appointment_id ? parseInt(formData.appointment_id) : null,
+        pet_id: formData.pet_id,
+        appointment_id: formData.appointment_id || null,
         veterinarian_id: parseInt(formData.veterinarian_id),
         visit_date: formData.visit_date,
         chief_complaint: formData.chief_complaint.trim() || null,
@@ -201,12 +203,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       };
 
       if (isEditMode) {
-        await axios.put(`${API_URL}/medical-records/${recordId}`, recordData, config);
+        const res = await axios.put(`${API_URL}/medical-records/${recordId}`, recordData, config);
+        showSuccess('Medical record updated successfully');
+        onSuccess?.(res.data.data.record);
       } else {
-        await axios.post(`${API_URL}/medical-records`, recordData, config);
+        const res = await axios.post(`${API_URL}/medical-records`, recordData, config);
+        showSuccess('Medical record created successfully');
+        onSuccess?.(res.data.data.record);
       }
-
-      onSuccess?.();
     } catch (err) {
       setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} medical record`);
     } finally {
@@ -257,7 +261,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                   required
                 >
                   <option value="">Select Pet</option>
-                  {pets.map(pet => (
+                  {[...pets].sort((a, b) => a.pet_name.localeCompare(b.pet_name)).map(pet => (
                     <option key={pet.pet_id} value={pet.pet_id}>
                       {pet.pet_name} - {pet.owner_first_name} {pet.owner_last_name}
                     </option>
@@ -278,9 +282,9 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                 required
               >
                 <option value="">Select Veterinarian</option>
-                {veterinarians.map(vet => (
+                {[...veterinarians].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(vet => (
                   <option key={vet.user_id} value={vet.user_id}>
-                    {vet.first_name} {vet.last_name}
+                    Dr. {vet.first_name} {vet.last_name}
                   </option>
                 ))}
               </select>

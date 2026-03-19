@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCustomers } from '../services/customerService';
+import { sendCustomerEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 
 const Customers = () => {
@@ -11,9 +13,42 @@ const Customers = () => {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+  const [emailModal, setEmailModal] = useState({ open: false, customer: null });
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
+  const [emailSending, setEmailSending] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  useAuth();
+  const { showSuccess, showError } = useNotification();
+
+  const formatWhatsAppNumber = (phone) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    return digits.startsWith('0') ? '94' + digits.slice(1) : digits;
+  };
+
+  const handleOpenEmail = (customer) => {
+    setEmailForm({ subject: '', message: '' });
+    setEmailModal({ open: true, customer });
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailForm.subject.trim() || !emailForm.message.trim()) return;
+    setEmailSending(true);
+    try {
+      const res = await sendCustomerEmail({
+        customerId: emailModal.customer.customer_id,
+        subject: emailForm.subject,
+        message: emailForm.message
+      });
+      showSuccess(res.message || 'Email sent successfully');
+      setEmailModal({ open: false, customer: null });
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   useEffect(() => {
     fetchCustomers();
@@ -35,16 +70,6 @@ const Customers = () => {
   };
 
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchCustomers();
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
   };
@@ -59,11 +84,26 @@ const Customers = () => {
     return phone;
   };
 
+  const activeCount = customers.filter(c => c.is_active !== false).length;
+  const inactiveCount = customers.filter(c => c.is_active === false).length;
+
+  const filteredCustomers = customers.filter(c => {
+    if (statusFilter === 'active') return c.is_active !== false;
+    if (statusFilter === 'inactive') return c.is_active === false;
+    return true;
+  });
+
+  const statusTabs = [
+    { key: 'all', label: 'All', count: customers.length },
+    { key: 'active', label: 'Active', count: activeCount },
+    { key: 'inactive', label: 'Inactive', count: inactiveCount },
+  ];
+
   // Pagination calculations
-  const totalPages = Math.ceil(customers.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentCustomers = customers.slice(startIndex, endIndex);
+  const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -148,20 +188,36 @@ const Customers = () => {
             <span style={styles.statValue}>{customers.length}</span>
           </div>
           <div style={styles.statItem}>
+            <span style={styles.statLabel}>Active</span>
+            <span style={{ ...styles.statValue, color: '#059669' }}>{activeCount}</span>
+          </div>
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Inactive</span>
+            <span style={{ ...styles.statValue, color: '#dc2626' }}>{inactiveCount}</span>
+          </div>
+          <div style={styles.statItem}>
             <span style={styles.statLabel}>Showing</span>
             <span style={styles.statValue}>
-              {customers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, customers.length)}` : '0'}
+              {filteredCustomers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredCustomers.length)}` : '0'}
             </span>
           </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Active</span>
-            <span style={styles.statValue}>{customers.filter(c => c.is_active !== false).length}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>With Pets</span>
-            <span style={styles.statValue}>{customers.filter(c => c.pet_count > 0).length}</span>
-          </div>
         </div>
+      </div>
+
+      {/* Status Filter Tabs */}
+      <div style={styles.statusTabs}>
+        {statusTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
+            style={{ ...styles.statusTab, ...(statusFilter === tab.key ? styles.statusTabActive : {}) }}
+          >
+            {tab.label}
+            <span style={{ ...styles.tabCount, ...(statusFilter === tab.key ? styles.tabCountActive : {}) }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Error Message */}
@@ -220,8 +276,11 @@ const Customers = () => {
                             {getInitials(customer.first_name, customer.last_name)}
                           </div>
                           <div style={styles.customerInfo}>
-                            <div style={styles.customerName}>
-                              {customer.first_name} {customer.last_name}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={styles.customerName}>
+                                {customer.first_name} {customer.last_name}
+                              </span>
+                              {customer.is_active === false && <span style={styles.inactiveBadge}>Inactive</span>}
                             </div>
                           </div>
                         </div>
@@ -247,14 +306,36 @@ const Customers = () => {
                         </span>
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <button
-                          onClick={() => navigate(`/customers/${customer.customer_id}`)}
-                          style={styles.viewButton}
-                          onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
-                          onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
-                        >
-                          View
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                          {customer.phone && (
+                            <button
+                              onClick={() => window.open(`https://wa.me/${formatWhatsAppNumber(customer.phone)}`, '_blank')}
+                              style={{ ...styles.viewButton, backgroundColor: '#25d366' }}
+                              title={`WhatsApp ${customer.phone}`}
+                            >
+                              <i className="fab fa-whatsapp" style={{ marginRight: '0.25rem' }}></i>
+                              WhatsApp
+                            </button>
+                          )}
+                          {customer.email && (
+                            <button
+                              onClick={() => handleOpenEmail(customer)}
+                              style={{ ...styles.viewButton, backgroundColor: '#059669' }}
+                              title={`Send email to ${customer.email}`}
+                            >
+                              <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>
+                              Email
+                            </button>
+                          )}
+                          <button
+                            onClick={() => navigate(`/customers/${customer.customer_id}`)}
+                            style={styles.viewButton}
+                            onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
+                            onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
+                          >
+                            View
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -264,7 +345,7 @@ const Customers = () => {
           </div>
 
           {/* Pagination */}
-          {customers.length > itemsPerPage && (
+          {filteredCustomers.length > itemsPerPage && (
             <div style={styles.paginationContainer}>
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -307,6 +388,64 @@ const Customers = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Compose Email Modal */}
+      {emailModal.open && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => setEmailModal({ open: false, customer: null })}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '2rem', width: '100%', maxWidth: '520px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1f2937' }}>
+                <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>
+                Send Email to {emailModal.customer?.first_name} {emailModal.customer?.last_name}
+              </h3>
+              <button onClick={() => setEmailModal({ open: false, customer: null })}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}>
+                <i className="fas fa-xmark"></i>
+              </button>
+            </div>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <i className="fas fa-circle-info" style={{ marginRight: '0.4rem' }}></i>
+              Sending to: <strong>{emailModal.customer?.email}</strong>
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Subject</label>
+              <input
+                type="text"
+                value={emailForm.subject}
+                onChange={(e) => setEmailForm(f => ({ ...f, subject: e.target.value }))}
+                placeholder="Email subject"
+                style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Message</label>
+              <textarea
+                value={emailForm.message}
+                onChange={(e) => setEmailForm(f => ({ ...f, message: e.target.value }))}
+                placeholder="Type your message here..."
+                rows={6}
+                style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => setEmailModal({ open: false, customer: null })}
+                style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem' }}>
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={emailSending || !emailForm.subject.trim() || !emailForm.message.trim()}
+                style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: 'none', background: emailSending ? '#9ca3af' : '#2563eb', color: '#fff', cursor: emailSending ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
+                {emailSending
+                  ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '0.4rem' }}></i>Sending...</>
+                  : <><i className="fas fa-paper-plane" style={{ marginRight: '0.4rem' }}></i>Send Email</>}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );
@@ -583,14 +722,17 @@ const styles = {
     alignItems: 'center',
   },
   viewButton: {
-    padding: '0.5rem 1rem',
+    padding: '0.25rem 0.6rem',
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
+    borderRadius: '5px',
+    fontSize: '0.72rem',
+    fontWeight: '500',
     cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   viewButtonHover: {
     backgroundColor: '#2563eb',
@@ -675,6 +817,57 @@ const styles = {
     padding: '0.5rem',
     color: '#9ca3af',
     fontSize: '0.875rem',
+  },
+  statusTabs: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  statusTab: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 1rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: '#ffffff',
+    color: '#6b7280',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  statusTabActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+    color: '#ffffff',
+  },
+  tabCount: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '20px',
+    padding: '0 0.375rem',
+    height: '20px',
+    borderRadius: '10px',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+  },
+  tabCountActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    color: '#ffffff',
+  },
+  inactiveBadge: {
+    display: 'inline-block',
+    padding: '0.125rem 0.5rem',
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    borderRadius: '4px',
+    fontSize: '0.65rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
 };
 

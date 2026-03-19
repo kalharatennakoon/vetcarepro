@@ -299,10 +299,24 @@ const loadInventoryData = async () => {
   }
 };
 
+/**
+ * Check if any model needs retraining based on record growth
+ */
+const getRetrainCheck = async () => {
+  try {
+    const response = await mlClient.get('/api/ml/retrain-check');
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Retrain check failed:', error.message);
+    return { success: false, error: 'Failed to check retraining status' };
+  }
+};
+
 export {
   // Health & Status
   checkHealth,
   getModelsStatus,
+  getRetrainCheck,
   testDatabaseConnection,
 
   // Disease Prediction

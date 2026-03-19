@@ -8,15 +8,17 @@ class ReportModel {
    */
   static async getRevenueSummary(startDate, endDate) {
     const query = `
-      SELECT 
+      SELECT
         DATE(b.bill_date) as date,
         COUNT(DISTINCT b.bill_id) as total_invoices,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_paid,
         SUM(b.balance_amount) as total_outstanding,
         COUNT(CASE WHEN b.payment_status = 'fully_paid' THEN 1 END) as paid_invoices,
-        COUNT(CASE WHEN b.payment_status = 'unpaid' THEN 1 END) as pending_invoices,
-        COUNT(CASE WHEN b.payment_status = 'overdue' THEN 1 END) as overdue_invoices
+        COUNT(CASE WHEN b.payment_status = 'partially_paid' THEN 1 END) as partial_invoices,
+        COUNT(CASE WHEN b.payment_status = 'unpaid' THEN 1 END) as unpaid_invoices,
+        COUNT(CASE WHEN b.payment_status = 'overdue' THEN 1 END) as overdue_invoices,
+        COUNT(CASE WHEN b.payment_status = 'refunded' THEN 1 END) as refunded_invoices
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
       GROUP BY DATE(b.bill_date)
@@ -27,17 +29,19 @@ class ReportModel {
   }
 
   /**
-   * Get payment summary by payment method
+   * Get payment summary by payment method (sourced from billing table)
    */
   static async getPaymentsByMethod(startDate, endDate) {
     const query = `
-      SELECT 
-        p.payment_method,
+      SELECT
+        COALESCE(b.payment_method, 'not_specified') as payment_method,
         COUNT(*) as transaction_count,
-        SUM(p.amount) as total_amount
-      FROM payments p
-      WHERE p.payment_date BETWEEN $1 AND $2
-      GROUP BY p.payment_method
+        SUM(b.paid_amount) as total_amount,
+        ROUND(SUM(b.paid_amount) / NULLIF(SUM(SUM(b.paid_amount)) OVER (), 0) * 100, 2) as percentage
+      FROM billing b
+      WHERE b.bill_date BETWEEN $1 AND $2
+        AND b.paid_amount > 0
+      GROUP BY b.payment_method
       ORDER BY total_amount DESC
     `;
     const result = await pool.query(query, [startDate, endDate]);
@@ -45,11 +49,11 @@ class ReportModel {
   }
 
   /**
-   * Get outstanding balances report
+   * Get outstanding balances report for bills created within the date range
    */
-  static async getOutstandingBalances() {
+  static async getOutstandingBalances(startDate, endDate) {
     const query = `
-      SELECT 
+      SELECT
         b.bill_id,
         b.bill_date,
         b.due_date,
@@ -60,7 +64,7 @@ class ReportModel {
         b.paid_amount,
         b.balance_amount as outstanding_amount,
         b.payment_status,
-        CASE 
+        CASE
           WHEN b.due_date < CURRENT_DATE THEN 'OVERDUE'
           WHEN b.due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'DUE_SOON'
           ELSE 'CURRENT'
@@ -69,9 +73,10 @@ class ReportModel {
       JOIN customers c ON b.customer_id = c.customer_id
       WHERE b.payment_status != 'fully_paid'
         AND b.balance_amount > 0
+        AND b.bill_date BETWEEN $1 AND $2
       ORDER BY b.due_date ASC
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
   }
 
@@ -142,46 +147,50 @@ class ReportModel {
   }
 
   /**
-   * Get patient visit statistics
+   * Get patient visit statistics — per-pet breakdown for the date range
    */
   static async getPatientVisitStats(startDate, endDate) {
     const query = `
-      SELECT 
-        COUNT(DISTINCT p.pet_id) as total_patients,
-        COUNT(DISTINCT a.appointment_id) as total_visits,
-        COUNT(DISTINCT p.customer_id) as unique_customers,
-        ROUND(COUNT(a.appointment_id)::numeric / NULLIF(COUNT(DISTINCT p.pet_id), 0), 2) as avg_visits_per_patient
+      SELECT
+        p.pet_name,
+        p.species,
+        COALESCE(p.breed, '-') as breed,
+        c.first_name || ' ' || c.last_name as owner_name,
+        c.phone as owner_phone,
+        COUNT(a.appointment_id) as total_visits,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_visits,
+        COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_visits,
+        COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
+        MIN(a.appointment_date) as first_visit,
+        MAX(a.appointment_date) as last_visit
       FROM appointments a
       JOIN pets p ON a.pet_id = p.pet_id
+      JOIN customers c ON p.customer_id = c.customer_id
       WHERE a.appointment_date BETWEEN $1 AND $2
-        AND a.status = 'completed'
+      GROUP BY p.pet_id, p.pet_name, p.species, p.breed, c.first_name, c.last_name, c.phone
+      ORDER BY total_visits DESC, p.pet_name ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
-    return result.rows[0];
+    return result.rows;
   }
 
   /**
-   * Get inventory usage report
+   * Get inventory usage report grouped by category
    */
   static async getInventoryUsage(startDate, endDate) {
     const query = `
-      SELECT 
-        i.item_id as inventory_id,
-        i.item_name,
+      SELECT
         i.category,
-        i.quantity as current_stock,
-        i.reorder_level,
-        i.selling_price as unit_price,
-        COALESCE(usage.quantity_used, 0) as quantity_used,
-        COALESCE(usage.quantity_used * i.selling_price, 0) as value_used,
-        CASE 
-          WHEN i.quantity <= i.reorder_level THEN 'LOW_STOCK'
-          WHEN i.quantity <= i.reorder_level * 1.5 THEN 'REORDER_SOON'
-          ELSE 'IN_STOCK'
-        END as stock_status
+        COUNT(DISTINCT i.item_id) as total_items,
+        COALESCE(SUM(usage.quantity_used), 0) as total_quantity_used,
+        COALESCE(SUM(usage.quantity_used * i.selling_price), 0) as total_value_used,
+        SUM(i.quantity) as total_current_stock,
+        COALESCE(SUM(i.quantity * i.selling_price), 0) as total_stock_value,
+        COUNT(CASE WHEN i.quantity <= i.reorder_level THEN 1 END) as low_stock_items,
+        COUNT(CASE WHEN i.quantity = 0 THEN 1 END) as out_of_stock_items
       FROM inventory i
       LEFT JOIN (
-        SELECT 
+        SELECT
           bi.item_id,
           SUM(bi.quantity) as quantity_used
         FROM billing_items bi
@@ -190,8 +199,8 @@ class ReportModel {
           AND b.bill_date BETWEEN $1 AND $2
         GROUP BY bi.item_id
       ) usage ON i.item_id = usage.item_id
-      WHERE i.quantity IS NOT NULL
-      ORDER BY value_used DESC
+      GROUP BY i.category
+      ORDER BY total_value_used DESC, i.category ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
@@ -277,32 +286,31 @@ class ReportModel {
   }
 
   /**
-   * Get monthly revenue trend (for the last 12 months)
+   * Get monthly revenue trend grouped by month for the given date range
    */
-  static async getMonthlyRevenueTrend() {
+  static async getMonthlyRevenueTrend(startDate, endDate) {
     const query = `
-      SELECT 
+      SELECT
         TO_CHAR(b.bill_date, 'YYYY-MM') as month,
         COUNT(*) as invoice_count,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_collected
       FROM billing b
-      WHERE b.bill_date >= CURRENT_DATE - INTERVAL '12 months'
+      WHERE b.bill_date BETWEEN $1 AND $2
       GROUP BY TO_CHAR(b.bill_date, 'YYYY-MM')
       ORDER BY month ASC
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
   }
 
   /**
-   * Get annual income report
+   * Get annual income report grouped by year for the selected date range
    */
-  static async getAnnualIncomeReport(year) {
+  static async getAnnualIncomeReport(startDate, endDate) {
     const query = `
-      SELECT 
-        TO_CHAR(b.bill_date, 'Month') as month,
-        EXTRACT(MONTH FROM b.bill_date) as month_num,
+      SELECT
+        EXTRACT(YEAR FROM b.bill_date)::integer as year,
         COUNT(*) as invoice_count,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_collected,
@@ -310,11 +318,11 @@ class ReportModel {
         COUNT(DISTINCT b.customer_id) as unique_customers,
         ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
       FROM billing b
-      WHERE EXTRACT(YEAR FROM b.bill_date) = $1
-      GROUP BY EXTRACT(MONTH FROM b.bill_date), TO_CHAR(b.bill_date, 'Month')
-      ORDER BY month_num ASC
+      WHERE b.bill_date BETWEEN $1 AND $2
+      GROUP BY EXTRACT(YEAR FROM b.bill_date)
+      ORDER BY year ASC
     `;
-    const result = await pool.query(query, [year]);
+    const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
   }
 
@@ -371,28 +379,25 @@ class ReportModel {
   }
 
   /**
-   * Get monthly income report
+   * Get monthly income breakdown for the selected date range
    */
-  static async getMonthlyIncomeReport(month, year) {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
-    
+  static async getMonthlyIncomeReport(startDate, endDate) {
     const query = `
-      SELECT 
-        DATE(b.bill_date) as date,
+      SELECT
+        TO_CHAR(MIN(b.bill_date), 'Month YYYY') as month,
         COUNT(*) as invoice_count,
-        SUM(b.total_amount) as daily_revenue,
-        SUM(b.paid_amount) as daily_collected
+        SUM(b.total_amount) as total_revenue,
+        SUM(b.paid_amount) as total_collected,
+        SUM(b.balance_amount) as total_due
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
-      GROUP BY DATE(b.bill_date)
-      ORDER BY date ASC
+      GROUP BY TO_CHAR(b.bill_date, 'YYYY-MM')
+      ORDER BY TO_CHAR(b.bill_date, 'YYYY-MM') ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
-    
-    // Also get summary totals
+
     const summaryQuery = `
-      SELECT 
+      SELECT
         COUNT(*) as total_invoices,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_collected,
@@ -402,7 +407,7 @@ class ReportModel {
       WHERE b.bill_date BETWEEN $1 AND $2
     `;
     const summaryResult = await pool.query(summaryQuery, [startDate, endDate]);
-    
+
     return {
       dailyBreakdown: result.rows,
       summary: summaryResult.rows[0]

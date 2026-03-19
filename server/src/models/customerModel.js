@@ -238,7 +238,7 @@ export const phoneExists = async (phone, excludeCustomerId = null) => {
   const params = [phone];
 
   if (excludeCustomerId) {
-    query += ' AND customer_id != $2';
+    query += ' AND customer_id <> $2';
     params.push(excludeCustomerId);
   }
 
@@ -253,4 +253,57 @@ export const getCustomerCount = async () => {
   const query = 'SELECT COUNT(*) as count FROM customers WHERE is_active = true';
   const result = await pool.query(query);
   return parseInt(result.rows[0].count);
+};
+
+/**
+ * Check if customer can be deleted or must be inactivated
+ */
+export const checkCustomerDeletability = async (customerId) => {
+  const query = `
+    SELECT
+      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1 AND a.status IN ('scheduled','confirmed','in_progress'))::int AS active_appointments,
+      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS total_appointments,
+      (SELECT COUNT(*) FROM medical_records mr JOIN pets p ON mr.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS medical_records,
+      (SELECT COUNT(*) FROM vaccinations v JOIN pets p ON v.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS vaccinations,
+      (SELECT COUNT(*) FROM billing b JOIN appointments a ON b.appointment_id = a.appointment_id JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS billing_records,
+      (SELECT COUNT(*) FROM pets WHERE customer_id = $1)::int AS total_pets
+  `;
+  const result = await pool.query(query, [customerId]);
+  return result.rows[0];
+};
+
+/**
+ * Inactivate customer with reason (audit trail)
+ */
+export const inactivateCustomer = async (customerId, { reason, additionalNote }, updatedBy) => {
+  const reasonLabels = {
+    no_longer_customer: 'No longer a customer',
+    transferred: 'Transferred to another clinic',
+    incorrectly_created: 'Incorrectly created',
+    other: 'Other'
+  };
+  const label = reasonLabels[reason] || reason;
+  const dateStr = new Date().toISOString().split('T')[0];
+  const auditEntry = `\nINACTIVATED (${label}) on ${dateStr}${additionalNote ? ': ' + additionalNote : ''}`;
+
+  const query = `
+    UPDATE customers
+    SET
+      is_active = false,
+      notes = COALESCE(notes, '') || $1,
+      updated_by = $2
+    WHERE customer_id = $3
+    RETURNING *
+  `;
+  const result = await pool.query(query, [auditEntry, updatedBy, customerId]);
+  return result.rows[0];
+};
+
+/**
+ * Hard delete customer (only when no related data)
+ */
+export const hardDeleteCustomer = async (customerId) => {
+  await pool.query('DELETE FROM pets WHERE customer_id = $1', [customerId]);
+  const result = await pool.query('DELETE FROM customers WHERE customer_id = $1', [customerId]);
+  return result.rowCount > 0;
 };

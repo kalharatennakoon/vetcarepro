@@ -5,11 +5,14 @@ import {
   createNewPet,
   updatePetById,
   deletePetById,
+  getPetDeletabilityById,
+  inactivatePetById,
   getPetMedicalHistoryById,
   getPetVaccinationsById,
   getSpecies,
   uploadPetImageHandler,
-  deletePetImageHandler
+  deletePetImageHandler,
+  getBreedingRegistry
 } from '../controllers/petController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -35,6 +38,11 @@ router.use(authenticate);
 // @access  Private
 router.get('/species/list', getSpecies);
 
+// @route   GET /api/pets/breeding/registry
+// @desc    Get pets available for breeding
+// @access  Private
+router.get('/breeding/registry', getBreedingRegistry);
+
 // @route   GET /api/pets
 // @desc    Get all pets
 // @access  Private
@@ -54,6 +62,16 @@ router.post('/', validatePetCreate, createNewPet);
 // @desc    Update pet
 // @access  Private
 router.put('/:id', validatePetUpdate, updatePetById);
+
+// @route   GET /api/pets/:id/deletability
+// @desc    Check if pet can be deleted or must be inactivated
+// @access  Private
+router.get('/:id/deletability', getPetDeletabilityById);
+
+// @route   PATCH /api/pets/:id/inactivate
+// @desc    Inactivate pet with reason
+// @access  Private
+router.patch('/:id/inactivate', inactivatePetById);
 
 // @route   DELETE /api/pets/:id
 // @desc    Delete pet (soft delete)

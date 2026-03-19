@@ -11,11 +11,12 @@ const Pets = () => {
   const [speciesFilter, setSpeciesFilter] = useState('');
   const [speciesList, setSpeciesList] = useState([]);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  useAuth();
 
   useEffect(() => {
     fetchSpeciesList();
@@ -40,12 +41,9 @@ const Pets = () => {
   const fetchPets = async () => {
     try {
       setLoading(true);
-      const filters = {
-        is_active: true // Only fetch active pets
-      };
+      const filters = {};
       if (search) filters.search = search;
       if (speciesFilter) filters.species = speciesFilter;
-      
       const response = await getPets(filters);
       setPets(response.data.pets || []);
       setError('');
@@ -57,16 +55,20 @@ const Pets = () => {
     }
   };
 
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name.substring(0, 2).toUpperCase();
-  };
+  const activeCount = pets.filter(p => p.is_active !== false).length;
+  const inactiveCount = pets.filter(p => p.is_active === false).length;
+
+  const filteredPets = pets.filter(p => {
+    if (statusFilter === 'active') return p.is_active !== false;
+    if (statusFilter === 'inactive') return p.is_active === false;
+    return true;
+  });
 
   // Pagination calculations
-  const totalPages = Math.ceil(pets.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPets.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPets = pets.slice(startIndex, endIndex);
+  const currentPets = filteredPets.slice(startIndex, endIndex);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -101,6 +103,12 @@ const Pets = () => {
     return pages;
   };
 
+  const statusTabs = [
+    { key: 'all', label: 'All', count: pets.length },
+    { key: 'active', label: 'Active', count: activeCount },
+    { key: 'inactive', label: 'Inactive', count: inactiveCount },
+  ];
+
   const calculateAge = (birthDate) => {
     if (!birthDate) return 'Unknown';
     const birth = new Date(birthDate);
@@ -117,26 +125,6 @@ const Pets = () => {
       return `${years} ${years === 1 ? 'year' : 'years'}`;
     }
     return `${years}y ${months}m`;
-  };
-
-  const getSpeciesIcon = (species) => {
-    const icons = {
-      'Dog': 'fa-dog',
-      'Cat': 'fa-cat',
-      'Bird': 'fa-dove',
-      'Rabbit': 'fa-rabbit',
-      'Hamster': 'fa-hamster',
-      'Guinea Pig': 'fa-hamster',
-      'Fish': 'fa-fish',
-      'Reptile': 'fa-dragon',
-      'Other': 'fa-paw'
-    };
-    return icons[species] || 'fa-paw';
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
   };
 
   return (
@@ -203,21 +191,19 @@ const Pets = () => {
             <span style={styles.statValue}>{pets.length}</span>
           </div>
           <div style={styles.statItem}>
-            <span style={styles.statLabel}>Showing</span>
-            <span style={styles.statValue}>
-              {pets.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, pets.length)}` : '0'}
-            </span>
+            <span style={styles.statLabel}>Active</span>
+            <span style={{ ...styles.statValue, color: '#059669' }}>{activeCount}</span>
           </div>
           <div style={styles.statItem}>
-            <span style={styles.statLabel}>Active</span>
-            <span style={styles.statValue}>{pets.filter(p => p.is_active !== false).length}</span>
+            <span style={styles.statLabel}>Inactive</span>
+            <span style={{ ...styles.statValue, color: '#dc2626' }}>{inactiveCount}</span>
           </div>
-          {speciesFilter && (
-            <div style={styles.statItem}>
-              <span style={styles.statLabel}>Species</span>
-              <span style={styles.statValue}>{speciesFilter}</span>
-            </div>
-          )}
+          <div style={styles.statItem}>
+            <span style={styles.statLabel}>Showing</span>
+            <span style={styles.statValue}>
+              {filteredPets.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredPets.length)}` : '0'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -227,6 +213,22 @@ const Pets = () => {
           {error}
         </div>
       )}
+
+      {/* Status Filter Tabs */}
+      <div style={styles.statusTabs}>
+        {statusTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
+            style={{ ...styles.statusTab, ...(statusFilter === tab.key ? styles.statusTabActive : {}) }}
+          >
+            {tab.label}
+            <span style={{ ...styles.tabCount, ...(statusFilter === tab.key ? styles.tabCountActive : {}) }}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Loading State */}
       {loading ? (
@@ -286,7 +288,10 @@ const Pets = () => {
                             </div>
                           )}
                           <div style={styles.petInfo}>
-                            <div style={styles.petName}>{pet.pet_name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={styles.petName}>{pet.pet_name}</span>
+                              {pet.is_active === false && <span style={styles.inactiveBadge}>Inactive</span>}
+                            </div>
                             <div style={styles.petBreed}>{pet.breed || 'Mixed Breed'}</div>
                           </div>
                         </div>
@@ -332,7 +337,7 @@ const Pets = () => {
           </div>
 
           {/* Pagination */}
-          {pets.length > itemsPerPage && (
+          {filteredPets.length > itemsPerPage && (
             <div style={styles.paginationContainer}>
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -754,6 +759,57 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  statusTabs: {
+    display: 'flex',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  statusTab: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.5rem 1rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    backgroundColor: '#ffffff',
+    color: '#6b7280',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  statusTabActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+    color: '#ffffff',
+  },
+  tabCount: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '20px',
+    padding: '0 0.375rem',
+    height: '20px',
+    borderRadius: '10px',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+  },
+  tabCountActive: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    color: '#ffffff',
+  },
+  inactiveBadge: {
+    display: 'inline-block',
+    padding: '0.125rem 0.5rem',
+    backgroundColor: '#fee2e2',
+    color: '#991b1b',
+    borderRadius: '4px',
+    fontSize: '0.65rem',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
 };
 

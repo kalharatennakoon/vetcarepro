@@ -15,6 +15,7 @@ import {
   getSalesTrends,
   getReorderSuggestions
 } from '../services/predictionService';
+import { getSpeciesList } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -47,8 +48,9 @@ const Analytics = () => {
   const [selectedSpecies, setSelectedSpecies] = useState('Dog');
   const [riskFilters, setRiskFilters] = useState({
     species: '',
-    days_lookback: 60
+    days_lookback: 365
   });
+  const [speciesList, setSpeciesList] = useState(['Dog', 'Cat', 'Rabbit', 'Bird', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other']);
   const [training, setTraining] = useState(false);
   const [trainSuccess, setTrainSuccess] = useState(false);
 
@@ -72,6 +74,12 @@ const Analytics = () => {
   const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
+    getSpeciesList()
+      .then(res => { if (res.species?.length) setSpeciesList(res.species); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     fetchCases();
     setCurrentPage(1);
   }, [filters]);
@@ -84,7 +92,13 @@ const Analytics = () => {
     } else if (activeTab === 'inventory') {
       fetchInventoryData();
     }
-  }, [activeTab, riskFilters]);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchOutbreakRisk();
+    }
+  }, [riskFilters]);
 
   useEffect(() => {
     if (activeTab === 'analytics' && selectedSpecies) {
@@ -110,21 +124,26 @@ const Analytics = () => {
   const fetchMLData = async () => {
     try {
       setLoading(true);
-      const [statsRes, categoriesRes, modelRes, patternsRes] = await Promise.all([
+      const [statsRes, categoriesRes, modelRes] = await Promise.all([
         getDiseaseStatistics(),
         getDiseaseCasesByCategory(),
-        getMLModelStatus(),
-        analyzeDiseasePatterns()
+        getMLModelStatus()
       ]);
 
       setStatistics(statsRes.data.statistics);
       setCategories(categoriesRes.data.categories);
       setModelStatus(modelRes.models.disease_prediction);
-      setPatterns(patternsRes.patterns);
-      
-      await fetchTrends('Dog');
+
+      try {
+        const patternsRes = await analyzeDiseasePatterns();
+        setPatterns(patternsRes.patterns);
+      } catch (patternsErr) {
+        setPatterns({ status: 'failed', reason: patternsErr.response?.data?.message || 'Pattern analysis unavailable' });
+      }
+
+      await fetchTrends(selectedSpecies);
       await fetchOutbreakRisk();
-      
+
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load ML data');
@@ -391,20 +410,24 @@ const Analytics = () => {
               <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem' }}></i>
               Disease Analytics
             </button>
-            <button
-              onClick={() => setActiveTab('sales')}
-              style={activeTab === 'sales' ? styles.tabActive : styles.tab}
-            >
-              <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
-              Sales Forecasting
-            </button>
-            <button
-              onClick={() => setActiveTab('inventory')}
-              style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
-            >
-              <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
-              Inventory Demand
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('sales')}
+                style={activeTab === 'sales' ? styles.tabActive : styles.tab}
+              >
+                <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
+                Sales Forecasting
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('inventory')}
+                style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
+              >
+                <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
+                Inventory Demand
+              </button>
+            )}
           </div>
         </div>
 
@@ -433,10 +456,7 @@ const Analytics = () => {
                 style={styles.filterInput}
               >
                 <option value="">All Species</option>
-                <option value="Dog">Dog</option>
-                <option value="Cat">Cat</option>
-                <option value="Rabbit">Rabbit</option>
-                <option value="Bird">Bird</option>
+                {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
@@ -543,7 +563,7 @@ const Analytics = () => {
         {/* Results Summary */}
         <div style={styles.infoBox}>
           <p style={styles.infoText}>
-            Showing <strong>{currentCases.length}</strong> of{' '}
+            Showing <strong>{startIndex + 1}–{Math.min(endIndex, filteredCases.length)}</strong> of{' '}
             <strong>{filteredCases.length}</strong> disease cases
             {totalCases > filteredCases.length && ` (${totalCases} total in database)`}
           </p>
@@ -708,7 +728,7 @@ const Analytics = () => {
         {activeTab === 'analytics' && (
           <>
             {/* Model Status Card */}
-            {modelStatus && (
+            {modelStatus && (isAdmin || (modelStatus.loaded && modelStatus.trained)) && (
               <div style={styles.modelStatusCard}>
                 <div style={styles.modelStatusHeader}>
                   <div>
@@ -821,34 +841,39 @@ const Analytics = () => {
             {/* Outbreak Risk Assessment */}
             {outbreakRisk && (
               <div style={styles.riskCard}>
-                <h3 style={styles.riskTitle}>Outbreak Risk Assessment</h3>
-                
-                <div style={styles.riskInputGrid}>
-                  <div>
-                    <label style={styles.filterLabel}>Species</label>
-                    <select
-                      value={riskFilters.species}
-                      onChange={(e) => setRiskFilters(prev => ({ ...prev, species: e.target.value }))}
-                      style={styles.filterInput}
-                    >
-                      <option value="">All Species</option>
-                      <option value="Dog">Dog</option>
-                      <option value="Cat">Cat</option>
-                      <option value="Rabbit">Rabbit</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={styles.filterLabel}>Days Lookback</label>
-                    <select
-                      value={riskFilters.days_lookback}
-                      onChange={(e) => setRiskFilters(prev => ({ ...prev, days_lookback: parseInt(e.target.value) }))}
-                      style={styles.filterInput}
-                    >
-                      <option value="30">Last 30 Days</option>
-                      <option value="60">Last 60 Days</option>
-                      <option value="90">Last 90 Days</option>
-                      <option value="180">Last 6 Months</option>
-                    </select>
+                <div style={styles.riskCardHeader}>
+                  <h3 style={styles.riskTitle}>
+                    <i className="fas fa-triangle-exclamation" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+                    Outbreak Risk Assessment
+                  </h3>
+                  <div style={styles.filterBar}>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Species</label>
+                      <select
+                        value={riskFilters.species}
+                        onChange={(e) => setRiskFilters(prev => ({ ...prev, species: e.target.value }))}
+                        style={styles.compactSelect}
+                      >
+                        <option value="">All Species</option>
+                        {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Time Period</label>
+                      <select
+                        value={riskFilters.days_lookback}
+                        onChange={(e) => setRiskFilters(prev => ({ ...prev, days_lookback: parseInt(e.target.value) }))}
+                        style={styles.compactSelect}
+                      >
+                        <option value="30">Last 30 days</option>
+                        <option value="60">Last 60 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="180">Last 6 months</option>
+                        <option value="365">Last 1 year</option>
+                        <option value="730">Last 2 years</option>
+                        <option value="1825">Last 5 years</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -926,7 +951,10 @@ const Analytics = () => {
                 {/* Overview - Disease Categories */}
                 {categories && (
                   <div>
-                    <h3 style={styles.analyticsCardTitle}>Disease Categories</h3>
+                    <h3 style={styles.analyticsCardTitle}>
+                      <i className="fas fa-layer-group" style={{ marginRight: '0.5rem', color: '#6366f1' }}></i>
+                      Disease Categories
+                    </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {categories.map((category, index) => (
                         <div key={index} style={styles.categoryCard}>
@@ -967,7 +995,10 @@ const Analytics = () => {
                     {/* ML Patterns */}
                     {patterns && (
                       <div style={{ marginTop: '2rem' }}>
-                        <h3 style={styles.analyticsCardTitle}>Disease Patterns (ML Clustering)</h3>
+                        <h3 style={styles.analyticsCardTitle}>
+                          <i className="fas fa-circle-nodes" style={{ marginRight: '0.5rem', color: '#9333ea' }}></i>
+                          Disease Patterns (ML Clustering)
+                        </h3>
                         {patterns.status === 'success' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
@@ -1022,9 +1053,9 @@ const Analytics = () => {
                               </div>
                             ))}
                           </div>
-                        ) : (
+                        ) : isAdmin ? (
                           <p style={{ color: '#4b5563' }}>{patterns.reason || 'Pattern analysis unavailable'}</p>
-                        )}
+                        ) : null}
                       </div>
                     )}
 
@@ -1032,16 +1063,20 @@ const Analytics = () => {
                     {trends && (
                       <div style={{ marginTop: '2rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          <h3 style={styles.analyticsCardTitle}>Disease Trends</h3>
-                          <select
-                            value={selectedSpecies}
-                            onChange={(e) => setSelectedSpecies(e.target.value)}
-                            style={styles.filterInput}
-                          >
-                            <option value="Dog">Dog</option>
-                            <option value="Cat">Cat</option>
-                            <option value="Rabbit">Rabbit</option>
-                          </select>
+                          <h3 style={styles.analyticsCardTitle}>
+                            <i className="fas fa-chart-line" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
+                            Disease Trends
+                          </h3>
+                          <div style={styles.filterBarGroup}>
+                            <label style={styles.filterBarLabel}>Species</label>
+                            <select
+                              value={selectedSpecies}
+                              onChange={(e) => setSelectedSpecies(e.target.value)}
+                              style={styles.compactSelect}
+                            >
+                              {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </div>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1138,7 +1173,7 @@ const Analytics = () => {
         )}
 
         {/* Sales Forecasting Tab */}
-        {activeTab === 'sales' && (
+        {isAdmin && activeTab === 'sales' && (
           <div style={styles.tabContentContainer}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -1302,7 +1337,7 @@ const Analytics = () => {
         )}
 
         {/* Inventory Demand Tab */}
-        {activeTab === 'inventory' && (
+        {isAdmin && activeTab === 'inventory' && (
           <div style={styles.tabContentContainer}>
             <div style={styles.card}>
               <div style={styles.cardHeader}>
@@ -1860,11 +1895,50 @@ const styles = {
     marginBottom: '1.5rem',
     border: '1px solid #e5e7eb',
   },
+  riskCardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
+    marginBottom: '1.25rem',
+  },
   riskTitle: {
     fontSize: '1.125rem',
     fontWeight: '600',
     color: '#1f2937',
-    marginBottom: '1rem',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  filterBar: {
+    display: 'flex',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  filterBarGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  filterBarLabel: {
+    fontSize: '0.68rem',
+    fontWeight: '700',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  compactSelect: {
+    padding: '0.38rem 0.6rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.82rem',
+    backgroundColor: 'white',
+    color: '#374151',
+    cursor: 'pointer',
+    outline: 'none',
+    minWidth: '130px',
   },
   riskInputGrid: {
     display: 'grid',

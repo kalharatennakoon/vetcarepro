@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getBillById, recordPayment } from '../services/billingService';
+import { sendInvoiceEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 
 const BillingDetail = () => {
@@ -23,6 +25,16 @@ const BillingDetail = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
+
+  const handleEmailInvoice = async () => {
+    try {
+      const res = await sendInvoiceEmail(id);
+      showSuccess(res.message || 'Invoice sent successfully');
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send invoice email');
+    }
+  };
 
   useEffect(() => {
     fetchBill();
@@ -234,8 +246,16 @@ const BillingDetail = () => {
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
-              <button 
-                onClick={() => window.print()} 
+              <button
+                onClick={handleEmailInvoice}
+                style={{ ...styles.printButton, backgroundColor: '#059669', borderColor: '#059669' }}
+              >
+                <i className="fas fa-envelope"></i> Email Invoice
+              </button>
+            )}
+            {(user?.role === 'admin' || user?.role === 'receptionist') && (
+              <button
+                onClick={() => window.print()}
                 style={styles.printButton}
               >
                 <i className="fas fa-print"></i> Print Invoice

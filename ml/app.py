@@ -9,6 +9,11 @@ import os
 import glob
 from dotenv import load_dotenv
 
+# DB connection for retraining check
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from config.db_connection import get_raw_db_connection as get_db_connection
+
 # Load environment variables
 load_dotenv()
 
@@ -238,6 +243,86 @@ def get_models_status():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ===========================================================================
+# RETRAINING CHECK ENDPOINT
+# ===========================================================================
+
+@app.route('/api/ml/retrain-check', methods=['GET'])
+def retrain_check():
+    """
+    Compare current record counts against records_at_last_train in model_metadata.
+    Returns a recommendation for each model if records have grown by >10% or >50 rows.
+    """
+    try:
+        conn = get_db_connection()
+        if not conn:
+            return jsonify({'success': False, 'error': 'DB connection failed'}), 500
+
+        cur = conn.cursor()
+
+        # Fetch stored metadata
+        cur.execute("SELECT model_name, last_trained_at, records_at_last_train, model_version FROM model_metadata")
+        rows = cur.fetchall()
+        metadata = {r[0]: {'last_trained_at': r[1], 'records_at_last_train': r[2] or 0, 'model_version': r[3]} for r in rows}
+
+        # Current record counts
+        cur.execute("SELECT COUNT(*) FROM disease_cases")
+        disease_count = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM billing WHERE payment_status IN ('fully_paid', 'partially_paid')")
+        billing_count = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM inventory_transactions WHERE transaction_type = 'dispensed'")
+        tx_count = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM billing_items WHERE item_id IS NOT NULL")
+        billing_items_count = cur.fetchone()[0]
+        inventory_count = tx_count if tx_count > 0 else billing_items_count
+
+        cur.close()
+        conn.close()
+
+        def should_retrain(current, stored):
+            if stored == 0:
+                return current > 0, current
+            growth = (current - stored) / stored
+            return (growth >= 0.10 or (current - stored) >= 50), current - stored
+
+        checks = {
+            'disease_prediction': (disease_count, metadata.get('disease_prediction', {})),
+            'sales_forecasting':  (billing_count,  metadata.get('sales_forecasting', {})),
+            'inventory_forecasting': (inventory_count, metadata.get('inventory_forecasting', {})),
+        }
+
+        recommendations = {}
+        for model_name, (current, meta) in checks.items():
+            stored = meta.get('records_at_last_train', 0)
+            needs_retrain, delta = should_retrain(current, stored)
+            recommendations[model_name] = {
+                'current_records': current,
+                'records_at_last_train': stored,
+                'new_records_since_train': delta,
+                'last_trained_at': meta.get('last_trained_at').isoformat() if meta.get('last_trained_at') else None,
+                'model_version': meta.get('model_version', 1),
+                'retrain_recommended': needs_retrain,
+                'reason': (
+                    f"{delta} new records (+{round((delta/stored)*100)}%) since last training"
+                    if stored > 0 and delta > 0
+                    else ('Never trained' if stored == 0 else 'Up to date')
+                )
+            }
+
+        any_recommended = any(r['retrain_recommended'] for r in recommendations.values())
+
+        return jsonify({
+            'success': True,
+            'retrain_recommended': any_recommended,
+            'models': recommendations
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ===========================================================================

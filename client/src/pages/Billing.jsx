@@ -304,9 +304,16 @@ const Billing = () => {
                 </tbody>
               </table>
 
+              {/* Results Summary */}
+              {bills.length > 0 && (
+                <div style={{ padding: '0.6rem 1rem', fontSize: '0.85rem', color: '#6b7280', borderTop: '1px solid #E5E7EB' }}>
+                  Showing <strong>{startIndex + 1}–{Math.min(endIndex, bills.length)}</strong> of <strong>{bills.length}</strong> records
+                </div>
+              )}
+
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div style={styles.paginationContainer}>
+                <div style={{ ...styles.paginationContainer, borderTop: 'none' }}>
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}

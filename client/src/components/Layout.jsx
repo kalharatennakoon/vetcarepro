@@ -192,15 +192,22 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-boxes"></i> Inventory
               </a>
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a 
-                  href="/reports" 
+              {user?.role === 'admin' && (
+                <a
+                  href="/reports"
                   style={getNavItemStyle('/reports')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
                 >
                   <i className="fas fa-chart-bar"></i> Reports
                 </a>
               )}
+              <a
+                href="/breeding-registry"
+                style={getNavItemStyle('/breeding-registry')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
+              >
+                <i className="fas fa-heart"></i> Breeding Registry
+              </a>
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                 <a
                   href="/analytics"

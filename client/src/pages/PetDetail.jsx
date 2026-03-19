@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPetById, deletePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
+import { getPetById, updatePet, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
+import { getLabReports, uploadLabReport, openLabReport, deleteLabReport, emailLabReport } from '../services/labReportService';
+import { sendCustomerEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 import ImageCropModal from '../components/ImageCropModal';
 
@@ -11,7 +14,16 @@ const PetDetail = () => {
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('info'); // info, medical, vaccinations
+  const [activeTab, setActiveTab] = useState('info'); // info, medical, vaccinations, labReports
+  const [labReports, setLabReports] = useState([]);
+  const [labReportsLoading, setLabReportsLoading] = useState(false);
+  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [uploadForm, setUploadForm] = useState({ report_name: '', report_type: '', notes: '', related_case_id: '' });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [emailModal, setEmailModal] = useState({ open: false, report: null });
+  const [emailMessage, setEmailMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -19,21 +31,40 @@ const PetDetail = () => {
   const [imageToCrop, setImageToCrop] = useState(null);
   const [success, setSuccess] = useState('');
   
+  const [showOwnerModal, setShowOwnerModal] = useState(false);
+  const [breedingAvailable, setBreedingAvailable] = useState(false);
+  const [breedingNotes, setBreedingNotes] = useState('');
+  const [savingBreeding, setSavingBreeding] = useState(false);
+  const [ownerEmailOpen, setOwnerEmailOpen] = useState(false);
+  const [ownerEmailForm, setOwnerEmailForm] = useState({ subject: '', message: '' });
+  const [ownerEmailSending, setOwnerEmailSending] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletability, setDeletability] = useState(null);
+  const [deactivateReason, setDeactivateReason] = useState('');
+  const [deceasedDate, setDeceasedDate] = useState('');
+  const [deactivateNote, setDeactivateNote] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showSuccess, showError, showWarning } = useNotification();
 
   useEffect(() => {
     fetchPetDetails();
     fetchMedicalHistory();
     fetchVaccinations();
+    fetchLabReports();
   }, [id]);
 
   const fetchPetDetails = async () => {
     try {
       setLoading(true);
       const response = await getPetById(id);
-      setPet(response.data.pet);
+      const p = response.data.pet;
+      setPet(p);
+      setBreedingAvailable(p.breeding_available || false);
+      setBreedingNotes(p.breeding_notes || '');
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load pet details');
@@ -61,16 +92,55 @@ const PetDetail = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this pet? This will also delete all associated medical records.')) {
-      return;
+  const openDeleteModal = async () => {
+    try {
+      const response = await checkPetDeletability(id);
+      setDeletability(response.data);
+      setDeactivateReason('');
+      setDeceasedDate('');
+      setDeactivateNote('');
+      setShowDeleteModal(true);
+    } catch (err) {
+      showError('Failed to check pet status');
     }
+  };
 
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
       await deletePet(id);
+      showSuccess(`${pet.pet_name} has been permanently deleted`);
       navigate('/pets');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete pet');
+      showError(err.response?.data?.message || 'Failed to delete pet');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleInactivate = async () => {
+    if (!deactivateReason) {
+      showWarning('Please select a reason for inactivation');
+      return;
+    }
+    if (deactivateReason === 'deceased' && !deceasedDate) {
+      showWarning('Please provide the date of death');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await inactivatePet(id, {
+        reason: deactivateReason,
+        deceased_date: deactivateReason === 'deceased' ? deceasedDate : undefined,
+        additional_note: deactivateNote || undefined
+      });
+      showSuccess(`${pet.pet_name} has been inactivated`);
+      setShowDeleteModal(false);
+      fetchPetDetails();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to inactivate pet');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -101,20 +171,6 @@ const PetDetail = () => {
     });
   };
 
-  const getSpeciesIcon = (species) => {
-    const icons = {
-      'Dog': 'fa-dog',
-      'Cat': 'fa-cat',
-      'Bird': 'fa-dove',
-      'Rabbit': 'fa-rabbit',
-      'Hamster': 'fa-hamster',
-      'Guinea Pig': 'fa-hamster',
-      'Fish': 'fa-fish',
-      'Reptile': 'fa-dragon',
-      'Other': 'fa-paw'
-    };
-    return icons[species] || 'fa-paw';
-  };
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -210,6 +266,113 @@ const PetDetail = () => {
     setError('');
   };
 
+  const fetchLabReports = async () => {
+    try {
+      setLabReportsLoading(true);
+      const res = await getLabReports(id);
+      setLabReports(res.reports || []);
+    } catch (err) {
+      console.error('Failed to fetch lab reports:', err);
+    } finally {
+      setLabReportsLoading(false);
+    }
+  };
+
+  const handleUploadFormChange = (e) => {
+    const { name, value } = e.target;
+    setUploadForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLabReportUpload = async (e) => {
+    e.preventDefault();
+    if (!uploadFile) { showError('Please select a file to upload'); return; }
+    if (!uploadForm.report_name || !uploadForm.report_type) { showError('Report name and type are required'); return; }
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('report_name', uploadForm.report_name);
+      formData.append('report_type', uploadForm.report_type);
+      if (uploadForm.notes) formData.append('notes', uploadForm.notes);
+      if (uploadForm.related_case_id) formData.append('related_case_id', uploadForm.related_case_id);
+      await uploadLabReport(id, formData);
+      showSuccess('Lab report uploaded successfully');
+      setShowUploadForm(false);
+      setUploadForm({ report_name: '', report_type: '', notes: '', related_case_id: '' });
+      setUploadFile(null);
+      fetchLabReports();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to upload lab report');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteLabReport = async (reportId, reportName) => {
+    if (!window.confirm(`Delete lab report "${reportName}"? This cannot be undone.`)) return;
+    try {
+      await deleteLabReport(reportId);
+      showSuccess('Lab report deleted');
+      fetchLabReports();
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to delete lab report');
+    }
+  };
+
+  const handleSaveBreeding = async () => {
+    try {
+      setSavingBreeding(true);
+      await updatePet(id, { breeding_available: breedingAvailable, breeding_notes: breedingNotes || null });
+      showSuccess(breedingAvailable ? 'Pet listed in breeding registry' : 'Pet removed from breeding registry');
+      fetchPetDetails();
+    } catch (err) {
+      showError('Failed to update breeding status');
+    } finally {
+      setSavingBreeding(false);
+    }
+  };
+
+  const handleSendOwnerEmail = async () => {
+    if (!ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) return;
+    setOwnerEmailSending(true);
+    try {
+      const res = await sendCustomerEmail({
+        customerId: pet.customer_id,
+        subject: ownerEmailForm.subject,
+        message: ownerEmailForm.message
+      });
+      showSuccess(res.message || 'Email sent successfully');
+      setOwnerEmailOpen(false);
+      setOwnerEmailForm({ subject: '', message: '' });
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setOwnerEmailSending(false);
+    }
+  };
+
+  const handleEmailReport = async () => {
+    try {
+      setSending(true);
+      const res = await emailLabReport(emailModal.report.report_id, emailMessage);
+      showSuccess(res.message || 'Lab report sent successfully');
+      setEmailModal({ open: false, report: null });
+      setEmailMessage('');
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleOpenReport = async (reportId, fileType) => {
+    try {
+      await openLabReport(reportId, fileType);
+    } catch (err) {
+      showError('Failed to open report file');
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -268,9 +431,10 @@ const PetDetail = () => {
           <button onClick={() => navigate(`/pets/${id}/edit`)} style={styles.editButton}>
             Edit Pet
           </button>
-          {user?.role === 'admin' && (
-            <button onClick={handleDelete} style={styles.deleteButton}>
-              Delete Pet
+          {(pet.is_active || user?.role === 'admin') && (
+            <button onClick={openDeleteModal} style={styles.deleteButton}>
+              <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+              {!pet.is_active ? 'Delete' : user?.role === 'admin' ? 'Delete / Inactivate' : 'Inactivate'}
             </button>
           )}
         </div>
@@ -339,6 +503,12 @@ const PetDetail = () => {
             onClick={() => setActiveTab('vaccinations')}
           >
             <i className="fas fa-syringe"></i> Vaccinations ({vaccinations.length})
+          </button>
+          <button
+            style={activeTab === 'labReports' ? styles.activeTab : styles.tab}
+            onClick={() => setActiveTab('labReports')}
+          >
+            <i className="fas fa-flask"></i> Lab Reports ({labReports.length})
           </button>
         </div>
 
@@ -451,30 +621,6 @@ const PetDetail = () => {
                 </div>
               </div>
 
-              {/* Owner Information */}
-              <div style={styles.section}>
-                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
-                <div style={styles.infoGrid}>
-                  <div style={styles.infoItem}>
-                    <span style={styles.infoLabel}>Owner:</span>
-                    <span 
-                      style={styles.ownerLink}
-                      onClick={() => navigate(`/customers/${pet.customer_id}`)}
-                    >
-                      {pet.owner_first_name && pet.owner_last_name 
-                        ? `${pet.owner_first_name} ${pet.owner_last_name}` 
-                        : 'Unknown'}
-                    </span>
-                  </div>
-                  {pet.owner_phone && (
-                    <div style={styles.infoItem}>
-                      <span style={styles.infoLabel}>Phone:</span>
-                      <span style={styles.infoValue}>{pet.owner_phone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
               {/* Medical Information */}
               <div style={styles.section}>
                 <h2 style={styles.sectionTitle}><i className="fas fa-pills"></i> Medical Information</h2>
@@ -510,6 +656,81 @@ const PetDetail = () => {
                     <p style={styles.notes}>{pet.notes}</p>
                   </div>
                 )}
+              </div>
+
+              {/* Breeding Registry */}
+              <div style={styles.section}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                  <h2 style={{ ...styles.sectionTitle, margin: 0 }}>
+                    <i className="fas fa-heart" style={{ marginRight: '0.4rem', color: '#ec4899' }}></i>
+                    Breeding Registry
+                  </h2>
+                  <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>Owner opt-in only</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', backgroundColor: breedingAvailable ? '#fdf2f8' : '#f9fafb', border: `1px solid ${breedingAvailable ? '#f9a8d4' : '#e5e7eb'}`, borderRadius: '8px', marginBottom: '0.85rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer', flex: 1, userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={breedingAvailable}
+                      onChange={e => setBreedingAvailable(e.target.checked)}
+                      style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#ec4899' }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '600', color: breedingAvailable ? '#be185d' : '#374151' }}>
+                        {breedingAvailable ? 'Listed in breeding registry' : 'Not listed in breeding registry'}
+                      </span>
+                      <p style={{ margin: 0, fontSize: '0.78rem', color: '#9ca3af' }}>
+                        {breedingAvailable ? 'Owner has opted in — this pet will appear in breeding searches.' : 'Check to list this pet for breeding enquiries (with owner consent).'}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+                {breedingAvailable && (
+                  <div style={{ marginBottom: '0.85rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Notes for enquiries <span style={{ color: '#9ca3af', fontWeight: '400', textTransform: 'none' }}>(optional)</span>
+                    </label>
+                    <textarea
+                      value={breedingNotes}
+                      onChange={e => setBreedingNotes(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Vaccinated, prefers same breed, contact after 6pm..."
+                      style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.875rem', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={handleSaveBreeding}
+                  disabled={savingBreeding}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1.1rem', backgroundColor: savingBreeding ? '#e5e7eb' : '#ec4899', color: savingBreeding ? '#9ca3af' : 'white', border: 'none', borderRadius: '7px', fontSize: '0.875rem', fontWeight: '600', cursor: savingBreeding ? 'not-allowed' : 'pointer' }}
+                >
+                  <i className={`fas fa-${savingBreeding ? 'circle-notch fa-spin' : 'floppy-disk'}`}></i>
+                  {savingBreeding ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+
+              {/* Owner Information */}
+              <div style={styles.section}>
+                <h2 style={styles.sectionTitle}><i className="fas fa-user"></i> Owner Information</h2>
+                <div style={styles.infoGrid}>
+                  <div style={styles.infoItem}>
+                    <span style={styles.infoLabel}>Owner:</span>
+                    <span
+                      style={styles.ownerLink}
+                      onClick={() => setShowOwnerModal(true)}
+                    >
+                      {pet.owner_first_name && pet.owner_last_name
+                        ? `${pet.owner_first_name} ${pet.owner_last_name}`
+                        : 'Unknown'}
+                    </span>
+                  </div>
+                  {pet.owner_phone && (
+                    <div style={styles.infoItem}>
+                      <span style={styles.infoLabel}>Phone:</span>
+                      <span style={styles.infoValue}>{pet.owner_phone}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -555,7 +776,7 @@ const PetDetail = () => {
                         <p><strong>Reason:</strong> {record.chief_complaint || 'N/A'}</p>
                         {record.diagnosis && <p><strong>Diagnosis:</strong> {record.diagnosis}</p>}
                         {record.treatment && <p><strong>Treatment:</strong> {record.treatment}</p>}
-                        {record.veterinarian_name && <p><strong>Vet:</strong> {record.veterinarian_name}</p>}
+                        {record.veterinarian_name && <p><strong>Vet:</strong> Dr. {record.veterinarian_name}</p>}
                       </div>
                     </div>
                   ))}
@@ -599,9 +820,523 @@ const PetDetail = () => {
               )}
             </div>
           )}
+          {activeTab === 'labReports' && (
+            <div style={styles.section}>
+              {/* Header */}
+              <div style={styles.sectionHeader}>
+                <h2 style={styles.sectionTitle}>
+                  <i className="fas fa-flask" style={{ marginRight: '0.5rem', color: '#6366f1' }}></i>
+                  Lab Reports
+                </h2>
+                <button style={styles.addRecordButton} onClick={() => setShowUploadForm(prev => !prev)}>
+                  <i className={`fas fa-${showUploadForm ? 'times' : 'upload'}`} style={{ marginRight: '0.4rem' }}></i>
+                  {showUploadForm ? 'Cancel' : 'Upload Report'}
+                </button>
+              </div>
+
+              {/* Upload Form */}
+              {showUploadForm && (
+                <form onSubmit={handleLabReportUpload} style={styles.labUploadForm}>
+                  <div style={styles.labFormGrid}>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>Report Name <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input
+                        type="text"
+                        name="report_name"
+                        value={uploadForm.report_name}
+                        onChange={handleUploadFormChange}
+                        placeholder="e.g. Blood Test — March 2026"
+                        style={styles.labFormInput}
+                        required
+                      />
+                    </div>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>Report Type <span style={{ color: '#dc2626' }}>*</span></label>
+                      <select name="report_type" value={uploadForm.report_type} onChange={handleUploadFormChange} style={styles.labFormInput} required>
+                        <option value="">Select type...</option>
+                        <option value="blood_test">Blood Test</option>
+                        <option value="kidney_panel">Kidney Panel</option>
+                        <option value="urinalysis">Urinalysis</option>
+                        <option value="x_ray">X-Ray</option>
+                        <option value="ultrasound">Ultrasound</option>
+                        <option value="cytology">Cytology</option>
+                        <option value="biopsy">Biopsy</option>
+                        <option value="culture">Culture</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>File <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        onChange={e => setUploadFile(e.target.files[0] || null)}
+                        style={styles.labFormInput}
+                        required
+                      />
+                      <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.2rem' }}>JPEG, PNG, WebP or PDF — max 10 MB</span>
+                    </div>
+                    <div style={styles.labFormGroup}>
+                      <label style={styles.labFormLabel}>Notes (optional)</label>
+                      <input
+                        type="text"
+                        name="notes"
+                        value={uploadForm.notes}
+                        onChange={handleUploadFormChange}
+                        placeholder="Any relevant notes..."
+                        style={styles.labFormInput}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button type="submit" disabled={uploading} style={styles.labUploadBtn}>
+                      <i className="fas fa-upload" style={{ marginRight: '0.4rem' }}></i>
+                      {uploading ? 'Uploading...' : 'Upload Report'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Report List */}
+              {labReportsLoading ? (
+                <div style={styles.emptyState}><p>Loading lab reports...</p></div>
+              ) : labReports.length === 0 ? (
+                <div style={styles.emptyState}>
+                  <i className="fas fa-file-medical" style={{ fontSize: '2.5rem', color: '#d1d5db', marginBottom: '0.75rem', display: 'block' }}></i>
+                  <p style={{ margin: 0 }}>No lab reports uploaded yet</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {labReports.map(report => (
+                    <div key={report.report_id} style={styles.labReportCard}>
+                      <div style={styles.labReportIcon}>
+                        <i className={`fas fa-${report.file_type === 'pdf' ? 'file-pdf' : 'file-image'}`}
+                           style={{ fontSize: '1.5rem', color: report.file_type === 'pdf' ? '#ef4444' : '#3b82f6' }}></i>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span style={styles.labReportName}>{report.report_name}</span>
+                          <span style={styles.labReportTypeBadge}>{report.report_type.replace('_', ' ')}</span>
+                        </div>
+                        <div style={styles.labReportMeta}>
+                          <span><i className="fas fa-calendar-alt" style={{ marginRight: '0.3rem' }}></i>{formatDate(report.created_at)}</span>
+                          <span><i className="fas fa-user" style={{ marginRight: '0.3rem' }}></i>{report.uploaded_by_name || 'Unknown'}</span>
+                          {report.related_disease_name && (
+                            <span><i className="fas fa-link" style={{ marginRight: '0.3rem' }}></i>{report.related_disease_name}</span>
+                          )}
+                        </div>
+                        {report.notes && <p style={styles.labReportNotes}>{report.notes}</p>}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
+                        <button onClick={() => handleOpenReport(report.report_id, report.file_type)} style={styles.labViewBtn}>
+                          <i className="fas fa-eye" style={{ marginRight: '0.3rem' }}></i>View
+                        </button>
+                        <button onClick={() => { setEmailModal({ open: true, report }); setEmailMessage(''); }} style={styles.labEmailBtn}>
+                          <i className="fas fa-envelope" style={{ marginRight: '0.3rem' }}></i>Email
+                        </button>
+                        {pet?.owner_phone && (
+                          <button
+                            onClick={() => {
+                              const d = (pet.owner_phone || '').replace(/\D/g, '');
+                              const n = d.startsWith('0') ? '94' + d.slice(1) : d;
+                              const msg = encodeURIComponent(`Hi, please find the lab report "${report.report_name}" for ${pet.pet_name} from Pro Pet Animal Hospital.`);
+                              window.open(`https://wa.me/${n}?text=${msg}`, '_blank');
+                            }}
+                            style={{ ...styles.labEmailBtn, backgroundColor: '#25d366', color: 'white' }}
+                          >
+                            <i className="fab fa-whatsapp" style={{ marginRight: '0.3rem' }}></i>WhatsApp
+                          </button>
+                        )}
+                        {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                          <button onClick={() => handleDeleteLabReport(report.report_id, report.report_name)} style={styles.labDeleteBtn}>
+                            <i className="fas fa-trash" style={{ marginRight: '0.3rem' }}></i>Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
+
+    {/* Delete / Inactivate Modal */}
+    {showDeleteModal && deletability && (
+      <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+        <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+              {deletability.activeAppointments > 0
+                ? `Cannot ${user?.role === 'admin' ? 'Delete or Inactivate' : 'Inactivate'} Pet`
+                : (!pet.is_active && deletability.hasRelatedData)
+                ? 'Cannot Delete Pet'
+                : (deletability.hasRelatedData || user?.role !== 'admin')
+                ? 'Inactivate Pet'
+                : 'Permanently Delete Pet'}
+            </h3>
+            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={{ padding: '1.5rem' }}>
+            {deletability.activeAppointments > 0 ? (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    <i className="fas fa-ban" style={{ marginRight: '0.5rem' }}></i>
+                    {pet.pet_name} has {deletability.activeAppointments} active appointment(s).
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    Please cancel or complete all active appointments before {user?.role === 'admin' ? 'deleting or inactivating' : 'inactivating'} this pet from the system.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal}>Close</button>
+                </div>
+              </>
+            ) : (!pet.is_active && deletability.hasRelatedData) ? (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>
+                    <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                    {pet.pet_name} is already inactive and has existing records in the system.
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#78350f', fontSize: '0.875rem' }}>
+                    Permanent deletion is not possible. Records: {deletability.counts.appointments} appointment(s), {deletability.counts.medicalRecords} medical record(s), {deletability.counts.vaccinations} vaccination(s), {deletability.counts.billingRecords} billing record(s).
+                  </p>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal}>Close</button>
+                </div>
+              </>
+            ) : (deletability.hasRelatedData || user?.role !== 'admin') ? (
+              <>
+                {deletability.hasRelatedData && user?.role === 'admin' && (
+                  <div style={{ padding: '1rem', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                    <p style={{ margin: 0, color: '#92400e', fontWeight: '600' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+                      {pet.pet_name} has existing records and cannot be permanently deleted.
+                    </p>
+                    <p style={{ margin: '0.5rem 0 0', color: '#78350f', fontSize: '0.875rem' }}>
+                      Records: {deletability.counts.appointments} appointment(s), {deletability.counts.medicalRecords} medical record(s), {deletability.counts.vaccinations} vaccination(s), {deletability.counts.billingRecords} billing record(s).
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => { setDeactivateReason(e.target.value); setDeceasedDate(''); }}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="no_longer_patient">No longer a patient</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                {deactivateReason === 'deceased' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={styles.modalLabel}>Date of death <span style={{ color: '#dc2626' }}>*</span></label>
+                    <input
+                      type="date"
+                      value={deceasedDate}
+                      onChange={e => setDeceasedDate(e.target.value)}
+                      max={new Date().toISOString().split('T')[0]}
+                      style={styles.modalInput}
+                    />
+                  </div>
+                )}
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleInactivate} style={styles.inactivateBtn} disabled={deleting}>
+                    {deleting ? 'Inactivating...' : 'Inactivate Pet'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ padding: '1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', marginBottom: '1.25rem' }}>
+                  <p style={{ margin: 0, color: '#991b1b', fontWeight: '600' }}>
+                    Permanently delete {pet.pet_name}?
+                  </p>
+                  <p style={{ margin: '0.5rem 0 0', color: '#7f1d1d', fontSize: '0.875rem' }}>
+                    This pet has no records in the system. This action is irreversible.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select
+                    value={deactivateReason}
+                    onChange={e => setDeactivateReason(e.target.value)}
+                    style={styles.modalInput}
+                  >
+                    <option value="">Select reason...</option>
+                    <option value="incorrectly_created">Incorrectly created</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="no_longer_patient">No longer a patient</option>
+                    <option value="transferred">Transferred to another clinic</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={styles.modalLabel}>Additional note (optional)</label>
+                  <textarea
+                    value={deactivateNote}
+                    onChange={e => setDeactivateNote(e.target.value)}
+                    placeholder="Any additional details..."
+                    rows={2}
+                    style={{ ...styles.modalInput, resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button onClick={() => setShowDeleteModal(false)} style={styles.cancelBtnModal} disabled={deleting}>Cancel</button>
+                  <button onClick={handleDelete} style={styles.deleteConfirmBtn} disabled={deleting || !deactivateReason}>
+                    {deleting ? 'Deleting...' : 'Permanently Delete'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    {/* Email Lab Report Modal */}
+    {emailModal.open && emailModal.report && (
+      <div style={styles.ownerModalOverlay} onClick={() => setEmailModal({ open: false, report: null })}>
+        <div style={styles.ownerModal} onClick={e => e.stopPropagation()}>
+          <div style={styles.ownerModalHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={{ ...styles.ownerModalAvatar, backgroundColor: '#f0fdf4', border: '2px solid #bbf7d0' }}>
+                <i className="fas fa-envelope" style={{ color: '#16a34a', fontSize: '1rem' }}></i>
+              </div>
+              <div>
+                <h3 style={styles.ownerModalName}>Email Lab Report</h3>
+                <span style={styles.ownerModalId}>{emailModal.report.report_name}</span>
+              </div>
+            </div>
+            <button onClick={() => setEmailModal({ open: false, report: null })} style={styles.ownerModalClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={styles.ownerModalBody}>
+            <div style={styles.ownerModalRow}>
+              <span style={styles.ownerModalLabel}>
+                <i className="fas fa-user" style={styles.ownerModalIcon}></i>
+                Recipient
+              </span>
+              <span style={styles.ownerModalValue}>
+                {pet?.owner_first_name} {pet?.owner_last_name}
+                {pet?.owner_email && <span style={{ color: '#6b7280', fontWeight: '400', fontSize: '0.85rem' }}> — {pet.owner_email}</span>}
+              </span>
+            </div>
+            <div style={styles.ownerModalRow}>
+              <span style={styles.ownerModalLabel}>
+                <i className="fas fa-file" style={styles.ownerModalIcon}></i>
+                Report
+              </span>
+              <span style={styles.ownerModalValue}>
+                {emailModal.report.report_name}
+                <span style={{ marginLeft: '0.4rem', fontSize: '0.78rem', background: '#ede9fe', color: '#5b21b6', padding: '0.1rem 0.45rem', borderRadius: '9999px', fontWeight: '600' }}>
+                  {emailModal.report.report_type.replace(/_/g, ' ')}
+                </span>
+              </span>
+            </div>
+            <div style={styles.ownerModalRow}>
+              <label style={styles.ownerModalLabel}>
+                <i className="fas fa-comment" style={styles.ownerModalIcon}></i>
+                Optional message
+              </label>
+              <textarea
+                value={emailMessage}
+                onChange={e => setEmailMessage(e.target.value)}
+                rows={4}
+                placeholder="Add a note for the owner (e.g. results summary, next steps)..."
+                style={{ width: '100%', padding: '0.55rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.88rem', color: '#111827', resize: 'vertical', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          <div style={styles.ownerModalFooter}>
+            <button
+              onClick={handleEmailReport}
+              disabled={sending || !pet?.owner_email}
+              style={{ ...styles.ownerModalFullBtn, backgroundColor: sending ? '#15803d' : '#16a34a', color: 'white', border: 'none', opacity: (!pet?.owner_email) ? 0.5 : 1, cursor: (!pet?.owner_email || sending) ? 'not-allowed' : 'pointer' }}
+            >
+              <i className={`fas fa-${sending ? 'circle-notch fa-spin' : 'paper-plane'}`} style={{ marginRight: '0.4rem' }}></i>
+              {sending ? 'Sending...' : 'Send to Owner'}
+            </button>
+            {!pet?.owner_email && (
+              <p style={{ textAlign: 'center', color: '#dc2626', fontSize: '0.8rem', margin: '0.5rem 0 0' }}>
+                Owner has no email address on file.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Owner Details Modal */}
+    {showOwnerModal && pet && (
+      <div style={styles.ownerModalOverlay} onClick={() => setShowOwnerModal(false)}>
+        <div style={styles.ownerModal} onClick={e => e.stopPropagation()}>
+          <div style={styles.ownerModalHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <div style={styles.ownerModalAvatar}>
+                <i className="fas fa-user" style={{ color: '#2563eb', fontSize: '1.1rem' }}></i>
+              </div>
+              <div>
+                <h3 style={styles.ownerModalName}>
+                  {pet.owner_first_name} {pet.owner_last_name}
+                </h3>
+                <span style={styles.ownerModalId}>ID: {pet.customer_id}</span>
+              </div>
+            </div>
+            <button onClick={() => setShowOwnerModal(false)} style={styles.ownerModalClose}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div style={styles.ownerModalBody}>
+            {pet.owner_phone && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-phone" style={styles.ownerModalIcon}></i>
+                  Phone
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_phone}</span>
+              </div>
+            )}
+            {pet.owner_email && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-envelope" style={styles.ownerModalIcon}></i>
+                  Email
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_email}</span>
+              </div>
+            )}
+            {pet.owner_address && (
+              <div style={styles.ownerModalRow}>
+                <span style={styles.ownerModalLabel}>
+                  <i className="fas fa-location-dot" style={styles.ownerModalIcon}></i>
+                  Address
+                </span>
+                <span style={styles.ownerModalValue}>{pet.owner_address}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ ...styles.ownerModalFooter, display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            {pet.owner_phone && (
+              <button
+                onClick={() => { const d = (pet.owner_phone || '').replace(/\D/g, ''); const n = d.startsWith('0') ? '94' + d.slice(1) : d; window.open(`https://wa.me/${n}`, '_blank'); }}
+                style={{ ...styles.ownerModalFullBtn, backgroundColor: '#25d366', color: 'white', border: 'none' }}
+              >
+                <i className="fab fa-whatsapp" style={{ marginRight: '0.4rem' }}></i>
+                WhatsApp
+              </button>
+            )}
+            <button
+              onClick={() => { setShowOwnerModal(false); setOwnerEmailForm({ subject: '', message: '' }); setOwnerEmailOpen(true); }}
+              disabled={!pet.owner_email}
+              title={!pet.owner_email ? 'No email address on file' : ''}
+              style={{ ...styles.ownerModalFullBtn, backgroundColor: '#2563eb', color: 'white', border: 'none', opacity: !pet.owner_email ? 0.5 : 1, cursor: !pet.owner_email ? 'not-allowed' : 'pointer' }}
+            >
+              <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
+              Send Email
+            </button>
+            <button onClick={() => { setShowOwnerModal(false); navigate(`/customers/${pet.customer_id}`); }} style={styles.ownerModalFullBtn}>
+              <i className="fas fa-arrow-up-right-from-square" style={{ marginRight: '0.4rem' }}></i>
+              Full Profile
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Owner Email Compose Modal */}
+    {ownerEmailOpen && pet && (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        onClick={() => setOwnerEmailOpen(false)}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '2rem', width: '100%', maxWidth: '520px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
+          onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1f2937' }}>
+              <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>
+              Send Email to {pet.owner_first_name} {pet.owner_last_name}
+            </h3>
+            <button onClick={() => setOwnerEmailOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}>
+              <i className="fas fa-xmark"></i>
+            </button>
+          </div>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <i className="fas fa-circle-info" style={{ marginRight: '0.4rem' }}></i>
+            Sending to: <strong>{pet.owner_email}</strong>
+          </p>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Subject</label>
+            <input
+              type="text"
+              value={ownerEmailForm.subject}
+              onChange={e => setOwnerEmailForm(f => ({ ...f, subject: e.target.value }))}
+              placeholder="Email subject"
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Message</label>
+            <textarea
+              value={ownerEmailForm.message}
+              onChange={e => setOwnerEmailForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Type your message here..."
+              rows={6}
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setOwnerEmailOpen(false)}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem' }}>
+              Cancel
+            </button>
+            <button
+              onClick={handleSendOwnerEmail}
+              disabled={ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: 'none', background: (ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) ? '#9ca3af' : '#2563eb', color: '#fff', cursor: (ownerEmailSending || !ownerEmailForm.subject.trim() || !ownerEmailForm.message.trim()) ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
+              {ownerEmailSending
+                ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '0.4rem' }}></i>Sending...</>
+                : <><i className="fas fa-paper-plane" style={{ marginRight: '0.4rem' }}></i>Send Email</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </Layout>
   );
 };
@@ -1065,6 +1800,327 @@ const styles = {
     fontSize: '0.75rem',
     color: '#6B7280',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    width: '90%',
+    maxWidth: '480px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.25rem 1.5rem',
+    borderBottom: '1px solid #e5e7eb',
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  modalCloseButton: {
+    background: 'none',
+    border: 'none',
+    fontSize: '1.25rem',
+    color: '#6b7280',
+    cursor: 'pointer',
+    padding: '0.25rem',
+  },
+  modalLabel: {
+    display: 'block',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '0.5rem',
+  },
+  modalInput: {
+    width: '100%',
+    padding: '0.625rem 0.75rem',
+    fontSize: '0.9375rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    backgroundColor: '#fff',
+  },
+  cancelBtnModal: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  inactivateBtn: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#d97706',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  deleteConfirmBtn: {
+    padding: '0.625rem 1.25rem',
+    backgroundColor: '#dc2626',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  labUploadForm: {
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    borderRadius: '10px',
+    padding: '1.25rem',
+    marginBottom: '1.5rem',
+  },
+  labFormGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '0.9rem',
+  },
+  labFormGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
+  },
+  labFormLabel: {
+    fontSize: '0.78rem',
+    fontWeight: '600',
+    color: '#374151',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  labFormInput: {
+    padding: '0.45rem 0.65rem',
+    border: '1px solid #d1d5db',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    backgroundColor: 'white',
+    outline: 'none',
+  },
+  labUploadBtn: {
+    padding: '0.55rem 1.25rem',
+    backgroundColor: '#6366f1',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  labReportCard: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
+    padding: '1rem 1.25rem',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+  },
+  labReportIcon: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    backgroundColor: '#f3f4f6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  labReportName: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: '#111827',
+  },
+  labReportTypeBadge: {
+    fontSize: '0.7rem',
+    fontWeight: '600',
+    color: '#6366f1',
+    backgroundColor: '#eef2ff',
+    padding: '0.15rem 0.5rem',
+    borderRadius: '9999px',
+    textTransform: 'capitalize',
+  },
+  labReportMeta: {
+    display: 'flex',
+    gap: '1rem',
+    fontSize: '0.78rem',
+    color: '#6b7280',
+    marginTop: '0.25rem',
+    flexWrap: 'wrap',
+  },
+  labReportNotes: {
+    fontSize: '0.8rem',
+    color: '#6b7280',
+    margin: '0.35rem 0 0',
+  },
+  labViewBtn: {
+    padding: '0.4rem 0.85rem',
+    backgroundColor: '#3b82f6',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+  },
+  labEmailBtn: {
+    padding: '0.4rem 0.85rem',
+    backgroundColor: '#f0fdf4',
+    color: '#16a34a',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+  },
+  labDeleteBtn: {
+    padding: '0.4rem 0.85rem',
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
+  },
+  ownerModalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '1rem',
+  },
+  ownerModal: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+    width: '100%',
+    maxWidth: '400px',
+    overflow: 'hidden',
+  },
+  ownerModalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.25rem 1.5rem',
+    borderBottom: '1px solid #f3f4f6',
+  },
+  ownerModalAvatar: {
+    width: '44px',
+    height: '44px',
+    borderRadius: '50%',
+    backgroundColor: '#eff6ff',
+    border: '2px solid #bfdbfe',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  ownerModalName: {
+    fontSize: '1.05rem',
+    fontWeight: '700',
+    color: '#111827',
+    margin: 0,
+  },
+  ownerModalId: {
+    fontSize: '0.78rem',
+    color: '#9ca3af',
+    fontWeight: '500',
+  },
+  ownerModalClose: {
+    background: 'none',
+    border: 'none',
+    color: '#9ca3af',
+    fontSize: '1.1rem',
+    cursor: 'pointer',
+    padding: '0.25rem',
+    lineHeight: 1,
+  },
+  ownerModalBody: {
+    padding: '1.25rem 1.5rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.85rem',
+  },
+  ownerModalRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem',
+  },
+  ownerModalLabel: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+  },
+  ownerModalIcon: {
+    color: '#9ca3af',
+    fontSize: '0.75rem',
+  },
+  ownerModalValue: {
+    fontSize: '0.95rem',
+    color: '#111827',
+    fontWeight: '500',
+  },
+  ownerModalFooter: {
+    padding: '1rem 1.5rem',
+    borderTop: '1px solid #f3f4f6',
+  },
+  ownerModalFullBtn: {
+    padding: '0.4rem 0.85rem',
+    backgroundColor: 'white',
+    color: '#2563eb',
+    border: '1px solid #bfdbfe',
+    borderRadius: '7px',
+    fontSize: '0.8rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    whiteSpace: 'nowrap',
   },
 };
 

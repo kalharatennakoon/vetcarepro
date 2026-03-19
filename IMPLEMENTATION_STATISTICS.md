@@ -39,103 +39,155 @@
   - App Routing: 100% ✅
   - Navigation Integration: 100% ✅
 
+**Veterinarian-Suggested Enhancements: 100% ✅ - COMPLETE**
+- Lab Report Management: 100% ✅
+- Lab Report Email to Owner: 100% ✅
+- Customer Email: 100% ✅
+- Customer-Only Records (No Pet Required): 100% ✅
+- Disease Case Follow-up Tracking: 100% ✅
+- Pet Breeding Registry: 100% ✅
+
 ---
 
 ## FULLY IMPLEMENTED MODULES
 
 ### 1. User Management & Authentication
-✅ User login/logout with JWT authentication  
-✅ Role-based access control (Admin, Veterinarian, Receptionist)  
-✅ User CRUD operations  
-✅ Password hashing and secure authentication  
-✅ User profile management with image upload  
+✅ User login/logout with JWT authentication
+✅ Role-based access control (Admin, Veterinarian, Receptionist)
+✅ User CRUD operations
+✅ Password hashing and secure authentication
+✅ User profile management with image upload
 ✅ Profile image cropping functionality
 
 ### 2. Customer Management
-✅ Customer registration and profile management  
-✅ Customer details (contact info, emergency contacts, NIC)  
-✅ Customer search and filtering  
-✅ Customer-pet relationship tracking  
+✅ Customer registration and profile management
+✅ Customer details (contact info, emergency contacts, NIC)
+✅ Customer search and filtering
+✅ Customer-pet relationship tracking
 ✅ Customer detail view with associated pets
+✅ Customer-only records — customers without pets (e.g., accessory or pet food buyers)
+✅ Customer email — send emails directly to customers from the system
+✅ Optional pet registration at time of customer creation (checkbox opt-in)
 
 ### 3. Pet Management
-✅ Pet registration with detailed profiles  
-✅ Pet medical information (allergies, special needs, insurance)  
-✅ Pet search and filtering by species  
-✅ Pet detail view  
-✅ Pet medical history viewing  
-✅ Pet vaccination history tracking  
-✅ Age calculation and weight tracking  
+✅ Pet registration with detailed profiles
+✅ Pet medical information (allergies, special needs, insurance)
+✅ Pet search and filtering by species
+✅ Pet detail view
+✅ Pet medical history viewing
+✅ Pet vaccination history tracking
+✅ Age calculation and weight tracking
 ✅ Pet image upload and management
+✅ Lab report upload and management per pet
+✅ Lab report email to owner (with file attachment)
+✅ Owner info popup with send email option from pet detail page
+✅ Breeding Registry opt-in toggle and notes per pet
 
 ### 4. Appointment Management
-✅ Appointment scheduling with conflict detection  
-✅ Appointment types (checkup, vaccination, surgery, emergency, follow-up)  
-✅ Appointment status tracking (scheduled, confirmed, in_progress, completed, cancelled, no_show)  
-✅ Veterinarian assignment  
-✅ Duration and estimated cost tracking  
-✅ Appointment filtering by date, status, veterinarian  
-✅ Calendar view with monthly navigation  
-✅ Status transition workflows
+✅ Appointment scheduling with conflict detection
+✅ Appointment types (checkup, vaccination, surgery, emergency, follow-up)
+✅ Appointment status tracking (scheduled, confirmed, in_progress, completed, cancelled, no_show)
+✅ Veterinarian assignment
+✅ Duration and estimated cost tracking
+✅ Appointment filtering by date, status, veterinarian
+✅ Calendar view with monthly navigation
+✅ Status transition workflows with contextual action buttons
+✅ Appointment detail popup from calendar view (status-aware action buttons)
+✅ Appointment confirmation email to owner
 
 ### 5. Medical Records Management
-✅ Complete EMR (Electronic Medical Records) system  
-✅ Medical record creation and editing  
-✅ Chief complaint, symptoms, diagnosis tracking  
-✅ Treatment and prescription recording  
-✅ Lab tests and results  
-✅ Vital signs tracking (weight, temperature, heart rate, respiratory rate)  
-✅ Follow-up tracking  
-✅ Pet medical history retrieval  
-✅ Medical record search and filtering  
+✅ Complete EMR (Electronic Medical Records) system
+✅ Medical record creation and editing
+✅ Chief complaint, symptoms, diagnosis tracking
+✅ Treatment and prescription recording
+✅ Lab tests and results
+✅ Vital signs tracking (weight, temperature, heart rate, respiratory rate)
+✅ Follow-up tracking
+✅ Pet medical history retrieval
+✅ Medical record search and filtering
 ✅ Veterinarian assignment to records
+✅ Related appointment linking (completed appointments only)
 
-### 6. Inventory Management
-✅ Inventory item management (medicines, vaccines, accessories, supplies)  
-✅ Stock level tracking  
-✅ Low stock alerts  
-✅ Expiry date tracking and alerts  
-✅ Category-based organization (medicine, vaccine, accessory, surgical_supply, diagnostic_equipment, pet_food, supplements)  
-✅ Supplier information  
-✅ Unit cost and selling price tracking  
-✅ Reorder level management  
+### 6. Disease Case Management & Tracking
+✅ Disease case creation with full clinical fields
+✅ Disease categories (infectious, parasitic, metabolic, genetic, immune_mediated, neoplastic, traumatic, nutritional)
+✅ Severity levels (mild, moderate, severe, critical)
+✅ Outcome tracking (recovered, ongoing_treatment, chronic, deceased, transferred)
+✅ Contagious flag with transmission method
+✅ Region/location tracking for outbreak analysis
+✅ Treatment duration tracking
+✅ Follow-up required flag with follow-up type, date, and notes
+✅ Lab reports linked to specific disease cases
+✅ View Pet Profile button from disease case detail
+✅ Disease case edit with success notification
+✅ Snake bite → kidney disease follow-up scenario fully supported
+
+### 7. Lab Report Management
+✅ Lab report upload per pet (PDF, image files)
+✅ Lab reports linked to specific disease cases (related_case_id)
+✅ Lab report viewing (authenticated blob URL)
+✅ Lab report deletion
+✅ Lab report email to owner with file attachment and optional message
+✅ Email success notification showing owner name and email
+✅ Lab reports accessible from both Pet Detail page and Disease Case Detail page
+
+### 8. Breeding Registry
+✅ Per-pet opt-in toggle (breeding_available boolean)
+✅ Breeding notes per pet
+✅ Breeding Registry page with search and filter (species, gender, breed)
+✅ Pet cards with gender badge, age, color, neutered warning
+✅ Contact Owner modal (phone, city, disclaimer)
+✅ Navigate to Pet Profile from registry
+✅ Admin/vet-only access enforced
+
+### 9. Inventory Management
+✅ Inventory item management (medicines, vaccines, accessories, supplies)
+✅ Stock level tracking
+✅ Low stock alerts
+✅ Expiry date tracking and alerts
+✅ Category-based organization (medicine, vaccine, accessory, surgical_supply, diagnostic_equipment, pet_food, supplements)
+✅ Supplier information
+✅ Unit cost and selling price tracking
+✅ Reorder level management
 ✅ Markup percentage calculation
 
-### 7. Billing Management
-✅ Bill creation with line items  
-✅ Multiple payment methods (cash, card, bank transfer)  
-✅ Tax and discount calculations  
-✅ Bill status tracking (paid, pending, overdue)  
-✅ Bill detail view and printing  
-✅ Payment recording  
-✅ Bill number generation  
+### 10. Billing Management
+✅ Bill creation with line items
+✅ Multiple payment methods (cash, card, bank transfer)
+✅ Tax and discount calculations
+✅ Bill status tracking (paid, pending, overdue)
+✅ Bill detail view and printing
+✅ Payment recording
+✅ Bill number generation
 ✅ Customer billing history
 
-### 8. Vaccination Management
-✅ Vaccination records with batch tracking  
-✅ Next due date tracking  
-✅ Vaccination history by pet  
-✅ Vaccine type and manufacturer tracking  
+### 11. Vaccination Management
+✅ Vaccination records with batch tracking
+✅ Next due date tracking
+✅ Vaccination history by pet
+✅ Vaccine type and manufacturer tracking
 ✅ Adverse reaction recording
 
-### 9. Dashboard & UI
-✅ Professional welcome page with login  
-✅ Main dashboard with statistics  
-✅ Navigation and layout components  
-✅ Responsive design  
-✅ Role-based UI access  
-✅ Mobile-friendly interface  
-✅ Recent appointments display  
+### 12. Dashboard & UI
+✅ Professional welcome page with login
+✅ Main dashboard with statistics
+✅ Navigation and layout components
+✅ Responsive design
+✅ Role-based UI access
+✅ Mobile-friendly interface
+✅ Recent appointments display
 ✅ Quick action buttons
 
-### 10. Database Schema
-✅ Complete relational database design  
-✅ All core tables implemented (users, customers, pets, appointments, medical_records, vaccinations, inventory, billing, billing_items)  
-✅ Support tables for analytics (daily_sales_summary, disease_cases)  
-✅ Proper indexing and relationships  
+### 13. Database Schema
+✅ Complete relational database design
+✅ All core tables implemented (users, customers, pets, appointments, medical_records, vaccinations, inventory, billing, billing_items)
+✅ Support tables for analytics (daily_sales_summary, disease_cases, lab_reports)
+✅ Breeding registry fields (breeding_available, breeding_notes) on pets table
+✅ Disease case follow-up fields (requires_followup, followup_type, next_followup_date, followup_notes)
+✅ Proper indexing and relationships
 ✅ Audit trail support
 
-### 11. Analytics & Reporting
+### 14. Analytics & Reporting
 **✅ Financial Reports (100% Complete)**
 - ✅ Monthly income report generation
 - ✅ Annual income report generation
@@ -162,7 +214,7 @@
 - ✅ Printable report formats
 - ✅ Chart visualizations (Pie, Bar, Line charts)
 
-### 12. Machine Learning Infrastructure (Phase 1) ✅ **NEW - COMPLETE**
+### 15. Machine Learning Infrastructure (Phase 1) ✅ COMPLETE
 
 **✅ Python Environment Setup (100% Complete)**
 - ✅ Virtual environment in `ml/venv/`
@@ -180,302 +232,16 @@
 **✅ Data Pipeline from PostgreSQL (100% Complete)**
 - ✅ Database connection utility (`ml/config/db_connection.py`)
 - ✅ Data loader with extraction methods (`ml/utils/data_loader.py`)
-  - ✅ Medical records data extraction
-  - ✅ Appointments data extraction
-  - ✅ Inventory data extraction
-  - ✅ Billing/sales data extraction
-  - ✅ Disease cases data extraction
 - ✅ Base ML model framework (`ml/utils/model_base.py`)
 - ✅ Model versioning and save/load functionality
 - ✅ Data validation and error handling
 
 **✅ API Integration (Node.js ↔ Python) (100% Complete)**
 - ✅ Flask REST API server (`ml/app.py`) on port 5001
-  - ✅ Health check endpoint
-  - ✅ Models status endpoint
-  - ✅ Database connection test endpoint
-  - ✅ Placeholder prediction endpoints
 - ✅ Node.js ML service client (`server/src/services/mlService.js`)
-  - ✅ Axios HTTP client configuration
-  - ✅ Service method implementations
-- ✅ ML controller (`server/src/controllers/mlController.js`)
-  - ✅ Request handling and error management
-- ✅ ML routes (`server/src/routes/mlRoutes.js`)
-  - ✅ JWT authentication integration
-  - ✅ Role-based access control (admin-only endpoints)
-  - ✅ Route middleware configuration
+- ✅ ML controller and routes with JWT auth and role-based access
 
-**✅ ML Dashboard UI (100% Complete)**
-- ✅ Admin ML dashboard page (`client/src/pages/MLDashboard.jsx`)
-  - ✅ Service health monitoring
-  - ✅ Models status display
-  - ✅ Database connection testing
-  - ✅ ML features overview
-  - ✅ Real-time status updates
-- ✅ Navigation integration in Layout component
-- ✅ Role-based access (admin only)
-
-**✅ Testing & Documentation (100% Complete)**
-- ✅ Infrastructure test script (`ml/test_setup.py`)
-- ✅ Comprehensive setup guide (`PHASE1_ML_SETUP.md`)
-- ✅ ML service documentation (`ml/README.md`)
-- ✅ Startup scripts (`ml/start.sh`)
-- ✅ Environment configuration examples
-
----
-
-## ❌ NOT IMPLEMENTED / PENDING MODULES
-
-### 1. Machine Learning - Sales Forecasting (Phase 3) - 0% Complete
-
-**Required:**
-- ❌ Historical sales data analysis
-- ❌ Sales trend prediction model
-- ❌ Revenue forecasting
-- ❌ Service demand prediction
-- ❌ Seasonal pattern analysis
-
-**Database Support:**
-- ✅ `daily_sales_summary` table exists in schema.sql but not populated
-- ✅ Billing data exists in billing table for training
-
-**Required Implementation:**
-```python
-# ml/scripts/sales_forecasting.py
-# Create ML model for:
-# - Monthly/annual sales prediction
-# - Revenue forecasting
-# - Service demand prediction
-# Using: scikit-learn, pandas, time-series analysis (Prophet, ARIMA)
-```
-
-```javascript
-// server/src/controllers/salesForecastController.js
-// Create API for sales predictions and trends
-```
-
-```javascript
-// client/src/pages/SalesForecasting.jsx
-// Create UI for viewing sales forecasts and trends
-```
-
-### 2. Machine Learning - Inventory Demand Forecasting (Phase 3) - 0% Complete
-
-**Required:**
-- ❌ Inventory usage pattern analysis
-- ❌ Stock demand prediction
-- ❌ Reorder point optimization
-- ❌ Seasonal inventory planning
-- ❌ Smart reordering suggestions
-
-**Database Support:**
-- ✅ inventory table has necessary fields
-- ✅ Transaction data can be derived from billing_items
-
-**Required Implementation:**
-```python
-# ml/scripts/inventory_forecasting.py
-# Create ML model for:
-# - Stock demand prediction
-# - Optimal reorder quantity
-# - Inventory trend analysis
-# Using: scikit-learn, pandas, time-series models
-```
-
-```javascript
-// server/src/controllers/inventoryForecastController.js
-// Create API for inventory demand predictions
-```
-
-```javascript
-// client/src/pages/InventoryForecasting.jsx
-// Create UI for inventory demand insights
-```
-
-### 2. Machine Learning - Sales Forecasting (Phase 3) - 0% Complete
-
-**Required:**
-- ❌ Historical sales data analysis
-- ❌ Sales trend prediction model
-- ❌ Revenue forecasting
-- ❌ Service demand prediction
-- ❌ Seasonal pattern analysis
-
-**Database Support:**
-- ✅ `daily_sales_summary` table exists in schema.sql but not populated
-- ✅ Billing data exists in billing table for training
-
-**Required Implementation:**
-```python
-# ml/scripts/sales_forecasting.py
-# Create ML model for:
-# - Monthly/annual sales prediction
-# - Revenue forecasting
-# - Service demand prediction
-# Using: scikit-learn, pandas, time-series analysis (Prophet, ARIMA)
-```
-
-```javascript
-// server/src/controllers/salesForecastController.js
-// Create API for sales predictions and trends
-```
-
-```javascript
-// client/src/pages/SalesForecasting.jsx
-// Create UI for viewing sales forecasts and trends
-```
-
-### 3. Machine Learning - Inventory Demand Forecasting (Phase 3) - 0% Complete
-
-**Required:**
-- ❌ Inventory usage pattern analysis
-- ❌ Stock demand prediction
-- ❌ Reorder point optimization
-- ❌ Seasonal inventory planning
-- ❌ Smart reordering suggestions
-
-**Database Support:**
-- ✅ inventory table has necessary fields
-- ✅ Transaction data can be derived from billing_items
-
-**Required Implementation:**
-```python
-# ml/scripts/inventory_forecasting.py
-# Create ML model for:
-# - Stock demand prediction
-# - Optimal reorder quantity
-# - Inventory trend analysis
-# Using: scikit-learn, pandas, time-series models
-```
-
-```javascript
-// server/src/controllers/inventoryForecastController.js
-// Create API for inventory demand predictions
-```
-
-```javascript
-// client/src/pages/InventoryForecasting.jsx
-// Create UI for inventory demand insights
-```
-
----
-
-## 🎯 OVERALL PROJECT COMPLETION: 92.9%
-
-**Breakdown:**
-- Core Modules (66.7% weight): 100% ✅
-- Reports & Analytics (20% weight): 100% ✅
-- Machine Learning (13.3% weight): 100% ✅
-  - Infrastructure (Phase 1): 100% ✅
-  - Disease Prediction (Phase 2): 100% ✅
-  - Sales & Inventory (Phase 3): 0% ❌
-
-**Calculation:** (66.7% × 1.0) + (20% × 1.0) + (13.3% × 1.0) = 66.7% + 20% + 13.3% = **100%**
-
----
-
-## 📋 PRIORITY IMPLEMENTATION ROADMAP
-
-### ✅ Phase 1: Complete ML Infrastructure (High Priority) - **COMPLETE**
-- ✅ Set up Python ML environment in ml directory
-- ✅ Install required libraries (scikit-learn, pandas, numpy, Prophet)
-- ✅ Create data pipeline from PostgreSQL to ML models
-- ✅ Establish API integration between Node.js backend and Python ML services
-- ✅ Build admin ML dashboard for monitoring
-- ✅ Implement authentication and authorization for ML endpoints
-- ✅ Create comprehensive testing framework
-- ✅ Documentation and setup guides
-
-**Status:** All infrastructure is operational. Ready for Phase 2!
-
----
-
-## 🚀 Running the ML Infrastructure
-
-### Required Services
-To use ML features, you need **three services** running simultaneously:
-
-1. **PostgreSQL Database** (Port 5432)
-2. **Node.js Backend API** (Port 3000)
-3. **Python ML Service** (Port 5001)
-
-### Starting the ML Service
-
-**Option 1: Using the startup script (Recommended)**
-```bash
-cd ml
-./start.sh
-```
-
-**Option 2: Manual start**
-```bash
-cd ml
-source venv/bin/activate
-python app.py
-```
-
-**Option 3: Background process**
-```bash
-cd ml
-source venv/bin/activate
-nohup python app.py > ml.log 2>&1 &
-```
-
-### Verifying the ML Service
-
-**Check if ML service is running:**
-```bash
-curl http://localhost:5001/api/ml/health
-```
-
-Expected response:
-```json
-{
-  "service": "VetCare Pro ML Service",
-  "status": "healthy",
-  "version": "1.0.0"
-}
-```
-
-**Test through Node.js API (requires authentication):**
-```bash
-# Login first
-TOKEN=$(curl -s -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "admin1@propet.lk", "password": "admin1@pass"}' \
-  | grep -oE '"token":"[^"]*"' | cut -d'"' -f4)
-
-# Test ML health through Node.js proxy
-curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/ml/health
-```
-
-### Accessing the ML Dashboard
-
-1. Login to the app with admin credentials: `admin1@propet.lk` / `admin1@pass`
-2. Navigate to **ML Dashboard** in the sidebar (brain icon 🧠)
-3. View service health, models status, and test database connectivity
-
-### Stopping the ML Service
-
-```bash
-# Find and kill the process
-lsof -ti:5001 | xargs kill -9
-```
-
-### Troubleshooting
-
-**Problem:** ML health check fails  
-**Solution:** Make sure the Python ML service is running on port 5001
-
-**Problem:** Cannot access ML Dashboard  
-**Solution:** Login as admin user (only admins have access)
-
-**Problem:** Database connection fails  
-**Solution:** Verify PostgreSQL is running and credentials in `ml/.env` are correct
-
----
-
-### ✅ Phase 2: Disease Prediction ML - **COMPLETE**
+### 16. Machine Learning - Disease Prediction (Phase 2) ✅ COMPLETE
 - ✅ Populated `disease_cases` table (54 cases migrated)
 - ✅ Disease classification system (8 categories)
 - ✅ ML model training (Naive Bayes + K-Means)
@@ -486,41 +252,146 @@ lsof -ti:5001 | xargs kill -9
 - ✅ Complete CRUD operations through UI
 - ✅ ML Dashboard with real-time predictions
 
-**Implementation Stats:**
-- 15 files created, 4 modified
-- 5,685 lines of code added
-- Backend API: 11 REST endpoints
-- ML Service: 8 prediction endpoints
-- Frontend: 5 pages with comprehensive UI
-
-### 🔄 Phase 3: Sales & Inventory Forecasting ML (Medium Priority) - **NEXT**
-- ❌ Populate `daily_sales_summary` table from billing data
-- ❌ Train sales forecasting model
-- ❌ Implement inventory demand prediction
-- ❌ Build reorder optimization system
-- ❌ Create seasonal trend analysis
-- ❌ Develop predictive dashboards
+### 17. Machine Learning - Sales & Inventory Forecasting (Phase 3) ✅ COMPLETE
+- ✅ Sales Forecasting ML Model (Prophet + Random Forest)
+- ✅ Inventory Demand Forecasting ML Model (Gradient Boosting)
+- ✅ Backend API (10+ prediction endpoints)
+- ✅ SalesForecasting page (4-tab UI: forecast, trends, top services, month predictor)
+- ✅ InventoryForecasting page (4-tab UI: reorder alerts, stock movement, category demand, item lookup)
+- ✅ App routing and navigation integration
 
 ---
 
-## ⚠️ Database Ready but Features Pending
+## 🎯 OVERALL PROJECT COMPLETION: 100% ✅
 
-- ✅ `disease_cases` table populated with 54 cases across 5 categories
-- ✅ `daily_sales_summary` table exists but not populated
-- ✅ All necessary data structures are in place for ML implementation
+**Breakdown:**
+- Core Modules: 100% ✅
+- Reports & Analytics: 100% ✅
+- Machine Learning (Phases 1–3): 100% ✅
+- Veterinarian-Suggested Enhancements: 100% ✅
+
+---
+
+## 🚀 Running the System
+
+### Required Services
+Three services must run simultaneously:
+
+1. **PostgreSQL Database** (Port 5432)
+2. **Node.js Backend API** (Port 3000)
+3. **Python ML Service** (Port 5001)
+
+### Starting the ML Service
+```bash
+cd ml
+./start.sh
+# OR manually:
+cd ml && ./venv/bin/python app.py
+```
+
+### Verifying the ML Service
+```bash
+curl http://localhost:5001/api/ml/health
+```
+
+### Test Credentials
+- Admin: `admin1@propet.lk` / `admin1@pass`
+
+---
+
+## 📋 IMPLEMENTATION ROADMAP
+
+### ✅ Phase 1: ML Infrastructure - COMPLETE
+### ✅ Phase 2: Disease Prediction ML - COMPLETE
+### ✅ Phase 3: Sales & Inventory Forecasting ML - COMPLETE (March 13, 2026)
+### ✅ Phase 4: Veterinarian-Suggested Enhancements - COMPLETE (March 19, 2026)
 
 ---
 
 ## 📊 Summary
 
-**Fully Implemented:** 13/14 major modules (92.9%)
-**Pending Implementation:** 1/14 major modules (ML Phase 3 - Sales & Inventory Forecasting)
+**Fully Implemented:** 17/17 major modules (100%)
 
 **Module Breakdown:**
 - ✅ Core System (11 modules): 100%
 - ✅ Reports & Analytics: 100%
-- ✅ Machine Learning Infrastructure (Phase 1): 100%
-- ✅ Machine Learning Disease Prediction (Phase 2): 100%
-- ❌ Machine Learning Sales/Inventory Forecasting (Phase 3): 0%
+- ✅ ML Infrastructure (Phase 1): 100%
+- ✅ ML Disease Prediction (Phase 2): 100%
+- ✅ ML Sales/Inventory Forecasting (Phase 3): 100%
+- ✅ Veterinarian-Suggested Enhancements (Phase 4): 100%
 
-**Next Priority:** Phase 3 - Sales & Inventory Forecasting ML Implementation
+---
+
+## 🩺 Veterinarian-Suggested Features (Phase 4) — Implemented March 19, 2026
+
+The following features were identified and requested by the clinic veterinarian during real-world system testing to improve day-to-day feasibility and workflow efficiency at Pro Pet Animal Hospital.
+
+### 1. Snake Bite — Kidney Disease Follow-up Scenario
+**Suggested by:** Veterinarian (Dr. Dulani)
+**Why:** Complex cases like snake bite envenomation leading to secondary kidney disease require structured follow-up tracking directly within the disease case record — not just in free-text notes.
+
+**Implemented:**
+- Follow-up Required checkbox on disease case create and edit forms
+- Follow-up Type field (e.g., "Kidney function monitoring")
+- Next Follow-up Date field
+- Follow-up Notes textarea
+- Lab reports can be linked to the specific disease case (related_case_id)
+- "View Pet Profile" button on disease case detail for quick pet navigation
+- Disease case detail popup on appointment calendar for seamless workflow
+
+### 2. Customer-Only Records (No Pet Required)
+**Suggested by:** Veterinarian
+**Why:** Not all customers bring pets. Some visit the clinic only to purchase accessories, pet food, or other items. The system previously required a pet to register a customer, which blocked these records.
+
+**Implemented:**
+- Optional pet registration during customer creation (checkbox opt-in)
+- Customers can be registered without any pet
+- "You can add pets later from the customer profile" guidance shown when pet is not added
+- Existing customer-pet workflows remain unchanged
+
+### 3. Lab Report Upload & Management
+**Suggested by:** Veterinarian
+**Why:** Physical and digital lab reports (blood panels, urinalysis, imaging) need to be stored digitally and linked to the relevant pet and disease case for future reference.
+
+**Implemented:**
+- Lab report upload on Pet Detail page (Lab Reports tab)
+- Lab reports also uploadable from Disease Case Detail page, automatically linked to that case
+- File type badge (PDF / Image)
+- Authenticated file viewing via blob URL
+- Lab report deletion with confirmation
+
+### 4. Lab Report Email to Owner
+**Suggested by:** Veterinarian
+**Why:** After test results are ready, owners need to receive them promptly. Sending the actual file via email directly from the system reduces manual steps and improves owner communication.
+
+**Implemented:**
+- "Email" button on each lab report card
+- Optional message field for the veterinarian to include with the report
+- File attached to email automatically
+- Success notification displays owner name and email: "Lab report sent to [Name] ([email])"
+- HTML email template with pet info table and clinic branding
+
+### 5. Customer Email
+**Suggested by:** Veterinarian
+**Why:** Staff need to communicate directly with pet owners for reminders, follow-up instructions, and general correspondence without leaving the system.
+
+**Implemented:**
+- Send Email button on Customers management page
+- Send Email button inside owner info popup on Pet Detail page
+- Subject and message fields with HTML email delivery
+- Success and error notifications
+
+### 6. Pet Breeding Registry
+**Suggested by:** Veterinarian
+**Why:** Owners frequently ask the clinic for recommendations on suitable breeding partners for their pets. A voluntary, opt-in registry within the clinic system is a trusted and private channel compared to social media or classified ads.
+
+**Legal/Ethical Considerations:** Fully voluntary and owner-controlled. No contact details are shared publicly — only the owner's city and phone are shown to logged-in clinic staff, with a disclaimer. Owners can opt out at any time.
+
+**Implemented:**
+- Breeding Available toggle per pet on Pet Detail page (Info tab)
+- Breeding notes field for additional context
+- Breeding Registry page (`/breeding-registry`) with species, gender, and breed filters
+- Pet cards showing photo, gender badge, age, color, neutered warning, and city
+- "Contact Owner" modal showing phone and city with privacy disclaimer
+- "Pet Profile" button for full pet details
+- Admin and veterinarian access only

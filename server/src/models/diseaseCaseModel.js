@@ -171,7 +171,7 @@ export const getDiseaseCaseById = async (caseId) => {
       p.gender as pet_gender,
       p.date_of_birth,
       p.color,
-      p.image_url as pet_image_url,
+      p.photo_url as pet_image_url,
       c.customer_id,
       c.first_name as owner_first_name,
       c.last_name as owner_last_name,
@@ -179,8 +179,6 @@ export const getDiseaseCaseById = async (caseId) => {
       c.email as owner_email,
       c.address as owner_address,
       c.city as owner_city,
-      c.state as owner_state,
-      c.zip_code as owner_zip,
       CONCAT(created_user.first_name, ' ', created_user.last_name) as created_by_name,
       CONCAT(updated_user.first_name, ' ', updated_user.last_name) as updated_by_name
     FROM disease_cases dc
@@ -236,28 +234,36 @@ export const createDiseaseCase = async (caseData, userId) => {
       is_contagious,
       transmission_method,
       notes,
+      requires_followup,
+      followup_type,
+      next_followup_date,
+      followup_notes,
       created_by,
       updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $16)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20)
     RETURNING *
   `;
 
   const values = [
     caseData.pet_id,
     caseData.disease_name,
-    caseData.disease_category,
+    caseData.disease_category || null,
     caseData.diagnosis_date,
-    caseData.species,
-    caseData.breed,
-    caseData.age_at_diagnosis,
-    caseData.severity,
-    caseData.outcome,
-    caseData.treatment_duration_days,
-    caseData.symptoms,
-    caseData.region,
+    caseData.species || null,
+    caseData.breed || null,
+    caseData.age_at_diagnosis || null,
+    caseData.severity || null,
+    caseData.outcome || null,
+    caseData.treatment_duration_days || null,
+    caseData.symptoms || null,
+    caseData.region || null,
     caseData.is_contagious || false,
-    caseData.transmission_method,
-    caseData.notes,
+    caseData.transmission_method || null,
+    caseData.notes || null,
+    caseData.requires_followup || false,
+    caseData.followup_type || null,
+    caseData.next_followup_date || null,
+    caseData.followup_notes || null,
     userId
   ];
 
@@ -286,27 +292,35 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
       is_contagious = $12,
       transmission_method = $13,
       notes = $14,
-      updated_by = $15,
+      requires_followup = $15,
+      followup_type = $16,
+      next_followup_date = $17,
+      followup_notes = $18,
+      updated_by = $19,
       updated_at = CURRENT_TIMESTAMP
-    WHERE case_id = $16
+    WHERE case_id = $20
     RETURNING *
   `;
 
   const values = [
     caseData.disease_name,
-    caseData.disease_category,
+    caseData.disease_category || null,
     caseData.diagnosis_date,
-    caseData.species,
-    caseData.breed,
-    caseData.age_at_diagnosis,
-    caseData.severity,
-    caseData.outcome,
-    caseData.treatment_duration_days,
-    caseData.symptoms,
-    caseData.region,
-    caseData.is_contagious,
-    caseData.transmission_method,
-    caseData.notes,
+    caseData.species || null,
+    caseData.breed || null,
+    caseData.age_at_diagnosis || null,
+    caseData.severity || null,
+    caseData.outcome || null,
+    caseData.treatment_duration_days || null,
+    caseData.symptoms || null,
+    caseData.region || null,
+    caseData.is_contagious || false,
+    caseData.transmission_method || null,
+    caseData.notes || null,
+    caseData.requires_followup || false,
+    caseData.followup_type || null,
+    caseData.next_followup_date || null,
+    caseData.followup_notes || null,
     userId,
     caseId
   ];
@@ -321,6 +335,28 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
 export const deleteDiseaseCase = async (caseId) => {
   const query = 'DELETE FROM disease_cases WHERE case_id = $1 RETURNING *';
   const result = await pool.query(query, [caseId]);
+  return result.rows[0];
+};
+
+/**
+ * Write a record to audit_logs
+ */
+export const logAuditEntry = async ({ userId, action, tableName, recordId, oldValues, newValues, ipAddress, userAgent }) => {
+  const query = `
+    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING log_id
+  `;
+  const result = await pool.query(query, [
+    userId,
+    action,
+    tableName,
+    recordId,
+    oldValues ? JSON.stringify(oldValues) : null,
+    newValues ? JSON.stringify(newValues) : null,
+    ipAddress || null,
+    userAgent || null
+  ]);
   return result.rows[0];
 };
 

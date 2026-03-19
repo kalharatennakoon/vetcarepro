@@ -4,6 +4,7 @@ import {
   createDiseaseCase,
   updateDiseaseCase,
   deleteDiseaseCase,
+  logAuditEntry,
   getDiseaseCasesByPetId,
   getDiseaseStatistics,
   getDiseaseCasesByCategory,
@@ -140,7 +141,24 @@ export const getDiseaseCasesByPet = async (req, res) => {
 export const addDiseaseCase = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const caseData = req.body;
+    const raw = req.body;
+
+    // Sanitize constrained fields — convert empty strings to null
+    const caseData = {
+      ...raw,
+      disease_category: raw.disease_category || null,
+      severity: raw.severity || null,
+      outcome: raw.outcome || null,
+      species: raw.species || null,
+      breed: raw.breed || null,
+      transmission_method: raw.transmission_method || null,
+      followup_type: raw.followup_type || null,
+      next_followup_date: raw.next_followup_date || null,
+      followup_notes: raw.followup_notes || null,
+      symptoms: raw.symptoms || null,
+      region: raw.region || null,
+      notes: raw.notes || null,
+    };
 
     // Validate required fields
     if (!caseData.pet_id || !caseData.disease_name || !caseData.diagnosis_date) {
@@ -177,7 +195,24 @@ export const modifyDiseaseCase = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.user_id;
-    const caseData = req.body;
+    const raw = req.body;
+
+    // Sanitize constrained fields — convert empty strings to null
+    const caseData = {
+      ...raw,
+      disease_category: raw.disease_category || null,
+      severity: raw.severity || null,
+      outcome: raw.outcome || null,
+      species: raw.species || null,
+      breed: raw.breed || null,
+      transmission_method: raw.transmission_method || null,
+      followup_type: raw.followup_type || null,
+      next_followup_date: raw.next_followup_date || null,
+      followup_notes: raw.followup_notes || null,
+      symptoms: raw.symptoms || null,
+      region: raw.region || null,
+      notes: raw.notes || null,
+    };
 
     // Check if disease case exists
     const existingCase = await getDiseaseCaseById(id);
@@ -198,10 +233,10 @@ export const modifyDiseaseCase = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update disease case error:', error);
+    console.error('Update disease case error:', error.message, error.stack);
     res.status(500).json({
       status: 'error',
-      message: 'An error occurred while updating disease case'
+      message: error.message || 'An error occurred while updating disease case'
     });
   }
 };
@@ -214,8 +249,16 @@ export const modifyDiseaseCase = async (req, res) => {
 export const removeDiseaseCase = async (req, res) => {
   try {
     const { id } = req.params;
+    const { reason, additional_notes } = req.body;
+    const userId = req.user.user_id;
 
-    // Check if disease case exists
+    if (!reason) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A deletion reason is required'
+      });
+    }
+
     const existingCase = await getDiseaseCaseById(id);
     if (!existingCase) {
       return res.status(404).json({
@@ -223,6 +266,17 @@ export const removeDiseaseCase = async (req, res) => {
         message: 'Disease case not found'
       });
     }
+
+    await logAuditEntry({
+      userId,
+      action: 'DELETE',
+      tableName: 'disease_cases',
+      recordId: parseInt(id),
+      oldValues: existingCase,
+      newValues: { reason, additional_notes: additional_notes || null },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     await deleteDiseaseCase(id);
 

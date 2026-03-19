@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="16" fill="#1a73e8"/>
+  <!-- Hospital building -->
+  <rect x="18" y="35" width="64" height="50" rx="3" fill="white"/>
+  <!-- Roof / triangle top -->
+  <polygon points="10,38 50,12 90,38" fill="#0d5eca"/>
+  <!-- Door -->
+  <rect x="40" y="65" width="20" height="20" rx="2" fill="#1a73e8"/>
+  <!-- Cross symbol -->
+  <rect x="44" y="42" width="12" height="4" rx="1" fill="#e53935"/>
+  <rect x="47" y="38" width="6" height="12" rx="1" fill="#e53935"/>
+  <!-- Windows -->
+  <rect x="24" y="50" width="12" height="10" rx="1" fill="#bbdefb"/>
+  <rect x="64" y="50" width="12" height="10" rx="1" fill="#bbdefb"/>
+</svg>

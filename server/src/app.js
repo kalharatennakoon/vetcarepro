@@ -54,6 +54,8 @@ import billingRoutes from './routes/billingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
+import emailRoutes from './routes/emailRoutes.js';
+import labReportRoutes from './routes/labReportRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -92,6 +94,8 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ml', mlRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/email', emailRoutes);
+app.use('/api/lab-reports', labReportRoutes);
 
 // 404 handler
 app.use((req, res) => {
