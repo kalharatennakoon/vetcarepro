@@ -22,6 +22,11 @@ const Customers = () => {
   useAuth();
   const { showSuccess, showError } = useNotification();
 
+  const formatWhatsAppNumber = (phone) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    return digits.startsWith('0') ? '94' + digits.slice(1) : digits;
+  };
+
   const handleOpenEmail = (customer) => {
     setEmailForm({ subject: '', message: '' });
     setEmailModal({ open: true, customer });
@@ -301,11 +306,21 @@ const Customers = () => {
                         </span>
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                          {customer.phone && (
+                            <button
+                              onClick={() => window.open(`https://wa.me/${formatWhatsAppNumber(customer.phone)}`, '_blank')}
+                              style={{ ...styles.viewButton, backgroundColor: '#25d366' }}
+                              title={`WhatsApp ${customer.phone}`}
+                            >
+                              <i className="fab fa-whatsapp" style={{ marginRight: '0.25rem' }}></i>
+                              WhatsApp
+                            </button>
+                          )}
                           {customer.email && (
                             <button
                               onClick={() => handleOpenEmail(customer)}
-                              style={{ ...styles.viewButton, backgroundColor: '#059669', borderColor: '#059669' }}
+                              style={{ ...styles.viewButton, backgroundColor: '#059669' }}
                               title={`Send email to ${customer.email}`}
                             >
                               <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>
@@ -707,14 +722,17 @@ const styles = {
     alignItems: 'center',
   },
   viewButton: {
-    padding: '0.5rem 1rem',
+    padding: '0.25rem 0.6rem',
     backgroundColor: '#3B82F6',
     color: 'white',
     border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
+    borderRadius: '5px',
+    fontSize: '0.72rem',
+    fontWeight: '500',
     cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    whiteSpace: 'nowrap',
   },
   viewButtonHover: {
     backgroundColor: '#2563eb',

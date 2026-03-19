@@ -927,13 +927,26 @@ const PetDetail = () => {
                         </div>
                         {report.notes && <p style={styles.labReportNotes}>{report.notes}</p>}
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 0 }}>
                         <button onClick={() => handleOpenReport(report.report_id, report.file_type)} style={styles.labViewBtn}>
                           <i className="fas fa-eye" style={{ marginRight: '0.3rem' }}></i>View
                         </button>
                         <button onClick={() => { setEmailModal({ open: true, report }); setEmailMessage(''); }} style={styles.labEmailBtn}>
                           <i className="fas fa-envelope" style={{ marginRight: '0.3rem' }}></i>Email
                         </button>
+                        {pet?.owner_phone && (
+                          <button
+                            onClick={() => {
+                              const d = (pet.owner_phone || '').replace(/\D/g, '');
+                              const n = d.startsWith('0') ? '94' + d.slice(1) : d;
+                              const msg = encodeURIComponent(`Hi, please find the lab report "${report.report_name}" for ${pet.pet_name} from Pro Pet Animal Hospital.`);
+                              window.open(`https://wa.me/${n}?text=${msg}`, '_blank');
+                            }}
+                            style={{ ...styles.labEmailBtn, backgroundColor: '#25d366', color: 'white' }}
+                          >
+                            <i className="fab fa-whatsapp" style={{ marginRight: '0.3rem' }}></i>WhatsApp
+                          </button>
+                        )}
                         {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                           <button onClick={() => handleDeleteLabReport(report.report_id, report.report_name)} style={styles.labDeleteBtn}>
                             <i className="fas fa-trash" style={{ marginRight: '0.3rem' }}></i>Delete
@@ -1239,17 +1252,26 @@ const PetDetail = () => {
             )}
           </div>
 
-          <div style={{ ...styles.ownerModalFooter, display: 'flex', gap: '0.5rem' }}>
+          <div style={{ ...styles.ownerModalFooter, display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            {pet.owner_phone && (
+              <button
+                onClick={() => { const d = (pet.owner_phone || '').replace(/\D/g, ''); const n = d.startsWith('0') ? '94' + d.slice(1) : d; window.open(`https://wa.me/${n}`, '_blank'); }}
+                style={{ ...styles.ownerModalFullBtn, backgroundColor: '#25d366', color: 'white', border: 'none' }}
+              >
+                <i className="fab fa-whatsapp" style={{ marginRight: '0.4rem' }}></i>
+                WhatsApp
+              </button>
+            )}
             <button
               onClick={() => { setShowOwnerModal(false); setOwnerEmailForm({ subject: '', message: '' }); setOwnerEmailOpen(true); }}
               disabled={!pet.owner_email}
               title={!pet.owner_email ? 'No email address on file' : ''}
-              style={{ ...styles.ownerModalFullBtn, flex: 1, backgroundColor: '#2563eb', color: 'white', border: 'none', opacity: !pet.owner_email ? 0.5 : 1, cursor: !pet.owner_email ? 'not-allowed' : 'pointer' }}
+              style={{ ...styles.ownerModalFullBtn, backgroundColor: '#2563eb', color: 'white', border: 'none', opacity: !pet.owner_email ? 0.5 : 1, cursor: !pet.owner_email ? 'not-allowed' : 'pointer' }}
             >
               <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
               Send Email
             </button>
-            <button onClick={() => { setShowOwnerModal(false); navigate(`/customers/${pet.customer_id}`); }} style={{ ...styles.ownerModalFullBtn, flex: 1 }}>
+            <button onClick={() => { setShowOwnerModal(false); navigate(`/customers/${pet.customer_id}`); }} style={styles.ownerModalFullBtn}>
               <i className="fas fa-arrow-up-right-from-square" style={{ marginRight: '0.4rem' }}></i>
               Full Profile
             </button>
@@ -1911,8 +1933,9 @@ const styles = {
   },
   labReportCard: {
     display: 'flex',
-    alignItems: 'flex-start',
-    gap: '1rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
     padding: '1rem 1.25rem',
     backgroundColor: '#ffffff',
     border: '1px solid #e5e7eb',
@@ -2086,18 +2109,18 @@ const styles = {
     borderTop: '1px solid #f3f4f6',
   },
   ownerModalFullBtn: {
-    width: '100%',
-    padding: '0.6rem',
+    padding: '0.4rem 0.85rem',
     backgroundColor: 'white',
     color: '#2563eb',
     border: '1px solid #bfdbfe',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
+    borderRadius: '7px',
+    fontSize: '0.8rem',
+    fontWeight: '500',
     cursor: 'pointer',
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
+    whiteSpace: 'nowrap',
   },
 };
 
