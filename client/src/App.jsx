@@ -33,6 +33,7 @@ import BillingCreate from './pages/BillingCreate';
 import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import BreedingRegistry from './pages/BreedingRegistry';
+import SystemLogs from './pages/SystemLogs';
 
 
 function App() {
@@ -345,13 +346,22 @@ function App() {
       />
 
       {/* Admin-only routes */}
-      <Route 
-        path="/users" 
+      <Route
+        path="/users"
         element={
           <ProtectedRoute requiredRoles={['admin']}>
             <Users />
           </ProtectedRoute>
-        } 
+        }
+      />
+
+      <Route
+        path="/system-logs"
+        element={
+          <ProtectedRoute requiredRoles={['admin']}>
+            <SystemLogs />
+          </ProtectedRoute>
+        }
       />
 
       {/* 404 Not Found */}

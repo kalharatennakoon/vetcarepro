@@ -342,22 +342,26 @@ export const deleteDiseaseCase = async (caseId) => {
  * Write a record to audit_logs
  */
 export const logAuditEntry = async ({ userId, action, tableName, recordId, oldValues, newValues, ipAddress, userAgent }) => {
-  const query = `
-    INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING log_id
-  `;
-  const result = await pool.query(query, [
-    userId,
-    action,
-    tableName,
-    recordId,
-    oldValues ? JSON.stringify(oldValues) : null,
-    newValues ? JSON.stringify(newValues) : null,
-    ipAddress || null,
-    userAgent || null
-  ]);
-  return result.rows[0];
+  try {
+    const query = `
+      INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING log_id
+    `;
+    const result = await pool.query(query, [
+      userId,
+      action,
+      tableName,
+      recordId ? parseInt(recordId) : null,
+      oldValues ? JSON.stringify(oldValues) : null,
+      newValues ? JSON.stringify(newValues) : null,
+      ipAddress || null,
+      userAgent || null
+    ]);
+    return result.rows[0];
+  } catch (err) {
+    console.error('Audit log write failed (non-fatal):', err.message);
+  }
 };
 
 /**

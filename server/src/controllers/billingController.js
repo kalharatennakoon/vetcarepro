@@ -9,6 +9,7 @@ import {
   getOverdueBills,
   deleteBill
 } from '../models/billingModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 import {
   getAllPayments,
@@ -103,7 +104,8 @@ export const createNewBill = async (req, res) => {
     const billData = req.body;
 
     // Validate required fields
-    if (!billData.customer_id || !billData.items || billData.items.length === 0) {
+    if (billData.customer_id == null || billData.customer_id === '' ||
+        !Array.isArray(billData.items) || billData.items.length === 0) {
       return res.status(400).json({
         status: 'error',
         message: 'Customer ID and at least one item are required'
@@ -112,15 +114,26 @@ export const createNewBill = async (req, res) => {
 
     // Validate items
     for (const item of billData.items) {
-      if (!item.item_name || !item.quantity || !item.unit_price) {
+      if (!item.item_name || !(item.quantity > 0) || item.unit_price == null || item.unit_price < 0) {
         return res.status(400).json({
           status: 'error',
-          message: 'Each item must have item_name, quantity, and unit_price'
+          message: 'Each item must have a name, positive quantity, and valid price (price can be 0)'
         });
       }
     }
 
     const newBill = await createBill(billData, userId);
+
+    await logAuditEntry({
+      userId,
+      action: 'CREATE',
+      tableName: 'billing',
+      recordId: newBill.bill_id,
+      oldValues: null,
+      newValues: { customer_id: newBill.customer_id, total_amount: newBill.total_amount, payment_status: newBill.payment_status },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',
@@ -201,6 +214,17 @@ export const addPayment = async (req, res) => {
     }
 
     const payment = await recordPayment(id, paymentData, userId);
+
+    await logAuditEntry({
+      userId,
+      action: 'CREATE',
+      tableName: 'payments',
+      recordId: payment.payment_id,
+      oldValues: null,
+      newValues: { bill_id: parseInt(id), amount: payment.amount, payment_method: payment.payment_method },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',

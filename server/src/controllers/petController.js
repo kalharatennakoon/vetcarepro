@@ -14,6 +14,7 @@ import {
 } from '../models/petModel.js';
 import { getCustomerById } from '../models/customerModel.js';
 import { deleteImageFile } from '../config/multer.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Pet Controller
@@ -109,6 +110,17 @@ export const createNewPet = async (req, res) => {
     }
 
     const newPet = await createPet(petData, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'pets',
+      recordId: newPet.pet_id,
+      oldValues: null,
+      newValues: { pet_name: newPet.pet_name, species: newPet.species, breed: newPet.breed, customer_id: newPet.customer_id },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',
@@ -222,6 +234,18 @@ export const inactivatePetById = async (req, res) => {
     }
 
     const updatedPet = await inactivatePet(id, { reason, deceasedDate: deceased_date, additionalNote: additional_note }, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'INACTIVATE',
+      tableName: 'pets',
+      recordId: parseInt(id),
+      oldValues: { is_active: true },
+      newValues: { is_active: false, reason, deceased_date: deceased_date || null, additional_note: additional_note || null },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     res.status(200).json({
       status: 'success',
       message: 'Pet inactivated successfully',
@@ -263,6 +287,17 @@ export const deletePetById = async (req, res) => {
         message: 'Pet has related records and cannot be permanently deleted. Use inactivation instead.'
       });
     }
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DELETE',
+      tableName: 'pets',
+      recordId: parseInt(id),
+      oldValues: existingPet,
+      newValues: null,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     await hardDeletePet(id);
     res.status(200).json({ status: 'success', message: 'Pet permanently deleted' });

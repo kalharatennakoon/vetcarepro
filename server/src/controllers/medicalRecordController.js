@@ -9,6 +9,7 @@ import {
   getVitalSignsHistory,
   getMedicalRecordCount
 } from '../models/medicalRecordModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Medical Record Controller
@@ -98,6 +99,17 @@ export const createNewMedicalRecord = async (req, res) => {
 
     const newRecord = await createMedicalRecord(recordData, req.user.user_id);
 
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'medical_records',
+      recordId: newRecord.record_id,
+      oldValues: null,
+      newValues: { pet_id: newRecord.pet_id, visit_date: newRecord.visit_date, diagnosis: newRecord.diagnosis },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     res.status(201).json({
       status: 'success',
       message: 'Medical record created successfully',
@@ -172,6 +184,17 @@ export const deleteMedicalRecordById = async (req, res) => {
         message: 'Medical record not found'
       });
     }
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DELETE',
+      tableName: 'medical_records',
+      recordId: parseInt(id),
+      oldValues: { pet_id: existingRecord.pet_id, visit_date: existingRecord.visit_date, diagnosis: existingRecord.diagnosis },
+      newValues: null,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     await deleteMedicalRecord(parseInt(id));
 

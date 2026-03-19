@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
+import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageInventory = user?.role === 'admin';
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -176,14 +179,21 @@ const Inventory = () => {
           <h2 style={styles.title}>Inventory Management</h2>
           <p style={styles.subtitle}>Manage medicines, vaccines, accessories, and supplies</p>
         </div>
-        <button 
-          onClick={() => navigate('/inventory/create')} 
-          style={styles.addButton}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-        >
-          + Add New Item
-        </button>
+        {canManageInventory ? (
+          <button
+            onClick={() => navigate('/inventory/create')}
+            style={styles.addButton}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+          >
+            + Add New Item
+          </button>
+        ) : (
+          <div title="Only admins can add inventory items" style={styles.disabledButton}>
+            <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+            Add New Item
+          </div>
+        )}
       </div>
 
       {/* Summary at Top */}
@@ -509,6 +519,18 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer',
     boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
+  },
+  disabledButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#f3f4f6',
+    color: '#9ca3af',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'not-allowed',
+    display: 'inline-flex',
+    alignItems: 'center',
   },
   alertContainer: {
     display: 'grid',

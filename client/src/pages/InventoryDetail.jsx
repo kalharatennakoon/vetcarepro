@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
 
 const InventoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -146,22 +149,36 @@ const InventoryDetail = () => {
               >
                 Update Quantity
               </button>
-              <Link
-                to={`/inventory/${id}/edit`}
-                style={styles.editButton}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                style={styles.deleteButton}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-              >
-                Delete
-              </button>
+              {isAdmin ? (
+                <Link
+                  to={`/inventory/${id}/edit`}
+                  style={styles.editButton}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                >
+                  Edit
+                </Link>
+              ) : (
+                <div title="Only admins can edit inventory items" style={styles.disabledButton}>
+                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+                  Edit
+                </div>
+              )}
+              {isAdmin ? (
+                <button
+                  onClick={handleDelete}
+                  style={styles.deleteButton}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                >
+                  Delete
+                </button>
+              ) : (
+                <div title="Only admins can delete inventory items" style={styles.disabledButton}>
+                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+                  Delete
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -573,6 +590,18 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '500',
     cursor: 'pointer',
+  },
+  disabledButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#e5e7eb',
+    color: '#9ca3af',
+    border: 'none',
+    borderRadius: '0.375rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'not-allowed',
+    display: 'inline-flex',
+    alignItems: 'center',
   },
   gridContainer: {
     display: 'grid',

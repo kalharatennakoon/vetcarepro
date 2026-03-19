@@ -7,6 +7,7 @@ import {
   emailExists
 } from '../models/userModel.js';
 import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { deleteImageFile } from '../config/multer.js';
 
 /**
@@ -51,6 +52,17 @@ export const createUserByAdmin = async (req, res) => {
     };
 
     const newUser = await createUser(userData);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'users',
+      recordId: newUser.user_id,
+      oldValues: null,
+      newValues: { email: newUser.email, role: newUser.role, first_name: newUser.first_name, last_name: newUser.last_name },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',
@@ -232,6 +244,17 @@ export const deleteUserById = async (req, res) => {
     }
 
     await deleteUser(userId);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DEACTIVATE',
+      tableName: 'users',
+      recordId: userId,
+      oldValues: { is_active: true, email: existingUser.email, role: existingUser.role },
+      newValues: { is_active: false },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(200).json({
       status: 'success',

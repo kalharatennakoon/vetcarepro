@@ -89,7 +89,7 @@ const BillingDetail = () => {
         amount: parseFloat(paymentData.amount)
       });
       
-      alert('Payment recorded successfully');
+      showSuccess('Payment recorded successfully');
       setShowPaymentForm(false);
       fetchBill(); // Refresh bill data
     } catch (err) {

@@ -222,12 +222,21 @@ const Layout = ({ children }) => {
                 </a>
               )}
               {user?.role === 'admin' && (
-                <a 
-                  href="/users" 
+                <a
+                  href="/users"
                   style={getNavItemStyle('/users')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
                 >
                   <i className="fas fa-user-md"></i> Staff
+                </a>
+              )}
+              {user?.role === 'admin' && (
+                <a
+                  href="/system-logs"
+                  style={getNavItemStyle('/system-logs')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/system-logs'); }}
+                >
+                  <i className="fas fa-clipboard-list"></i> System Logs
                 </a>
               )}
             </nav>

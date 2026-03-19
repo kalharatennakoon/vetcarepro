@@ -10,6 +10,7 @@ import {
 } from '../models/appointmentModel.js';
 import { getCustomerById } from '../models/customerModel.js';
 import { getPetById } from '../models/petModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Appointment Controller
@@ -133,6 +134,17 @@ export const createNewAppointment = async (req, res) => {
 
     const newAppointment = await createAppointment(appointmentData, req.user.user_id);
 
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'appointments',
+      recordId: newAppointment.appointment_id,
+      oldValues: null,
+      newValues: { pet_id: newAppointment.pet_id, appointment_date: newAppointment.appointment_date, appointment_type: newAppointment.appointment_type, status: newAppointment.status },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     res.status(201).json({
       status: 'success',
       message: 'Appointment created successfully',
@@ -226,6 +238,17 @@ export const deleteAppointmentById = async (req, res) => {
         message: 'Appointment not found'
       });
     }
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DELETE',
+      tableName: 'appointments',
+      recordId: parseInt(id),
+      oldValues: { pet_id: existingAppointment.pet_id, appointment_date: existingAppointment.appointment_date, appointment_type: existingAppointment.appointment_type, status: existingAppointment.status },
+      newValues: null,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     await deleteAppointment(id);
 

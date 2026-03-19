@@ -1,4 +1,5 @@
 import inventoryModel from '../models/inventoryModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Inventory Controller
@@ -176,6 +177,17 @@ const inventoryController = {
       }
 
       const deletedItem = await inventoryModel.delete(id, userId);
+
+      await logAuditEntry({
+        userId: req.user.user_id,
+        action: 'DEACTIVATE',
+        tableName: 'inventory',
+        recordId: parseInt(id),
+        oldValues: { is_active: true, item_name: existingItem.item_name, item_code: existingItem.item_code },
+        newValues: { is_active: false },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
 
       res.status(200).json({
         success: true,

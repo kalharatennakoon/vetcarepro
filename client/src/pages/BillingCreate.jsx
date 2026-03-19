@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBill } from '../services/billingService';
+import { useNotification } from '../context/NotificationContext';
 import { getCustomers } from '../services/customerService';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 
 const BillingCreate = () => {
   const navigate = useNavigate();
+  const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -130,7 +132,6 @@ const BillingCreate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.customer_id) {
       alert('Please select a customer');
       return;
@@ -159,7 +160,7 @@ const BillingCreate = () => {
       setLoading(true);
       const billData = {
         ...formData,
-        customer_id: parseInt(formData.customer_id),
+        customer_id: formData.customer_id,
         discount_percentage: parseFloat(formData.discount_percentage) || 0,
         tax_percentage: parseFloat(formData.tax_percentage) || 0,
         paid_amount: parseFloat(formData.paid_amount) || 0,
@@ -173,7 +174,7 @@ const BillingCreate = () => {
       };
 
       const response = await createBill(billData);
-      alert('Invoice created successfully');
+      showSuccess('Invoice created successfully');
       navigate(`/billing/${response.data.bill.bill_id}`);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create invoice');
