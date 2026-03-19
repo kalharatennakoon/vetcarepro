@@ -16,7 +16,7 @@ const formatTime12 = (timeStr) => {
 const AppointmentReminder = () => {
   const { showWarning } = useNotification();
   const { user } = useAuth();
-  const notifiedRef  = useRef(new Set());
+  const notifiedRef  = useRef(new Set(JSON.parse(sessionStorage.getItem('appt_notified') || '[]')));
   const timeoutsRef  = useRef([]);
 
   useEffect(() => {
@@ -54,6 +54,7 @@ const AppointmentReminder = () => {
           const fire = () => {
             if (cancelled) return;
             notifiedRef.current.add(key);
+            sessionStorage.setItem('appt_notified', JSON.stringify([...notifiedRef.current]));
             showWarning(
               `Reminder: Appointment in 30 min — ${appt.pet_name} (${appt.customer_first_name} ${appt.customer_last_name}) at ${formatTime12(appt.appointment_time)}, ${appt.appointment_type}`,
               0

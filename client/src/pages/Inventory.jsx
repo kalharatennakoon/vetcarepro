@@ -123,8 +123,14 @@ const Inventory = () => {
 
   const getFilteredInventory = () => {
     let base;
-    if (alertFilter === 'lowStock') base = lowStockItems;
-    else if (alertFilter === 'expiring') base = expiringItems;
+    if (alertFilter === 'lowStock') base = lowStockItems.filter(i => i.quantity > 0);
+    else if (alertFilter === 'expiring') {
+      const excludeIds = new Set([
+        ...outOfStockItems.map(i => i.item_id),
+        ...lowStockItems.filter(i => i.quantity > 0).map(i => i.item_id),
+      ]);
+      base = expiringItems.filter(i => !excludeIds.has(i.item_id));
+    }
     else if (alertFilter === 'outOfStock') base = outOfStockItems;
     else base = inventory;
 
