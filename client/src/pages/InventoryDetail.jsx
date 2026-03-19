@@ -84,9 +84,10 @@ const InventoryDetail = () => {
 
   const getStockStatusBadge = (status) => {
     const badges = {
+      'OUT_OF_STOCK': <span style={styles.badgeOutOfStock}>Out of Stock</span>,
       'LOW': <span style={styles.badgeDanger}>Low Stock</span>,
       'EXPIRING': <span style={styles.badgeWarning}>Expiring Soon</span>,
-      'NORMAL': <span style={styles.badgeSuccess}>Normal</span>
+      'NORMAL': <span style={styles.badgeSuccess}>Normal</span>,
     };
     return badges[status] || null;
   };
@@ -700,6 +701,16 @@ const styles = {
     marginTop: '1rem',
     paddingTop: '1rem',
     borderTop: '1px solid #e5e7eb',
+  },
+  badgeOutOfStock: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    backgroundColor: '#1f2937',
+    color: '#f9fafb',
   },
   badgeDanger: {
     display: 'inline-flex',

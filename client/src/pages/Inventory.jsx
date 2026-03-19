@@ -22,7 +22,7 @@ const Inventory = () => {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [expiringCount, setExpiringCount] = useState(0);
   const [expiringItems, setExpiringItems] = useState([]);
-  const [alertFilter, setAlertFilter] = useState(null); // 'lowStock' or 'expiring'
+  const [alertFilter, setAlertFilter] = useState(null); // 'lowStock', 'expiring', or 'outOfStock'
   const [inactiveCount, setInactiveCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -85,6 +85,9 @@ const Inventory = () => {
     }
   };
 
+  const outOfStockItems = allItems.filter(i => i.quantity === 0 && i.is_active !== false);
+  const outOfStockCount = outOfStockItems.length;
+
   const getSubcategoryOptions = () => {
     const source = filters.category
       ? allItems.filter(i => i.category === filters.category)
@@ -113,10 +116,16 @@ const Inventory = () => {
     setCurrentPage(1);
   };
 
+  const handleViewOutOfStock = () => {
+    setAlertFilter(alertFilter === 'outOfStock' ? null : 'outOfStock');
+    setCurrentPage(1);
+  };
+
   const getFilteredInventory = () => {
     let base;
     if (alertFilter === 'lowStock') base = lowStockItems;
     else if (alertFilter === 'expiring') base = expiringItems;
+    else if (alertFilter === 'outOfStock') base = outOfStockItems;
     else base = inventory;
 
     if (filters.subCategory) {
@@ -144,6 +153,9 @@ const Inventory = () => {
   };
 
   const getStockStatusBadge = (item) => {
+    if (item.stock_status === 'OUT_OF_STOCK') {
+      return <span style={styles.badgeOutOfStock}>Out of Stock</span>;
+    }
     if (item.stock_status === 'LOW') {
       return <span style={styles.badgeDanger}>Low Stock</span>;
     }
@@ -255,8 +267,25 @@ const Inventory = () => {
       )}
 
       {/* Alert Summary */}
-      {(lowStockCount > 0 || expiringCount > 0) && (
+      {(lowStockCount > 0 || expiringCount > 0 || outOfStockCount > 0) && (
         <div style={styles.alertContainer}>
+          {outOfStockCount > 0 && (
+            <div style={alertFilter === 'outOfStock' ? styles.alertOutOfStockActive : styles.alertOutOfStock}>
+              <div style={styles.alertContent}>
+                <div>
+                  <strong>{outOfStockCount}</strong> item(s) are out of stock
+                </div>
+                <button
+                  onClick={handleViewOutOfStock}
+                  style={styles.alertButtonOutOfStock}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#111827'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1f2937'}
+                >
+                  {alertFilter === 'outOfStock' ? 'Show All' : 'View Items'}
+                </button>
+              </div>
+            </div>
+          )}
           {lowStockCount > 0 && (
             <div style={alertFilter === 'lowStock' ? styles.alertDangerActive : styles.alertDanger}>
               <div style={styles.alertContent}>
@@ -590,6 +619,34 @@ const styles = {
     fontSize: '0.875rem',
     boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
   },
+  alertOutOfStock: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#f3f4f6',
+    color: '#111827',
+    borderRadius: '8px',
+    borderLeft: '4px solid #1f2937',
+    fontSize: '0.875rem',
+  },
+  alertOutOfStockActive: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#e5e7eb',
+    color: '#111827',
+    borderRadius: '8px',
+    borderLeft: '4px solid #111827',
+    fontSize: '0.875rem',
+    boxShadow: '0 2px 4px rgba(17, 24, 39, 0.2)',
+  },
+  alertButtonOutOfStock: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1f2937',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
   alertWarning: {
     padding: '1rem 1.5rem',
     backgroundColor: '#fef3c7',
@@ -775,6 +832,15 @@ const styles = {
   itemCode: {
     fontSize: '10px',
     color: '#9ca3af',
+  },
+  badgeOutOfStock: {
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#1f2937',
+    color: '#f9fafb',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    display: 'inline-block',
   },
   badgeDanger: {
     padding: '0.375rem 0.75rem',
