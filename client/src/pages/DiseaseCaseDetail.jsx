@@ -191,7 +191,7 @@ const DiseaseCaseDetail = () => {
             <h1 style={styles.title}>{diseaseCase.disease_name}</h1>
             <p style={styles.subtitle}>
               <i className="fas fa-hashtag" style={{ marginRight: '0.3rem', fontSize: '0.85rem' }}></i>
-              Case ID: {diseaseCase.case_id}
+              Case ID: CSE-{String(diseaseCase.case_id).padStart(4, '0')}
             </p>
           </div>
           <div style={styles.actions}>

@@ -537,6 +537,12 @@ const Users = () => {
               {/* User Details Grid */}
               <div style={styles.detailsGrid}>
                 <div style={styles.detailItem}>
+                  <span style={styles.detailLabel}>User ID</span>
+                  <span style={styles.detailValue}>
+                    {`USR-${String(viewingUser.user_id).padStart(4, '0')}`}
+                  </span>
+                </div>
+                <div style={styles.detailItem}>
                   <span style={styles.detailLabel}>Email</span>
                   <span style={styles.detailValue}>{viewingUser.email}</span>
                 </div>

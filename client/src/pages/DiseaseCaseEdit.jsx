@@ -154,7 +154,7 @@ const DiseaseCaseEdit = () => {
             <h1 style={styles.title}>Edit Disease Case</h1>
             <p style={styles.subtitle}>
               <i className="fas fa-hashtag" style={{ marginRight: '0.3rem', fontSize: '0.85rem' }}></i>
-              Case ID: {id}
+              Case ID: CSE-{String(id).padStart(4, '0')}
             </p>
           </div>
         </div>

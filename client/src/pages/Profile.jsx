@@ -687,7 +687,9 @@ function Profile() {
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>User ID:</span>
-              <span style={styles.infoValue}>{profileData?.user_id || profileData?.id}</span>
+              <span style={styles.infoValue}>
+                {profileData?.user_id ? `USR-${String(profileData.user_id).padStart(4, '0')}` : 'N/A'}
+              </span>
             </div>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Account Status:</span>
