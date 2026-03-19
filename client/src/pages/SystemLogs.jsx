@@ -10,6 +10,7 @@ const ACTION_META = {
   INACTIVATE: { bg: '#fef3c7', color: '#b45309', icon: 'fa-user-slash',    label: 'Inactivate', desc: 'Customer or pet marked as inactive with reason' },
   CREATE:     { bg: '#dcfce7', color: '#16a34a', icon: 'fa-plus-circle',   label: 'Create',     desc: 'New record added to the system' },
   UPDATE:     { bg: '#dbeafe', color: '#2563eb', icon: 'fa-edit',          label: 'Update',     desc: 'Existing record modified' },
+  TRAIN:      { bg: '#f3e8ff', color: '#7c3aed', icon: 'fa-brain',         label: 'Train',      desc: 'ML model trained or retrained' },
 };
 
 const TABLE_LABELS = {
@@ -23,6 +24,7 @@ const TABLE_LABELS = {
   disease_cases:  'Disease Cases',
   billing:        'Billing',
   lab_reports:    'Lab Reports',
+  ml_models:      'ML Models',
 };
 
 function ActionBadge({ action }) {
@@ -158,6 +160,27 @@ function SystemLogs() {
     doFetch(filters, currentPage);
   };
 
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    if (filters.search)     params.set('search',     filters.search);
+    if (filters.action)     params.set('action',     filters.action);
+    if (filters.table_name) params.set('table_name', filters.table_name);
+    if (filters.date_from)  params.set('date_from',  filters.date_from);
+    if (filters.date_to)    params.set('date_to',    filters.date_to);
+    const token = localStorage.getItem('token');
+    const query = params.toString();
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/audit-logs/export${query ? '?' + query : ''}`;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `system_logs_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+  };
+
   const hasActiveFilters = Object.values(filters).some(v => v !== '');
 
   const formatTimestamp = (ts) => {
@@ -209,9 +232,14 @@ function SystemLogs() {
             <h1 style={styles.title}><i className="fas fa-clipboard-list" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>System Audit Logs</h1>
             <p style={styles.subtitle}>View, search, and filter all significant system actions recorded for auditing purposes</p>
           </div>
-          <button onClick={handleRefresh} style={styles.refreshBtn} title="Refresh logs">
-            <i className={`fas fa-sync-alt${loading ? ' fa-spin' : ''}`}></i> Refresh
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={handleExport} style={styles.exportBtn} title="Export to CSV">
+              <i className="fas fa-download"></i> Export CSV
+            </button>
+            <button onClick={handleRefresh} style={styles.refreshBtn} title="Refresh logs">
+              <i className={`fas fa-sync-alt${loading ? ' fa-spin' : ''}`}></i> Refresh
+            </button>
+          </div>
         </div>
 
         <InfoPanel />
@@ -522,6 +550,20 @@ const styles = {
     fontSize: '0.875rem',
     color: '#6b7280',
     margin: 0
+  },
+  exportBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    padding: '0.45rem 0.9rem',
+    backgroundColor: '#16a34a',
+    border: '1px solid #15803d',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
+    color: '#fff',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0
   },
   refreshBtn: {
     display: 'inline-flex',

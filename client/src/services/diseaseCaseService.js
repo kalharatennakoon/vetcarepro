@@ -205,7 +205,9 @@ export const  getMLModelStatus = async () => {
  */
 export const trainMLModel = async () => {
   const response = await axios.post(
-    `${ML_API_URL}/disease/train`
+    `${API_URL}/ml/disease/train`,
+    {},
+    getAuthHeader()
   );
   return response.data;
 };

@@ -4,6 +4,7 @@
  */
 
 import * as mlService from '../services/mlService.js';
+import { insertAuditLog } from '../models/auditLogModel.js';
 
 /**
  * @desc    Check ML service health
@@ -116,9 +117,35 @@ const getDiseaseTrends = async (req, res) => {
  * @route   POST /api/ml/sales/train
  * @access  Private (Admin only)
  */
+const trainDiseaseModel = async (req, res) => {
+  try {
+    const result = await mlService.trainDiseaseModel();
+    await insertAuditLog({
+      userId: req.user?.user_id,
+      action: 'TRAIN',
+      tableName: 'ml_models',
+      newValues: { model: 'disease_prediction', ...result },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('Disease model training error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const trainSalesModel = async (req, res) => {
   try {
     const result = await mlService.trainSalesModel();
+    await insertAuditLog({
+      userId: req.user?.user_id,
+      action: 'TRAIN',
+      tableName: 'ml_models',
+      newValues: { model: 'sales_forecasting', ...result },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
     res.json(result);
   } catch (error) {
     console.error('Sales model training error:', error);
@@ -213,6 +240,14 @@ const getTopRevenueServices = async (req, res) => {
 const trainInventoryModel = async (req, res) => {
   try {
     const result = await mlService.trainInventoryModel();
+    await insertAuditLog({
+      userId: req.user?.user_id,
+      action: 'TRAIN',
+      tableName: 'ml_models',
+      newValues: { model: 'inventory_forecasting', ...result },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
     res.json(result);
   } catch (error) {
     console.error('Inventory model training error:', error);
@@ -379,6 +414,7 @@ export {
   testDatabaseConnection,
 
   // Disease Prediction
+  trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
 

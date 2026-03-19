@@ -85,6 +85,18 @@ export const getAuditLogs = async (filters = {}) => {
   return { logs: result.rows, total };
 };
 
+export const insertAuditLog = async ({ userId, action, tableName, recordId, oldValues, newValues, ipAddress, userAgent }) => {
+  try {
+    await pool.query(
+      `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [userId, action, tableName, recordId || null, oldValues ? JSON.stringify(oldValues) : null, newValues ? JSON.stringify(newValues) : null, ipAddress || null, userAgent || null]
+    );
+  } catch (err) {
+    console.error('Audit log insert failed:', err.message);
+  }
+};
+
 export const getDistinctActions = async () => {
   const result = await pool.query(`SELECT DISTINCT action FROM audit_logs ORDER BY action`);
   return result.rows.map(r => r.action);

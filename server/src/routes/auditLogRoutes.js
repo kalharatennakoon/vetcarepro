@@ -1,5 +1,5 @@
 import express from 'express';
-import { listAuditLogs, getFilterOptions } from '../controllers/auditLogController.js';
+import { listAuditLogs, getFilterOptions, exportAuditLogs } from '../controllers/auditLogController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
 
@@ -9,6 +9,7 @@ router.use(authenticate);
 router.use(adminOnly);
 
 router.get('/', listAuditLogs);
+router.get('/export', exportAuditLogs);
 router.get('/filter-options', getFilterOptions);
 
 export default router;

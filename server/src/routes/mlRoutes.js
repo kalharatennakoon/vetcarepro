@@ -45,6 +45,11 @@ router.get(
 // Disease Prediction Routes
 // ============================================
 
+// @route   POST /api/ml/disease/train
+// @desc    Train or retrain the disease prediction model
+// @access  Private (Admin only)
+router.post('/disease/train', authorize('admin'), mlController.trainDiseaseModel);
+
 // @route   POST /api/ml/disease/predict
 // @desc    Predict disease outbreak
 // @access  Private

@@ -106,6 +106,19 @@ const getDiseaseTrends = async (params) => {
 // ============================================
 
 /**
+ * Train or retrain the disease prediction model
+ */
+const trainDiseaseModel = async () => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/train', {});
+    return response.data;
+  } catch (error) {
+    console.error('Disease model training failed:', error.message);
+    throw new Error('Failed to train disease prediction model');
+  }
+};
+
+/**
  * Train or retrain the sales forecasting model
  */
 const trainSalesModel = async () => {
@@ -320,6 +333,7 @@ export {
   testDatabaseConnection,
 
   // Disease Prediction
+  trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
 
