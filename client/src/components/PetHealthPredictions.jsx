@@ -41,6 +41,7 @@ const PetHealthPredictions = ({ pet }) => {
       } catch (_) {}
 
       const payload = {
+        pet_id: pet.pet_id,
         species: pet.species,
         breed: pet.breed || null,
         age_months: ageMonths,
@@ -50,7 +51,7 @@ const PetHealthPredictions = ({ pet }) => {
 
       const [riskRes, cancerRes] = await Promise.all([
         predictPetRisk(payload),
-        predictCancerRisk({ species: pet.species, breed: pet.breed || null, age_months: ageMonths, sex: pet.gender || null }),
+        predictCancerRisk({ pet_id: pet.pet_id, species: pet.species, breed: pet.breed || null, age_months: ageMonths, sex: pet.gender || null }),
       ]);
 
       setDiseaseRisk(riskRes.prediction || null);

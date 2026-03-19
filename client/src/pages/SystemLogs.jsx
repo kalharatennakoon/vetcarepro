@@ -11,6 +11,7 @@ const ACTION_META = {
   CREATE:     { bg: '#dcfce7', color: '#16a34a', icon: 'fa-plus-circle',   label: 'Create',     desc: 'New record added to the system' },
   UPDATE:     { bg: '#dbeafe', color: '#2563eb', icon: 'fa-edit',          label: 'Update',     desc: 'Existing record modified' },
   TRAIN:      { bg: '#f3e8ff', color: '#7c3aed', icon: 'fa-brain',         label: 'Train',      desc: 'ML model trained or retrained' },
+  PREDICT:    { bg: '#ecfdf5', color: '#059669', icon: 'fa-microscope',    label: 'Predict',    desc: 'Health risk prediction run for a pet' },
 };
 
 const TABLE_LABELS = {

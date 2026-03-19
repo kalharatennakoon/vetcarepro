@@ -409,6 +409,16 @@ const getRetrainCheck = async (_req, res) => {
 const predictPetRisk = async (req, res) => {
   try {
     const result = await mlService.predictPetRisk(req.body);
+    const { pet_id, species, breed, age_months } = req.body;
+    await insertAuditLog({
+      userId: req.user?.user_id,
+      action: 'PREDICT',
+      tableName: 'pets',
+      recordId: null,
+      newValues: { type: 'health_prediction', pet_id, species, breed, age_months },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
