@@ -38,6 +38,7 @@ const Analytics = () => {
   const itemsPerPage = 10;
 
   // ML Dashboard state
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('all');
   const [statistics, setStatistics] = useState(null);
   const [categories, setCategories] = useState([]);
   const [modelStatus, setModelStatus] = useState(null);
@@ -47,7 +48,6 @@ const Analytics = () => {
   const [selectedSpecies, setSelectedSpecies] = useState('Dog');
   const [riskFilters, setRiskFilters] = useState({
     species: '',
-    days_lookback: 365
   });
   const [speciesList] = useState([
     'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
@@ -88,6 +88,12 @@ const Analytics = () => {
   useEffect(() => {
     if (activeTab === 'analytics') {
       fetchMLData();
+    }
+  }, [analyticsPeriod]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchMLData();
     } else if (activeTab === 'sales') {
       fetchSalesData();
     } else if (activeTab === 'inventory') {
@@ -122,12 +128,20 @@ const Analytics = () => {
     }
   };
 
+  const getAnalyticsDateFrom = () => {
+    if (!analyticsPeriod || analyticsPeriod === 'all') return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() - parseInt(analyticsPeriod));
+    return d.toISOString().slice(0, 10);
+  };
+
   const fetchMLData = async () => {
     try {
       setLoading(true);
+      const dateFrom = getAnalyticsDateFrom();
       const [statsRes, categoriesRes, modelRes] = await Promise.all([
-        getDiseaseStatistics(),
-        getDiseaseCasesByCategory(),
+        getDiseaseStatistics({ dateFrom }),
+        getDiseaseCasesByCategory({ dateFrom }),
         getMLModelStatus()
       ]);
 
@@ -165,7 +179,8 @@ const Analytics = () => {
 
   const fetchOutbreakRisk = async () => {
     try {
-      const response = await assessOutbreakRisk(riskFilters);
+      const days = analyticsPeriod === 'all' ? undefined : parseInt(analyticsPeriod);
+      const response = await assessOutbreakRisk({ ...riskFilters, ...(days ? { days_lookback: days } : {}) });
       setOutbreakRisk(response.risk_assessment);
     } catch (err) {
       console.error('Failed to assess outbreak risk:', err);
@@ -728,6 +743,38 @@ const Analytics = () => {
         {/* ML Analytics Tab */}
         {activeTab === 'analytics' && (
           <>
+            {/* Period selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Showing data for</span>
+              {[
+                { label: 'Last 30 days', value: '30' },
+                { label: 'Last 90 days', value: '90' },
+                { label: 'Last 6 months', value: '180' },
+                { label: 'Last 1 year', value: '365' },
+                { label: 'Last 2 years', value: '730' },
+                { label: 'Last 5 years', value: '1825' },
+                { label: 'All time', value: 'all' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAnalyticsPeriod(opt.value)}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '20px',
+                    border: '1px solid',
+                    borderColor: analyticsPeriod === opt.value ? '#3b82f6' : '#e5e7eb',
+                    backgroundColor: analyticsPeriod === opt.value ? '#eff6ff' : 'white',
+                    color: analyticsPeriod === opt.value ? '#2563eb' : '#6b7280',
+                    fontSize: '0.78rem',
+                    fontWeight: analyticsPeriod === opt.value ? '600' : '400',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
             {/* Model Status — compact strip */}
             {modelStatus && (isAdmin || (modelStatus.loaded && modelStatus.trained)) && (
               <div style={styles.modelStatusCard}>
@@ -813,18 +860,6 @@ const Analytics = () => {
                         {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Time Period</label>
-                      <select value={riskFilters.days_lookback} onChange={(e) => setRiskFilters(prev => ({ ...prev, days_lookback: parseInt(e.target.value) }))} style={styles.compactSelect}>
-                        <option value="30">Last 30 days</option>
-                        <option value="60">Last 60 days</option>
-                        <option value="90">Last 90 days</option>
-                        <option value="180">Last 6 months</option>
-                        <option value="365">Last 1 year</option>
-                        <option value="730">Last 2 years</option>
-                        <option value="1825">Last 5 years</option>
-                      </select>
-                    </div>
                   </div>
                 </div>
 
@@ -873,7 +908,7 @@ const Analytics = () => {
                 </div>
                 <p style={{ ...styles.cardHint, borderTopColor: 'rgba(0,0,0,0.08)', marginTop: '0.75rem' }}>
                   <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Filter by <strong>Species</strong> to check risk for a specific animal group. Change <strong>Time Period</strong> to see recent spikes or longer-term patterns.
+                  Filter by <strong>Species</strong> to check risk for a specific animal group. Use the <strong>Showing data for</strong> selector above to change the time period.
                 </p>
               </div>
             )}

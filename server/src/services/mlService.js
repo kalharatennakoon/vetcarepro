@@ -282,6 +282,50 @@ const predictRestockDate = async (params) => {
 };
 
 // ============================================
+// Pet Health Prediction Services
+// ============================================
+
+const predictPetRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/pet-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Pet risk prediction failed:', error.message);
+    throw new Error('Failed to predict pet disease risk');
+  }
+};
+
+const predictCancerRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/cancer-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Cancer risk prediction failed:', error.message);
+    throw new Error('Failed to predict cancer risk');
+  }
+};
+
+const getOutbreakTrend = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/outbreak-trend', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Outbreak trend failed:', error.message);
+    throw new Error('Failed to get outbreak trend');
+  }
+};
+
+const getPandemicRisk = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/pandemic-risk', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Pandemic risk failed:', error.message);
+    throw new Error('Failed to assess pandemic risk');
+  }
+};
+
+// ============================================
 // Data Loading Services (for testing)
 // ============================================
 
@@ -336,6 +380,10 @@ export {
   trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  predictPetRisk,
+  predictCancerRisk,
+  getOutbreakTrend,
+  getPandemicRisk,
 
   // Sales Forecasting (Phase 3)
   trainSalesModel,

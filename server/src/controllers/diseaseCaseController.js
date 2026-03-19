@@ -300,13 +300,12 @@ export const removeDiseaseCase = async (req, res) => {
  */
 export const getStatistics = async (req, res) => {
   try {
-    const statistics = await getDiseaseStatistics();
+    const { date_from, date_to } = req.query;
+    const statistics = await getDiseaseStatistics({ dateFrom: date_from, dateTo: date_to });
 
     res.status(200).json({
       status: 'success',
-      data: {
-        statistics
-      }
+      data: { statistics }
     });
   } catch (error) {
     console.error('Get disease statistics error:', error);
@@ -324,13 +323,12 @@ export const getStatistics = async (req, res) => {
  */
 export const getCasesByCategory = async (req, res) => {
   try {
-    const categoryData = await getDiseaseCasesByCategory();
+    const { date_from, date_to } = req.query;
+    const categoryData = await getDiseaseCasesByCategory({ dateFrom: date_from, dateTo: date_to });
 
     res.status(200).json({
       status: 'success',
-      data: {
-        categories: categoryData
-      }
+      data: { categories: categoryData }
     });
   } catch (error) {
     console.error('Get cases by category error:', error);

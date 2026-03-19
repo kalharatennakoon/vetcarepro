@@ -406,6 +406,42 @@ const getRetrainCheck = async (_req, res) => {
   }
 };
 
+const predictPetRisk = async (req, res) => {
+  try {
+    const result = await mlService.predictPetRisk(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const predictCancerRisk = async (req, res) => {
+  try {
+    const result = await mlService.predictCancerRisk(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getOutbreakTrend = async (req, res) => {
+  try {
+    const result = await mlService.getOutbreakTrend(req.query);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getPandemicRisk = async (req, res) => {
+  try {
+    const result = await mlService.getPandemicRisk(req.query);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   // Health & Status
   checkHealth,
@@ -417,6 +453,10 @@ export {
   trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  predictPetRisk,
+  predictCancerRisk,
+  getOutbreakTrend,
+  getPandemicRisk,
 
   // Sales Forecasting (Phase 3)
   trainSalesModel,

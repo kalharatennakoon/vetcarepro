@@ -367,9 +367,14 @@ export const logAuditEntry = async ({ userId, action, tableName, recordId, oldVa
 /**
  * Get disease statistics
  */
-export const getDiseaseStatistics = async () => {
+export const getDiseaseStatistics = async ({ dateFrom, dateTo } = {}) => {
+  const values = [];
+  let where = '';
+  if (dateFrom) { values.push(dateFrom); where += ` AND diagnosis_date >= $${values.length}`; }
+  if (dateTo)   { values.push(dateTo);   where += ` AND diagnosis_date <= $${values.length}`; }
+
   const query = `
-    SELECT 
+    SELECT
       COUNT(*) as total_cases,
       COUNT(DISTINCT pet_id) as affected_pets,
       COUNT(DISTINCT species) as species_count,
@@ -380,30 +385,36 @@ export const getDiseaseStatistics = async () => {
       AVG(age_at_diagnosis) as avg_age_at_diagnosis,
       AVG(treatment_duration_days) as avg_treatment_duration
     FROM disease_cases
+    WHERE 1=1${where}
   `;
 
-  const result = await pool.query(query);
+  const result = await pool.query(query, values);
   return result.rows[0];
 };
 
 /**
  * Get disease cases by category
  */
-export const getDiseaseCasesByCategory = async () => {
+export const getDiseaseCasesByCategory = async ({ dateFrom, dateTo } = {}) => {
+  const values = [];
+  let where = 'WHERE disease_category IS NOT NULL';
+  if (dateFrom) { values.push(dateFrom); where += ` AND diagnosis_date >= $${values.length}`; }
+  if (dateTo)   { values.push(dateTo);   where += ` AND diagnosis_date <= $${values.length}`; }
+
   const query = `
-    SELECT 
+    SELECT
       disease_category,
       COUNT(*) as case_count,
       COUNT(CASE WHEN is_contagious = true THEN 1 END) as contagious_count,
       AVG(age_at_diagnosis) as avg_age,
       string_agg(DISTINCT species, ', ') as affected_species
     FROM disease_cases
-    WHERE disease_category IS NOT NULL
+    ${where}
     GROUP BY disease_category
     ORDER BY case_count DESC
   `;
 
-  const result = await pool.query(query);
+  const result = await pool.query(query, values);
   return result.rows;
 };
 

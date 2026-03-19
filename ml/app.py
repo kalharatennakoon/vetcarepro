@@ -501,6 +501,82 @@ def get_geographic_distribution():
         }), 500
 
 
+# Global predictor instance
+pet_predictor = None
+
+
+def get_pet_predictor():
+    global pet_predictor
+    if pet_predictor is None:
+        from scripts.pet_health_predictor import PetHealthPredictor
+        pet_predictor = PetHealthPredictor()
+    return pet_predictor
+
+
+@app.route('/api/ml/disease/pet-risk', methods=['POST'])
+def predict_pet_risk():
+    """Predict individual pet disease risk over time horizons."""
+    try:
+        data = request.get_json() or {}
+        species = data.get('species')
+        if not species:
+            return jsonify({'success': False, 'message': 'species is required'}), 400
+        result = get_pet_predictor().predict_individual_risk(
+            species=species,
+            breed=data.get('breed'),
+            age_months=data.get('age_months'),
+            past_diseases=data.get('past_diseases', []),
+            time_horizons=data.get('time_horizons', [1, 6, 12, 24])
+        )
+        return jsonify({'success': True, 'prediction': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/disease/cancer-risk', methods=['POST'])
+def predict_cancer_risk():
+    """Estimate cancer/tumor risk based on breed and age."""
+    try:
+        data = request.get_json() or {}
+        species = data.get('species')
+        if not species:
+            return jsonify({'success': False, 'message': 'species is required'}), 400
+        result = get_pet_predictor().predict_cancer_risk(
+            species=species,
+            breed=data.get('breed'),
+            age_months=data.get('age_months'),
+            sex=data.get('sex')
+        )
+        return jsonify({'success': True, 'assessment': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/disease/outbreak-trend', methods=['GET'])
+def get_outbreak_trend():
+    """Project disease outbreak trend forward."""
+    try:
+        species = request.args.get('species') or None
+        days_ahead = int(request.args.get('days_ahead', 90))
+        result = get_pet_predictor().predict_outbreak_trend(
+            days_ahead=days_ahead, species=species
+        )
+        return jsonify({'success': True, 'trend': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/disease/pandemic-risk', methods=['GET'])
+def get_pandemic_risk():
+    """Assess pandemic/epidemic potential."""
+    try:
+        species = request.args.get('species') or None
+        result = get_pet_predictor().assess_pandemic_risk(species_filter=species)
+        return jsonify({'success': True, 'assessment': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/disease/train', methods=['POST'])
 def train_disease_model():
     """Train or retrain the disease prediction model"""

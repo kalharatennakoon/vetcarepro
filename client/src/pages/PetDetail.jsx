@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 import ImageCropModal from '../components/ImageCropModal';
+import PetHealthPredictions from '../components/PetHealthPredictions';
 
 const PetDetail = () => {
   const [pet, setPet] = useState(null);
@@ -492,24 +493,36 @@ const PetDetail = () => {
           >
             <i className="fas fa-info-circle"></i> Information
           </button>
-          <button
-            style={activeTab === 'medical' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('medical')}
-          >
-            <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
-          </button>
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'medical' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('medical')}
+            >
+              <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
+            </button>
+          )}
           <button
             style={activeTab === 'vaccinations' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('vaccinations')}
           >
             <i className="fas fa-syringe"></i> Vaccinations ({vaccinations.length})
           </button>
-          <button
-            style={activeTab === 'labReports' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('labReports')}
-          >
-            <i className="fas fa-flask"></i> Lab Reports ({labReports.length})
-          </button>
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'labReports' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('labReports')}
+            >
+              <i className="fas fa-flask"></i> Lab Reports ({labReports.length})
+            </button>
+          )}
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'predictions' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('predictions')}
+            >
+              <i className="fas fa-brain"></i> Health Predictions
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -957,6 +970,11 @@ const PetDetail = () => {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+          {activeTab === 'predictions' && (
+            <div style={styles.section}>
+              <PetHealthPredictions pet={pet} />
             </div>
           )}
         </div>
