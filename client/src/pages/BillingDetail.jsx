@@ -91,6 +91,7 @@ const BillingDetail = () => {
       
       showSuccess('Payment recorded successfully');
       setShowPaymentForm(false);
+      setPaymentData({ amount: '', payment_method: 'cash', payment_reference: '', card_type: '', bank_name: '', notes: '' });
       fetchBill(); // Refresh bill data
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to record payment');
@@ -171,59 +172,85 @@ const BillingDetail = () => {
           nav, header, aside, footer, button, .no-print {
             display: none !important;
           }
-          
-          * {
-            overflow: visible !important;
+
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
           }
-          
+
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            overflow: visible !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
           }
-          
-          /* Page settings */
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          
-          /* Show invoice container */
+
+          /* Scale invoice to fit one page */
           .print-invoice-container {
             display: block !important;
-            width: 100% !important;
-            max-width: 100% !important;
+            width: 194mm !important;
+            max-width: 194mm !important;
             margin: 0 !important;
-            padding: 20px !important;
+            padding: 10px 14px !important;
+            box-sizing: border-box !important;
+            transform-origin: top left !important;
+            overflow: hidden !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
             page-break-inside: avoid !important;
-            overflow: visible !important;
           }
-          
+
+          /* Compact spacing for print */
+          .print-invoice-container h1 {
+            font-size: 22px !important;
+            margin: 0 0 4px 0 !important;
+          }
+          .print-invoice-container h3 {
+            font-size: 10px !important;
+            margin: 0 0 6px 0 !important;
+          }
+          .print-invoice-container p,
+          .print-invoice-container td,
+          .print-invoice-container th,
+          .print-invoice-container span {
+            font-size: 10px !important;
+          }
+          .print-invoice-container table {
+            font-size: 10px !important;
+          }
+          .print-invoice-container th,
+          .print-invoice-container td {
+            padding: 5px 7px !important;
+          }
+          .print-invoice-container hr,
+          .print-invoice-container [style*="margin: 24px 0"],
+          .print-invoice-container [style*="margin: 32px"] {
+            margin: 8px 0 !important;
+          }
+
           /* Remove shadows for print */
           .invoice-card-print {
             box-shadow: none !important;
-            border: 1px solid #000 !important;
+            border: 1px solid #ccc !important;
             background: white !important;
-            overflow: visible !important;
           }
-          
-          /* Print footer */
+
+          /* Print footer - pinned to bottom of page */
           .print-footer {
             display: block !important;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 15px;
-            border-top: 2px solid #000;
-            text-align: center;
-            font-size: 10px;
-            background: white;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            padding: 6px 14px !important;
+            border-top: 1px solid #999 !important;
+            text-align: center !important;
+            font-size: 9px !important;
+            background: white !important;
+            line-height: 1.5 !important;
           }
-          
-          /* Optimize colors for print */
+
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
