@@ -20,7 +20,7 @@ const AppointmentReminder = () => {
   const timeoutsRef  = useRef([]);
 
   useEffect(() => {
-    if (!user || !['receptionist', 'veterinarian', 'admin'].includes(user.role)) return;
+    if (!user || !['receptionist', 'veterinarian'].includes(user.role)) return;
 
     let cancelled = false;
 
