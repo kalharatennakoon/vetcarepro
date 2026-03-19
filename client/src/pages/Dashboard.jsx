@@ -223,16 +223,10 @@ const Dashboard = () => {
               <p style={styles.subtitle}>Overview of clinic operations</p>
             </div>
           </div>
-          <div style={styles.dateCard}>
-            <i className="far fa-calendar" style={{fontSize: '14px', marginRight: '6px', color: '#6B7280'}}></i>
-            <span style={styles.dateText}>
-              {new Date().toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}
-            </span>
-          </div>
+          <span style={styles.dateLabel}>
+            <i className="far fa-calendar" style={{ marginRight: '6px' }}></i>
+            Today: {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         </div>
 
         {loading ? (
@@ -244,7 +238,78 @@ const Dashboard = () => {
           <>
             {/* Stats Cards */}
             <div style={styles.statsGrid}>
-              {(user?.role === 'veterinarian' || user?.role === 'admin') ? (
+              {user?.role === 'admin' ? (
+                // Admin Stats
+                <>
+                  <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>TODAY'S APPOINTMENTS</p>
+                        <p style={styles.statValue}>{stats.todayAppointments}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
+                        <i className="fas fa-calendar-check" style={{...styles.statIconText, color: '#1e40af'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: '#3b82f6'}}>
+                        {stats.completedToday} completed · {stats.waitingPatients} waiting →
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{...styles.statCard, borderLeft: stats.pendingInvoices > 0 ? '4px solid #f59e0b' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/billing')}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>PENDING INVOICES</p>
+                        <p style={styles.statValue}>{stats.pendingInvoices}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#fef3c7'}}>
+                        <i className="fas fa-file-invoice-dollar" style={{...styles.statIconText, color: '#d97706'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: '#d97706'}}>
+                        {stats.pendingInvoices > 0 ? 'Awaiting payment →' : 'All invoices settled'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{...styles.statCard, borderLeft: stats.urgentCases > 0 ? '4px solid #ef4444' : '4px solid #e5e7eb', backgroundColor: stats.urgentCases > 0 ? '#fff7ed' : 'white', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={{...styles.statLabel, color: stats.urgentCases > 0 ? '#c2410c' : '#6b7280'}}>URGENT CASES</p>
+                        <p style={styles.statValue}>{stats.urgentCases}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#fee2e2'}}>
+                        <i className="fas fa-exclamation-triangle" style={{...styles.statIconText, color: '#dc2626'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: stats.urgentCases > 0 ? '#dc2626' : '#6b7280'}}>
+                        {stats.urgentCases > 0 ? 'Needs immediate attention →' : 'No urgent cases today'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{...styles.statCard, borderLeft: stats.lowStockItems > 0 ? '4px solid #8b5cf6' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/inventory')}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>LOW STOCK ALERTS</p>
+                        <p style={styles.statValue}>{stats.lowStockItems}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#ede9fe'}}>
+                        <i className="fas fa-boxes" style={{...styles.statIconText, color: '#7c3aed'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={{...styles.statChange, color: stats.lowStockItems > 0 ? '#7c3aed' : '#6b7280'}}>
+                        {stats.lowStockItems > 0 ? 'Review inventory →' : 'Stock levels OK'}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : user?.role === 'veterinarian' ? (
                 // Veterinarian Stats
                 <>
                   <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6'}}>
@@ -259,7 +324,7 @@ const Dashboard = () => {
                     </div>
                     <div style={styles.statFooter}>
                       <span style={{...styles.statChange, color: '#10b981'}}>
-                        <i className="fas fa-arrow-up" style={{fontSize: '0.75rem'}}></i> +{stats.waitingPatients > 0 ? Math.floor(stats.waitingPatients / 2) : 0} since 9am
+                        {stats.waitingPatients > 0 ? `${stats.waitingPatients} in queue` : 'No patients waiting'}
                       </span>
                     </div>
                   </div>
@@ -275,9 +340,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div style={styles.statFooter}>
-                      <span style={styles.statChange}>
-                        On track for daily goal
-                      </span>
+                      <span style={styles.statChange}>On track for daily goal</span>
                     </div>
                   </div>
 
@@ -301,16 +364,16 @@ const Dashboard = () => {
                   <div style={styles.statCard}>
                     <div style={styles.statContent}>
                       <div>
-                        <p style={styles.statLabel}>LAB RESULTS READY</p>
-                        <p style={styles.statValue}>{stats.labResultsReady}</p>
+                        <p style={styles.statLabel}>TODAY'S SCHEDULE</p>
+                        <p style={styles.statValue}>{stats.todayAppointments}</p>
                       </div>
                       <div style={{...styles.statIconWrapper, backgroundColor: '#e9d5ff'}}>
-                        <i className="fas fa-flask" style={{...styles.statIconText, color: '#7c3aed'}}></i>
+                        <i className="fas fa-calendar-day" style={{...styles.statIconText, color: '#7c3aed'}}></i>
                       </div>
                     </div>
                     <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#7c3aed', cursor: 'pointer'}}>
-                        Review all results →
+                      <span style={{...styles.statChange, color: '#7c3aed'}}>
+                        {stats.todayUpcoming} still upcoming
                       </span>
                     </div>
                   </div>
@@ -373,13 +436,46 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions - Role Specific */}
-            {(user?.role === 'veterinarian' || user?.role === 'admin') ? (
+            {user?.role === 'admin' ? (
+              // Admin Quick Actions
+              <div style={styles.vetQuickActionsContainer}>
+                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                  <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
+                    <i className="fas fa-calendar-plus"></i>
+                    <span>New Appointment</span>
+                  </button>
+                  <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
+                    <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
+                    <span>Add Customer</span>
+                  </button>
+                </div>
+
+                <div style={styles.quickActionsGrid}>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
+                    <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Customers</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
+                    <i className="fas fa-paw" style={{...styles.quickActionIcon, color: '#f59e0b'}}></i>
+                    <span style={styles.quickActionLabel}>Pets</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/analytics')}>
+                    <i className="fas fa-chart-line" style={{...styles.quickActionIcon, color: '#10b981'}}></i>
+                    <span style={styles.quickActionLabel}>Analytics</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/users')}>
+                    <i className="fas fa-user-shield" style={{...styles.quickActionIcon, color: '#8b5cf6'}}></i>
+                    <span style={styles.quickActionLabel}>User Management</span>
+                  </div>
+                </div>
+              </div>
+            ) : user?.role === 'veterinarian' ? (
               // Veterinarian Quick Actions
               <div style={styles.vetQuickActionsContainer}>
                 <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
-                  <button onClick={() => navigate('/medical-records/new')} style={styles.primaryButton}>
-                    <i className="fas fa-play"></i>
-                    <span>Start Next Exam</span>
+                  <button onClick={() => navigate('/appointments')} style={styles.primaryButton}>
+                    <i className="fas fa-calendar-day"></i>
+                    <span>Today's Schedule</span>
                   </button>
                   <button onClick={() => navigate('/medical-records/new')} style={styles.secondaryButton}>
                     <i className="fas fa-plus-circle" style={{color: '#3b82f6'}}></i>
@@ -392,15 +488,15 @@ const Dashboard = () => {
                     <i className="fas fa-prescription" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
                     <span style={styles.quickActionLabel}>Prescription</span>
                   </div>
-                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records')}>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
                     <i className="fas fa-flask" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
-                    <span style={styles.quickActionLabel}>Lab Request</span>
+                    <span style={styles.quickActionLabel}>Lab Reports</span>
                   </div>
                   <div style={styles.quickActionCard} onClick={() => navigate('/medical-records/new')}>
                     <i className="fas fa-notes-medical" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
                     <span style={styles.quickActionLabel}>Add Notes</span>
                   </div>
-                  <div style={styles.quickActionCard} onClick={() => navigate('/medical-records')}>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/vaccinations')}>
                     <i className="fas fa-syringe" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
                     <span style={styles.quickActionLabel}>Vaccine Log</span>
                   </div>
@@ -720,24 +816,11 @@ const styles = {
     color: '#6b7280',
     margin: '0',
   },
-  dateCard: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    backgroundColor: 'white',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
+  dateLabel: {
+    fontSize: '0.85rem',
+    color: '#9ca3af',
     whiteSpace: 'nowrap',
-  },
-  dateText: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
+    alignSelf: 'center',
   },
   loadingContainer: {
     display: 'flex',
