@@ -686,12 +686,6 @@ function Profile() {
           </h3>
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>User ID:</span>
-              <span style={styles.infoValue}>
-                {profileData?.user_id ? `USR-${String(profileData.user_id).padStart(4, '0')}` : 'N/A'}
-              </span>
-            </div>
-            <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Account Status:</span>
               <span style={{
                 ...styles.badge,
@@ -705,6 +699,16 @@ function Profile() {
               <span style={styles.infoLabel}>Member Since:</span>
               <span style={styles.infoValue}>
                 {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'N/A'}
+              </span>
+            </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Last Updated:</span>
+              <span style={styles.infoValue}>
+                {profileData?.updated_at ? new Date(profileData.updated_at).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric'
