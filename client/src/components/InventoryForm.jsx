@@ -161,13 +161,13 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
         // Remove empty strings for optional fields
         itemCode: formData.itemCode || undefined,
         subCategory: formData.subCategory || undefined,
-        supplier: formData.supplier || undefined,
-        supplierContact: formData.supplierContact || undefined,
-        expiryDate: formData.expiryDate || undefined,
-        manufacturingDate: formData.manufacturingDate || undefined,
+        supplier: formData.supplier,
+        supplierContact: formData.supplierContact,
+        expiryDate: formData.expiryDate,
+        manufacturingDate: formData.manufacturingDate,
         batchNumber: formData.batchNumber || undefined,
         storageLocation: formData.storageLocation || undefined,
-        description: formData.description || undefined
+        description: formData.description
       };
 
       if (isEditMode) {
@@ -402,13 +402,14 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
           <div style={styles.grid2}>
             <div>
               <label style={styles.label}>
-                Supplier Name
+                Supplier Name <span style={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="supplier"
                 value={formData.supplier}
                 onChange={handleChange}
+                required
                 style={styles.input}
                 placeholder="e.g., MediSupply Corp"
               />
@@ -416,13 +417,14 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
             <div>
               <label style={styles.label}>
-                Supplier Contact
+                Supplier Contact <span style={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="supplierContact"
                 value={formData.supplierContact}
                 onChange={handleChange}
+                required
                 style={styles.input}
                 placeholder="Phone or email"
               />
@@ -464,26 +466,28 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
             <div>
               <label style={styles.label}>
-                Manufacturing Date
+                Manufacturing Date <span style={styles.required}>*</span>
               </label>
               <input
                 type="date"
                 name="manufacturingDate"
                 value={formData.manufacturingDate}
                 onChange={handleChange}
+                required
                 style={styles.input}
               />
             </div>
 
             <div>
               <label style={styles.label}>
-                Expiry Date
+                Expiry Date <span style={styles.required}>*</span>
               </label>
               <input
                 type="date"
                 name="expiryDate"
                 value={formData.expiryDate}
                 onChange={handleChange}
+                required
                 style={styles.input}
               />
             </div>
@@ -491,15 +495,16 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
           <div style={styles.descriptionContainer}>
             <label style={styles.label}>
-              Description
+              Description <span style={styles.required}>*</span>
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               rows="3"
+              required
               style={styles.textarea}
-              placeholder="Additional notes about the item..."
+              placeholder="Describe the item — usage, dosage form, key properties..."
             />
           </div>
         </div>
