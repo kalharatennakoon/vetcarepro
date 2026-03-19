@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
-import { getSpeciesList, createPet } from '../services/petService';
+import { createPet } from '../services/petService';
+
+const SPECIES_LIST = [
+  'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+  'Parrot', 'Budgie', 'Pigeon', 'Hen',
+  'Cow', 'Goat', 'Pig', 'Sheep',
+  'Snake', 'Lizard', 'Turtle',
+  'Exotic Animal', 'Monkey', 'Deer',
+  'Rescue/Admitted Wildlife', 'Other',
+];
 
 const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [speciesList, setSpeciesList] = useState([]);
   const [addPet, setAddPet] = useState(false);
   const [petData, setPetData] = useState({
     pet_name: '',
@@ -40,11 +48,6 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   useEffect(() => {
     if (customerId) {
       loadCustomer();
-    }
-    if (!customerId) {
-      getSpeciesList().then(res => {
-        setSpeciesList(res.data.species?.map(s => s.species) || []);
-      }).catch(() => {});
     }
   }, [customerId]);
 
@@ -470,12 +473,9 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
                       style={styles.input}
                     >
                       <option value="">Select species</option>
-                      {speciesList.length > 0
-                        ? speciesList.map(s => <option key={s} value={s}>{s}</option>)
-                        : ['Dog', 'Cat', 'Bird', 'Rabbit', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other'].map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))
-                      }
+                      {SPECIES_LIST.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

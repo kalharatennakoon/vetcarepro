@@ -15,7 +15,6 @@ import {
   getSalesTrends,
   getReorderSuggestions
 } from '../services/predictionService';
-import { getSpeciesList } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -50,7 +49,14 @@ const Analytics = () => {
     species: '',
     days_lookback: 365
   });
-  const [speciesList, setSpeciesList] = useState(['Dog', 'Cat', 'Rabbit', 'Bird', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other']);
+  const [speciesList] = useState([
+    'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+    'Parrot', 'Budgie', 'Pigeon', 'Hen',
+    'Cow', 'Goat', 'Pig', 'Sheep',
+    'Snake', 'Lizard', 'Turtle',
+    'Exotic Animal', 'Monkey', 'Deer',
+    'Rescue/Admitted Wildlife', 'Other',
+  ]);
   const [training, setTraining] = useState(false);
   const [trainSuccess, setTrainSuccess] = useState(false);
 
@@ -73,11 +79,6 @@ const Analytics = () => {
   const isVetOrAdmin = user?.role === 'admin' || user?.role === 'veterinarian';
   const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    getSpeciesList()
-      .then(res => { if (res.species?.length) setSpeciesList(res.species); })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetchCases();

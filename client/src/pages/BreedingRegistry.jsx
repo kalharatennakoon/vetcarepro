@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBreedingRegistry, getSpeciesList } from '../services/petService';
+import { getBreedingRegistry } from '../services/petService';
+
+const SPECIES_LIST = [
+  'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+  'Parrot', 'Budgie', 'Pigeon', 'Hen',
+  'Cow', 'Goat', 'Pig', 'Sheep',
+  'Snake', 'Lizard', 'Turtle',
+  'Exotic Animal', 'Monkey', 'Deer',
+  'Rescue/Admitted Wildlife', 'Other',
+];
 import Layout from '../components/Layout';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
@@ -8,13 +17,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 const BreedingRegistry = () => {
   const [pets, setPets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [speciesList, setSpeciesList] = useState([]);
   const [filters, setFilters] = useState({ species: '', gender: '', breed: '' });
   const [contactModal, setContactModal] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    getSpeciesList().then(res => setSpeciesList(res.data.species?.map(s => s.species) || [])).catch(() => {});
     fetchPets();
   }, []);
 
@@ -80,7 +87,7 @@ const BreedingRegistry = () => {
         <div style={styles.filterBar}>
           <select name="species" value={filters.species} onChange={handleFilter} style={styles.filterSelect}>
             <option value="">All Species</option>
-            {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+            {SPECIES_LIST.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select name="gender" value={filters.gender} onChange={handleFilter} style={styles.filterSelect}>
             <option value="">Any Gender</option>
