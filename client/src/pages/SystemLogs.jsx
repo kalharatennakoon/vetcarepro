@@ -422,7 +422,7 @@ function SystemLogs() {
               )}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
               <table style={styles.table}>
                 <thead>
                   <tr style={styles.thead}>
@@ -848,7 +848,10 @@ const styles = {
     fontSize: '0.875rem'
   },
   thead: {
-    backgroundColor: '#f9fafb'
+    backgroundColor: '#f9fafb',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1,
   },
   th: {
     padding: '0.65rem 1rem',
