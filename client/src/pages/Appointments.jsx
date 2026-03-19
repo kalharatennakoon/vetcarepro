@@ -27,6 +27,8 @@ const Appointments = () => {
   const [selectedDayAppointments, setSelectedDayAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [apptDetailModal, setApptDetailModal] = useState(null);
+  const [pendingViewDate, setPendingViewDate] = useState(null);
+  const [pendingViewApptId, setPendingViewApptId] = useState(null);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -76,10 +78,29 @@ const Appointments = () => {
     if (location.state?.editAppointmentId) {
       setEditingId(location.state.editAppointmentId);
       setShowForm(true);
-      // Clear the state to prevent reopening on subsequent renders
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.viewDate) {
+      const dateStr = location.state.viewDate.split('T')[0];
+      const aptDate = new Date(dateStr + 'T00:00:00');
+      setCurrentMonth(new Date(aptDate.getFullYear(), aptDate.getMonth(), 1));
+      setPendingViewDate(dateStr);
+      if (location.state?.viewAppointmentId) {
+        setPendingViewApptId(location.state.viewAppointmentId);
+      }
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  // Once appointments load, open the specific appointment detail for the pending view
+  useEffect(() => {
+    if (!pendingViewDate || appointments.length === 0) return;
+    if (pendingViewApptId) {
+      const specific = appointments.find(a => a.appointment_id === pendingViewApptId);
+      if (specific) setApptDetailModal(specific);
+    }
+    setPendingViewDate(null);
+    setPendingViewApptId(null);
+  }, [appointments, pendingViewDate]);
 
   const fetchAppointments = async () => {
     try {

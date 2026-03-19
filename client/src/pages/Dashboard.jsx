@@ -46,6 +46,7 @@ const Dashboard = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [upcomingPreview, setUpcomingPreview] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -459,7 +460,7 @@ const Dashboard = () => {
               ) : (
                 // Receptionist Stats
                 <>
-                  <div style={styles.statCard}>
+                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
                     <div style={styles.statContent}>
                       <div>
                         <p style={styles.statLabel}>Appointments Today</p>
@@ -471,12 +472,27 @@ const Dashboard = () => {
                     </div>
                     <div style={styles.statFooter}>
                       <span style={{fontSize: '0.75rem', color: '#10b981'}}>
-                        {stats.todayUpcoming + stats.todayOverdue} waiting
+                        {stats.todayUpcoming + stats.todayOverdue} waiting · View schedule →
                       </span>
                     </div>
                   </div>
 
-                  <div style={styles.statCard}>
+                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/customers')}>
+                    <div style={styles.statContent}>
+                      <div>
+                        <p style={styles.statLabel}>Total Clients</p>
+                        <p style={styles.statValue}>{stats.totalCustomers}</p>
+                      </div>
+                      <div style={{...styles.statIconWrapper, backgroundColor: '#d1fae5'}}>
+                        <i className="fas fa-users" style={{...styles.statIconText, color: '#065f46'}}></i>
+                      </div>
+                    </div>
+                    <div style={styles.statFooter}>
+                      <span style={styles.statChange}>Registered clients →</span>
+                    </div>
+                  </div>
+
+                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/pets')}>
                     <div style={styles.statContent}>
                       <div>
                         <p style={styles.statLabel}>Active Patients</p>
@@ -488,12 +504,12 @@ const Dashboard = () => {
                     </div>
                     <div style={styles.statFooter}>
                       <span style={styles.statChange}>
-                        {stats.totalPets} total registered
+                        {stats.totalPets} total registered →
                       </span>
                     </div>
                   </div>
 
-                  <div style={styles.statCard}>
+                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/billing')}>
                     <div style={styles.statContent}>
                       <div>
                         <p style={styles.statLabel}>Pending Invoices</p>
@@ -504,8 +520,8 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <div style={styles.statFooter}>
-                      <span style={styles.statChange}>
-                        Awaiting payment
+                      <span style={{...styles.statChange, color: stats.pendingInvoices > 0 ? '#7c3aed' : '#6b7280'}}>
+                        {stats.pendingInvoices > 0 ? 'Awaiting payment →' : 'All invoices cleared'}
                       </span>
                     </div>
                   </div>
@@ -582,20 +598,40 @@ const Dashboard = () => {
               </div>
             ) : (
               // Receptionist Quick Actions
-              <div style={styles.quickActions}>
-                <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
-                  <i className="fas fa-plus-circle"></i>
-                  <span>New Appointment</span>
-                </button>
+              <div style={styles.vetQuickActionsContainer}>
+                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
+                  <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
+                    <i className="fas fa-calendar-plus"></i>
+                    <span>New Appointment</span>
+                  </button>
+                  <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
+                    <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
+                    <span>New Client</span>
+                  </button>
+                  <button onClick={() => navigate('/billing/new')} style={styles.secondaryButton}>
+                    <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
+                    <span>New Invoice</span>
+                  </button>
+                </div>
 
-                <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
-                  <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
-                  <span>New Client</span>
-                </button>
-                <button onClick={() => navigate('/billing')} style={styles.secondaryButton}>
-                  <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
-                  <span>Process Payment</span>
-                </button>
+                <div style={styles.quickActionsGrid}>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/appointments')}>
+                    <i className="fas fa-calendar-alt" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
+                    <span style={styles.quickActionLabel}>Appointments</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
+                    <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#10b981'}}></i>
+                    <span style={styles.quickActionLabel}>Clients</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
+                    <i className="fas fa-paw" style={{...styles.quickActionIcon, color: '#f59e0b'}}></i>
+                    <span style={styles.quickActionLabel}>Patients</span>
+                  </div>
+                  <div style={styles.quickActionCard} onClick={() => navigate('/billing')}>
+                    <i className="fas fa-file-invoice-dollar" style={{...styles.quickActionIcon, color: '#8b5cf6'}}></i>
+                    <span style={styles.quickActionLabel}>Billing</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -825,8 +861,8 @@ const Dashboard = () => {
                       </div>
                     )}
                   </div>
-                ) : (
-                  /* Admin / Receptionist: Quick Overview */
+                ) : user?.role === 'admin' ? (
+                  /* Admin: Quick Overview */
                   <div style={styles.sidebarCard}>
                     <h4 style={styles.sidebarTitle}>Quick Overview</h4>
                     <div style={styles.quickStatsList}>
@@ -853,6 +889,40 @@ const Dashboard = () => {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  /* Receptionist: Today's Summary */
+                  <div style={styles.sidebarCard}>
+                    <h4 style={styles.sidebarTitle}>Today's Summary</h4>
+                    <div style={styles.quickStatsList}>
+                      <div style={styles.quickStat} onClick={() => navigate('/appointments')}>
+                        <div style={{...styles.quickStatIcon, backgroundColor: '#dbeafe', color: '#1e40af'}}>
+                          <i className="fas fa-calendar-check"></i>
+                        </div>
+                        <div>
+                          <div style={styles.quickStatValue}>{stats.todayAppointments}</div>
+                          <div style={styles.quickStatLabel}>Today's Appointments</div>
+                        </div>
+                      </div>
+                      <div style={styles.quickStat} onClick={() => navigate('/billing')}>
+                        <div style={{...styles.quickStatIcon, backgroundColor: '#ede9fe', color: '#6d28d9'}}>
+                          <i className="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <div>
+                          <div style={styles.quickStatValue}>{stats.pendingInvoices}</div>
+                          <div style={styles.quickStatLabel}>Pending Payments</div>
+                        </div>
+                      </div>
+                      <div style={styles.quickStat} onClick={() => navigate('/customers')}>
+                        <div style={{...styles.quickStatIcon, backgroundColor: '#d1fae5', color: '#065f46'}}>
+                          <i className="fas fa-users"></i>
+                        </div>
+                        <div>
+                          <div style={styles.quickStatValue}>{stats.totalCustomers}</div>
+                          <div style={styles.quickStatLabel}>Total Clients</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Upcoming Appointments */}
@@ -868,7 +938,7 @@ const Dashboard = () => {
                       <p style={styles.emptyTextSmall}>No upcoming appointments</p>
                     ) : (
                       (user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).slice(0, 4).map((apt) => (
-                        <div key={apt.appointment_id} style={{...styles.upcomingItem, cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
+                        <div key={apt.appointment_id} style={{...styles.upcomingItem, cursor: 'pointer', backgroundColor: upcomingPreview?.appointment_id === apt.appointment_id ? '#eff6ff' : undefined}} onClick={() => setUpcomingPreview(upcomingPreview?.appointment_id === apt.appointment_id ? null : apt)}>
                           <div style={styles.upcomingIcon}><i className="fas fa-calendar"></i></div>
                           <div style={{flex: 1}}>
                             <div style={styles.upcomingPet}>{apt.pet_name}</div>
@@ -880,6 +950,31 @@ const Dashboard = () => {
                       ))
                     )}
                   </div>
+
+                  {/* Inline preview card */}
+                  {upcomingPreview && (
+                    <div style={{margin: '0.75rem 0 0', padding: '0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.8rem'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem'}}>
+                        <span style={{fontWeight: '600', color: '#1e293b'}}>{upcomingPreview.pet_name}</span>
+                        <button onClick={() => setUpcomingPreview(null)} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0', lineHeight: 1}}>
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div style={{color: '#475569', lineHeight: '1.6'}}>
+                        <div><i className="fas fa-calendar" style={{width: '14px', marginRight: '0.4rem', color: '#64748b'}}></i>{new Date(upcomingPreview.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {formatTime(upcomingPreview.appointment_time)}</div>
+                        <div><i className="fas fa-stethoscope" style={{width: '14px', marginRight: '0.4rem', color: '#64748b'}}></i>{upcomingPreview.appointment_type}</div>
+                        {upcomingPreview.veterinarian_name && <div><i className="fas fa-user-md" style={{width: '14px', marginRight: '0.4rem', color: '#64748b'}}></i>Dr. {upcomingPreview.veterinarian_name}</div>}
+                        {upcomingPreview.reason && <div><i className="fas fa-notes-medical" style={{width: '14px', marginRight: '0.4rem', color: '#64748b'}}></i>{upcomingPreview.reason}</div>}
+                      </div>
+                      <button
+                        onClick={() => { setUpcomingPreview(null); navigate('/appointments', { state: { viewDate: upcomingPreview.appointment_date, viewAppointmentId: upcomingPreview.appointment_id } }); }}
+                        style={{marginTop: '0.6rem', width: '100%', padding: '0.35rem 0', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '500'}}
+                      >
+                        <i className="fas fa-calendar-alt" style={{marginRight: '0.35rem'}}></i>Go to Calendar View
+                      </button>
+                    </div>
+                  )}
+
                   {user?.role === 'veterinarian' && stats.vetUnassignedUpcoming.length > 0 && (
                     <div style={{borderTop: '1px solid #f3f4f6', marginTop: '0.75rem', paddingTop: '0.75rem'}}>
                       <p style={{fontSize: '0.75rem', fontWeight: '600', color: '#92400e', margin: '0 0 0.5rem'}}>
@@ -887,7 +982,7 @@ const Dashboard = () => {
                         {stats.vetUnassignedUpcoming.length} unassigned upcoming
                       </p>
                       {stats.vetUnassignedUpcoming.map((apt) => (
-                        <div key={apt.appointment_id} style={{...styles.upcomingItem, backgroundColor: '#fffbeb', marginBottom: '0.4rem', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
+                        <div key={apt.appointment_id} style={{...styles.upcomingItem, backgroundColor: upcomingPreview?.appointment_id === apt.appointment_id ? '#fffbeb' : '#fffbeb', marginBottom: '0.4rem', cursor: 'pointer'}} onClick={() => setUpcomingPreview(upcomingPreview?.appointment_id === apt.appointment_id ? null : apt)}>
                           <div style={{...styles.upcomingIcon, backgroundColor: '#fde68a', color: '#92400e'}}><i className="fas fa-calendar"></i></div>
                           <div style={{flex: 1}}>
                             <div style={styles.upcomingPet}>{apt.pet_name}</div>
