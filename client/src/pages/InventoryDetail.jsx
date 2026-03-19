@@ -146,7 +146,7 @@ const InventoryDetail = () => {
             </div>
             <div style={styles.actionButtons}>
               <button
-                onClick={() => setShowQuantityModal(true)}
+                onClick={() => { setShowQuantityModal(true); if (!isAdmin) setQuantityOperation('subtract'); }}
                 style={styles.updateButton}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
@@ -405,16 +405,18 @@ const InventoryDetail = () => {
                     Operation
                   </label>
                   <div style={styles.radioGroup}>
-                    <label style={styles.radioLabel}>
-                      <input
-                        type="radio"
-                        value="add"
-                        checked={quantityOperation === 'add'}
-                        onChange={(e) => setQuantityOperation(e.target.value)}
-                        style={styles.radioInput}
-                      />
-                      Add (Restock)
-                    </label>
+                    {isAdmin && (
+                      <label style={styles.radioLabel}>
+                        <input
+                          type="radio"
+                          value="add"
+                          checked={quantityOperation === 'add'}
+                          onChange={(e) => setQuantityOperation(e.target.value)}
+                          style={styles.radioInput}
+                        />
+                        Add (Restock)
+                      </label>
+                    )}
                     <label style={styles.radioLabel}>
                       <input
                         type="radio"

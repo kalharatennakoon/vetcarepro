@@ -55,12 +55,12 @@ const BillingDetail = () => {
       setError('');
       
       // Set default payment amount to remaining balance
-      if (response.data.bill.balance_amount > 0) {
-        setPaymentData(prev => ({
-          ...prev,
-          amount: response.data.bill.balance_amount.toString()
-        }));
-      }
+      setPaymentData(prev => ({
+        ...prev,
+        amount: response.data.bill.balance_amount > 0
+          ? response.data.bill.balance_amount.toString()
+          : ''
+      }));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load bill');
       console.error(err);
@@ -73,12 +73,12 @@ const BillingDetail = () => {
     e.preventDefault();
     
     if (parseFloat(paymentData.amount) <= 0) {
-      alert('Payment amount must be greater than 0');
+      showError('Payment amount must be greater than 0');
       return;
     }
-    
+
     if (parseFloat(paymentData.amount) > parseFloat(bill.balance_amount)) {
-      alert('Payment amount cannot exceed balance amount');
+      showError('Payment amount cannot exceed balance amount');
       return;
     }
 
@@ -93,7 +93,7 @@ const BillingDetail = () => {
       setShowPaymentForm(false);
       fetchBill(); // Refresh bill data
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to record payment');
+      showError(err.response?.data?.message || 'Failed to record payment');
       console.error(err);
     } finally {
       setSubmitting(false);
