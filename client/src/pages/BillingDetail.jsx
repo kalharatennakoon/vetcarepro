@@ -268,19 +268,22 @@ const BillingDetail = () => {
           }
         }
       `}</style>
-      <div style={styles.container}>
+      <div id="billing-detail-top" style={styles.container}>
         {/* Header */}
         <div style={styles.header} className="no-print">
           <button onClick={() => navigate('/billing')} style={styles.backButton}>
             ← Back to Billing
           </button>
           <div style={styles.headerActions}>
-            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && (
-              <button 
-                onClick={() => setShowPaymentForm(!showPaymentForm)} 
+            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && !showPaymentForm && (
+              <button
+                onClick={() => {
+                  setShowPaymentForm(true);
+                  setTimeout(() => document.getElementById('payment-form-section')?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }}
                 style={styles.paymentButton}
               >
-                {showPaymentForm ? 'Cancel' : <><i className="fas fa-credit-card"></i> Record Payment</>}
+                <i className="fas fa-credit-card"></i> Record Payment
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
@@ -423,7 +426,7 @@ const BillingDetail = () => {
 
         {/* Payment Form */}
         {showPaymentForm && (
-          <div style={styles.paymentFormCard} className="no-print">
+          <div id="payment-form-section" style={styles.paymentFormCard} className="no-print">
             <h2 style={styles.formTitle}>Record Payment</h2>
             <form onSubmit={handlePaymentSubmit}>
               <div style={styles.formRow}>
@@ -507,9 +510,12 @@ const BillingDetail = () => {
               </div>
 
               <div style={styles.formActions}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPaymentForm(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentForm(false);
+                    document.getElementById('billing-detail-top')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   style={styles.cancelButton}
                   disabled={submitting}
                 >
