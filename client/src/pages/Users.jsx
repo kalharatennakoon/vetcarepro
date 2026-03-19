@@ -62,6 +62,17 @@ const Users = () => {
     setError('');
     setSuccess('');
 
+    if (!editingUser && formData.role === 'veterinarian') {
+      if (!formData.specialization.trim()) {
+        setError('Specialization is required for veterinarians');
+        return;
+      }
+      if (!formData.license_number.trim()) {
+        setError('License Number is required for veterinarians');
+        return;
+      }
+    }
+
     try {
       if (editingUser) {
         // Update existing user
@@ -217,9 +228,10 @@ const Users = () => {
             {editingUser ? 'Edit User' : 'Create New User'}
           </h3>
           <form onSubmit={handleSubmit} style={styles.form}>
+            <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
             <div style={styles.formGrid}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>First Name *</label>
+                <label style={styles.label}>First Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="text"
                   name="first_name"
@@ -230,7 +242,7 @@ const Users = () => {
                 />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Last Name *</label>
+                <label style={styles.label}>Last Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="text"
                   name="last_name"
@@ -241,7 +253,7 @@ const Users = () => {
                 />
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Email *</label>
+                <label style={styles.label}>Email<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="email"
                   name="email"
@@ -277,7 +289,7 @@ const Users = () => {
                 </select>
               </div>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Role *</label>
+                <label style={styles.label}>Role<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <select
                   name="role"
                   value={formData.role}
@@ -293,7 +305,9 @@ const Users = () => {
               {formData.role === 'veterinarian' && (
                 <>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Specialization</label>
+                    <label style={styles.label}>
+                      Specialization{!editingUser && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
+                    </label>
                     <input
                       type="text"
                       name="specialization"
@@ -301,16 +315,21 @@ const Users = () => {
                       onChange={handleInputChange}
                       style={styles.input}
                       placeholder="e.g., Small Animals, Surgery"
+                      required={!editingUser}
                     />
                   </div>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>License Number</label>
+                    <label style={styles.label}>
+                      License Number{!editingUser && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
+                    </label>
                     <input
                       type="text"
                       name="license_number"
                       value={formData.license_number}
                       onChange={handleInputChange}
                       style={styles.input}
+                      placeholder="Veterinary license number"
+                      required={!editingUser}
                     />
                   </div>
                 </>

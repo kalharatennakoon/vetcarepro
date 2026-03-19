@@ -428,10 +428,11 @@ const BillingDetail = () => {
         {showPaymentForm && (
           <div id="payment-form-section" style={styles.paymentFormCard} className="no-print">
             <h2 style={styles.formTitle}>Record Payment</h2>
+            <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
             <form onSubmit={handlePaymentSubmit}>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Amount *</label>
+                  <label style={styles.label}>Amount<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                   <input
                     type="number"
                     step="0.01"
@@ -446,7 +447,7 @@ const BillingDetail = () => {
                   </small>
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Payment Method *</label>
+                  <label style={styles.label}>Payment Method<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                   <select
                     value={paymentData.payment_method}
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}

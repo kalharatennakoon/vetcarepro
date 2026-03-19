@@ -223,6 +223,8 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
           </div>
         )}
 
+        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
+
         {/* Personal Information */}
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Personal Information</h3>

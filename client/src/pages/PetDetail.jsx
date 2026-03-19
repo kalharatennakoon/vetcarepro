@@ -850,6 +850,7 @@ const PetDetail = () => {
               {/* Upload Form */}
               {showUploadForm && (
                 <form onSubmit={handleLabReportUpload} style={styles.labUploadForm}>
+                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                   <div style={styles.labFormGrid}>
                     <div style={styles.labFormGroup}>
                       <label style={styles.labFormLabel}>Report Name <span style={{ color: '#dc2626' }}>*</span></label>
@@ -1046,6 +1047,7 @@ const PetDetail = () => {
                   </div>
                 )}
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
@@ -1104,6 +1106,7 @@ const PetDetail = () => {
                   </p>
                 </div>
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
                   <select

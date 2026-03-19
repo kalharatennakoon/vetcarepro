@@ -246,13 +246,14 @@ const BillingCreate = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
           {/* Basic Information */}
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Invoice Information</h3>
             
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Customer *</label>
+                <label style={styles.label}>Customer<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <select
                   value={formData.customer_id}
                   onChange={(e) => setFormData({...formData, customer_id: e.target.value})}
@@ -269,7 +270,7 @@ const BillingCreate = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Invoice Date *</label>
+                <label style={styles.label}>Invoice Date<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="date"
                   value={formData.bill_date}
@@ -386,7 +387,7 @@ const BillingCreate = () => {
 
 
                     <div style={styles.itemField}>
-                      <label style={styles.label}>Item Name *</label>
+                      <label style={styles.label}>Item Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="text"
                         value={item.item_name}
@@ -398,7 +399,7 @@ const BillingCreate = () => {
                     </div>
 
                     <div style={styles.itemFieldSmall}>
-                      <label style={styles.label}>Qty *</label>
+                      <label style={styles.label}>Qty<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="number"
                         value={item.quantity}
@@ -410,7 +411,7 @@ const BillingCreate = () => {
                     </div>
 
                     <div style={styles.itemField}>
-                      <label style={styles.label}>Unit Price *</label>
+                      <label style={styles.label}>Unit Price<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="number"
                         step="0.01"
@@ -533,7 +534,7 @@ const BillingCreate = () => {
               {formData.paid_amount > 0 && (
                 <>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Payment Method *</label>
+                    <label style={styles.label}>Payment Method<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                     <select
                       value={formData.payment_method}
                       onChange={(e) => setFormData({...formData, payment_method: e.target.value})}

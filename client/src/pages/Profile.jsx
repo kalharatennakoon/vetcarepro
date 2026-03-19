@@ -19,6 +19,9 @@ function Profile() {
   const [imageToCrop, setImageToCrop] = useState(null);
   const [croppedImageBlob, setCroppedImageBlob] = useState(null);
   const [activityStats, setActivityStats] = useState(null);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -617,41 +620,56 @@ function Profile() {
                 <div style={styles.formGrid}>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Current Password</label>
-                    <input
-                      type="password"
-                      name="current_password"
-                      value={formData.current_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Enter current password"
-                      autoComplete="current-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showCurrentPw ? 'text' : 'password'}
+                        name="current_password"
+                        value={formData.current_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                      />
+                      <button type="button" onClick={() => setShowCurrentPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showCurrentPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>New Password</label>
-                    <input
-                      type="password"
-                      name="new_password"
-                      value={formData.new_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Enter new password"
-                      autoComplete="new-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        name="new_password"
+                        value={formData.new_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Enter new password"
+                        autoComplete="new-password"
+                      />
+                      <button type="button" onClick={() => setShowNewPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showNewPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Confirm New Password</label>
-                    <input
-                      type="password"
-                      name="confirm_password"
-                      value={formData.confirm_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Confirm new password"
-                      autoComplete="new-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        name="confirm_password"
+                        value={formData.confirm_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Confirm new password"
+                        autoComplete="new-password"
+                      />
+                      <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showConfirmPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1052,6 +1070,31 @@ const styles = {
     fontSize: '0.875rem',
     outline: 'none',
     transition: 'all 0.2s',
+  },
+  passwordWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    border: '1px solid #D1D5DB',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: '0.75rem',
+    border: 'none',
+    fontSize: '0.875rem',
+    outline: 'none',
+    background: 'transparent',
+  },
+  eyeButton: {
+    padding: '0 0.75rem',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#9CA3AF',
+    fontSize: '0.9rem',
+    display: 'flex',
+    alignItems: 'center',
   },
   displayValue: {
     padding: '0.75rem',
