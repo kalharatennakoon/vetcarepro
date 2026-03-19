@@ -101,6 +101,17 @@ const BillingDetail = () => {
     }
   };
 
+  const formatPaymentMethod = (method) => {
+    const labels = {
+      cash: 'Cash',
+      card: 'Debit/Credit Card',
+      bank_transfer: 'Bank Transfer',
+      mobile_payment: 'Mobile Payment/QR',
+      insurance: 'Insurance',
+    };
+    return labels[method] || method;
+  };
+
   const formatCurrency = (amount) => {
     return 'Rs. ' + new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
@@ -440,9 +451,9 @@ const BillingDetail = () => {
                     required
                   >
                     <option value="cash">Cash</option>
-                    <option value="card">Card</option>
+                    <option value="card">Debit/Credit Card</option>
                     <option value="bank_transfer">Bank Transfer</option>
-                    <option value="mobile_payment">Mobile Payment</option>
+                    <option value="mobile_payment">Mobile Payment/QR</option>
                     <option value="insurance">Insurance</option>
                   </select>
                 </div>
@@ -539,7 +550,7 @@ const BillingDetail = () => {
                       <strong style={{color: '#059669'}}>{formatCurrency(payment.amount)}</strong>
                     </td>
                     <td style={styles.td}>
-                      <span style={styles.methodBadge}>{payment.payment_method ? payment.payment_method.replace('_', ' ') : '-'}</span>
+                      <span style={styles.methodBadge}>{payment.payment_method ? formatPaymentMethod(payment.payment_method) : '-'}</span>
                     </td>
                     <td style={styles.td}>{payment.payment_reference || '-'}</td>
                     <td style={styles.td}>{payment.received_by_name}</td>

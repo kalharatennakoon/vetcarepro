@@ -490,9 +490,9 @@ const BillingCreate = () => {
                       required
                     >
                       <option value="cash">Cash</option>
-                      <option value="card">Card</option>
+                      <option value="card">Debit/Credit Card</option>
                       <option value="bank_transfer">Bank Transfer</option>
-                      <option value="mobile_payment">Mobile Payment</option>
+                      <option value="mobile_payment">Mobile Payment/QR</option>
                       <option value="insurance">Insurance</option>
                     </select>
                   </div>
