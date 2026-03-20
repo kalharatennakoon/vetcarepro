@@ -218,7 +218,7 @@ const Users = () => {
           <p style={styles.subtitle}>Manage staff users and permissions</p>
         </div>
         <button 
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { if (showForm) { resetForm(); } else { setShowForm(true); } }}
           style={styles.addButton}
         >
           <i className={`fas fa-${showForm ? 'times' : 'plus'}`} style={{ marginRight: '0.5rem' }}></i>
