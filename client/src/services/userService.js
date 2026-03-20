@@ -96,6 +96,14 @@ export const getUserStats = async (id) => {
   return response.data;
 };
 
+/**
+ * Reset a user's password (Admin only)
+ */
+export const resetUserPassword = async (id, password) => {
+  const response = await axios.post(`${API_URL}/users/${id}/reset-password`, { password }, getAuthHeader());
+  return response.data;
+};
+
 export default {
   getVeterinarians,
   getUsers,

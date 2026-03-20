@@ -372,6 +372,48 @@ export const getUserStats = async (req, res) => {
 };
 
 /**
+ * @route   POST /api/users/:id/reset-password
+ * @desc    Reset a user's password (Admin only, cannot reset other admins)
+ * @access  Private (Admin only)
+ */
+export const resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    const targetUser = await findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    if (targetUser.role === 'admin') {
+      return res.status(403).json({ status: 'error', message: 'Cannot reset password for admin accounts' });
+    }
+
+    const newPassword = req.body.password || 'VetCare123';
+    const password_hash = await hashPassword(newPassword);
+
+    await updateUser(userId, { password_hash, password_must_change: true }, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'UPDATE',
+      tableName: 'users',
+      recordId: userId,
+      oldValues: null,
+      newValues: { password_reset: true },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.status(200).json({ status: 'success', message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while resetting password' });
+  }
+};
+
+/**
  * @route   POST /api/users/:id/upload-profile-image
  * @desc    Upload profile image for user
  * @access  Private (Admin or own profile)

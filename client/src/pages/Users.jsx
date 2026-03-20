@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { getUsers, createUser, updateUser, deleteUser } from '../services/userService';
+import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../services/userService';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -18,6 +18,9 @@ const Users = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+  const [resetting, setResetting] = useState(false);
   
   const [formData, setFormData] = useState({
     first_name: '',
@@ -128,6 +131,22 @@ const Users = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to deactivate user');
       console.error(err);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    try {
+      setResetting(true);
+      setError('');
+      await resetUserPassword(viewingUser.user_id, resetPasswordValue || undefined);
+      setSuccess(`Password reset successfully for ${viewingUser.first_name} ${viewingUser.last_name}. They will be prompted to change it on next login.`);
+      setShowResetModal(false);
+      setResetPasswordValue('');
+      fetchUsers();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to reset password');
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -619,6 +638,15 @@ const Users = () => {
                 <i className="fas fa-edit" style={{ marginRight: '0.5rem' }}></i>
                 Edit User
               </button>
+              {viewingUser.role !== 'admin' && (
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  style={styles.resetPasswordButton}
+                >
+                  <i className="fas fa-key" style={{ marginRight: '0.5rem' }}></i>
+                  Reset Password
+                </button>
+              )}
               <button
                 onClick={() => {
                   handleToggleActive(viewingUser);
@@ -630,13 +658,55 @@ const Users = () => {
                 }}
                 disabled={viewingUser.user_id === currentUser?.user_id}
               >
-                <i 
-                  className={`fas fa-${viewingUser.is_active ? 'ban' : 'check'}`} 
+                <i
+                  className={`fas fa-${viewingUser.is_active ? 'ban' : 'check'}`}
                   style={{ marginRight: '0.5rem' }}
                 ></i>
                 {viewingUser.is_active ? 'Deactivate User' : 'Reactivate User'}
               </button>
             </div>
+
+            {/* Reset Password Sub-modal */}
+            {showResetModal && (
+              <div style={styles.resetModalOverlay}>
+                <div style={styles.resetModalBox}>
+                  <h4 style={styles.resetModalTitle}>
+                    <i className="fas fa-key" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+                    Reset Password
+                  </h4>
+                  <p style={styles.resetModalDesc}>
+                    Reset password for <strong>{viewingUser.first_name} {viewingUser.last_name}</strong>. They will be required to change it on next login.
+                  </p>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>New Password</label>
+                    <input
+                      type="text"
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                      style={styles.input}
+                      placeholder="Leave blank to use default 'VetCare123'"
+                    />
+                    <small style={styles.hint}>Minimum 6 characters</small>
+                  </div>
+                  <div style={styles.resetModalActions}>
+                    <button
+                      onClick={() => { setShowResetModal(false); setResetPasswordValue(''); }}
+                      style={styles.cancelResetButton}
+                      disabled={resetting}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleResetPassword}
+                      style={styles.confirmResetButton}
+                      disabled={resetting || (resetPasswordValue && resetPasswordValue.length < 6)}
+                    >
+                      {resetting ? 'Resetting...' : 'Confirm Reset'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1088,6 +1158,78 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     transition: 'background-color 0.2s',
+  },
+  resetPasswordButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#f59e0b',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    transition: 'background-color 0.2s',
+  },
+  resetModalOverlay: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  resetModalBox: {
+    backgroundColor: 'white',
+    borderRadius: '10px',
+    padding: '1.5rem',
+    width: '100%',
+    maxWidth: '420px',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem',
+  },
+  resetModalTitle: {
+    fontSize: '1.125rem',
+    fontWeight: '600',
+    color: '#111827',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  resetModalDesc: {
+    fontSize: '0.875rem',
+    color: '#6b7280',
+    margin: 0,
+  },
+  resetModalActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '0.75rem',
+  },
+  cancelResetButton: {
+    padding: '0.6rem 1.25rem',
+    backgroundColor: '#6b7280',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  confirmResetButton: {
+    padding: '0.6rem 1.25rem',
+    backgroundColor: '#ef4444',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
 };
 
