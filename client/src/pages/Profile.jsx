@@ -143,7 +143,7 @@ function Profile() {
       // Refresh user in auth context to update header
       await refreshUser();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update profile');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to update profile');
       console.error('Error updating profile:', err);
     } finally {
       setSaving(false);
@@ -652,6 +652,7 @@ function Profile() {
                         <i className={`fas ${showNewPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                       </button>
                     </div>
+                    <span style={styles.fieldHint}>Minimum 6 characters</span>
                   </div>
 
                   <div style={styles.formGroup}>
@@ -1085,6 +1086,11 @@ const styles = {
     fontSize: '0.875rem',
     outline: 'none',
     background: 'transparent',
+  },
+  fieldHint: {
+    fontSize: '0.75rem',
+    color: '#6B7280',
+    marginTop: '0.375rem',
   },
   eyeButton: {
     padding: '0 0.75rem',

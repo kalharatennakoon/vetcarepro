@@ -6,7 +6,7 @@ import {
   deleteUser,
   emailExists
 } from '../models/userModel.js';
-import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
+import { hashPassword, comparePassword, sanitizeUser } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { deleteImageFile } from '../config/multer.js';
 import pool from '../config/database.js';
@@ -185,11 +185,30 @@ export const updateUserById = async (req, res) => {
       }
     }
 
-    // If password is being updated, hash it
+    // If password is being updated, verify current password then hash new one
     if (userData.password) {
+      if (!userData.current_password) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Current password is required to change password'
+        });
+      }
+      const hashResult = await pool.query('SELECT password_hash FROM users WHERE user_id = $1', [userId]);
+      const isMatch = await comparePassword(userData.current_password, hashResult.rows[0].password_hash);
+      if (!isMatch) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Current password is incorrect'
+        });
+      }
       userData.password_hash = await hashPassword(userData.password);
+      userData.password_must_change = false;
       delete userData.password;
+      delete userData.current_password;
     }
+
+    // Always remove current_password from userData before passing to model
+    delete userData.current_password;
 
     // Non-admin users cannot change their own role
     if (req.user.role !== 'admin' && userData.role) {
