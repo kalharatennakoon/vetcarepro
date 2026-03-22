@@ -55,12 +55,12 @@ const BillingDetail = () => {
       setError('');
       
       // Set default payment amount to remaining balance
-      if (response.data.bill.balance_amount > 0) {
-        setPaymentData(prev => ({
-          ...prev,
-          amount: response.data.bill.balance_amount.toString()
-        }));
-      }
+      setPaymentData(prev => ({
+        ...prev,
+        amount: response.data.bill.balance_amount > 0
+          ? response.data.bill.balance_amount.toString()
+          : ''
+      }));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load bill');
       console.error(err);
@@ -73,12 +73,12 @@ const BillingDetail = () => {
     e.preventDefault();
     
     if (parseFloat(paymentData.amount) <= 0) {
-      alert('Payment amount must be greater than 0');
+      showError('Payment amount must be greater than 0');
       return;
     }
-    
+
     if (parseFloat(paymentData.amount) > parseFloat(bill.balance_amount)) {
-      alert('Payment amount cannot exceed balance amount');
+      showError('Payment amount cannot exceed balance amount');
       return;
     }
 
@@ -89,15 +89,27 @@ const BillingDetail = () => {
         amount: parseFloat(paymentData.amount)
       });
       
-      alert('Payment recorded successfully');
+      showSuccess('Payment recorded successfully');
       setShowPaymentForm(false);
+      setPaymentData({ amount: '', payment_method: 'cash', payment_reference: '', card_type: '', bank_name: '', notes: '' });
       fetchBill(); // Refresh bill data
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to record payment');
+      showError(err.response?.data?.message || 'Failed to record payment');
       console.error(err);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const formatPaymentMethod = (method) => {
+    const labels = {
+      cash: 'Cash',
+      card: 'Debit/Credit Card',
+      bank_transfer: 'Bank Transfer',
+      mobile_payment: 'Mobile Payment/QR',
+      insurance: 'Insurance',
+    };
+    return labels[method] || method;
   };
 
   const formatCurrency = (amount) => {
@@ -171,78 +183,107 @@ const BillingDetail = () => {
           nav, header, aside, footer, button, .no-print {
             display: none !important;
           }
-          
-          * {
-            overflow: visible !important;
+
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
           }
-          
+
           html, body {
             margin: 0 !important;
             padding: 0 !important;
-            width: 100% !important;
-            height: auto !important;
-            overflow: visible !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
           }
-          
-          /* Page settings */
-          @page {
-            size: A4;
-            margin: 15mm;
-          }
-          
-          /* Show invoice container */
+
+          /* Scale invoice to fit one page */
           .print-invoice-container {
             display: block !important;
-            width: 100% !important;
-            max-width: 100% !important;
+            width: 194mm !important;
+            max-width: 194mm !important;
             margin: 0 !important;
-            padding: 20px !important;
+            padding: 10px 14px !important;
+            box-sizing: border-box !important;
+            transform-origin: top left !important;
+            overflow: hidden !important;
+            page-break-after: avoid !important;
+            page-break-before: avoid !important;
             page-break-inside: avoid !important;
-            overflow: visible !important;
           }
-          
+
+          /* Compact spacing for print */
+          .print-invoice-container h1 {
+            font-size: 22px !important;
+            margin: 0 0 4px 0 !important;
+          }
+          .print-invoice-container h3 {
+            font-size: 10px !important;
+            margin: 0 0 6px 0 !important;
+          }
+          .print-invoice-container p,
+          .print-invoice-container td,
+          .print-invoice-container th,
+          .print-invoice-container span {
+            font-size: 10px !important;
+          }
+          .print-invoice-container table {
+            font-size: 10px !important;
+          }
+          .print-invoice-container th,
+          .print-invoice-container td {
+            padding: 5px 7px !important;
+          }
+          .print-invoice-container hr,
+          .print-invoice-container [style*="margin: 24px 0"],
+          .print-invoice-container [style*="margin: 32px"] {
+            margin: 8px 0 !important;
+          }
+
           /* Remove shadows for print */
           .invoice-card-print {
             box-shadow: none !important;
-            border: 1px solid #000 !important;
+            border: 1px solid #ccc !important;
             background: white !important;
-            overflow: visible !important;
           }
-          
-          /* Print footer */
+
+          /* Print footer - pinned to bottom of page */
           .print-footer {
             display: block !important;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 15px;
-            border-top: 2px solid #000;
-            text-align: center;
-            font-size: 10px;
-            background: white;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            padding: 6px 14px !important;
+            border-top: 1px solid #999 !important;
+            text-align: center !important;
+            font-size: 9px !important;
+            background: white !important;
+            line-height: 1.5 !important;
           }
-          
-          /* Optimize colors for print */
+
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
         }
       `}</style>
-      <div style={styles.container}>
+      <div id="billing-detail-top" style={styles.container}>
         {/* Header */}
         <div style={styles.header} className="no-print">
           <button onClick={() => navigate('/billing')} style={styles.backButton}>
             ← Back to Billing
           </button>
           <div style={styles.headerActions}>
-            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && (
-              <button 
-                onClick={() => setShowPaymentForm(!showPaymentForm)} 
+            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && !showPaymentForm && (
+              <button
+                onClick={() => {
+                  setShowPaymentForm(true);
+                  setTimeout(() => document.getElementById('payment-form-section')?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }}
                 style={styles.paymentButton}
               >
-                {showPaymentForm ? 'Cancel' : <><i className="fas fa-credit-card"></i> Record Payment</>}
+                <i className="fas fa-credit-card"></i> Record Payment
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
@@ -326,7 +367,7 @@ const BillingDetail = () => {
                     <td style={styles.td}>{item.item_name}</td>
                     <td style={styles.td}>
                       <span style={styles.itemTypeBadge}>
-                        {item.item_type ? item.item_type.replace('_', ' ') : '-'}
+                        {item.item_type ? ({ consultation: 'Consultation', service: 'Service / Procedure', inventory_item: 'Inventory Item', vaccination: 'Inventory Item' }[item.item_type] || item.item_type) : '-'}
                       </span>
                     </td>
                     <td style={styles.tdRight}>{item.quantity}</td>
@@ -385,12 +426,13 @@ const BillingDetail = () => {
 
         {/* Payment Form */}
         {showPaymentForm && (
-          <div style={styles.paymentFormCard} className="no-print">
+          <div id="payment-form-section" style={styles.paymentFormCard} className="no-print">
             <h2 style={styles.formTitle}>Record Payment</h2>
+            <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
             <form onSubmit={handlePaymentSubmit}>
               <div style={styles.formRow}>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Amount *</label>
+                  <label style={styles.label}>Amount<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                   <input
                     type="number"
                     step="0.01"
@@ -405,7 +447,7 @@ const BillingDetail = () => {
                   </small>
                 </div>
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Payment Method *</label>
+                  <label style={styles.label}>Payment Method<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                   <select
                     value={paymentData.payment_method}
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
@@ -413,9 +455,9 @@ const BillingDetail = () => {
                     required
                   >
                     <option value="cash">Cash</option>
-                    <option value="card">Card</option>
+                    <option value="card">Debit/Credit Card</option>
                     <option value="bank_transfer">Bank Transfer</option>
-                    <option value="mobile_payment">Mobile Payment</option>
+                    <option value="mobile_payment">Mobile Payment/QR</option>
                     <option value="insurance">Insurance</option>
                   </select>
                 </div>
@@ -469,9 +511,12 @@ const BillingDetail = () => {
               </div>
 
               <div style={styles.formActions}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowPaymentForm(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentForm(false);
+                    document.getElementById('billing-detail-top')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   style={styles.cancelButton}
                   disabled={submitting}
                 >
@@ -512,7 +557,7 @@ const BillingDetail = () => {
                       <strong style={{color: '#059669'}}>{formatCurrency(payment.amount)}</strong>
                     </td>
                     <td style={styles.td}>
-                      <span style={styles.methodBadge}>{payment.payment_method ? payment.payment_method.replace('_', ' ') : '-'}</span>
+                      <span style={styles.methodBadge}>{payment.payment_method ? formatPaymentMethod(payment.payment_method) : '-'}</span>
                     </td>
                     <td style={styles.td}>{payment.payment_reference || '-'}</td>
                     <td style={styles.td}>{payment.received_by_name}</td>

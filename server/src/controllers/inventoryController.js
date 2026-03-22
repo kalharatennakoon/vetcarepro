@@ -1,4 +1,5 @@
 import inventoryModel from '../models/inventoryModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Inventory Controller
@@ -177,6 +178,17 @@ const inventoryController = {
 
       const deletedItem = await inventoryModel.delete(id, userId);
 
+      await logAuditEntry({
+        userId: req.user.user_id,
+        action: 'DEACTIVATE',
+        tableName: 'inventory',
+        recordId: parseInt(id),
+        oldValues: { is_active: true, item_name: existingItem.item_name, item_code: existingItem.item_code },
+        newValues: { is_active: false },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
+
       res.status(200).json({
         success: true,
         message: 'Inventory item deleted successfully',
@@ -200,7 +212,7 @@ const inventoryController = {
     try {
       const { id } = req.params;
       const { quantityChange } = req.body;
-      const userId = req.user.userId;
+      const userId = req.user.user_id;
 
       if (!quantityChange || isNaN(quantityChange)) {
         return res.status(400).json({

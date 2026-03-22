@@ -2,10 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
+import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 
 const InventoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const { showSuccess, showError } = useNotification();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,45 +43,51 @@ const InventoryDetail = () => {
 
     try {
       await inventoryService.delete(id);
+      showSuccess('Item deactivated successfully');
       navigate('/inventory');
     } catch (err) {
-      alert(err.message || 'Failed to delete item');
+      showError(err.response?.data?.message || err.message || 'Failed to deactivate item');
     }
   };
 
   const handleQuantityUpdate = async () => {
     try {
-      const change = quantityOperation === 'add' 
-        ? parseInt(quantityChange) 
+      const change = quantityOperation === 'add'
+        ? parseInt(quantityChange)
         : -parseInt(quantityChange);
-      
+
       await inventoryService.updateQuantity(id, change);
       setShowQuantityModal(false);
       setQuantityChange('');
       loadItem();
+      showSuccess('Quantity updated successfully');
     } catch (err) {
-      alert(err.message || 'Failed to update quantity');
+      showError(err.response?.data?.message || err.message || 'Failed to update quantity');
     }
   };
 
   const getCategoryLabel = (category) => {
     const categories = {
-      'medicine': 'Medicine',
-      'vaccine': 'Vaccine',
-      'accessory': 'Accessory',
-      'surgical_supply': 'Surgical Supply',
-      'diagnostic_equipment': 'Diagnostic Equipment',
-      'pet_food': 'Pet Food',
-      'supplements': 'Supplements'
+      pharmaceuticals:       'Pharmaceuticals',
+      consumables:           'Consumables',
+      surgical_clinical:     'Surgical & Clinical Supplies',
+      laboratory_diagnostic: 'Laboratory / Diagnostic Supplies',
+      pet_food_nutrition:    'Pet Food & Nutrition',
+      retail_otc:            'Retail / OTC Products',
+      equipment:             'Equipment',
+      accessories:           'Accessories',
+      supplements:           'Supplements',
+      cleaning_maintenance:  'Cleaning & Maintenance Supplies',
     };
     return categories[category] || category;
   };
 
   const getStockStatusBadge = (status) => {
     const badges = {
+      'OUT_OF_STOCK': <span style={styles.badgeOutOfStock}>Out of Stock</span>,
       'LOW': <span style={styles.badgeDanger}>Low Stock</span>,
       'EXPIRING': <span style={styles.badgeWarning}>Expiring Soon</span>,
-      'NORMAL': <span style={styles.badgeSuccess}>Normal</span>
+      'NORMAL': <span style={styles.badgeSuccess}>Normal</span>,
     };
     return badges[status] || null;
   };
@@ -139,29 +150,43 @@ const InventoryDetail = () => {
             </div>
             <div style={styles.actionButtons}>
               <button
-                onClick={() => setShowQuantityModal(true)}
+                onClick={() => { setShowQuantityModal(true); if (!isAdmin) setQuantityOperation('subtract'); }}
                 style={styles.updateButton}
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
               >
                 Update Quantity
               </button>
-              <Link
-                to={`/inventory/${id}/edit`}
-                style={styles.editButton}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-              >
-                Edit
-              </Link>
-              <button
-                onClick={handleDelete}
-                style={styles.deleteButton}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-              >
-                Delete
-              </button>
+              {isAdmin ? (
+                <Link
+                  to={`/inventory/${id}/edit`}
+                  style={styles.editButton}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                >
+                  Edit
+                </Link>
+              ) : (
+                <div title="Only admins can edit inventory items" style={styles.disabledButton}>
+                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+                  Edit
+                </div>
+              )}
+              {isAdmin ? (
+                <button
+                  onClick={handleDelete}
+                  style={styles.deleteButton}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                >
+                  Delete
+                </button>
+              ) : (
+                <div title="Only admins can delete inventory items" style={styles.disabledButton}>
+                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+                  Delete
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -199,6 +224,7 @@ const InventoryDetail = () => {
                 {item.requires_prescription && (
                   <div style={{gridColumn: 'span 2'}}>
                     <span style={styles.prescriptionBadge}>
+                      <i className="fas fa-exclamation-circle" style={{ marginRight: '0.35rem' }}></i>
                       Requires Prescription
                     </span>
                   </div>
@@ -247,12 +273,14 @@ const InventoryDetail = () => {
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Pricing Information</h2>
               <dl style={styles.pricingGrid}>
-                <div>
-                  <dt style={styles.detailLabel}>Unit Cost</dt>
-                  <dd style={styles.priceValue}>
-                    {formatCurrency(item.unit_cost)}
-                  </dd>
-                </div>
+                {isAdmin && (
+                  <div>
+                    <dt style={styles.detailLabel}>Unit Cost</dt>
+                    <dd style={styles.priceValue}>
+                      {formatCurrency(item.unit_cost)}
+                    </dd>
+                  </div>
+                )}
                 <div>
                   <dt style={styles.detailLabel}>Selling Price</dt>
                   <dd style={styles.priceValue}>
@@ -381,16 +409,18 @@ const InventoryDetail = () => {
                     Operation
                   </label>
                   <div style={styles.radioGroup}>
-                    <label style={styles.radioLabel}>
-                      <input
-                        type="radio"
-                        value="add"
-                        checked={quantityOperation === 'add'}
-                        onChange={(e) => setQuantityOperation(e.target.value)}
-                        style={styles.radioInput}
-                      />
-                      Add (Restock)
-                    </label>
+                    {isAdmin && (
+                      <label style={styles.radioLabel}>
+                        <input
+                          type="radio"
+                          value="add"
+                          checked={quantityOperation === 'add'}
+                          onChange={(e) => setQuantityOperation(e.target.value)}
+                          style={styles.radioInput}
+                        />
+                        Add (Restock)
+                      </label>
+                    )}
                     <label style={styles.radioLabel}>
                       <input
                         type="radio"
@@ -574,6 +604,19 @@ const styles = {
     fontWeight: '500',
     cursor: 'pointer',
   },
+  disabledButton: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#e5e7eb',
+    color: '#9ca3af',
+    border: 'none',
+    borderRadius: '0.375rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'not-allowed',
+    display: 'inline-flex',
+    alignItems: 'center',
+    opacity: 0.5,
+  },
   gridContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(1, 1fr)',
@@ -660,6 +703,16 @@ const styles = {
     paddingTop: '1rem',
     borderTop: '1px solid #e5e7eb',
   },
+  badgeOutOfStock: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '9999px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    backgroundColor: '#1f2937',
+    color: '#f9fafb',
+  },
   badgeDanger: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -713,12 +766,13 @@ const styles = {
   prescriptionBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '0.125rem 0.625rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
+    padding: '0.3rem 0.75rem',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+    backgroundColor: '#fee2e2',
+    color: '#dc2626',
+    border: '1px solid #fca5a5',
   },
   modalOverlay: {
     position: 'fixed',
@@ -813,10 +867,6 @@ const styles = {
     borderRadius: '0.375rem',
     fontSize: '0.875rem',
     cursor: 'pointer',
-  },
-  disabledButton: {
-    opacity: 0.5,
-    cursor: 'not-allowed',
   },
 };
 

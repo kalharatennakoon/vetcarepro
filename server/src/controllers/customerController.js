@@ -9,6 +9,7 @@ import {
   phoneExists,
   getCustomerCount
 } from '../models/customerModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 /**
  * Customer Controller
@@ -102,6 +103,17 @@ export const createNewCustomer = async (req, res) => {
     }
 
     const newCustomer = await createCustomer(customerData, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'customers',
+      recordId: newCustomer.customer_id,
+      oldValues: null,
+      newValues: { first_name: newCustomer.first_name, last_name: newCustomer.last_name, phone: newCustomer.phone, email: newCustomer.email },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',
@@ -201,6 +213,17 @@ export const deleteCustomerById = async (req, res) => {
       });
     }
 
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DELETE',
+      tableName: 'customers',
+      recordId: parseInt(id),
+      oldValues: existingCustomer,
+      newValues: null,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     await hardDeleteCustomer(id);
     res.status(200).json({ status: 'success', message: 'Customer permanently deleted' });
   } catch (error) {
@@ -261,6 +284,18 @@ export const inactivateCustomerById = async (req, res) => {
     }
 
     const updatedCustomer = await inactivateCustomer(id, { reason, additionalNote: additional_note }, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'INACTIVATE',
+      tableName: 'customers',
+      recordId: parseInt(id),
+      oldValues: { is_active: true },
+      newValues: { is_active: false, reason, additional_note: additional_note || null },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     res.status(200).json({
       status: 'success',
       message: 'Customer inactivated successfully',

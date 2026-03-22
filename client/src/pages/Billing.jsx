@@ -153,33 +153,42 @@ const Billing = () => {
             <p style={styles.subtitle}>Manage invoices and track payments</p>
           </div>
         </div>
-        <button 
-          onClick={() => navigate('/billing/new')}
-          style={styles.addButton}
-        >
-          + Create Invoice
-        </button>
+        {(user?.role === 'admin' || user?.role === 'receptionist') ? (
+          <button
+            onClick={() => navigate('/billing/new')}
+            style={styles.addButton}
+          >
+            + Create Invoice
+          </button>
+        ) : (
+          <div title="Only admins and receptionists can create invoices" style={styles.disabledButton}>
+            <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+            Create Invoice
+          </div>
+        )}
       </div>
 
-      {/* Stats Cards */}
-      <div style={styles.statsContainer}>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Invoices</div>
-          <div style={styles.statValue}>{stats.total}</div>
+      {/* Stats Cards — admin only */}
+      {user?.role === 'admin' && (
+        <div style={styles.statsContainer}>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Invoices</div>
+            <div style={styles.statValue}>{stats.total}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Revenue</div>
+            <div style={{...styles.statValue, color: '#059669'}}>{formatCurrency(stats.totalRevenue)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Total Paid</div>
+            <div style={{...styles.statValue, color: '#0891B2'}}>{formatCurrency(stats.totalPaid)}</div>
+          </div>
+          <div style={styles.statCard}>
+            <div style={styles.statLabel}>Pending Payment</div>
+            <div style={{...styles.statValue, color: '#DC2626'}}>{formatCurrency(stats.totalPending)}</div>
+          </div>
         </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Revenue</div>
-          <div style={{...styles.statValue, color: '#059669'}}>{formatCurrency(stats.totalRevenue)}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Total Paid</div>
-          <div style={{...styles.statValue, color: '#0891B2'}}>{formatCurrency(stats.totalPaid)}</div>
-        </div>
-        <div style={styles.statCard}>
-          <div style={styles.statLabel}>Pending Payment</div>
-          <div style={{...styles.statValue, color: '#DC2626'}}>{formatCurrency(stats.totalPending)}</div>
-        </div>
-      </div>
+      )}
 
       {/* Filters */}
       <div style={styles.filtersContainer}>
@@ -233,12 +242,14 @@ const Billing = () => {
           {bills.length === 0 ? (
             <div style={styles.emptyState}>
               <p>No bills found</p>
-              <button 
-                onClick={() => navigate('/billing/new')}
-                style={styles.emptyStateButton}
-              >
-                Create First Invoice
-              </button>
+              {(user?.role === 'admin' || user?.role === 'receptionist') && (
+                <button
+                  onClick={() => navigate('/billing/new')}
+                  style={styles.emptyStateButton}
+                >
+                  Create First Invoice
+                </button>
+              )}
             </div>
           ) : (
             <div style={styles.tableContainer}>
@@ -385,6 +396,18 @@ const styles = {
     fontSize: '1rem',
     color: '#6b7280',
     margin: '0'
+  },
+  disabledButton: {
+    backgroundColor: '#f3f4f6',
+    color: '#9ca3af',
+    border: '1px solid #e5e7eb',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'not-allowed',
+    display: 'inline-flex',
+    alignItems: 'center',
   },
   addButton: {
     backgroundColor: '#3B82F6',

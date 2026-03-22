@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getUserById, updateUser, uploadProfileImage, deleteProfileImage } from '../services/userService';
+import { getUserById, updateUser, uploadProfileImage, deleteProfileImage, getUserStats } from '../services/userService';
 import Layout from '../components/Layout';
 import ImageCropModal from '../components/ImageCropModal';
 
@@ -18,6 +18,10 @@ function Profile() {
   const [showCropModal, setShowCropModal] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [croppedImageBlob, setCroppedImageBlob] = useState(null);
+  const [activityStats, setActivityStats] = useState(null);
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -39,9 +43,13 @@ function Profile() {
     try {
       setLoading(true);
       const userId = currentUser.user_id || currentUser.id;
-      const response = await getUserById(userId);
-      const userData = response.data?.user || response.data;
+      const [profileRes, statsRes] = await Promise.all([
+        getUserById(userId),
+        getUserStats(userId)
+      ]);
+      const userData = profileRes.data?.user || profileRes.data;
       setProfileData(userData);
+      setActivityStats(statsRes.data?.stats || null);
       setFormData({
         first_name: userData.first_name || '',
         last_name: userData.last_name || '',
@@ -135,7 +143,7 @@ function Profile() {
       // Refresh user in auth context to update header
       await refreshUser();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update profile');
+      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to update profile');
       console.error('Error updating profile:', err);
     } finally {
       setSaving(false);
@@ -327,6 +335,13 @@ function Profile() {
             </button>
           )}
         </div>
+
+        {profileData?.password_must_change && (
+          <div style={styles.warningAlert}>
+            <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
+            Your password must be changed. Please update it using the Edit Profile option.
+          </div>
+        )}
 
         {error && (
           <div style={styles.errorAlert}>
@@ -605,41 +620,57 @@ function Profile() {
                 <div style={styles.formGrid}>
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Current Password</label>
-                    <input
-                      type="password"
-                      name="current_password"
-                      value={formData.current_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Enter current password"
-                      autoComplete="current-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showCurrentPw ? 'text' : 'password'}
+                        name="current_password"
+                        value={formData.current_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Enter current password"
+                        autoComplete="current-password"
+                      />
+                      <button type="button" onClick={() => setShowCurrentPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showCurrentPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>New Password</label>
-                    <input
-                      type="password"
-                      name="new_password"
-                      value={formData.new_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Enter new password"
-                      autoComplete="new-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        name="new_password"
+                        value={formData.new_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Enter new password"
+                        autoComplete="new-password"
+                      />
+                      <button type="button" onClick={() => setShowNewPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showNewPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                    <span style={styles.fieldHint}>Minimum 6 characters</span>
                   </div>
 
                   <div style={styles.formGroup}>
                     <label style={styles.label}>Confirm New Password</label>
-                    <input
-                      type="password"
-                      name="confirm_password"
-                      value={formData.confirm_password}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Confirm new password"
-                      autoComplete="new-password"
-                    />
+                    <div style={styles.passwordWrapper}>
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        name="confirm_password"
+                        value={formData.confirm_password}
+                        onChange={handleInputChange}
+                        style={styles.passwordInput}
+                        placeholder="Confirm new password"
+                        autoComplete="new-password"
+                      />
+                      <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={styles.eyeButton}>
+                        <i className={`fas ${showConfirmPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -686,10 +717,6 @@ function Profile() {
           </h3>
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>User ID:</span>
-              <span style={styles.infoValue}>{profileData?.user_id || profileData?.id}</span>
-            </div>
-            <div style={styles.infoItem}>
               <span style={styles.infoLabel}>Account Status:</span>
               <span style={{
                 ...styles.badge,
@@ -709,8 +736,90 @@ function Profile() {
                 }) : 'N/A'}
               </span>
             </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Last Updated:</span>
+              <span style={styles.infoValue}>
+                {profileData?.updated_at ? new Date(profileData.updated_at).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'N/A'}
+              </span>
+            </div>
+            <div style={styles.infoItem}>
+              <span style={styles.infoLabel}>Last Login:</span>
+              <span style={styles.infoValue}>
+                {profileData?.last_login ? new Date(profileData.last_login).toLocaleString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : 'N/A'}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Activity Summary */}
+        {activityStats && (
+          <div style={styles.infoCard}>
+            <h3 style={styles.infoCardTitle}>
+              <i className="fas fa-chart-bar" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
+              Activity Summary
+            </h3>
+            <div style={styles.infoGrid}>
+              {currentUser.role === 'veterinarian' && (
+                <>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_appointments || 0}</span>
+                    <span style={styles.statLabel}>Appointments Handled</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_medical_records || 0}</span>
+                    <span style={styles.statLabel}>Medical Records Created</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_disease_cases || 0}</span>
+                    <span style={styles.statLabel}>Disease Cases Recorded</span>
+                  </div>
+                </>
+              )}
+              {currentUser.role === 'receptionist' && (
+                <>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_appointments_booked || 0}</span>
+                    <span style={styles.statLabel}>Appointments Booked</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_customers_registered || 0}</span>
+                    <span style={styles.statLabel}>Customers Registered</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_pets_registered || 0}</span>
+                    <span style={styles.statLabel}>Pets Registered</span>
+                  </div>
+                </>
+              )}
+              {currentUser.role === 'admin' && (
+                <>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_users_created || 0}</span>
+                    <span style={styles.statLabel}>Users Created</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_customers_registered || 0}</span>
+                    <span style={styles.statLabel}>Customers Registered</span>
+                  </div>
+                  <div style={styles.statItem}>
+                    <span style={styles.statValue}>{activityStats.total_actions_logged || 0}</span>
+                    <span style={styles.statLabel}>Actions Logged</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );
@@ -765,6 +874,17 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
+  },
+  warningAlert: {
+    backgroundColor: '#FFFBEB',
+    border: '1px solid #FCD34D',
+    color: '#92400E',
+    padding: '1rem',
+    borderRadius: '8px',
+    marginBottom: '1.5rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
   },
   errorAlert: {
     backgroundColor: '#FEE2E2',
@@ -952,6 +1072,36 @@ const styles = {
     outline: 'none',
     transition: 'all 0.2s',
   },
+  passwordWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    border: '1px solid #D1D5DB',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  passwordInput: {
+    flex: 1,
+    padding: '0.75rem',
+    border: 'none',
+    fontSize: '0.875rem',
+    outline: 'none',
+    background: 'transparent',
+  },
+  fieldHint: {
+    fontSize: '0.75rem',
+    color: '#6B7280',
+    marginTop: '0.375rem',
+  },
+  eyeButton: {
+    padding: '0 0.75rem',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#9CA3AF',
+    fontSize: '0.9rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
   displayValue: {
     padding: '0.75rem',
     backgroundColor: '#F9FAFB',
@@ -1043,6 +1193,31 @@ const styles = {
     fontSize: '0.875rem',
     color: '#1F2937',
     fontWeight: '500',
+  },
+  statItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '1.25rem',
+    backgroundColor: '#F9FAFB',
+    borderRadius: '8px',
+    border: '1px solid #E5E7EB',
+    textAlign: 'center',
+  },
+  statValue: {
+    fontSize: '2rem',
+    fontWeight: '700',
+    color: '#667eea',
+    lineHeight: 1,
+    marginBottom: '0.5rem',
+  },
+  statLabel: {
+    fontSize: '0.75rem',
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.025em',
   },
   badge: {
     display: 'inline-block',

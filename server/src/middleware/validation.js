@@ -83,29 +83,29 @@ export const validateUserRegistration = [
     .withMessage('Last name must be between 2 and 50 characters'),
   
   body('phone')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Phone must be in format +94XXXXXXXXX'),
-  
+
   body('role')
     .notEmpty()
     .withMessage('Role is required')
     .isIn(['admin', 'veterinarian', 'receptionist'])
     .withMessage('Role must be admin, veterinarian, or receptionist'),
-  
+
   body('specialization')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ max: 100 })
     .withMessage('Specialization must not exceed 100 characters'),
-  
+
   body('license_number')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ max: 50 })
     .withMessage('License number must not exceed 50 characters'),
-  
+
   handleValidationErrors
 ];
 
@@ -120,56 +120,56 @@ export const validateUserCreation = [
     .isEmail()
     .withMessage('Must be a valid email address')
     .normalizeEmail(),
-  
+
   body('first_name')
     .trim()
     .notEmpty()
     .withMessage('First name is required')
     .isLength({ min: 2, max: 50 })
     .withMessage('First name must be between 2 and 50 characters'),
-  
+
   body('last_name')
     .trim()
     .notEmpty()
     .withMessage('Last name is required')
     .isLength({ min: 2, max: 50 })
     .withMessage('Last name must be between 2 and 50 characters'),
-  
+
   body('phone')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .matches(/^\+94[0-9]{9}$/)
     .withMessage('Phone must be in format +94XXXXXXXXX'),
-  
+
   body('gender')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isIn(['male', 'female', 'other'])
     .withMessage('Gender must be male, female, or other'),
-  
+
   body('role')
     .notEmpty()
     .withMessage('Role is required')
     .isIn(['admin', 'veterinarian', 'receptionist'])
     .withMessage('Role must be admin, veterinarian, or receptionist'),
-  
+
   body('specialization')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ max: 100 })
     .withMessage('Specialization must not exceed 100 characters'),
-  
+
   body('license_number')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ max: 50 })
     .withMessage('License number must not exceed 50 characters'),
-  
+
   body('password')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .trim()
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters'),
-  
+
   handleValidationErrors
 ];
 
@@ -230,12 +230,10 @@ export const validateUserUpdate = [
     .withMessage('is_active must be a boolean'),
   
   body('password')
-    .optional()
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
-  
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters'),
+
   handleValidationErrors
 ];
 
@@ -563,7 +561,7 @@ export const validateInventoryItem = [
   body('category')
     .notEmpty()
     .withMessage('Category is required')
-    .isIn(['medicine', 'vaccine', 'accessory', 'surgical_supply', 'diagnostic_equipment', 'pet_food', 'supplements'])
+    .isIn(['pharmaceuticals', 'consumables', 'surgical_clinical', 'laboratory_diagnostic', 'pet_food_nutrition', 'retail_otc', 'equipment', 'accessories', 'supplements', 'cleaning_maintenance'])
     .withMessage('Invalid category'),
   
   body('subCategory')

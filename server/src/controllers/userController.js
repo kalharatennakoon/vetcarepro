@@ -6,8 +6,10 @@ import {
   deleteUser,
   emailExists
 } from '../models/userModel.js';
-import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
+import { hashPassword, comparePassword, sanitizeUser } from '../utils/authUtils.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { deleteImageFile } from '../config/multer.js';
+import pool from '../config/database.js';
 
 /**
  * User Controller
@@ -51,6 +53,17 @@ export const createUserByAdmin = async (req, res) => {
     };
 
     const newUser = await createUser(userData);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'users',
+      recordId: newUser.user_id,
+      oldValues: null,
+      newValues: { email: newUser.email, role: newUser.role, first_name: newUser.first_name, last_name: newUser.last_name },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(201).json({
       status: 'success',
@@ -172,11 +185,30 @@ export const updateUserById = async (req, res) => {
       }
     }
 
-    // If password is being updated, hash it
+    // If password is being updated, verify current password then hash new one
     if (userData.password) {
+      if (!userData.current_password) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Current password is required to change password'
+        });
+      }
+      const hashResult = await pool.query('SELECT password_hash FROM users WHERE user_id = $1', [userId]);
+      const isMatch = await comparePassword(userData.current_password, hashResult.rows[0].password_hash);
+      if (!isMatch) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Current password is incorrect'
+        });
+      }
       userData.password_hash = await hashPassword(userData.password);
+      userData.password_must_change = false;
       delete userData.password;
+      delete userData.current_password;
     }
+
+    // Always remove current_password from userData before passing to model
+    delete userData.current_password;
 
     // Non-admin users cannot change their own role
     if (req.user.role !== 'admin' && userData.role) {
@@ -233,6 +265,17 @@ export const deleteUserById = async (req, res) => {
 
     await deleteUser(userId);
 
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DEACTIVATE',
+      tableName: 'users',
+      recordId: userId,
+      oldValues: { is_active: true, email: existingUser.email, role: existingUser.role },
+      newValues: { is_active: false },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
     res.status(200).json({
       status: 'success',
       message: 'User deactivated successfully'
@@ -268,6 +311,105 @@ export const getVeterinarians = async (req, res) => {
       status: 'error',
       message: 'An error occurred while fetching veterinarians'
     });
+  }
+};
+
+/**
+ * @route   GET /api/users/:id/stats
+ * @desc    Get activity stats for a user (role-specific)
+ * @access  Private (Admin or own profile)
+ */
+export const getUserStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    const user = await findById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    if (req.user.role !== 'admin' && req.user.user_id !== userId) {
+      return res.status(403).json({ status: 'error', message: 'Access denied' });
+    }
+
+    let stats = {};
+
+    if (user.role === 'veterinarian') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM appointments WHERE veterinarian_id = $1) AS total_appointments,
+          (SELECT COUNT(*) FROM medical_records WHERE veterinarian_id = $1) AS total_medical_records,
+          (SELECT COUNT(*) FROM disease_cases WHERE created_by = $1) AS total_disease_cases`,
+        [userId]
+      );
+      stats = result.rows[0];
+    } else if (user.role === 'receptionist') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM appointments WHERE created_by = $1) AS total_appointments_booked,
+          (SELECT COUNT(*) FROM customers WHERE created_by = $1) AS total_customers_registered,
+          (SELECT COUNT(*) FROM pets WHERE created_by = $1) AS total_pets_registered`,
+        [userId]
+      );
+      stats = result.rows[0];
+    } else if (user.role === 'admin') {
+      const result = await pool.query(
+        `SELECT
+          (SELECT COUNT(*) FROM users WHERE created_by = $1) AS total_users_created,
+          (SELECT COUNT(*) FROM customers WHERE created_by = $1) AS total_customers_registered,
+          (SELECT COUNT(*) FROM audit_logs WHERE user_id = $1) AS total_actions_logged`,
+        [userId]
+      );
+      stats = result.rows[0];
+    }
+
+    res.status(200).json({ status: 'success', data: { stats } });
+  } catch (error) {
+    console.error('Get user stats error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while fetching stats' });
+  }
+};
+
+/**
+ * @route   POST /api/users/:id/reset-password
+ * @desc    Reset a user's password (Admin only, cannot reset other admins)
+ * @access  Private (Admin only)
+ */
+export const resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = parseInt(id);
+
+    const targetUser = await findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    if (targetUser.role === 'admin') {
+      return res.status(403).json({ status: 'error', message: 'Cannot reset password for admin accounts' });
+    }
+
+    const newPassword = req.body.password || 'VetCare123';
+    const password_hash = await hashPassword(newPassword);
+
+    await updateUser(userId, { password_hash, password_must_change: true }, req.user.user_id);
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'UPDATE',
+      tableName: 'users',
+      recordId: userId,
+      oldValues: null,
+      newValues: { password_reset: true },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    res.status(200).json({ status: 'success', message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while resetting password' });
   }
 };
 

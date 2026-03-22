@@ -191,7 +191,7 @@ const DiseaseCaseDetail = () => {
             <h1 style={styles.title}>{diseaseCase.disease_name}</h1>
             <p style={styles.subtitle}>
               <i className="fas fa-hashtag" style={{ marginRight: '0.3rem', fontSize: '0.85rem' }}></i>
-              Case ID: {diseaseCase.case_id}
+              Case ID: CSE-{String(diseaseCase.case_id).padStart(4, '0')}
             </p>
           </div>
           <div style={styles.actions}>
@@ -378,6 +378,7 @@ const DiseaseCaseDetail = () => {
 
               {showUploadForm && (
                 <form onSubmit={handleLabReportUpload} style={styles.labUploadForm}>
+                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                   <div style={styles.labFormGrid}>
                     <div style={styles.labFormGroup}>
                       <label style={styles.labFormLabel}>Report Name <span style={{ color: '#dc2626' }}>*</span></label>

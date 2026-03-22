@@ -132,7 +132,18 @@ function SalesForecasting() {
   const forecastData = forecast?.forecast || forecast?.data?.forecast || [];
   const historicalData = trends?.monthly_data || trends?.data?.monthly_data || [];
   const serviceData = topServices?.services || topServices?.data?.services || [];
-  const paymentData = trends?.payment_methods || trends?.data?.payment_methods || [];
+  const paymentMethodLabels = {
+    cash: 'Cash',
+    card: 'Debit/Credit Card',
+    bank_transfer: 'Bank Transfer',
+    mobile_payment: 'Mobile Payment/QR',
+    insurance: 'Insurance',
+  };
+  const rawPaymentData = trends?.payment_methods || trends?.data?.payment_methods || [];
+  const paymentData = rawPaymentData.map(item => {
+    const key = item.payment_method != null ? 'payment_method' : 'method';
+    return { ...item, [key]: paymentMethodLabels[item[key]] || item[key] };
+  });
   const dayOfWeekData = trends?.day_of_week || trends?.data?.day_of_week || [];
   const totalForecastRevenue = forecastData.reduce((sum, d) => sum + (d.yhat || d.predicted || 0), 0);
   const avgMonthlyRevenue = historicalData.length > 0

@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getPetById, createPet, updatePet, getSpeciesList } from '../services/petService';
+import { getPetById, createPet, updatePet } from '../services/petService';
+
+const SPECIES_LIST = [
+  'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+  'Parrot', 'Budgie', 'Pigeon', 'Hen',
+  'Cow', 'Goat', 'Pig', 'Sheep',
+  'Snake', 'Lizard', 'Turtle',
+  'Exotic Animal', 'Monkey', 'Deer',
+  'Rescue/Admitted Wildlife', 'Other',
+];
 import { getCustomers } from '../services/customerService';
 import { useNotification } from '../context/NotificationContext';
 
@@ -8,7 +17,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [customers, setCustomers] = useState([]);
-  const [speciesList, setSpeciesList] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: customerId || '',
     pet_name: '',
@@ -31,7 +39,7 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
 
   useEffect(() => {
     fetchCustomers();
-    fetchSpeciesList();
+
     if (petId) {
       loadPet();
     }
@@ -46,15 +54,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
     }
   };
 
-  const fetchSpeciesList = async () => {
-    try {
-      const response = await getSpeciesList();
-      const speciesNames = response.data.species?.map(s => s.species) || [];
-      setSpeciesList(speciesNames);
-    } catch (err) {
-      console.error('Failed to fetch species list:', err);
-    }
-  };
 
   const loadPet = async () => {
     try {
@@ -196,6 +195,7 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
       )}
 
       <form onSubmit={handleSubmit} style={styles.form}>
+        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
         {/* Basic Information */}
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Basic Information</h3>
@@ -249,10 +249,9 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
                 required
               >
                 <option value="">Select Species</option>
-                {speciesList.map(species => (
+                {SPECIES_LIST.map(species => (
                   <option key={species} value={species}>{species}</option>
                 ))}
-                <option value="Other">Other</option>
               </select>
             </div>
 

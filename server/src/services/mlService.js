@@ -106,6 +106,19 @@ const getDiseaseTrends = async (params) => {
 // ============================================
 
 /**
+ * Train or retrain the disease prediction model
+ */
+const trainDiseaseModel = async () => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/train', {});
+    return response.data;
+  } catch (error) {
+    console.error('Disease model training failed:', error.message);
+    throw new Error('Failed to train disease prediction model');
+  }
+};
+
+/**
  * Train or retrain the sales forecasting model
  */
 const trainSalesModel = async () => {
@@ -269,6 +282,50 @@ const predictRestockDate = async (params) => {
 };
 
 // ============================================
+// Pet Health Prediction Services
+// ============================================
+
+const predictPetRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/pet-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Pet risk prediction failed:', error.message);
+    throw new Error('Failed to predict pet disease risk');
+  }
+};
+
+const predictCancerRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/cancer-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Cancer risk prediction failed:', error.message);
+    throw new Error('Failed to predict cancer risk');
+  }
+};
+
+const getOutbreakTrend = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/outbreak-trend', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Outbreak trend failed:', error.message);
+    throw new Error('Failed to get outbreak trend');
+  }
+};
+
+const getPandemicRisk = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/pandemic-risk', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Pandemic risk failed:', error.message);
+    throw new Error('Failed to assess pandemic risk');
+  }
+};
+
+// ============================================
 // Data Loading Services (for testing)
 // ============================================
 
@@ -320,8 +377,13 @@ export {
   testDatabaseConnection,
 
   // Disease Prediction
+  trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  predictPetRisk,
+  predictCancerRisk,
+  getOutbreakTrend,
+  getPandemicRisk,
 
   // Sales Forecasting (Phase 3)
   trainSalesModel,

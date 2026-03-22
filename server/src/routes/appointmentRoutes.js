@@ -52,7 +52,7 @@ router.patch('/:id/status', updateStatus);
 
 // @route   DELETE /api/appointments/:id
 // @desc    Delete appointment
-// @access  Private
-router.delete('/:id', deleteAppointmentById);
+// @access  Private (Admin only)
+router.delete('/:id', adminOnly, deleteAppointmentById);
 
 export default router;

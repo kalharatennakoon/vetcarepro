@@ -16,9 +16,10 @@ const inventoryModel = {
       let query = `
         SELECT 
           i.*,
-          CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          CONCAT(u2.first_name, ' ', u2.last_name) as updated_by_name,
-          CASE 
+          NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as created_by_name,
+          NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), '') as updated_by_name,
+          CASE
+            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'
@@ -76,9 +77,10 @@ const inventoryModel = {
       const query = `
         SELECT 
           i.*,
-          CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          CONCAT(u2.first_name, ' ', u2.last_name) as updated_by_name,
-          CASE 
+          NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as created_by_name,
+          NULLIF(TRIM(CONCAT(u2.first_name, ' ', u2.last_name)), '') as updated_by_name,
+          CASE
+            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'
@@ -276,6 +278,7 @@ const inventoryModel = {
         UPDATE inventory
         SET 
           is_active = false,
+          deactivated_at = NOW(),
           updated_at = CURRENT_TIMESTAMP,
           updated_by = $1
         WHERE item_id = $2
@@ -327,6 +330,7 @@ const inventoryModel = {
           i.*,
           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
           CASE 
+            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'
@@ -357,6 +361,7 @@ const inventoryModel = {
           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
           (i.expiry_date - CURRENT_DATE) as days_until_expiry,
           CASE 
+            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
             WHEN i.quantity <= i.reorder_level THEN 'LOW'
             WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
             ELSE 'NORMAL'

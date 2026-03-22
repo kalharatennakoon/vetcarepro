@@ -170,28 +170,34 @@ const Layout = ({ children }) => {
               >
                 <i className="fas fa-calendar-alt"></i> Appointments
               </a>
-              <a 
-                href="/medical-records" 
-                style={getNavItemStyle('/medical-records')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
-              >
-                <i className="fas fa-file-medical"></i> Medical Records
-              </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/medical-records"
+                  style={getNavItemStyle('/medical-records')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+                >
+                  <i className="fas fa-file-medical"></i> Medical Records
+                </a>
+              )}
 
-              <a 
-                href="/billing" 
-                style={getNavItemStyle('/billing')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
-              >
-                <i className="fas fa-dollar-sign"></i> Billing
-              </a>
-              <a 
-                href="/inventory" 
-                style={getNavItemStyle('/inventory')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
-              >
-                <i className="fas fa-boxes"></i> Inventory
-              </a>
+              {user?.role !== 'veterinarian' && (
+                <a
+                  href="/billing"
+                  style={getNavItemStyle('/billing')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
+                >
+                  <i className="fas fa-dollar-sign"></i> Billing
+                </a>
+              )}
+              {user?.role !== 'veterinarian' && (
+                <a
+                  href="/inventory"
+                  style={getNavItemStyle('/inventory')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
+                >
+                  <i className="fas fa-boxes"></i> Inventory
+                </a>
+              )}
               {user?.role === 'admin' && (
                 <a
                   href="/reports"
@@ -201,13 +207,15 @@ const Layout = ({ children }) => {
                   <i className="fas fa-chart-bar"></i> Reports
                 </a>
               )}
-              <a
-                href="/breeding-registry"
-                style={getNavItemStyle('/breeding-registry')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
-              >
-                <i className="fas fa-heart"></i> Breeding Registry
-              </a>
+              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                <a
+                  href="/breeding-registry"
+                  style={getNavItemStyle('/breeding-registry')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
+                >
+                  <i className="fas fa-heart"></i> Breeding Registry
+                </a>
+              )}
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                 <a
                   href="/analytics"
@@ -218,12 +226,21 @@ const Layout = ({ children }) => {
                 </a>
               )}
               {user?.role === 'admin' && (
-                <a 
-                  href="/users" 
+                <a
+                  href="/users"
                   style={getNavItemStyle('/users')}
                   onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
                 >
                   <i className="fas fa-user-md"></i> Staff
+                </a>
+              )}
+              {user?.role === 'admin' && (
+                <a
+                  href="/system-logs"
+                  style={getNavItemStyle('/system-logs')}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/system-logs'); }}
+                >
+                  <i className="fas fa-clipboard-list"></i> System Logs
                 </a>
               )}
             </nav>

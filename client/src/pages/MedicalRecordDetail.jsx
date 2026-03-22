@@ -283,7 +283,7 @@ const MedicalRecordDetail = () => {
           <div style={styles.infoGrid}>
             <div style={styles.infoItem}>
               <span style={styles.label}>Record ID:</span>
-              <span style={styles.value}>{record.record_id}</span>
+              <span style={styles.value}>MRC-{String(record.record_id).padStart(4, '0')}</span>
             </div>
             <div style={styles.infoItem}>
               <span style={styles.label}>Created At:</span>

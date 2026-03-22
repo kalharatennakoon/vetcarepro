@@ -45,6 +45,11 @@ router.get(
 // Disease Prediction Routes
 // ============================================
 
+// @route   POST /api/ml/disease/train
+// @desc    Train or retrain the disease prediction model
+// @access  Private (Admin only)
+router.post('/disease/train', authorize('admin'), mlController.trainDiseaseModel);
+
 // @route   POST /api/ml/disease/predict
 // @desc    Predict disease outbreak
 // @access  Private
@@ -54,6 +59,26 @@ router.post('/disease/predict', mlController.predictDisease);
 // @desc    Get disease trends
 // @access  Private
 router.get('/disease/trends', mlController.getDiseaseTrends);
+
+// @route   POST /api/ml/disease/pet-risk
+// @desc    Predict individual pet disease risk over time horizons
+// @access  Private (vet + admin)
+router.post('/disease/pet-risk', mlController.predictPetRisk);
+
+// @route   POST /api/ml/disease/cancer-risk
+// @desc    Estimate cancer/tumor risk based on breed and age
+// @access  Private (vet + admin)
+router.post('/disease/cancer-risk', mlController.predictCancerRisk);
+
+// @route   GET /api/ml/disease/outbreak-trend
+// @desc    Project outbreak trend forward (?species=&days_ahead=90)
+// @access  Private (vet + admin)
+router.get('/disease/outbreak-trend', mlController.getOutbreakTrend);
+
+// @route   GET /api/ml/disease/pandemic-risk
+// @desc    Assess pandemic/epidemic potential (?species=)
+// @access  Private (vet + admin)
+router.get('/disease/pandemic-risk', mlController.getPandemicRisk);
 
 // ============================================
 // Sales Forecasting Routes (Phase 3)

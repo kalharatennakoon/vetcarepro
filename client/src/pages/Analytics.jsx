@@ -15,7 +15,6 @@ import {
   getSalesTrends,
   getReorderSuggestions
 } from '../services/predictionService';
-import { getSpeciesList } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -39,6 +38,7 @@ const Analytics = () => {
   const itemsPerPage = 10;
 
   // ML Dashboard state
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('all');
   const [statistics, setStatistics] = useState(null);
   const [categories, setCategories] = useState([]);
   const [modelStatus, setModelStatus] = useState(null);
@@ -48,9 +48,15 @@ const Analytics = () => {
   const [selectedSpecies, setSelectedSpecies] = useState('Dog');
   const [riskFilters, setRiskFilters] = useState({
     species: '',
-    days_lookback: 365
   });
-  const [speciesList, setSpeciesList] = useState(['Dog', 'Cat', 'Rabbit', 'Bird', 'Hamster', 'Guinea Pig', 'Fish', 'Reptile', 'Other']);
+  const [speciesList] = useState([
+    'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+    'Parrot', 'Budgie', 'Pigeon', 'Hen',
+    'Cow', 'Goat', 'Pig', 'Sheep',
+    'Snake', 'Lizard', 'Turtle',
+    'Exotic Animal', 'Monkey', 'Deer',
+    'Rescue/Admitted Wildlife', 'Other',
+  ]);
   const [training, setTraining] = useState(false);
   const [trainSuccess, setTrainSuccess] = useState(false);
 
@@ -73,16 +79,17 @@ const Analytics = () => {
   const isVetOrAdmin = user?.role === 'admin' || user?.role === 'veterinarian';
   const isAdmin = user?.role === 'admin';
 
-  useEffect(() => {
-    getSpeciesList()
-      .then(res => { if (res.species?.length) setSpeciesList(res.species); })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetchCases();
     setCurrentPage(1);
   }, [filters]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchMLData();
+    }
+  }, [analyticsPeriod]);
 
   useEffect(() => {
     if (activeTab === 'analytics') {
@@ -121,12 +128,20 @@ const Analytics = () => {
     }
   };
 
+  const getAnalyticsDateFrom = () => {
+    if (!analyticsPeriod || analyticsPeriod === 'all') return undefined;
+    const d = new Date();
+    d.setDate(d.getDate() - parseInt(analyticsPeriod));
+    return d.toISOString().slice(0, 10);
+  };
+
   const fetchMLData = async () => {
     try {
       setLoading(true);
+      const dateFrom = getAnalyticsDateFrom();
       const [statsRes, categoriesRes, modelRes] = await Promise.all([
-        getDiseaseStatistics(),
-        getDiseaseCasesByCategory(),
+        getDiseaseStatistics({ dateFrom }),
+        getDiseaseCasesByCategory({ dateFrom }),
         getMLModelStatus()
       ]);
 
@@ -164,7 +179,8 @@ const Analytics = () => {
 
   const fetchOutbreakRisk = async () => {
     try {
-      const response = await assessOutbreakRisk(riskFilters);
+      const days = analyticsPeriod === 'all' ? undefined : parseInt(analyticsPeriod);
+      const response = await assessOutbreakRisk({ ...riskFilters, ...(days ? { days_lookback: days } : {}) });
       setOutbreakRisk(response.risk_assessment);
     } catch (err) {
       console.error('Failed to assess outbreak risk:', err);
@@ -727,115 +743,105 @@ const Analytics = () => {
         {/* ML Analytics Tab */}
         {activeTab === 'analytics' && (
           <>
-            {/* Model Status Card */}
+            {/* Period selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Showing data for</span>
+              {[
+                { label: 'Last 30 days', value: '30' },
+                { label: 'Last 90 days', value: '90' },
+                { label: 'Last 6 months', value: '180' },
+                { label: 'Last 1 year', value: '365' },
+                { label: 'Last 2 years', value: '730' },
+                { label: 'Last 5 years', value: '1825' },
+                { label: 'All time', value: 'all' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setAnalyticsPeriod(opt.value)}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    borderRadius: '20px',
+                    border: '1px solid',
+                    borderColor: analyticsPeriod === opt.value ? '#3b82f6' : '#e5e7eb',
+                    backgroundColor: analyticsPeriod === opt.value ? '#eff6ff' : 'white',
+                    color: analyticsPeriod === opt.value ? '#2563eb' : '#6b7280',
+                    fontSize: '0.78rem',
+                    fontWeight: analyticsPeriod === opt.value ? '600' : '400',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Model Status — compact strip */}
             {modelStatus && (isAdmin || (modelStatus.loaded && modelStatus.trained)) && (
               <div style={styles.modelStatusCard}>
-                <div style={styles.modelStatusHeader}>
-                  <div>
-                    <h3 style={styles.modelStatusTitle}>ML Model Status</h3>
-                    <div>
-                      <p style={styles.modelStatusText}>
-                        Status: <span style={{ ...styles.modelStatusHighlight, color: '#16a34a' }}>
-                          {modelStatus.loaded && modelStatus.trained ? 'Active' : 'Not Trained'}
-                        </span>
-                      </p>
-                      <p style={styles.modelStatusText}>
-                        Data Size: <span style={styles.modelStatusHighlight}>{modelStatus.data_size} cases</span>
-                      </p>
-                      {modelStatus.training_date && (
-                        <p style={styles.modelStatusText}>
-                          Last Trained: <span style={styles.modelStatusHighlight}>
-                            {new Date(modelStatus.training_date).toLocaleDateString()}
-                          </span>
-                        </p>
-                      )}
-                      {modelStatus.confidence && (
-                        <p style={styles.modelStatusText}>
-                          Confidence: <span style={{ ...styles.modelStatusHighlight, color: getConfidenceColor(modelStatus.confidence.level) }}>
-                            {modelStatus.confidence.level.toUpperCase()} ({modelStatus.confidence.accuracy_range || 'N/A'})
-                          </span>
-                        </p>
-                      )}
-                    </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: modelStatus.loaded && modelStatus.trained ? '#16a34a' : '#dc2626', display: 'inline-block', flexShrink: 0 }}></span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>Disease Prediction Model</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: modelStatus.loaded && modelStatus.trained ? '#dcfce7' : '#fee2e2', color: modelStatus.loaded && modelStatus.trained ? '#15803d' : '#dc2626' }}>
+                      {modelStatus.loaded && modelStatus.trained ? 'Active' : 'Not Trained'}
+                    </span>
                   </div>
-                  <div>
-                    <div style={styles.modelStatusCount}>{modelStatus.data_size}</div>
-                    <div style={styles.modelStatusLabel}>Total Cases</div>
+                  <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#4b5563' }}><strong style={{ color: '#1f2937' }}>{modelStatus.data_size}</strong> cases trained</span>
+                    {modelStatus.training_date && (
+                      <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>Trained: <strong style={{ color: '#1f2937' }}>{new Date(modelStatus.training_date).toLocaleString()}</strong></span>
+                    )}
+                    {modelStatus.confidence && (
+                      <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                        Confidence: <strong style={{ color: getConfidenceColor(modelStatus.confidence.level) }}>{modelStatus.confidence.level.toUpperCase()} ({modelStatus.confidence.accuracy_range || 'N/A'})</strong>
+                      </span>
+                    )}
                   </div>
                 </div>
-                {modelStatus.confidence && (
-                  <div style={styles.modelNote}>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#4b5563' }}>
-                      <strong>Recommendation:</strong> {modelStatus.confidence.recommendation}
-                    </p>
-                  </div>
+                {modelStatus.confidence?.recommendation && (
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#4b5563' }}>
+                    <i className="fas fa-lightbulb" style={{ color: '#f59e0b', marginRight: '0.35rem' }}></i>
+                    {modelStatus.confidence.recommendation}
+                  </p>
                 )}
+                <p style={styles.cardHint}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  The more cases recorded, the better the predictions. Retrain after adding a batch of new cases to keep results accurate.
+                </p>
               </div>
             )}
 
             {/* Statistics Overview */}
             {statistics && (
-              <div style={styles.statsGrid}>
-                <div style={styles.statCard}>
-                  <div style={styles.statCardContent}>
-                    <div>
-                      <p style={styles.statLabel}>Total Cases</p>
-                      <p style={styles.statValue}>{statistics.total_cases}</p>
+              <>
+                <div style={styles.statsGrid}>
+                  {[
+                    { label: 'Total Cases',   value: statistics.total_cases, color: '#2563eb', bg: '#dbeafe', icon: 'fa-file-medical', clickable: true },
+                    { label: 'Affected Pets', value: statistics.affected_pets, color: '#16a34a', bg: '#dcfce7', icon: 'fa-paw' },
+                    { label: 'Contagious',    value: statistics.contagious_cases, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
+                    { label: 'Recovery Rate', value: statistics.total_cases > 0 ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%` : '0%', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-heart-pulse' },
+                  ].map((s, i) => (
+                    <div
+                      key={i}
+                      style={{ ...styles.statCard, ...(s.clickable ? { cursor: 'pointer' } : {}) }}
+                      onClick={s.clickable ? () => setActiveTab('cases') : undefined}
+                      title={s.clickable ? 'View all disease cases' : undefined}
+                    >
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                      </div>
+                      <div>
+                        <p style={styles.statLabel}>{s.label}</p>
+                        <p style={{ ...styles.statValue, color: s.color }}>{s.value}</p>
+                      </div>
                     </div>
-                    <div style={{ ...styles.statIcon, backgroundColor: '#dbeafe' }}>
-                      <svg style={{ width: '32px', height: '32px', color: '#2563eb' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-
-                <div style={styles.statCard}>
-                  <div style={styles.statCardContent}>
-                    <div>
-                      <p style={styles.statLabel}>Affected Pets</p>
-                      <p style={styles.statValue}>{statistics.affected_pets}</p>
-                    </div>
-                    <div style={{ ...styles.statIcon, backgroundColor: '#dcfce7' }}>
-                      <svg style={{ width: '32px', height: '32px', color: '#16a34a' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.statCard}>
-                  <div style={styles.statCardContent}>
-                    <div>
-                      <p style={styles.statLabel}>Contagious Cases</p>
-                      <p style={{ ...styles.statValue, color: '#dc2626' }}>{statistics.contagious_cases}</p>
-                    </div>
-                    <div style={{ ...styles.statIcon, backgroundColor: '#fee2e2' }}>
-                      <svg style={{ width: '32px', height: '32px', color: '#dc2626' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.statCard}>
-                  <div style={styles.statCardContent}>
-                    <div>
-                      <p style={styles.statLabel}>Recovery Rate</p>
-                      <p style={{ ...styles.statValue, color: '#16a34a' }}>
-                        {statistics.total_cases > 0 
-                          ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%`
-                          : '0%'}
-                      </p>
-                    </div>
-                    <div style={{ ...styles.statIcon, backgroundColor: '#f3e8ff' }}>
-                      <svg style={{ width: '32px', height: '32px', color: '#9333ea' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                <p style={{ ...styles.cardHint, borderTop: 'none', marginBottom: '1rem' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Click <strong>Total Cases</strong> to view the full cases list. <strong>Contagious</strong> shows how many cases can spread between animals — useful for isolation decisions.
+                </p>
+              </>
             )}
 
             {/* Outbreak Risk Assessment */}
@@ -843,613 +849,519 @@ const Analytics = () => {
               <div style={styles.riskCard}>
                 <div style={styles.riskCardHeader}>
                   <h3 style={styles.riskTitle}>
-                    <i className="fas fa-triangle-exclamation" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
+                    <i className="fas fa-triangle-exclamation" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
                     Outbreak Risk Assessment
                   </h3>
                   <div style={styles.filterBar}>
                     <div style={styles.filterBarGroup}>
                       <label style={styles.filterBarLabel}>Species</label>
-                      <select
-                        value={riskFilters.species}
-                        onChange={(e) => setRiskFilters(prev => ({ ...prev, species: e.target.value }))}
-                        style={styles.compactSelect}
-                      >
+                      <select value={riskFilters.species} onChange={(e) => setRiskFilters(prev => ({ ...prev, species: e.target.value }))} style={styles.compactSelect}>
                         <option value="">All Species</option>
                         {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Time Period</label>
-                      <select
-                        value={riskFilters.days_lookback}
-                        onChange={(e) => setRiskFilters(prev => ({ ...prev, days_lookback: parseInt(e.target.value) }))}
-                        style={styles.compactSelect}
-                      >
-                        <option value="30">Last 30 days</option>
-                        <option value="60">Last 60 days</option>
-                        <option value="90">Last 90 days</option>
-                        <option value="180">Last 6 months</option>
-                        <option value="365">Last 1 year</option>
-                        <option value="730">Last 2 years</option>
-                        <option value="1825">Last 5 years</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <div style={{ ...styles.riskResultCard, ...getRiskColor(outbreakRisk.risk_level) }}>
-                  <div style={styles.riskResultHeader}>
-                    <div>
-                      <h4 style={styles.riskLevel}>{outbreakRisk.risk_level} Risk</h4>
-                      <p style={styles.riskScore}>Risk Score: {outbreakRisk.risk_score}/10</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.6rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontSize: '1.4rem' }}>
+                        {outbreakRisk.risk_level === 'critical' ? <i className="fas fa-radiation"></i>
+                          : outbreakRisk.risk_level === 'high' ? <i className="fas fa-exclamation-triangle"></i>
+                          : outbreakRisk.risk_level === 'medium' ? <i className="fas fa-bolt"></i>
+                          : <i className="fas fa-check-circle"></i>}
+                      </span>
+                      <div>
+                        <h4 style={{ fontSize: '1rem', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>{outbreakRisk.risk_level} Risk</h4>
+                        <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Score: {outbreakRisk.risk_score}/10</p>
+                      </div>
                     </div>
-                    <div style={styles.riskIcon}>
-                      {outbreakRisk.risk_level === 'critical' ? (
-                        <i className="fas fa-radiation"></i>
-                      ) : outbreakRisk.risk_level === 'high' ? (
-                        <i className="fas fa-exclamation-triangle"></i>
-                      ) : outbreakRisk.risk_level === 'medium' ? (
-                        <i className="fas fa-bolt"></i>
-                      ) : (
-                        <i className="fas fa-check-circle"></i>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={styles.riskMetricsGrid}>
-                    <div style={styles.riskMetric}>
-                      <p style={styles.riskMetricLabel}>Cases Analyzed</p>
-                      <p style={styles.riskMetricValue}>{outbreakRisk.case_count}</p>
-                    </div>
-                    <div style={styles.riskMetric}>
-                      <p style={styles.riskMetricLabel}>Contagious</p>
-                      <p style={styles.riskMetricValue}>{outbreakRisk.contagious_cases}</p>
-                    </div>
-                    <div style={styles.riskMetric}>
-                      <p style={styles.riskMetricLabel}>Time Period</p>
-                      <p style={styles.riskMetricValue}>{outbreakRisk.days_analyzed}d</p>
-                    </div>
-                    <div style={styles.riskMetric}>
-                      <p style={styles.riskMetricLabel}>Confidence</p>
-                      <p style={{ ...styles.riskMetricValue, fontSize: '1.125rem', textTransform: 'uppercase' }}>{outbreakRisk.confidence}</p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
+                      {[
+                        { label: 'Cases', val: outbreakRisk.case_count },
+                        { label: 'Contagious', val: outbreakRisk.contagious_cases },
+                        { label: 'Period', val: `${outbreakRisk.days_analyzed}d` },
+                        { label: 'Confidence', val: outbreakRisk.confidence?.toUpperCase() },
+                      ].map((m, i) => (
+                        <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.35rem 0.5rem', textAlign: 'center' }}>
+                          <p style={{ fontSize: '0.65rem', opacity: 0.7, margin: '0 0 0.1rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{m.label}</p>
+                          <p style={{ fontSize: '0.95rem', fontWeight: '700', margin: 0 }}>{m.val}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
                   {outbreakRisk.reasons && outbreakRisk.reasons.length > 0 && (
-                    <div style={styles.riskFactors}>
-                      <p style={styles.riskFactorsTitle}>Risk Factors:</p>
-                      <ul style={styles.riskFactorsList}>
-                        {outbreakRisk.reasons.map((reason, index) => (
-                          <li key={index}>{reason}</li>
-                        ))}
-                      </ul>
+                    <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.4rem 0.65rem', marginBottom: '0.4rem' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>Risk factors: </span>
+                      {outbreakRisk.reasons.map((reason, index) => (
+                        <span key={index} style={{ fontSize: '0.75rem' }}>{reason}{index < outbreakRisk.reasons.length - 1 ? ' · ' : ''}</span>
+                      ))}
                     </div>
                   )}
 
-                  <div style={styles.riskRecommendation}>
-                    <p style={styles.riskRecommendationTitle}>Recommendation:</p>
-                    <p style={styles.riskRecommendationText}>{outbreakRisk.recommendation}</p>
+                  <div style={{ backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: '6px', padding: '0.4rem 0.65rem' }}>
+                    <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
+                    <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
                   </div>
                 </div>
+                <p style={{ ...styles.cardHint, borderTopColor: 'rgba(0,0,0,0.08)', marginTop: '0.75rem' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Filter by <strong>Species</strong> to check risk for a specific animal group. Use the <strong>Showing data for</strong> selector above to change the time period.
+                </p>
               </div>
             )}
 
-            {/* Analytics Sub-Tabs */}
+            {/* Disease Categories */}
             <div style={styles.analyticsCard}>
               <div style={styles.analyticsCardHeader}>
-                <nav style={{ display: 'flex', gap: '2rem' }} aria-label="Analytics Tabs">
-                  <button
-                    onClick={() => {}}
-                    style={{ padding: '1rem 0.25rem', border: 'none', borderBottom: '2px solid #3B82F6', backgroundColor: 'transparent', fontSize: '0.875rem', fontWeight: '500', color: '#2563eb', cursor: 'pointer' }}
-                  >
-                    Overview
-                  </button>
-                </nav>
+                <h3 style={styles.analyticsCardTitle}>
+                  <i className="fas fa-layer-group" style={{ marginRight: '0.4rem', color: '#6366f1' }}></i>
+                  Disease Categories
+                </h3>
+                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Click a category name to view its cases. <strong>Avg Age</strong> is the pet's age in months at the time of diagnosis.
+                </p>
               </div>
-
               <div style={styles.analyticsCardContent}>
-                {/* Overview - Disease Categories */}
                 {categories && (
-                  <div>
-                    <h3 style={styles.analyticsCardTitle}>
-                      <i className="fas fa-layer-group" style={{ marginRight: '0.5rem', color: '#6366f1' }}></i>
-                      Disease Categories
-                    </h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {categories.map((category, index) => (
-                        <div key={index} style={styles.categoryCard}>
-                          <div style={styles.categoryHeader}>
-                            <div>
-                              <h4 style={styles.categoryName}>
-                                {category.disease_category.replace('_', ' ')}
-                              </h4>
-                              <p style={styles.categoryDescription}>
-                                Affected Species: {category.affected_species}
-                              </p>
-                            </div>
-                            <div>
-                              <p style={styles.categoryCount}>{category.case_count}</p>
-                              <p style={styles.categoryCountLabel}>cases</p>
-                            </div>
-                          </div>
-                          <div style={styles.categoryMetricsGrid}>
-                            <div style={styles.categoryMetric}>
-                              <p style={styles.categoryMetricLabel}>Contagious</p>
-                              <p style={styles.categoryMetricValue}>{category.contagious_count}</p>
-                            </div>
-                            <div style={styles.categoryMetric}>
-                              <p style={styles.categoryMetricLabel}>Avg Age</p>
-                              <p style={styles.categoryMetricValue}>{parseFloat(category.avg_age).toFixed(1)} months</p>
-                            </div>
-                            <div style={styles.categoryMetric}>
-                              <p style={styles.categoryMetricLabel}>Percentage</p>
-                              <p style={styles.categoryMetricValue}>
-                                {statistics ? `${Math.round((category.case_count / statistics.total_cases) * 100)}%` : 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* ML Patterns */}
-                    {patterns && (
-                      <div style={{ marginTop: '2rem' }}>
-                        <h3 style={styles.analyticsCardTitle}>
-                          <i className="fas fa-circle-nodes" style={{ marginRight: '0.5rem', color: '#9333ea' }}></i>
-                          Disease Patterns (ML Clustering)
-                        </h3>
-                        {patterns.status === 'success' ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <p style={{ fontSize: '0.875rem', color: '#4b5563', marginBottom: '1rem' }}>
-                              ML clustering identified <strong>{patterns.patterns_found}</strong> distinct disease patterns
-                            </p>
-                            {patterns.patterns.map((pattern, index) => (
-                              <div key={index} style={styles.patternCard}>
-                                <div style={styles.categoryHeader}>
-                                  <div>
-                                    <h4 style={styles.categoryName}>
-                                      Pattern #{pattern.pattern_id + 1}
-                                    </h4>
-                                    <p style={styles.categoryDescription}>
-                                      Primary: {pattern.primary_species} • Category: {pattern.common_category}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p style={{ ...styles.categoryCount, color: '#9333ea' }}>{pattern.case_count}</p>
-                                    <p style={styles.categoryCountLabel}>cases</p>
-                                  </div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                                  <div style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.5rem' }}>
-                                    <p style={styles.categoryMetricLabel}>Avg Age</p>
-                                    <p style={styles.categoryMetricValue}>{pattern.avg_age ? pattern.avg_age.toFixed(1) : 'N/A'} mo</p>
-                                  </div>
-                                  <div style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.5rem' }}>
-                                    <p style={styles.categoryMetricLabel}>Contagious</p>
-                                    <p style={styles.categoryMetricValue}>{pattern.contagious_percentage ? pattern.contagious_percentage.toFixed(1) : '0'}%</p>
-                                  </div>
-                                  <div style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.5rem' }}>
-                                    <p style={styles.categoryMetricLabel}>Species Count</p>
-                                    <p style={styles.categoryMetricValue}>{pattern.affected_species ? Object.keys(pattern.affected_species).length : 0}</p>
-                                  </div>
-                                  <div style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.5rem' }}>
-                                    <p style={styles.categoryMetricLabel}>Diseases</p>
-                                    <p style={styles.categoryMetricValue}>{pattern.common_diseases ? Object.keys(pattern.common_diseases).length : 0}</p>
-                                  </div>
-                                </div>
-                                {pattern.affected_species && (
-                                  <div style={{ marginTop: '0.75rem', backgroundColor: 'white', borderRadius: '4px', padding: '0.5rem' }}>
-                                    <p style={{ ...styles.categoryMetricLabel, marginBottom: '0.25rem' }}>Species Distribution:</p>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                      {Object.entries(pattern.affected_species).map(([species, count]) => (
-                                        <span key={species} style={styles.speciesBadge}>
-                                          {species}: {count}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : isAdmin ? (
-                          <p style={{ color: '#4b5563' }}>{patterns.reason || 'Pattern analysis unavailable'}</p>
-                        ) : null}
-                      </div>
-                    )}
-
-                    {/* Species Trends */}
-                    {trends && (
-                      <div style={{ marginTop: '2rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          <h3 style={styles.analyticsCardTitle}>
-                            <i className="fas fa-chart-line" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                            Disease Trends
-                          </h3>
-                          <div style={styles.filterBarGroup}>
-                            <label style={styles.filterBarLabel}>Species</label>
-                            <select
-                              value={selectedSpecies}
-                              onChange={(e) => setSelectedSpecies(e.target.value)}
-                              style={styles.compactSelect}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f9fafb' }}>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'left', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Category</th>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Cases</th>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Share</th>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Contagious</th>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Avg Age</th>
+                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'left', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>Affected Species</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {categories.map((category, index) => (
+                          <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#2563eb', textTransform: 'capitalize', cursor: 'pointer', textDecoration: 'none' }}
+                              onClick={() => { setFilters(prev => ({ ...prev, disease_category: category.disease_category })); setActiveTab('cases'); }}
+                              title={`View cases in ${category.disease_category.replace(/_/g, ' ')}`}
                             >
-                              {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                          <div style={styles.statsGrid}>
-                            <div style={styles.trendCard}>
-                              <p style={styles.trendLabel}>Total Cases</p>
-                              <p style={styles.trendValue}>{trends.total_cases}</p>
-                            </div>
-                            <div style={{ ...styles.trendCard, backgroundColor: 'rgba(16, 185, 129, 0.05)' }}>
-                              <p style={styles.trendLabel}>Avg Age at Diagnosis</p>
-                              <p style={{ ...styles.trendValue, color: '#10b981' }}>
-                                {trends.avg_age_at_diagnosis ? trends.avg_age_at_diagnosis.toFixed(1) : 'N/A'} mo
-                              </p>
-                            </div>
-                            <div style={{ ...styles.trendCard, backgroundColor: 'rgba(220, 38, 38, 0.05)' }}>
-                              <p style={styles.trendLabel}>Contagious %</p>
-                              <p style={{ ...styles.trendValue, color: '#dc2626' }}>
-                                {trends.contagious_percentage ? trends.contagious_percentage.toFixed(1) : '0'}%
-                              </p>
-                            </div>
-                          </div>
-
-                          {trends.disease_distribution && (
-                            <div style={styles.categoryCard}>
-                              <h4 style={styles.categoryName}>Disease Distribution</h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {Object.entries(trends.disease_distribution).map(([category, count]) => (
-                                  <div key={category} style={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ width: '160px', fontSize: '0.875rem', color: '#374151', textTransform: 'capitalize' }}>
-                                      {category.replace('_', ' ')}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{ backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '24px', position: 'relative', overflow: 'hidden' }}>
-                                        <div
-                                          style={{ 
-                                            backgroundColor: '#2563eb',
-                                            borderRadius: '9999px',
-                                            height: '24px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'flex-end',
-                                            padding: '0 0.5rem',
-                                            width: `${(count / trends.total_cases) * 100}%`,
-                                            minWidth: '30px'
-                                          }}
-                                        >
-                                          <span style={{ fontSize: '0.75rem', color: 'white', fontWeight: '600' }}>{count}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {trends.most_common_diseases && (
-                            <div style={styles.categoryCard}>
-                              <h4 style={styles.categoryName}>Most Common Diseases</h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                {Object.entries(trends.most_common_diseases).slice(0, 5).map(([disease, count], index) => (
-                                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: index < 4 ? '1px solid #f3f4f6' : 'none' }}>
-                                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>{disease}</span>
-                                    <span style={styles.speciesBadge}>
-                                      {count} {count === 1 ? 'case' : 'cases'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {trends.severity_distribution && (
-                            <div style={styles.categoryCard}>
-                              <h4 style={styles.categoryName}>Severity Distribution</h4>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-                                {Object.entries(trends.severity_distribution).map(([severity, count]) => (
-                                  <div key={severity} style={{ backgroundColor: '#f9fafb', borderRadius: '8px', padding: '0.75rem', textAlign: 'center' }}>
-                                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1f2937' }}>{count}</p>
-                                    <p style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'capitalize' }}>{severity}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                              {category.disease_category.replace(/_/g, ' ')}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center' }}>
+                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontWeight: '700', fontSize: '0.8rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{category.case_count}</span>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#6b7280' }}>
+                              {statistics ? `${Math.round((category.case_count / statistics.total_cases) * 100)}%` : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center' }}>
+                              {category.contagious_count > 0
+                                ? <span style={{ backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: '700', fontSize: '0.8rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{category.contagious_count}</span>
+                                : <span style={{ color: '#d1d5db' }}>—</span>}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#374151' }}>
+                              {parseFloat(category.avg_age).toFixed(1)} mo
+                            </td>
+                            <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280', fontSize: '0.78rem' }}>
+                              {category.affected_species}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* ML Patterns */}
+            {patterns && (
+              <div style={styles.analyticsCard}>
+                <div style={styles.analyticsCardHeader}>
+                  <h3 style={styles.analyticsCardTitle}>
+                    <i className="fas fa-circle-nodes" style={{ marginRight: '0.4rem', color: '#9333ea' }}></i>
+                    Disease Patterns — ML Clustering
+                    {patterns.status === 'success' && (
+                      <span style={{ marginLeft: '0.6rem', fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: '#f3e8ff', color: '#7c3aed' }}>
+                        {patterns.patterns_found} patterns identified
+                      </span>
+                    )}
+                  </h3>
+                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                    Each pattern groups cases that share similar traits — species, disease type, and age range. These help identify recurring disease profiles in your patient population.
+                  </p>
+                </div>
+                <div style={styles.analyticsCardContent}>
+                  {patterns.status === 'success' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+                      {patterns.patterns.map((pattern, index) => (
+                        <div key={index} style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '0.75rem', backgroundColor: '#faf5ff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#6b21a8' }}>Pattern #{pattern.pattern_id + 1}</span>
+                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.75rem', color: '#7c3aed' }}>{pattern.primary_species} · {pattern.common_category}</p>
+                            </div>
+                            <span style={{ backgroundColor: '#e9d5ff', color: '#6b21a8', fontWeight: '700', fontSize: '0.78rem', padding: '0.15rem 0.5rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>{pattern.case_count} cases</span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                            {[
+                              { label: 'Avg Age', val: `${pattern.avg_age ? pattern.avg_age.toFixed(1) : 'N/A'} mo` },
+                              { label: 'Contagious', val: `${pattern.contagious_percentage ? pattern.contagious_percentage.toFixed(1) : '0'}%` },
+                              { label: 'Species', val: pattern.affected_species ? Object.keys(pattern.affected_species).length : 0 },
+                              { label: 'Diseases', val: pattern.common_diseases ? Object.keys(pattern.common_diseases).length : 0 },
+                            ].map((m, i) => (
+                              <div key={i} style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.3rem 0.4rem', textAlign: 'center' }}>
+                                <p style={{ fontSize: '0.65rem', color: '#9ca3af', margin: '0 0 0.1rem', textTransform: 'uppercase' }}>{m.label}</p>
+                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#374151', margin: 0 }}>{m.val}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {pattern.affected_species && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                              {Object.entries(pattern.affected_species).map(([species, count]) => (
+                                <span key={species} style={{ padding: '0.1rem 0.4rem', backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.7rem', borderRadius: '3px' }}>
+                                  {species}: {count}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : isAdmin ? (
+                    <p style={{ color: '#4b5563', fontSize: '0.875rem' }}>{patterns.reason || 'Pattern analysis unavailable'}</p>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {/* Species Trends */}
+            {trends && (
+              <div style={styles.analyticsCard}>
+                <div style={styles.analyticsCardHeader}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h3 style={styles.analyticsCardTitle}>
+                      <i className="fas fa-chart-line" style={{ marginRight: '0.4rem', color: '#3b82f6' }}></i>
+                      Disease Trends
+                    </h3>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Species</label>
+                      <select value={selectedSpecies} onChange={(e) => setSelectedSpecies(e.target.value)} style={styles.compactSelect}>
+                        {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                    Select a species to see its disease history. Shows the most common disease types, top diagnoses, and how severe cases have typically been.
+                  </p>
+                </div>
+                <div style={styles.analyticsCardContent}>
+                  {/* Trend summary pills */}
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Total Cases', val: trends.total_cases, color: '#2563eb', bg: 'rgba(59,130,246,0.06)' },
+                      { label: 'Avg Age at Diagnosis', val: trends.avg_age_at_diagnosis ? `${trends.avg_age_at_diagnosis.toFixed(1)} mo` : 'N/A', color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
+                      { label: 'Contagious %', val: `${trends.contagious_percentage ? trends.contagious_percentage.toFixed(1) : '0'}%`, color: '#dc2626', bg: 'rgba(220,38,38,0.06)' },
+                    ].map((t, i) => (
+                      <div key={i} style={{ backgroundColor: t.bg, borderRadius: '8px', padding: '0.5rem 0.85rem', minWidth: '120px' }}>
+                        <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: '0 0 0.15rem' }}>{t.label}</p>
+                        <p style={{ fontSize: '1.25rem', fontWeight: '700', color: t.color, margin: 0, lineHeight: 1.1 }}>{t.val}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Disease distribution + Most common diseases side by side */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    {trends.disease_distribution && (
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
+                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disease Distribution</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                          {Object.entries(trends.disease_distribution).map(([category, count]) => (
+                            <div key={category} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ width: '110px', fontSize: '0.78rem', color: '#374151', textTransform: 'capitalize', flexShrink: 0 }}>{category.replace(/_/g, ' ')}</span>
+                              <div style={{ flex: 1, backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '14px', overflow: 'hidden' }}>
+                                <div style={{ backgroundColor: '#2563eb', borderRadius: '9999px', height: '14px', width: `${(count / trends.total_cases) * 100}%`, minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.3rem' }}>
+                                  <span style={{ fontSize: '0.65rem', color: 'white', fontWeight: '600' }}>{count}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {trends.most_common_diseases && (
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
+                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Most Common Diseases</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                          {Object.entries(trends.most_common_diseases).slice(0, 5).map(([disease, count], index) => (
+                            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: index < 4 ? '1px solid #f3f4f6' : 'none' }}>
+                              <span style={{ fontSize: '0.82rem', color: '#374151' }}>{disease}</span>
+                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: '600', padding: '0.1rem 0.45rem', borderRadius: '20px' }}>
+                                {count} {count === 1 ? 'case' : 'cases'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Severity distribution */}
+                  {trends.severity_distribution && (
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
+                      <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severity Distribution</h4>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {Object.entries(trends.severity_distribution).map(([severity, count]) => (
+                          <div key={severity} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '7px', padding: '0.5rem 0.85rem', textAlign: 'center', minWidth: '80px' }}>
+                            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>{count}</p>
+                            <p style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'capitalize', margin: '0.1rem 0 0' }}>{severity}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* Sales Forecasting Tab */}
         {isAdmin && activeTab === 'sales' && (
-          <div style={styles.tabContentContainer}>
-            <div style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>
-                  <i className="fas fa-chart-bar" style={{ marginRight: '0.5rem', color: '#10b981' }}></i>
-                  Sales Trend Analysis
-                </h3>
-              </div>
-              <div style={styles.cardBody}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <label style={styles.filterLabel}>Forecast Period</label>
-                    <select
-                      value={salesPeriod}
-                      onChange={(e) => setSalesPeriod(parseInt(e.target.value))}
-                      style={styles.filterInput}
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={14}>14 days</option>
-                      <option value={30}>30 days</option>
-                      <option value={60}>60 days</option>
-                      <option value={90}>90 days</option>
-                    </select>
+          <>
+            {/* Monthly Revenue Forecast */}
+            <div style={styles.analyticsCard}>
+              <div style={styles.analyticsCardHeader}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={styles.analyticsCardTitle}>
+                    <i className="fas fa-chart-bar" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
+                    Monthly Revenue Forecast
+                  </h3>
+                  <div style={styles.filterBar}>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Forecast Period</label>
+                      <select value={salesPeriod} onChange={(e) => setSalesPeriod(parseInt(e.target.value))} style={styles.compactSelect}>
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={60}>60 days</option>
+                        <option value={90}>90 days</option>
+                      </select>
+                    </div>
+                    <button onClick={fetchSalesData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className="fas fa-sync-alt"></i> Generate
+                    </button>
                   </div>
-                  <button onClick={fetchSalesData} style={styles.primaryButton}>
-                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Generate Forecast
-                  </button>
                 </div>
-
+                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Predicted revenue for each upcoming month based on past billing data. <strong>Lower/Upper Bound</strong> shows the expected range actual revenue will likely fall within.
+                </p>
+              </div>
+              <div style={styles.analyticsCardContent}>
                 {loading ? (
-                  <div style={styles.loadingContainer}>
-                    <div style={styles.loadingSpinner}></div>
-                  </div>
+                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
                 ) : !salesData.forecast ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-chart-line" style={{ fontSize: '3rem', color: '#3b82f6', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Sales Trend Analysis</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Click "Generate Forecast" to analyze sales patterns and predict future trends
-                    </p>
-                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load the sales forecast.</p>
                 ) : salesData.forecast?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Sales forecasting model is not loaded. Please train the model first.
-                    </p>
-                  </div>
+                  <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Sales forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
                   const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
-                  const trendsData = salesData.trends?.trends || {};
-                  const dayPatterns = trendsData.day_of_week_patterns || [];
-                  return (
-                    <div>
-                      {monthlyForecast.length > 0 && (
-                        <div style={{ marginBottom: '1.5rem' }}>
-                          <h4 style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
-                            Monthly Revenue Forecast ({salesData.forecast?.forecast?.model_used || 'ML Model'})
-                          </h4>
-                          <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                              <thead>
-                                <tr style={{ backgroundColor: '#f9fafb' }}>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Month</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Forecast Revenue</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Avg Daily</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Lower Bound</th>
-                                  <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Upper Bound</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {monthlyForecast.map((row, idx) => (
-                                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                      {dayPatterns.length > 0 && (
-                        <div>
-                          <h4 style={{ margin: '0 0 0.75rem 0', color: '#374151', fontSize: '0.9rem', fontWeight: '600' }}>
-                            Revenue by Day of Week
-                          </h4>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            {dayPatterns.map((d, idx) => (
-                              <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
-                                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                              </div>
+                  return monthlyForecast.length > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 0.5rem' }}>Model: {salesData.forecast?.forecast?.model_used || 'ML Model'}</p>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: '#f9fafb' }}>
+                            {['Month', 'Forecast Revenue', 'Avg Daily', 'Lower Bound', 'Upper Bound'].map((h, i) => (
+                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
                             ))}
-                          </div>
-                        </div>
-                      )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {monthlyForecast.map((row, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                  );
+                  ) : null;
                 })()}
               </div>
             </div>
 
-            {/* Sales Metrics Cards */}
+            {/* Sales Summary Metrics + Day of Week */}
             {salesData.forecast?.success !== false && salesData.forecast && (() => {
               const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
               const trendsData = salesData.trends?.trends || {};
               const dayPatterns = trendsData.day_of_week_patterns || [];
-              const bestDay = dayPatterns.length > 0
-                ? dayPatterns.reduce((a, b) => (a.avg_revenue > b.avg_revenue ? a : b))
-                : null;
+              const bestDay = dayPatterns.length > 0 ? dayPatterns.reduce((a, b) => (a.avg_revenue > b.avg_revenue ? a : b)) : null;
               const totalForecastRevenue = monthlyForecast.reduce((sum, m) => sum + (m.monthly_revenue || 0), 0);
               const yoy = trendsData.yoy_growth_percentage;
               return (
-                <div style={styles.metricsGridContainer}>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-dollar-sign" style={{ color: '#10b981' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Total Forecast Revenue</div>
-                      <div style={styles.metricValue}>LKR {totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                    </div>
+                <>
+                  <div style={styles.statsGrid}>
+                    {[
+                      { label: 'Total Forecast Revenue', value: `LKR ${totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#10b981', bg: '#dcfce7', icon: 'fa-sack-dollar' },
+                      { label: 'YoY Growth', value: yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A', color: yoy >= 0 ? '#2563eb' : '#dc2626', bg: yoy >= 0 ? '#dbeafe' : '#fee2e2', icon: yoy >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down' },
+                      { label: 'Best Day', value: bestDay ? bestDay.day_of_week : 'N/A', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-calendar-star' },
+                      { label: 'Avg Monthly Revenue', value: trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A', color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-check' },
+                    ].map((s, i) => (
+                      <div key={i} style={styles.statCard}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                        </div>
+                        <div>
+                          <p style={styles.statLabel}>{s.label}</p>
+                          <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className={`fas fa-arrow-${yoy >= 0 ? 'up' : 'down'}`} style={{ color: yoy >= 0 ? '#3b82f6' : '#dc2626' }}></i>
+                  <p style={{ ...styles.cardHint, borderTop: 'none', marginBottom: '1rem' }}>
+                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                    <strong>YoY Growth</strong> compares this year's revenue to last year's. <strong>Best Day</strong> shows which day historically earns the most — useful for scheduling.
+                  </p>
+
+                  {dayPatterns.length > 0 && (
+                    <div style={styles.analyticsCard}>
+                      <div style={styles.analyticsCardHeader}>
+                        <h3 style={styles.analyticsCardTitle}>
+                          <i className="fas fa-calendar-week" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
+                          Revenue by Day of Week
+                        </h3>
+                        <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                          <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                          Average revenue per day of the week based on past billing. Useful for planning appointments and staffing levels.
+                        </p>
+                      </div>
+                      <div style={styles.analyticsCardContent}>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {dayPatterns.map((d, idx) => (
+                            <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
+                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
+                              <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div style={styles.metricLabel}>YoY Growth</div>
-                      <div style={styles.metricValue}>{yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-calendar-alt" style={{ color: '#8b5cf6' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Best Day</div>
-                      <div style={styles.metricValue}>{bestDay ? bestDay.day_of_week : 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div style={styles.metricCard}>
-                    <div style={styles.metricIconBox}>
-                      <i className="fas fa-calendar-check" style={{ color: '#f59e0b' }}></i>
-                    </div>
-                    <div>
-                      <div style={styles.metricLabel}>Avg Monthly Revenue</div>
-                      <div style={styles.metricValue}>{trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
+                  )}
+                </>
               );
             })()}
-          </div>
+          </>
         )}
 
         {/* Inventory Demand Tab */}
         {isAdmin && activeTab === 'inventory' && (
-          <div style={styles.tabContentContainer}>
-            <div style={styles.card}>
-              <div style={styles.cardHeader}>
-                <h3 style={styles.cardTitle}>
-                  <i className="fas fa-warehouse" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
-                  Inventory Demand Forecasting
-                </h3>
-              </div>
-              <div style={styles.cardBody}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  <div>
-                    <label style={styles.filterLabel}>Forecast Period</label>
-                    <select
-                      value={inventoryDays}
-                      onChange={(e) => setInventoryDays(parseInt(e.target.value))}
-                      style={styles.filterInput}
-                    >
-                      <option value={7}>7 days</option>
-                      <option value={14}>14 days</option>
-                      <option value={30}>30 days</option>
-                      <option value={60}>60 days</option>
-                    </select>
+          <>
+            {/* Summary + controls */}
+            <div style={styles.analyticsCard}>
+              <div style={styles.analyticsCardHeader}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h3 style={styles.analyticsCardTitle}>
+                    <i className="fas fa-warehouse" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
+                    Inventory Reorder Summary
+                  </h3>
+                  <div style={styles.filterBar}>
+                    <div style={styles.filterBarGroup}>
+                      <label style={styles.filterBarLabel}>Forecast Period</label>
+                      <select value={inventoryDays} onChange={(e) => setInventoryDays(parseInt(e.target.value))} style={styles.compactSelect}>
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={60}>60 days</option>
+                      </select>
+                    </div>
+                    <button onClick={fetchInventoryData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <i className="fas fa-sync-alt"></i> Generate
+                    </button>
                   </div>
-                  <button onClick={fetchInventoryData} style={styles.primaryButton}>
-                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Generate Forecast
-                  </button>
                 </div>
+                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  Reorder recommendations based on current stock and expected demand. <strong>Urgent</strong> items are critically low — order these right away.
+                </p>
+              </div>
+              <div style={styles.analyticsCardContent}>
                 {loading ? (
-                  <div style={styles.loadingContainer}>
-                    <div style={styles.loadingSpinner}></div>
-                  </div>
+                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
                 ) : !inventoryData.reorderSuggestions ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-boxes" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Inventory Demand Forecasting</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Click "Generate Forecast" to get AI-powered reorder suggestions
-                    </p>
-                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load inventory reorder suggestions.</p>
                 ) : inventoryData.reorderSuggestions?.success === false ? (
-                  <div style={styles.comingSoonContainer}>
-                    <i className="fas fa-exclamation-circle" style={{ fontSize: '3rem', color: '#dc2626', marginBottom: '1rem' }}></i>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#374151' }}>Model Not Available</h4>
-                    <p style={{ color: '#6b7280', margin: 0 }}>
-                      Inventory forecasting model is not loaded. Please train the model first.
-                    </p>
-                  </div>
+                  <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Inventory forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
-                  const recs = inventoryData.reorderSuggestions?.recommendations || {};
-                  const summary = recs.summary || {};
+                  const summary = (inventoryData.reorderSuggestions?.recommendations || {}).summary || {};
                   return (
-                    <div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#dc2626' }}>{summary.urgent_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Urgent Reorder</div>
+                    <div style={styles.statsGrid}>
+                      {[
+                        { label: 'Urgent Reorder', value: summary.urgent_count ?? 0, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
+                        { label: 'Reorder Soon', value: summary.upcoming_count ?? 0, color: '#d97706', bg: '#fef3c7', icon: 'fa-clock' },
+                        { label: 'Sufficient Stock', value: summary.sufficient_count ?? 0, color: '#16a34a', bg: '#dcfce7', icon: 'fa-circle-check' },
+                        { label: 'Est. Reorder Cost', value: `LKR ${Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#1d4ed8', bg: '#dbeafe', icon: 'fa-receipt' },
+                      ].map((s, i) => (
+                        <div key={i} style={styles.statCard}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                          </div>
+                          <div>
+                            <p style={styles.statLabel}>{s.label}</p>
+                            <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                          </div>
                         </div>
-                        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d97706' }}>{summary.upcoming_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Reorder Soon</div>
-                        </div>
-                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#16a34a' }}>{summary.sufficient_count ?? 0}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Sufficient Stock</div>
-                        </div>
-                        <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1d4ed8' }}>LKR {Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.25rem' }}>Est. Reorder Cost</div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   );
                 })()}
               </div>
             </div>
 
-            {/* Reorder Suggestions Tables */}
+            {/* Reorder Suggestion Tables */}
             {inventoryData.reorderSuggestions?.success !== false && inventoryData.reorderSuggestions && (() => {
               const recs = inventoryData.reorderSuggestions?.recommendations || {};
               const urgent = recs.urgent_reorder || [];
               const soon = recs.reorder_soon || [];
-              const renderTable = (items, color, label) => items.length === 0 ? null : (
-                <div style={styles.card} key={label}>
-                  <div style={styles.cardHeader}>
-                    <h3 style={{ ...styles.cardTitle, color }}>
-                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
-                      {label} ({items.length} items)
+              const renderTable = (items, color, icon, label, hint) => items.length === 0 ? null : (
+                <div style={styles.analyticsCard} key={label}>
+                  <div style={styles.analyticsCardHeader}>
+                    <h3 style={{ ...styles.analyticsCardTitle, color }}>
+                      <i className={`fas ${icon}`} style={{ marginRight: '0.4rem' }}></i>
+                      {label}
+                      <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: color === '#dc2626' ? '#fee2e2' : '#fef3c7', color, marginLeft: '0.5rem' }}>{items.length} items</span>
                     </h3>
+                    <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                      <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                      {hint}
+                    </p>
                   </div>
-                  <div style={styles.cardBody}>
+                  <div style={styles.analyticsCardContent}>
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                         <thead>
                           <tr style={{ backgroundColor: '#f9fafb' }}>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Current Stock</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Reorder Qty</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Est. Cost</th>
-                            <th style={{ padding: '0.6rem 1rem', textAlign: 'left', color: '#6b7280', fontWeight: '600', borderBottom: '1px solid #e5e7eb' }}>Category</th>
+                            {['Item', 'Current Stock', 'Reorder Qty', 'Est. Cost', 'Category'].map((h, i) => (
+                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 || i === 4 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
+                            ))}
                           </tr>
                         </thead>
                         <tbody>
                           {items.map((item, idx) => (
                             <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.6rem 1rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
-                              <td style={{ padding: '0.6rem 1rem', textAlign: 'right', color: '#374151' }}>
-                                {item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}
-                              </td>
-                              <td style={{ padding: '0.6rem 1rem', color: '#6b7280' }}>{item.category || '—'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280' }}>{item.category || '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1460,12 +1372,12 @@ const Analytics = () => {
               );
               return (
                 <>
-                  {renderTable(urgent, '#dc2626', 'Urgent Reorder')}
-                  {renderTable(soon, '#d97706', 'Reorder Soon')}
+                  {renderTable(urgent, '#dc2626', 'fa-triangle-exclamation', 'Urgent Reorder', 'Stock is critically low. Place orders for these items as soon as possible.')}
+                  {renderTable(soon, '#d97706', 'fa-clock', 'Reorder Soon', 'Stock is getting low. Plan to reorder these within the next few days.')}
                 </>
               );
             })()}
-          </div>
+          </>
         )}
 
       </div>
@@ -1814,8 +1726,8 @@ const styles = {
     background: 'linear-gradient(to right, #eff6ff, #f3e8ff)',
     border: '1px solid #bfdbfe',
     borderRadius: '12px',
-    padding: '1.5rem',
-    marginBottom: '1.5rem',
+    padding: '0.85rem 1.25rem',
+    marginBottom: '1rem',
   },
   modelStatusHeader: {
     display: 'flex',
@@ -1857,16 +1769,19 @@ const styles = {
   },
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1.5rem',
-    marginBottom: '1.5rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+    gap: '0.75rem',
+    marginBottom: '1rem',
   },
   statCard: {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    padding: '1.5rem',
+    padding: '0.85rem 1rem',
     border: '1px solid #e5e7eb',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
   },
   statCardContent: {
     display: 'flex',
@@ -1876,12 +1791,15 @@ const styles = {
   statLabel: {
     fontSize: '0.875rem',
     color: '#6b7280',
-    marginBottom: '0.25rem',
+    margin: 0,
+    marginBottom: '0.1rem',
   },
   statValue: {
-    fontSize: '2rem',
+    fontSize: '1.4rem',
     fontWeight: '700',
     color: '#1f2937',
+    margin: 0,
+    lineHeight: 1.1,
   },
   statIcon: {
     padding: '0.75rem',
@@ -1891,8 +1809,8 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    padding: '1.5rem',
-    marginBottom: '1.5rem',
+    padding: '1rem 1.25rem',
+    marginBottom: '1rem',
     border: '1px solid #e5e7eb',
   },
   riskCardHeader: {
@@ -1904,7 +1822,7 @@ const styles = {
     marginBottom: '1.25rem',
   },
   riskTitle: {
-    fontSize: '1.125rem',
+    fontSize: '0.9rem',
     fontWeight: '600',
     color: '#1f2937',
     margin: 0,
@@ -2023,20 +1941,36 @@ const styles = {
     backgroundColor: 'white',
     borderRadius: '12px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '1.5rem',
+    marginBottom: '1rem',
     border: '1px solid #e5e7eb',
   },
   analyticsCardHeader: {
     borderBottom: '1px solid #e5e7eb',
-    padding: '1rem 1.5rem',
+    padding: '0.7rem 1.1rem',
   },
   analyticsCardTitle: {
-    fontSize: '1.125rem',
+    fontSize: '0.875rem',
     fontWeight: '600',
     color: '#1f2937',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
   },
   analyticsCardContent: {
-    padding: '1.5rem',
+    padding: '0.9rem 1.1rem',
+  },
+  cardHint: {
+    margin: '0.6rem 0 0',
+    fontSize: '0.73rem',
+    color: '#6b7280',
+    lineHeight: '1.5',
+    borderTop: '1px solid rgba(0,0,0,0.06)',
+    paddingTop: '0.5rem',
+  },
+  cardHintIcon: {
+    color: '#93c5fd',
+    marginRight: '0.35rem',
+    fontSize: '0.7rem',
   },
   categoryCard: {
     border: '1px solid #e5e7eb',

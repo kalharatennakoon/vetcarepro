@@ -320,8 +320,15 @@ function Reports() {
 
     // Payments by Method Chart
     if (reportType === 'payments-by-method') {
+      const paymentMethodLabels = {
+        cash: 'Cash',
+        card: 'Debit/Credit Card',
+        bank_transfer: 'Bank Transfer',
+        mobile_payment: 'Mobile Payment/QR',
+        insurance: 'Insurance',
+      };
       const chartData = data.map(item => ({
-        name: item.payment_method || 'Unknown',
+        name: paymentMethodLabels[item.payment_method] || item.payment_method || 'Unknown',
         value: parseFloat(item.total_amount || 0),
         count: parseInt(item.transaction_count || 0)
       }));

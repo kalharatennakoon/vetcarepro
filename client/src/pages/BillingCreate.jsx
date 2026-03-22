@@ -1,26 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBill } from '../services/billingService';
+import { useNotification } from '../context/NotificationContext';
 import { getCustomers } from '../services/customerService';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 
 const BillingCreate = () => {
   const navigate = useNavigate();
+  const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
-  const [vaccinations, setVaccinations] = useState([
-    { id: 1, name: 'Rabies Vaccine', price: 2500.00 },
-    { id: 2, name: 'DHPP Vaccine (Distemper, Hepatitis, Parvovirus, Parainfluenza)', price: 3500.00 },
-    { id: 3, name: 'Bordetella Vaccine (Kennel Cough)', price: 2000.00 },
-    { id: 4, name: 'Leptospirosis Vaccine', price: 2800.00 },
-    { id: 5, name: 'Canine Influenza Vaccine', price: 3000.00 },
-    { id: 6, name: 'Lyme Disease Vaccine', price: 3200.00 },
-    { id: 7, name: 'FVRCP Vaccine (Feline Viral Rhinotracheitis, Calicivirus, Panleukopenia)', price: 3000.00 },
-    { id: 8, name: 'FeLV Vaccine (Feline Leukemia)', price: 2800.00 },
-    { id: 9, name: 'FIV Vaccine (Feline Immunodeficiency Virus)', price: 3500.00 }
-  ]);
   
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -34,6 +25,19 @@ const BillingCreate = () => {
     notes: ''
   });
 
+  const categoryLabels = {
+    pharmaceuticals:       'Pharmaceuticals',
+    consumables:           'Consumables',
+    surgical_clinical:     'Surgical & Clinical Supplies',
+    laboratory_diagnostic: 'Laboratory / Diagnostic Supplies',
+    pet_food_nutrition:    'Pet Food & Nutrition',
+    retail_otc:            'Retail / OTC Products',
+    equipment:             'Equipment',
+    accessories:           'Accessories',
+    supplements:           'Supplements',
+    cleaning_maintenance:  'Cleaning & Maintenance Supplies',
+  };
+
   const [items, setItems] = useState([
     {
       item_type: 'service',
@@ -41,7 +45,9 @@ const BillingCreate = () => {
       item_name: '',
       quantity: 1,
       unit_price: 0,
-      discount: 0
+      discount: 0,
+      inv_category: '',
+      inv_subcategory: '',
     }
   ]);
 
@@ -68,6 +74,29 @@ const BillingCreate = () => {
     }
   };
 
+  const getInvCategories = () => {
+    const cats = [...new Set(inventoryItems.map(i => i.category).filter(Boolean))];
+    return cats.sort();
+  };
+
+  const getInvSubcategories = (category) => {
+    const subs = [...new Set(
+      inventoryItems
+        .filter(i => i.category === category && i.sub_category)
+        .map(i => i.sub_category)
+    )];
+    return subs.sort();
+  };
+
+  const getFilteredInventoryItems = (category, subcategory) => {
+    return inventoryItems.filter(i => {
+      if (i.quantity <= 0) return false;
+      if (category && i.category !== category) return false;
+      if (subcategory && i.sub_category !== subcategory) return false;
+      return true;
+    });
+  };
+
   const addItem = () => {
     setItems([...items, {
       item_type: 'service',
@@ -75,7 +104,9 @@ const BillingCreate = () => {
       item_name: '',
       quantity: 1,
       unit_price: 0,
-      discount: 0
+      discount: 0,
+      inv_category: '',
+      inv_subcategory: '',
     }]);
   };
 
@@ -86,27 +117,36 @@ const BillingCreate = () => {
   const updateItem = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
-    
-    // If selecting inventory item, auto-fill details
+
+    if (field === 'item_type') {
+      newItems[index].item_id = null;
+      newItems[index].item_name = '';
+      newItems[index].unit_price = 0;
+      newItems[index].inv_category = '';
+      newItems[index].inv_subcategory = '';
+    }
+
+    if (field === 'inv_category') {
+      newItems[index].inv_subcategory = '';
+      newItems[index].item_id = null;
+      newItems[index].item_name = '';
+      newItems[index].unit_price = 0;
+    }
+
+    if (field === 'inv_subcategory') {
+      newItems[index].item_id = null;
+      newItems[index].item_name = '';
+      newItems[index].unit_price = 0;
+    }
+
     if (field === 'item_id' && value) {
-      const inventoryItem = inventoryItems.find(item => item.item_id === parseInt(value));
+      const inventoryItem = inventoryItems.find(i => i.item_id === parseInt(value));
       if (inventoryItem) {
         newItems[index].item_name = inventoryItem.item_name;
         newItems[index].unit_price = inventoryItem.selling_price;
-        newItems[index].item_type = 'inventory_item';
       }
     }
-    
-    // If selecting vaccination, auto-fill details
-    if (field === 'vaccination_id' && value) {
-      const vaccination = vaccinations.find(v => v.id === parseInt(value));
-      if (vaccination) {
-        newItems[index].item_name = vaccination.name;
-        newItems[index].unit_price = vaccination.price;
-        newItems[index].item_type = 'vaccination';
-      }
-    }
-    
+
     setItems(newItems);
   };
 
@@ -130,7 +170,6 @@ const BillingCreate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!formData.customer_id) {
       alert('Please select a customer');
       return;
@@ -147,6 +186,13 @@ const BillingCreate = () => {
         alert('All items must have a name, positive quantity, and valid price');
         return;
       }
+      if (item.item_type === 'inventory_item' && item.item_id) {
+        const invItem = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
+        if (invItem && invItem.quantity <= 0) {
+          alert(`"${item.item_name}" is out of stock and cannot be added to an invoice.`);
+          return;
+        }
+      }
     }
     
     // Validate payment method if paid amount is provided
@@ -159,7 +205,7 @@ const BillingCreate = () => {
       setLoading(true);
       const billData = {
         ...formData,
-        customer_id: parseInt(formData.customer_id),
+        customer_id: formData.customer_id,
         discount_percentage: parseFloat(formData.discount_percentage) || 0,
         tax_percentage: parseFloat(formData.tax_percentage) || 0,
         paid_amount: parseFloat(formData.paid_amount) || 0,
@@ -173,7 +219,7 @@ const BillingCreate = () => {
       };
 
       const response = await createBill(billData);
-      alert('Invoice created successfully');
+      showSuccess('Invoice created successfully');
       navigate(`/billing/${response.data.bill.bill_id}`);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create invoice');
@@ -208,13 +254,14 @@ const BillingCreate = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
           {/* Basic Information */}
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>Invoice Information</h3>
             
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Customer *</label>
+                <label style={styles.label}>Customer<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <select
                   value={formData.customer_id}
                   onChange={(e) => setFormData({...formData, customer_id: e.target.value})}
@@ -231,7 +278,7 @@ const BillingCreate = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Invoice Date *</label>
+                <label style={styles.label}>Invoice Date<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="date"
                   value={formData.bill_date}
@@ -290,51 +337,65 @@ const BillingCreate = () => {
                         onChange={(e) => updateItem(index, 'item_type', e.target.value)}
                         style={styles.input}
                       >
-                        <option value="service">Service</option>
-                        <option value="inventory_item">Inventory Item</option>
                         <option value="consultation">Consultation</option>
-                        <option value="vaccination">Vaccination</option>
+                        <option value="service">Service / Procedure</option>
+                        <option value="inventory_item">Inventory Item</option>
                       </select>
                     </div>
 
                     {item.item_type === 'inventory_item' && (
-                      <div style={styles.itemField}>
-                        <label style={styles.label}>Select Item</label>
-                        <select
-                          value={item.item_id || ''}
-                          onChange={(e) => updateItem(index, 'item_id', e.target.value)}
-                          style={styles.input}
-                        >
-                          <option value="">Select from inventory</option>
-                          {inventoryItems.map(invItem => (
-                            <option key={invItem.item_id} value={invItem.item_id}>
-                              {invItem.item_name} - {formatCurrency(invItem.selling_price)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <>
+                        <div style={styles.itemField}>
+                          <label style={styles.label}>Category</label>
+                          <select
+                            value={item.inv_category}
+                            onChange={(e) => updateItem(index, 'inv_category', e.target.value)}
+                            style={styles.input}
+                          >
+                            <option value="">All Categories</option>
+                            {getInvCategories().map(cat => (
+                              <option key={cat} value={cat}>{categoryLabels[cat] || cat}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {item.inv_category && getInvSubcategories(item.inv_category).length > 0 && (
+                          <div style={styles.itemField}>
+                            <label style={styles.label}>Sub-Category</label>
+                            <select
+                              value={item.inv_subcategory}
+                              onChange={(e) => updateItem(index, 'inv_subcategory', e.target.value)}
+                              style={styles.input}
+                            >
+                              <option value="">All Sub-Categories</option>
+                              {getInvSubcategories(item.inv_category).map(sub => (
+                                <option key={sub} value={sub}>{sub}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        <div style={styles.itemField}>
+                          <label style={styles.label}>Select Item</label>
+                          <select
+                            value={item.item_id || ''}
+                            onChange={(e) => updateItem(index, 'item_id', e.target.value)}
+                            style={styles.input}
+                          >
+                            <option value="">Select from inventory</option>
+                            {getFilteredInventoryItems(item.inv_category, item.inv_subcategory).map(invItem => (
+                              <option key={invItem.item_id} value={invItem.item_id}>
+                                {invItem.item_name} - {formatCurrency(invItem.selling_price)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
                     )}
 
-                    {item.item_type === 'vaccination' && (
-                      <div style={styles.itemField}>
-                        <label style={styles.label}>Select Vaccination</label>
-                        <select
-                          value={item.vaccination_id || ''}
-                          onChange={(e) => updateItem(index, 'vaccination_id', e.target.value)}
-                          style={styles.input}
-                        >
-                          <option value="">Select vaccination type</option>
-                          {vaccinations.map(vacc => (
-                            <option key={vacc.id} value={vacc.id}>
-                              {vacc.name} - {formatCurrency(vacc.price)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
 
                     <div style={styles.itemField}>
-                      <label style={styles.label}>Item Name *</label>
+                      <label style={styles.label}>Item Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="text"
                         value={item.item_name}
@@ -346,7 +407,7 @@ const BillingCreate = () => {
                     </div>
 
                     <div style={styles.itemFieldSmall}>
-                      <label style={styles.label}>Qty *</label>
+                      <label style={styles.label}>Qty<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="number"
                         value={item.quantity}
@@ -358,7 +419,7 @@ const BillingCreate = () => {
                     </div>
 
                     <div style={styles.itemField}>
-                      <label style={styles.label}>Unit Price *</label>
+                      <label style={styles.label}>Unit Price<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                       <input
                         type="number"
                         step="0.01"
@@ -481,7 +542,7 @@ const BillingCreate = () => {
               {formData.paid_amount > 0 && (
                 <>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Payment Method *</label>
+                    <label style={styles.label}>Payment Method<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                     <select
                       value={formData.payment_method}
                       onChange={(e) => setFormData({...formData, payment_method: e.target.value})}
@@ -489,9 +550,9 @@ const BillingCreate = () => {
                       required
                     >
                       <option value="cash">Cash</option>
-                      <option value="card">Card</option>
+                      <option value="card">Debit/Credit Card</option>
                       <option value="bank_transfer">Bank Transfer</option>
-                      <option value="mobile_payment">Mobile Payment</option>
+                      <option value="mobile_payment">Mobile Payment/QR</option>
                       <option value="insurance">Insurance</option>
                     </select>
                   </div>

@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { checkCustomerDeletability, inactivateCustomer, deleteCustomer } from '../services/customerService';
+import { sendCustomerEmail } from '../services/emailService';
 import CustomerForm from '../components/CustomerForm';
 import Layout from '../components/Layout';
 
@@ -18,6 +19,9 @@ const CustomerDetail = () => {
   const [deactivateReason, setDeactivateReason] = useState('');
   const [deactivateNote, setDeactivateNote] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [emailModal, setEmailModal] = useState(false);
+  const [emailForm, setEmailForm] = useState({ subject: '', message: '' });
+  const [emailSending, setEmailSending] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -99,6 +103,30 @@ const CustomerDetail = () => {
   const handleEditSuccess = () => {
     setShowEditForm(false);
     fetchCustomer();
+  };
+
+  const formatWhatsAppNumber = (phone) => {
+    const digits = (phone || '').replace(/\D/g, '');
+    return digits.startsWith('0') ? '94' + digits.slice(1) : digits;
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailForm.subject.trim() || !emailForm.message.trim()) return;
+    setEmailSending(true);
+    try {
+      const res = await sendCustomerEmail({
+        customerId: customer.customer_id,
+        subject: emailForm.subject,
+        message: emailForm.message,
+      });
+      showSuccess(res.message || 'Email sent successfully');
+      setEmailModal(false);
+      setEmailForm({ subject: '', message: '' });
+    } catch (err) {
+      showError(err.response?.data?.message || 'Failed to send email');
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   if (loading) {
@@ -191,6 +219,30 @@ const CustomerDetail = () => {
             {customer.is_active ? 'Active' : 'Inactive'}
           </div>
         </div>
+
+        {/* Quick Contact Actions */}
+        {(customer.phone || customer.email) && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.75rem 1.5rem', borderBottom: '1px solid #f3f4f6' }}>
+            {customer.phone && (
+              <button
+                onClick={() => window.open(`https://wa.me/${formatWhatsAppNumber(customer.phone)}`, '_blank')}
+                title={`WhatsApp ${customer.phone}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.75rem', backgroundColor: '#25d366', color: 'white', border: 'none', borderRadius: '5px', fontSize: '0.78rem', fontWeight: '500', cursor: 'pointer' }}
+              >
+                <i className="fab fa-whatsapp"></i> WhatsApp
+              </button>
+            )}
+            {customer.email && (
+              <button
+                onClick={() => { setEmailForm({ subject: '', message: '' }); setEmailModal(true); }}
+                title={`Email ${customer.email}`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.75rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '5px', fontSize: '0.78rem', fontWeight: '500', cursor: 'pointer' }}
+              >
+                <i className="fas fa-envelope"></i> Email
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Contact Information */}
         <div style={styles.section}>
@@ -420,6 +472,7 @@ const CustomerDetail = () => {
                   </div>
                 )}
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
@@ -464,6 +517,7 @@ const CustomerDetail = () => {
                   </p>
                 </div>
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
@@ -498,6 +552,63 @@ const CustomerDetail = () => {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Email Modal */}
+    {emailModal && (
+      <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        onClick={() => setEmailModal(false)}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '10px', padding: '2rem', width: '100%', maxWidth: '520px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
+          onClick={(e) => e.stopPropagation()}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1f2937' }}>
+              <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>
+              Send Email to {customer.first_name} {customer.last_name}
+            </h3>
+            <button onClick={() => setEmailModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <i className="fas fa-circle-info" style={{ marginRight: '0.4rem' }}></i>
+            Sending to: <strong>{customer.email}</strong>
+          </p>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Subject</label>
+            <input
+              type="text"
+              value={emailForm.subject}
+              onChange={(e) => setEmailForm(f => ({ ...f, subject: e.target.value }))}
+              placeholder="Email subject"
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>Message</label>
+            <textarea
+              value={emailForm.message}
+              onChange={(e) => setEmailForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Type your message here..."
+              rows={6}
+              style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button onClick={() => setEmailModal(false)}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: '1px solid #d1d5db', background: '#fff', color: '#374151', cursor: 'pointer', fontSize: '0.875rem' }}>
+              Cancel
+            </button>
+            <button
+              onClick={handleSendEmail}
+              disabled={emailSending || !emailForm.subject.trim() || !emailForm.message.trim()}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '6px', border: 'none', background: emailSending ? '#9ca3af' : '#2563eb', color: '#fff', cursor: emailSending ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '600' }}>
+              {emailSending
+                ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '0.4rem' }}></i>Sending...</>
+                : <><i className="fas fa-paper-plane" style={{ marginRight: '0.4rem' }}></i>Send Email</>}
+            </button>
           </div>
         </div>
       </div>

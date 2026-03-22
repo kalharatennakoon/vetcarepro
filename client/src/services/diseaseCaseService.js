@@ -25,7 +25,7 @@ export const getDiseaseCases = async (filters = {}) => {
   if (filters.species) params.append('species', filters.species);
   if (filters.disease_category) params.append('disease_category', filters.disease_category);
   if (filters.severity) params.append('severity', filters.severity);
-  if (filters.is_contagious !== undefined) params.append('is_contagious', filters.is_contagious);
+  if (filters.is_contagious !== undefined && filters.is_contagious !== '') params.append('is_contagious', filters.is_contagious);
   if (filters.outcome) params.append('outcome', filters.outcome);
   if (filters.region) params.append('region', filters.region);
   if (filters.diagnosis_date_from) params.append('diagnosis_date_from', filters.diagnosis_date_from);
@@ -104,9 +104,12 @@ export const deleteDiseaseCase = async (id, reason, additionalNotes = '') => {
 /**
  * Get disease statistics overview
  */
-export const getDiseaseStatistics = async () => {
+export const getDiseaseStatistics = async ({ dateFrom, dateTo } = {}) => {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo)   params.append('date_to', dateTo);
   const response = await axios.get(
-    `${API_URL}/disease-cases/statistics/overview`,
+    `${API_URL}/disease-cases/statistics/overview${params.toString() ? `?${params}` : ''}`,
     getAuthHeader()
   );
   return response.data;
@@ -115,9 +118,12 @@ export const getDiseaseStatistics = async () => {
 /**
  * Get disease cases by category
  */
-export const getDiseaseCasesByCategory = async () => {
+export const getDiseaseCasesByCategory = async ({ dateFrom, dateTo } = {}) => {
+  const params = new URLSearchParams();
+  if (dateFrom) params.append('date_from', dateFrom);
+  if (dateTo)   params.append('date_to', dateTo);
   const response = await axios.get(
-    `${API_URL}/disease-cases/statistics/by-category`,
+    `${API_URL}/disease-cases/statistics/by-category${params.toString() ? `?${params}` : ''}`,
     getAuthHeader()
   );
   return response.data;
@@ -201,11 +207,61 @@ export const  getMLModelStatus = async () => {
 };
 
 /**
+ * Predict individual pet disease risk over time horizons
+ */
+export const predictPetRisk = async (data) => {
+  const response = await axios.post(
+    `${API_URL}/ml/disease/pet-risk`,
+    data,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
+ * Predict cancer/tumor risk based on species, breed, age
+ */
+export const predictCancerRisk = async (data) => {
+  const response = await axios.post(
+    `${API_URL}/ml/disease/cancer-risk`,
+    data,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
+ * Get outbreak trend projection
+ */
+export const getOutbreakTrend = async (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  const response = await axios.get(
+    `${API_URL}/ml/disease/outbreak-trend${qs ? `?${qs}` : ''}`,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
+ * Assess pandemic risk
+ */
+export const getPandemicRisk = async (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  const response = await axios.get(
+    `${API_URL}/ml/disease/pandemic-risk${qs ? `?${qs}` : ''}`,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
  * Train ML model
  */
 export const trainMLModel = async () => {
   const response = await axios.post(
-    `${ML_API_URL}/disease/train`
+    `${API_URL}/ml/disease/train`,
+    {},
+    getAuthHeader()
   );
   return response.data;
 };

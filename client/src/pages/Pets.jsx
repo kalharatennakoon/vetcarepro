@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPets, getSpeciesList } from '../services/petService';
+import { getPets } from '../services/petService';
+
+const SPECIES_LIST = [
+  'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
+  'Parrot', 'Budgie', 'Pigeon', 'Hen',
+  'Cow', 'Goat', 'Pig', 'Sheep',
+  'Snake', 'Lizard', 'Turtle',
+  'Exotic Animal', 'Monkey', 'Deer',
+  'Rescue/Admitted Wildlife', 'Other',
+];
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -9,7 +18,6 @@ const Pets = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState('');
-  const [speciesList, setSpeciesList] = useState([]);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState('active');
   const [currentPage, setCurrentPage] = useState(1);
@@ -18,25 +26,12 @@ const Pets = () => {
   const navigate = useNavigate();
   useAuth();
 
-  useEffect(() => {
-    fetchSpeciesList();
-  }, []);
 
   useEffect(() => {
     fetchPets();
     setCurrentPage(1);
   }, [search, speciesFilter]);
 
-  const fetchSpeciesList = async () => {
-    try {
-      const response = await getSpeciesList();
-      // Extract just the species names from the response
-      const speciesNames = response.data.species?.map(s => s.species) || [];
-      setSpeciesList(speciesNames);
-    } catch (err) {
-      console.error('Failed to fetch species list:', err);
-    }
-  };
 
   const fetchPets = async () => {
     try {
@@ -178,7 +173,7 @@ const Pets = () => {
             style={styles.selectInput}
           >
             <option value="">All Species</option>
-            {speciesList.map((species) => (
+            {SPECIES_LIST.map((species) => (
               <option key={species} value={species}>
                 {species}
               </option>

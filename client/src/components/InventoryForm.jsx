@@ -30,14 +30,30 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
   const isEditMode = !!itemId;
 
   const categories = [
-    { value: 'medicine', label: 'Medicine' },
-    { value: 'vaccine', label: 'Vaccine' },
-    { value: 'accessory', label: 'Accessory' },
-    { value: 'surgical_supply', label: 'Surgical Supply' },
-    { value: 'diagnostic_equipment', label: 'Diagnostic Equipment' },
-    { value: 'pet_food', label: 'Pet Food' },
-    { value: 'supplements', label: 'Supplements' }
+    { value: 'pharmaceuticals',       label: 'Pharmaceuticals' },
+    { value: 'consumables',           label: 'Consumables' },
+    { value: 'surgical_clinical',     label: 'Surgical & Clinical Supplies' },
+    { value: 'laboratory_diagnostic', label: 'Laboratory / Diagnostic Supplies' },
+    { value: 'pet_food_nutrition',    label: 'Pet Food & Nutrition' },
+    { value: 'retail_otc',            label: 'Retail / OTC Products' },
+    { value: 'equipment',             label: 'Equipment' },
+    { value: 'accessories',           label: 'Accessories' },
+    { value: 'supplements',           label: 'Supplements' },
+    { value: 'cleaning_maintenance',  label: 'Cleaning & Maintenance Supplies' },
   ];
+
+  const subCategories = {
+    pharmaceuticals:       ['Medicines', 'Vaccines', 'Dewormers & Flea/Tick Treatments', 'Ointments & Injections'],
+    consumables:           ['Syringes & Needles', 'Gloves, Cotton & Gauze', 'Bandages & Tapes', 'IV Fluids & Catheters'],
+    surgical_clinical:     ['Surgical Instruments/Kits', 'Sutures', 'Antiseptics & Disinfectants', 'E-Collars (Cones)'],
+    laboratory_diagnostic: ['Test Kits', 'Slides & Reagents', 'Sample Collection Tubes'],
+    pet_food_nutrition:    ['Prescription Diets', 'Therapeutic Foods', 'Nutritional Supplements'],
+    retail_otc:            ['Shampoos & Grooming Items', 'Collars & Leashes', 'Toys & Treats'],
+    equipment:             ['Thermometers', 'Weighing Scales', 'Microscopes', 'Surgical Machines'],
+    accessories:           ['Pet Carriers', 'Bowls & Cages', 'General Accessories'],
+    supplements:           ['Vitamins', 'Skin/Coat Supplements', 'Joint Care Products'],
+    cleaning_maintenance:  ['Disinfectants', 'Cleaning Liquids', 'Waste Disposal Items'],
+  };
 
   const units = [
     { value: 'pcs', label: 'Pieces' },
@@ -96,7 +112,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
+
     if (type === 'checkbox') {
       setFormData(prev => ({
         ...prev,
@@ -105,7 +121,8 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: value,
+        ...(name === 'category' ? { subCategory: '' } : {}),
       }));
       
       // Auto-calculate markup percentage when unit cost or selling price changes
@@ -144,13 +161,13 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
         // Remove empty strings for optional fields
         itemCode: formData.itemCode || undefined,
         subCategory: formData.subCategory || undefined,
-        supplier: formData.supplier || undefined,
-        supplierContact: formData.supplierContact || undefined,
-        expiryDate: formData.expiryDate || undefined,
-        manufacturingDate: formData.manufacturingDate || undefined,
+        supplier: formData.supplier,
+        supplierContact: formData.supplierContact,
+        expiryDate: formData.expiryDate,
+        manufacturingDate: formData.manufacturingDate,
         batchNumber: formData.batchNumber || undefined,
         storageLocation: formData.storageLocation || undefined,
-        description: formData.description || undefined
+        description: formData.description
       };
 
       if (isEditMode) {
@@ -193,6 +210,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
       )}
 
       <form onSubmit={handleSubmit} style={styles.form}>
+        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
         {/* Basic Information */}
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Basic Information</h3>
@@ -245,17 +263,19 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
             </div>
 
             <div>
-              <label style={styles.label}>
-                Sub-Category
-              </label>
-              <input
-                type="text"
+              <label style={styles.label}>Sub-Category</label>
+              <select
                 name="subCategory"
                 value={formData.subCategory}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Antibiotic"
-              />
+                style={styles.select}
+                disabled={!formData.category}
+              >
+                <option value="">Select Sub-Category</option>
+                {(subCategories[formData.category] || []).map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -383,13 +403,14 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
           <div style={styles.grid2}>
             <div>
               <label style={styles.label}>
-                Supplier Name
+                Supplier Name <span style={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="supplier"
                 value={formData.supplier}
                 onChange={handleChange}
+                required
                 style={styles.input}
                 placeholder="e.g., MediSupply Corp"
               />
@@ -397,13 +418,14 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
             <div>
               <label style={styles.label}>
-                Supplier Contact
+                Supplier Contact <span style={styles.required}>*</span>
               </label>
               <input
                 type="text"
                 name="supplierContact"
                 value={formData.supplierContact}
                 onChange={handleChange}
+                required
                 style={styles.input}
                 placeholder="Phone or email"
               />
@@ -445,26 +467,28 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
             <div>
               <label style={styles.label}>
-                Manufacturing Date
+                Manufacturing Date <span style={styles.required}>*</span>
               </label>
               <input
                 type="date"
                 name="manufacturingDate"
                 value={formData.manufacturingDate}
                 onChange={handleChange}
+                required
                 style={styles.input}
               />
             </div>
 
             <div>
               <label style={styles.label}>
-                Expiry Date
+                Expiry Date <span style={styles.required}>*</span>
               </label>
               <input
                 type="date"
                 name="expiryDate"
                 value={formData.expiryDate}
                 onChange={handleChange}
+                required
                 style={styles.input}
               />
             </div>
@@ -472,15 +496,16 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
 
           <div style={styles.descriptionContainer}>
             <label style={styles.label}>
-              Description
+              Description <span style={styles.required}>*</span>
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               rows="3"
+              required
               style={styles.textarea}
-              placeholder="Additional notes about the item..."
+              placeholder="Describe the item — usage, dosage form, key properties..."
             />
           </div>
         </div>

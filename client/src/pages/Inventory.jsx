@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
+import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageInventory = user?.role === 'admin';
   const [inventory, setInventory] = useState([]);
+  const [allItems, setAllItems] = useState([]); // unfiltered, used for subcategory dropdown options
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     category: '',
+    subCategory: '',
     search: '',
     isActive: ''
   });
@@ -17,32 +22,39 @@ const Inventory = () => {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [expiringCount, setExpiringCount] = useState(0);
   const [expiringItems, setExpiringItems] = useState([]);
-  const [alertFilter, setAlertFilter] = useState(null); // 'lowStock' or 'expiring'
+  const [alertFilter, setAlertFilter] = useState(null); // 'lowStock', 'expiring', or 'outOfStock'
   const [inactiveCount, setInactiveCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   const categories = [
     { value: '', label: 'All Categories' },
-    { value: 'medicine', label: 'Medicine' },
-    { value: 'vaccine', label: 'Vaccine' },
-    { value: 'accessory', label: 'Accessory' },
-    { value: 'surgical_supply', label: 'Surgical Supply' },
-    { value: 'diagnostic_equipment', label: 'Diagnostic Equipment' },
-    { value: 'pet_food', label: 'Pet Food' },
-    { value: 'supplements', label: 'Supplements' }
+    { value: 'pharmaceuticals',       label: 'Pharmaceuticals' },
+    { value: 'consumables',           label: 'Consumables' },
+    { value: 'surgical_clinical',     label: 'Surgical & Clinical Supplies' },
+    { value: 'laboratory_diagnostic', label: 'Laboratory / Diagnostic Supplies' },
+    { value: 'pet_food_nutrition',    label: 'Pet Food & Nutrition' },
+    { value: 'retail_otc',            label: 'Retail / OTC Products' },
+    { value: 'equipment',             label: 'Equipment' },
+    { value: 'accessories',           label: 'Accessories' },
+    { value: 'supplements',           label: 'Supplements' },
+    { value: 'cleaning_maintenance',  label: 'Cleaning & Maintenance Supplies' },
   ];
+
+  useEffect(() => {
+    // Load all items once for subcategory dropdown population
+    inventoryService.getAll({})
+      .then(res => setAllItems(res.data || []))
+      .catch(() => {});
+    inventoryService.getAll({ isActive: false })
+      .then(res => setInactiveCount(res.data?.length || 0))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadInventory();
     loadAlerts();
   }, [filters]);
-
-  useEffect(() => {
-    inventoryService.getAll({ isActive: false })
-      .then(res => setInactiveCount(res.data?.length || 0))
-      .catch(() => {});
-  }, []);
 
   const loadInventory = async () => {
     try {
@@ -73,11 +85,22 @@ const Inventory = () => {
     }
   };
 
+  const outOfStockItems = allItems.filter(i => i.quantity === 0 && i.is_active !== false);
+  const outOfStockCount = outOfStockItems.length;
+
+  const getSubcategoryOptions = () => {
+    const source = filters.category
+      ? allItems.filter(i => i.category === filters.category)
+      : allItems;
+    return [...new Set(source.map(i => i.sub_category).filter(Boolean))].sort();
+  };
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
       ...prev,
-      [name]: value
+      [name]: value,
+      ...(name === 'category' ? { subCategory: '' } : {}),
     }));
     setCurrentPage(1);
     setAlertFilter(null);
@@ -93,14 +116,28 @@ const Inventory = () => {
     setCurrentPage(1);
   };
 
+  const handleViewOutOfStock = () => {
+    setAlertFilter(alertFilter === 'outOfStock' ? null : 'outOfStock');
+    setCurrentPage(1);
+  };
+
   const getFilteredInventory = () => {
-    if (alertFilter === 'lowStock') {
-      return lowStockItems;
+    let base;
+    if (alertFilter === 'lowStock') base = lowStockItems.filter(i => i.quantity > 0);
+    else if (alertFilter === 'expiring') {
+      const excludeIds = new Set([
+        ...outOfStockItems.map(i => i.item_id),
+        ...lowStockItems.filter(i => i.quantity > 0).map(i => i.item_id),
+      ]);
+      base = expiringItems.filter(i => !excludeIds.has(i.item_id));
     }
-    if (alertFilter === 'expiring') {
-      return expiringItems;
+    else if (alertFilter === 'outOfStock') base = outOfStockItems;
+    else base = inventory;
+
+    if (filters.subCategory) {
+      return base.filter(i => i.sub_category === filters.subCategory);
     }
-    return inventory;
+    return base;
   };
 
   const handleDelete = async (itemId) => {
@@ -122,6 +159,9 @@ const Inventory = () => {
   };
 
   const getStockStatusBadge = (item) => {
+    if (item.stock_status === 'OUT_OF_STOCK') {
+      return <span style={styles.badgeOutOfStock}>Out of Stock</span>;
+    }
     if (item.stock_status === 'LOW') {
       return <span style={styles.badgeDanger}>Low Stock</span>;
     }
@@ -176,14 +216,21 @@ const Inventory = () => {
           <h2 style={styles.title}>Inventory Management</h2>
           <p style={styles.subtitle}>Manage medicines, vaccines, accessories, and supplies</p>
         </div>
-        <button 
-          onClick={() => navigate('/inventory/create')} 
-          style={styles.addButton}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-        >
-          + Add New Item
-        </button>
+        {canManageInventory ? (
+          <button
+            onClick={() => navigate('/inventory/create')}
+            style={styles.addButton}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+          >
+            + Add New Item
+          </button>
+        ) : (
+          <div title="Only admins can add inventory items" style={styles.disabledButton}>
+            <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
+            Add New Item
+          </div>
+        )}
       </div>
 
       {/* Summary at Top */}
@@ -195,12 +242,14 @@ const Inventory = () => {
               <span style={styles.summarySubLabel}>Total Items</span>
               <strong style={styles.summarySubValue}>{inventory.length}</strong>
             </div>
-            <div style={{ ...styles.summarySubCard, borderTop: '4px solid #10b981' }}>
-              <span style={styles.summarySubLabel}>Total Value</span>
-              <strong style={{ ...styles.summarySubValue, fontSize: '0.95rem' }}>
-                {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
-              </strong>
-            </div>
+            {canManageInventory && (
+              <div style={{ ...styles.summarySubCard, borderTop: '4px solid #10b981' }}>
+                <span style={styles.summarySubLabel}>Total Value</span>
+                <strong style={{ ...styles.summarySubValue, fontSize: '0.95rem' }}>
+                  {formatCurrency(inventory.reduce((sum, item) => sum + (item.quantity * item.unit_cost), 0))}
+                </strong>
+              </div>
+            )}
             <div style={{ ...styles.summarySubCard, borderTop: '4px solid #8b5cf6' }}>
               <span style={styles.summarySubLabel}>Active Items</span>
               <strong style={{ ...styles.summarySubValue, color: '#059669' }}>
@@ -224,8 +273,25 @@ const Inventory = () => {
       )}
 
       {/* Alert Summary */}
-      {(lowStockCount > 0 || expiringCount > 0) && (
+      {(lowStockCount > 0 || expiringCount > 0 || outOfStockCount > 0) && (
         <div style={styles.alertContainer}>
+          {outOfStockCount > 0 && (
+            <div style={alertFilter === 'outOfStock' ? styles.alertOutOfStockActive : styles.alertOutOfStock}>
+              <div style={styles.alertContent}>
+                <div>
+                  <strong>{outOfStockCount}</strong> item(s) are out of stock
+                </div>
+                <button
+                  onClick={handleViewOutOfStock}
+                  style={styles.alertButtonOutOfStock}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#111827'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1f2937'}
+                >
+                  {alertFilter === 'outOfStock' ? 'Show All' : 'View Items'}
+                </button>
+              </div>
+            </div>
+          )}
           {lowStockCount > 0 && (
             <div style={alertFilter === 'lowStock' ? styles.alertDangerActive : styles.alertDanger}>
               <div style={styles.alertContent}>
@@ -288,6 +354,18 @@ const Inventory = () => {
         >
           {categories.map(cat => (
             <option key={cat.value} value={cat.value}>{cat.label}</option>
+          ))}
+        </select>
+        <select
+          name="subCategory"
+          value={filters.subCategory}
+          onChange={handleFilterChange}
+          style={styles.filterSelect}
+          disabled={getSubcategoryOptions().length === 0}
+        >
+          <option value="">All Sub-Categories</option>
+          {getSubcategoryOptions().map(sub => (
+            <option key={sub} value={sub}>{sub}</option>
           ))}
         </select>
         <select
@@ -359,7 +437,7 @@ const Inventory = () => {
                       <th style={styles.th}>Item</th>
                       <th style={styles.th}>Category</th>
                       <th style={styles.th}>Quantity</th>
-                      <th style={styles.th}>Unit Cost</th>
+                      {canManageInventory && <th style={styles.th}>Unit Cost</th>}
                       <th style={styles.th}>Selling Price</th>
                       <th style={styles.th}>Status</th>
                       <th style={styles.th}>Actions</th>
@@ -379,9 +457,11 @@ const Inventory = () => {
                       <td style={styles.td}>
                         {item.quantity} {item.unit}
                       </td>
-                      <td style={styles.td}>
-                        {formatCurrency(item.unit_cost)}
-                      </td>
+                      {canManageInventory && (
+                        <td style={styles.td}>
+                          {formatCurrency(item.unit_cost)}
+                        </td>
+                      )}
                       <td style={styles.td}>
                         {formatCurrency(item.selling_price)}
                       </td>
@@ -393,19 +473,19 @@ const Inventory = () => {
                           <button
                             onClick={() => navigate(`/inventory/${item.item_id}`)}
                             style={styles.viewButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
                           >
                             View
                           </button>
-                          <button
-                            onClick={() => handleDelete(item.item_id)}
-                            style={styles.deleteButton}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                          >
-                            Delete
-                          </button>
+                          {canManageInventory && (
+                            <button
+                              onClick={() => handleDelete(item.item_id)}
+                              style={styles.deleteButton}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -510,6 +590,18 @@ const styles = {
     cursor: 'pointer',
     boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
   },
+  disabledButton: {
+    padding: '0.75rem 1.5rem',
+    backgroundColor: '#f3f4f6',
+    color: '#9ca3af',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'not-allowed',
+    display: 'inline-flex',
+    alignItems: 'center',
+  },
   alertContainer: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -532,6 +624,34 @@ const styles = {
     borderLeft: '4px solid #dc2626',
     fontSize: '0.875rem',
     boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+  },
+  alertOutOfStock: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#f3f4f6',
+    color: '#111827',
+    borderRadius: '8px',
+    borderLeft: '4px solid #1f2937',
+    fontSize: '0.875rem',
+  },
+  alertOutOfStockActive: {
+    padding: '1rem 1.5rem',
+    backgroundColor: '#e5e7eb',
+    color: '#111827',
+    borderRadius: '8px',
+    borderLeft: '4px solid #111827',
+    fontSize: '0.875rem',
+    boxShadow: '0 2px 4px rgba(17, 24, 39, 0.2)',
+  },
+  alertButtonOutOfStock: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#1f2937',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   alertWarning: {
     padding: '1rem 1.5rem',
@@ -719,6 +839,15 @@ const styles = {
     fontSize: '10px',
     color: '#9ca3af',
   },
+  badgeOutOfStock: {
+    padding: '0.375rem 0.75rem',
+    backgroundColor: '#1f2937',
+    color: '#f9fafb',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    display: 'inline-block',
+  },
   badgeDanger: {
     padding: '0.375rem 0.75rem',
     backgroundColor: '#fee2e2',
@@ -752,7 +881,7 @@ const styles = {
   },
   viewButton: {
     padding: '0.5rem 1rem',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#2563eb',
     color: 'white',
     border: 'none',
     borderRadius: '6px',

@@ -88,6 +88,22 @@ export const deleteProfileImage = async (id) => {
   return response.data;
 };
 
+/**
+ * Get activity stats for a user
+ */
+export const getUserStats = async (id) => {
+  const response = await axios.get(`${API_URL}/users/${id}/stats`, getAuthHeader());
+  return response.data;
+};
+
+/**
+ * Reset a user's password (Admin only)
+ */
+export const resetUserPassword = async (id, password) => {
+  const response = await axios.post(`${API_URL}/users/${id}/reset-password`, { password }, getAuthHeader());
+  return response.data;
+};
+
 export default {
   getVeterinarians,
   getUsers,

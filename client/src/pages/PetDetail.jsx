@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 import ImageCropModal from '../components/ImageCropModal';
+import PetHealthPredictions from '../components/PetHealthPredictions';
 
 const PetDetail = () => {
   const [pet, setPet] = useState(null);
@@ -492,24 +493,36 @@ const PetDetail = () => {
           >
             <i className="fas fa-info-circle"></i> Information
           </button>
-          <button
-            style={activeTab === 'medical' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('medical')}
-          >
-            <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
-          </button>
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'medical' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('medical')}
+            >
+              <i className="fas fa-hospital"></i> Medical History ({medicalHistory.length})
+            </button>
+          )}
           <button
             style={activeTab === 'vaccinations' ? styles.activeTab : styles.tab}
             onClick={() => setActiveTab('vaccinations')}
           >
             <i className="fas fa-syringe"></i> Vaccinations ({vaccinations.length})
           </button>
-          <button
-            style={activeTab === 'labReports' ? styles.activeTab : styles.tab}
-            onClick={() => setActiveTab('labReports')}
-          >
-            <i className="fas fa-flask"></i> Lab Reports ({labReports.length})
-          </button>
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'labReports' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('labReports')}
+            >
+              <i className="fas fa-flask"></i> Lab Reports ({labReports.length})
+            </button>
+          )}
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'predictions' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('predictions')}
+            >
+              <i className="fas fa-brain"></i> Health Predictions
+            </button>
+          )}
         </div>
 
         {/* Tab Content */}
@@ -837,6 +850,7 @@ const PetDetail = () => {
               {/* Upload Form */}
               {showUploadForm && (
                 <form onSubmit={handleLabReportUpload} style={styles.labUploadForm}>
+                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                   <div style={styles.labFormGrid}>
                     <div style={styles.labFormGroup}>
                       <label style={styles.labFormLabel}>Report Name <span style={{ color: '#dc2626' }}>*</span></label>
@@ -959,6 +973,11 @@ const PetDetail = () => {
               )}
             </div>
           )}
+          {activeTab === 'predictions' && (
+            <div style={styles.section}>
+              <PetHealthPredictions pet={pet} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1028,6 +1047,7 @@ const PetDetail = () => {
                   </div>
                 )}
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for inactivation <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
@@ -1086,6 +1106,7 @@ const PetDetail = () => {
                   </p>
                 </div>
 
+                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={styles.modalLabel}>Reason for deletion <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
