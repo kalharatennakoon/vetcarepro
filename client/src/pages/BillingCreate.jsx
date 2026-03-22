@@ -90,6 +90,7 @@ const BillingCreate = () => {
 
   const getFilteredInventoryItems = (category, subcategory) => {
     return inventoryItems.filter(i => {
+      if (i.quantity <= 0) return false;
       if (category && i.category !== category) return false;
       if (subcategory && i.sub_category !== subcategory) return false;
       return true;
@@ -184,6 +185,13 @@ const BillingCreate = () => {
       if (!item.item_name || item.quantity <= 0 || item.unit_price < 0) {
         alert('All items must have a name, positive quantity, and valid price');
         return;
+      }
+      if (item.item_type === 'inventory_item' && item.item_id) {
+        const invItem = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
+        if (invItem && invItem.quantity <= 0) {
+          alert(`"${item.item_name}" is out of stock and cannot be added to an invoice.`);
+          return;
+        }
       }
     }
     
