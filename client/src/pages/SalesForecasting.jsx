@@ -85,7 +85,6 @@ function SalesForecasting() {
   }, [loadAllData]);
 
   const handleTrainModel = async () => {
-    if (!window.confirm('Training the sales model may take a minute. Proceed?')) return;
     setTrainingLoading(true);
     setTrainSuccess(false);
     setError(null);

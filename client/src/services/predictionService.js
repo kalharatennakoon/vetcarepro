@@ -1,6 +1,11 @@
 import axios from 'axios';
 
 const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api/ml';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const getAuthHeaders = () => ({
+  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+});
 
 /**
  * Get sales forecast
@@ -44,5 +49,21 @@ export const getReorderSuggestions = async () => {
   const response = await axios.get(
     `${ML_API_URL}/inventory/reorder-suggestions`
   );
+  return response.data;
+};
+
+/**
+ * Train the sales forecasting model (Admin only)
+ */
+export const trainSalesModel = async () => {
+  const response = await axios.post(`${API_URL}/ml/sales/train`, {}, getAuthHeaders());
+  return response.data;
+};
+
+/**
+ * Train the inventory forecasting model (Admin only)
+ */
+export const trainInventoryModel = async () => {
+  const response = await axios.post(`${API_URL}/ml/inventory/train`, {}, getAuthHeaders());
   return response.data;
 };

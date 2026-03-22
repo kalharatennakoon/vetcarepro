@@ -85,7 +85,6 @@ function InventoryForecasting() {
   }, [loadAllData]);
 
   const handleTrainModel = async () => {
-    if (!window.confirm('Training the inventory model may take a minute. Proceed?')) return;
     setTrainingLoading(true);
     setTrainSuccess(false);
     setError(null);
