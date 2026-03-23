@@ -274,6 +274,13 @@ function InventoryForecasting() {
                 <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
                   Gradient Boosting
                 </span>
+                {inventoryModelInfo?.last_trained_at ? (
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                    Last trained: {new Date(inventoryModelInfo.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>Never trained</span>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 {inventoryModelInfo?.items_tracked && (

@@ -211,12 +211,29 @@ def health_check():
 def get_models_status():
     """Get status of all ML models"""
     try:
+        from datetime import datetime
+
+        def latest_model_date(prefix):
+            """Return ISO timestamp from the latest model file's modification time, or None."""
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+            files = glob.glob(os.path.join(app_dir, 'models', f'{prefix}_*.pkl'))
+            if not files:
+                return None
+            latest_file = max(files)
+            mtime = os.path.getmtime(latest_file)
+            return datetime.fromtimestamp(mtime).isoformat()
+
         models_status = {
             'disease_prediction': {
                 'loaded': disease_model is not None and disease_model.model is not None,
                 'trained': disease_model is not None and disease_model.classification_model is not None,
                 'data_size': disease_model.data_size if disease_model else 0,
                 'training_date': disease_model.training_date.isoformat() if disease_model and disease_model.training_date else None,
+                'last_trained_at': (
+                    disease_model.training_date.isoformat()
+                    if disease_model and disease_model.training_date
+                    else latest_model_date('disease_prediction')
+                ),
                 'confidence': disease_model.get_model_confidence() if disease_model else None
             },
             'sales_forecasting': {
@@ -224,12 +241,14 @@ def get_models_status():
                 'trained': sales_model is not None and (
                     sales_model.prophet_model is not None or sales_model.demand_model is not None
                 ),
-                'training_data': sales_model.training_data if sales_model else {}
+                'training_data': sales_model.training_data if sales_model else {},
+                'last_trained_at': latest_model_date('sales_forecasting')
             },
             'inventory_forecasting': {
                 'loaded': inventory_model is not None,
                 'trained': inventory_model is not None and inventory_model.demand_model is not None,
-                'items_tracked': len(inventory_model.item_stats) if inventory_model else 0
+                'items_tracked': len(inventory_model.item_stats) if inventory_model else 0,
+                'last_trained_at': latest_model_date('inventory_forecasting')
             }
         }
 
