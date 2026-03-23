@@ -218,7 +218,7 @@ const Analytics = () => {
   const fetchInventoryData = async () => {
     try {
       setLoading(true);
-      const suggestionsRes = await getReorderSuggestions().catch(() => ({ success: false }));
+      const suggestionsRes = await getReorderSuggestions(inventoryDays).catch(() => ({ success: false }));
 
       setInventoryData({
         forecast: null,

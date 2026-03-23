@@ -44,10 +44,9 @@ export const getInventoryForecast = async (days = 30, itemId = null) => {
 /**
  * Get intelligent reorder suggestions
  */
-export const getReorderSuggestions = async () => {
-  const response = await axios.get(
-    `${ML_API_URL}/inventory/reorder-suggestions`
-  );
+export const getReorderSuggestions = async (days) => {
+  const params = days ? `?days=${days}` : '';
+  const response = await axios.get(`${ML_API_URL}/inventory/reorder-suggestions${params}`);
   return response.data;
 };
 

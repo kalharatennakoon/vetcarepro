@@ -897,7 +897,9 @@ def get_reorder_suggestions():
                 'message': 'Inventory forecasting model not loaded'
             }), 503
 
-        result = inventory_model.get_reorder_recommendations()
+        days = request.args.get('days', 30, type=int)
+        days = max(7, min(60, days))
+        result = inventory_model.get_reorder_recommendations(days=days)
 
         if 'error' in result:
             return jsonify({
