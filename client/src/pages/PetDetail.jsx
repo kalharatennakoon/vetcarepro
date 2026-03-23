@@ -15,7 +15,8 @@ const PetDetail = () => {
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('info'); // info, medical, vaccinations, labReports
+  const [activeTab, setActiveTab] = useState('info');
+  useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [labReports, setLabReports] = useState([]);
   const [labReportsLoading, setLabReportsLoading] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);

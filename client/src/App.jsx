@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
@@ -49,6 +50,8 @@ function App() {
   }
 
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* Public routes */}
       <Route 
@@ -376,6 +379,7 @@ function App() {
         } 
       />
     </Routes>
+    </>
   );
 }
 

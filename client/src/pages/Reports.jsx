@@ -25,6 +25,7 @@ function Reports() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('financial');
+  useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [reportType, setReportType] = useState('revenue-summary');
   const [reportData, setReportData] = useState(null);
   const [dashboardSummary, setDashboardSummary] = useState(null);

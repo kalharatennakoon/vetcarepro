@@ -22,6 +22,7 @@ import Layout from '../components/Layout';
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('cases');
+  useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
