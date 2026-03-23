@@ -165,6 +165,17 @@ export const assessOutbreakRisk = async (filters = {}) => {
 };
 
 /**
+ * Forecast future disease trends
+ */
+export const forecastDiseaseActivity = async ({ periods = 12, species = null, disease_category = null } = {}) => {
+  const params = { periods };
+  if (species) params.species = species;
+  if (disease_category) params.disease_category = disease_category;
+  const response = await axios.get(`${ML_API_URL}/disease/forecast`, { params });
+  return response.data;
+};
+
+/**
  * Analyze disease patterns
  */
 export const analyzeDiseasePatterns = async () => {

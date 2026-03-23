@@ -459,60 +459,78 @@ class DiseasePredictionModel(BaseMLModel):
         if region:
             recent_cases = recent_cases[recent_cases['region'] == region]
         
-        # Calculate risk score
+        # Calculate risk score (max 10) — calibrated for a small suburban clinic
         risk_score = 0
         reasons = []
-        
-        # Factor 1: Number of cases
+
+        # Factor 1: Case volume relative to expected for a small clinic
+        # Normal monthly load ~15-20 cases; flag only unusually high volumes
         case_count = len(recent_cases)
-        if case_count >= 10:
-            risk_score += 3
-            reasons.append(f"{case_count} cases in {days_lookback} days")
-        elif case_count >= 5:
+        expected = max(1, days_lookback * 0.6)  # ~0.6 cases/day baseline
+        if case_count >= expected * 2.5:
             risk_score += 2
-            reasons.append(f"{case_count} cases in {days_lookback} days")
-        elif case_count >= 3:
+            reasons.append(f"{case_count} cases in {days_lookback} days (unusually high)")
+        elif case_count >= expected * 1.5:
             risk_score += 1
-            reasons.append(f"{case_count} cases detected")
-        
-        # Factor 2: Contagious diseases
-        contagious_count = recent_cases['is_contagious'].sum() if 'is_contagious' in recent_cases.columns else 0
-        if contagious_count > 0:
-            risk_score += min(int(contagious_count * 1.5), 4)
-            reasons.append(f"{contagious_count} contagious cases")
-        
-        # Factor 3: Severity
+            reasons.append(f"{case_count} cases in {days_lookback} days (above average)")
+
+        # Factor 2: Contagious disease rate (proportion-based, not count-based)
+        # A handful of contagious cases is routine — focus on the percentage
+        contagious_count = int(recent_cases['is_contagious'].sum()) if 'is_contagious' in recent_cases.columns else 0
+        if case_count > 0:
+            contagious_pct = contagious_count / case_count
+            if contagious_pct >= 0.50 and contagious_count >= 5:
+                risk_score += 3
+                reasons.append(f"{contagious_count} contagious cases ({round(contagious_pct*100)}% of total)")
+            elif contagious_pct >= 0.35 and contagious_count >= 3:
+                risk_score += 2
+                reasons.append(f"{contagious_count} contagious cases ({round(contagious_pct*100)}% of total)")
+            elif contagious_pct >= 0.20 and contagious_count >= 2:
+                risk_score += 1
+                reasons.append(f"{contagious_count} contagious cases detected")
+
+        # Factor 3: Severity — scaled by period length (expected ~1 severe case per 30 days)
         severe_count = recent_cases[recent_cases['severity'].isin(['severe', 'critical'])].shape[0]
-        if severe_count >= 3:
+        period_months = days_lookback / 30
+        severe_high_threshold = max(4, round(4 * period_months))
+        severe_low_threshold = max(2, round(2 * period_months))
+        if severe_count >= severe_high_threshold:
             risk_score += 2
             reasons.append(f"{severe_count} severe/critical cases")
-        elif severe_count > 0:
+        elif severe_count >= severe_low_threshold:
             risk_score += 1
-        
-        # Factor 4: Same disease occurring multiple times
+            reasons.append(f"{severe_count} severe/critical cases")
+
+        # Factor 4: Same contagious disease cluster — threshold scales with period
+        # A cluster of 3 in 30 days is notable; needs proportionally more in longer windows
         if not recent_cases.empty:
-            disease_counts = recent_cases['disease_name'].value_counts()
-            repeated_diseases = disease_counts[disease_counts >= 3]
-            if len(repeated_diseases) > 0:
-                risk_score += 2
-                reasons.append(f"Repeated occurrences: {', '.join(repeated_diseases.index[:2])}")
-        
-        # Factor 5: Trend (increasing cases)
-        if len(recent_cases) >= 6:
+            contagious_cases = recent_cases[recent_cases['is_contagious'] == True] if 'is_contagious' in recent_cases.columns else recent_cases
+            if not contagious_cases.empty:
+                min_cluster_size = max(3, days_lookback // 12)
+                disease_counts = contagious_cases['disease_name'].value_counts()
+                clustered = disease_counts[disease_counts >= min_cluster_size]
+                if len(clustered) > 0:
+                    risk_score += 2
+                    reasons.append(f"Disease cluster: {', '.join(clustered.index[:2])}")
+
+        # Factor 5: Accelerating trend in second half of the period
+        if len(recent_cases) >= 8:
             halfway = datetime.now().date() - timedelta(days=days_lookback//2)
             first_half = recent_cases[recent_cases['diagnosis_date'].dt.date < halfway]
             second_half = recent_cases[recent_cases['diagnosis_date'].dt.date >= halfway]
-            
-            if len(second_half) > len(first_half) * 1.5:
-                risk_score += 2
-                reasons.append(f"Increasing trend detected")
-        
-        # Determine risk level
-        if risk_score >= 10:
+            if len(first_half) > 0 and len(second_half) > len(first_half) * 2.0:
+                risk_score += 1
+                reasons.append("Rapid increase in cases detected")
+
+        # Cap at 10
+        risk_score = min(risk_score, 10)
+
+        # Determine risk level — critical requires a genuine multi-factor outbreak signal
+        if risk_score >= 8:
             risk_level = 'critical'
-        elif risk_score >= 7:
+        elif risk_score >= 5:
             risk_level = 'high'
-        elif risk_score >= 4:
+        elif risk_score >= 3:
             risk_level = 'medium'
         else:
             risk_level = 'low'
@@ -687,6 +705,250 @@ class DiseasePredictionModel(BaseMLModel):
             'total_regions': len(regions),
             'hotspot': max(regions.keys(), key=lambda x: regions[x]['total_cases']) if regions else None
         }
+
+    def forecast_disease_trends(self, periods_months=12, species=None, disease_category=None):
+        """
+        Forecast disease activity, outbreak probability, and pandemic risk using
+        multi-source clinical data: disease cases, appointments, medical records,
+        and pet demographics.
+        """
+        try:
+            from prophet import Prophet
+
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            # --- 1. Monthly disease case data ---
+            disease_q = """
+                SELECT
+                    DATE_TRUNC('month', diagnosis_date)::date AS month,
+                    COUNT(*) AS disease_cases,
+                    SUM(CASE WHEN is_contagious THEN 1 ELSE 0 END) AS contagious_cases,
+                    COUNT(DISTINCT species) AS species_diversity,
+                    SUM(CASE WHEN severity IN ('severe','critical') THEN 1 ELSE 0 END) AS severe_cases,
+                    COUNT(DISTINCT disease_name) AS unique_diseases
+                FROM disease_cases
+                WHERE diagnosis_date IS NOT NULL
+            """
+            params = []
+            if species:
+                disease_q += " AND species = %s"
+                params.append(species)
+            if disease_category:
+                disease_q += " AND disease_category = %s"
+                params.append(disease_category)
+            disease_q += " GROUP BY DATE_TRUNC('month', diagnosis_date)::date ORDER BY month"
+            cur.execute(disease_q, params)
+            disease_rows = cur.fetchall()
+
+            # --- 2. Monthly appointment data ---
+            cur.execute("""
+                SELECT
+                    DATE_TRUNC('month', appointment_date)::date AS month,
+                    COUNT(*) AS appointment_count,
+                    COUNT(DISTINCT pet_id) AS unique_pets_seen
+                FROM appointments
+                WHERE status NOT IN ('cancelled')
+                GROUP BY DATE_TRUNC('month', appointment_date)::date
+                ORDER BY month
+            """)
+            appt_rows = cur.fetchall()
+
+            # --- 3. Monthly medical records data ---
+            cur.execute("""
+                SELECT
+                    DATE_TRUNC('month', visit_date)::date AS month,
+                    COUNT(*) AS record_count,
+                    SUM(CASE WHEN follow_up_required THEN 1 ELSE 0 END) AS follow_ups
+                FROM medical_records
+                GROUP BY DATE_TRUNC('month', visit_date)::date
+                ORDER BY month
+            """)
+            record_rows = cur.fetchall()
+
+            # --- 4. Active pet demographics snapshot ---
+            cur.execute("""
+                SELECT
+                    species,
+                    COUNT(*) AS count,
+                    AVG(
+                        EXTRACT(YEAR FROM AGE(CURRENT_DATE, date_of_birth)) * 12 +
+                        EXTRACT(MONTH FROM AGE(CURRENT_DATE, date_of_birth))
+                    ) AS avg_age_months
+                FROM pets
+                WHERE is_active = true AND date_of_birth IS NOT NULL
+                GROUP BY species
+                ORDER BY count DESC
+                LIMIT 10
+            """)
+            demo_rows = cur.fetchall()
+
+            cur.close()
+            conn.close()
+
+            if not disease_rows or len(disease_rows) < 3:
+                return {'error': 'Insufficient disease case data for forecasting'}
+
+            # --- Build DataFrames ---
+            disease_df = pd.DataFrame(disease_rows, columns=['ds', 'disease_cases', 'contagious_cases', 'species_diversity', 'severe_cases', 'unique_diseases'])
+            disease_df['ds'] = pd.to_datetime(disease_df['ds'])
+
+            appt_df = pd.DataFrame(appt_rows, columns=['ds', 'appointment_count', 'unique_pets_seen']) if appt_rows else pd.DataFrame(columns=['ds', 'appointment_count', 'unique_pets_seen'])
+            appt_df['ds'] = pd.to_datetime(appt_df['ds'])
+
+            record_df = pd.DataFrame(record_rows, columns=['ds', 'record_count', 'follow_ups']) if record_rows else pd.DataFrame(columns=['ds', 'record_count', 'follow_ups'])
+            record_df['ds'] = pd.to_datetime(record_df['ds'])
+
+            merged = disease_df.merge(appt_df, on='ds', how='left').merge(record_df, on='ds', how='left').fillna(0)
+            merged['contagious_rate'] = merged['contagious_cases'] / merged['disease_cases'].replace(0, 1)
+            last_date = merged['ds'].max()
+
+            # ============================================================
+            # FORECAST 1: Disease case volume (Prophet + appointment regressor)
+            # ============================================================
+            has_appt = len(appt_df) >= 3
+            model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=500)
+            if has_appt:
+                model.add_regressor('appointment_count')
+
+            train_df = merged[['ds', 'disease_cases', 'appointment_count']].rename(columns={'disease_cases': 'y'})
+            model.fit(train_df)
+
+            future = model.make_future_dataframe(periods=periods_months, freq='MS')
+            if has_appt:
+                last_appt = float(merged['appointment_count'].tail(3).mean())
+                appt_trend = float((merged['appointment_count'].tail(3).mean() - merged['appointment_count'].head(3).mean()) / max(len(merged) - 3, 1))
+                appt_map = dict(zip(merged['ds'], merged['appointment_count']))
+                future_appt_vals = []
+                future_idx = 0
+                for _, row in future.iterrows():
+                    if row['ds'] in appt_map:
+                        future_appt_vals.append(appt_map[row['ds']])
+                    else:
+                        future_appt_vals.append(max(0, last_appt + appt_trend * future_idx))
+                        future_idx += 1
+                future['appointment_count'] = future_appt_vals
+
+            forecast = model.predict(future)
+            future_fc = forecast[forecast['ds'] > last_date].copy()
+
+            predictions = []
+            for _, row in future_fc.iterrows():
+                predictions.append({
+                    'month': row['ds'].strftime('%Y-%m'),
+                    'predicted_cases': max(0, round(float(row['yhat']))),
+                    'lower_bound': max(0, round(float(row['yhat_lower']))),
+                    'upper_bound': max(0, round(float(row['yhat_upper'])))
+                })
+
+            hist_avg = float(merged['disease_cases'].tail(6).mean())
+            fc_avg = float(future_fc['yhat'].mean())
+            trend_direction = 'increasing' if fc_avg > hist_avg * 1.15 else ('decreasing' if fc_avg < hist_avg * 0.85 else 'stable')
+            peak_row = future_fc.loc[future_fc['yhat'].idxmax()]
+            peak_month = peak_row['ds'].strftime('%B %Y')
+
+            # ============================================================
+            # FORECAST 2: Outbreak probability per month
+            # Factors: contagious rate, species diversity, severity ratio, disease variety
+            # ============================================================
+            max_diversity = float(merged['species_diversity'].max()) or 1.0
+            merged['outbreak_score'] = (
+                merged['contagious_rate'] * 40 +
+                (merged['species_diversity'] / max_diversity) * 20 +
+                (merged['severe_cases'] / merged['disease_cases'].replace(0, 1)) * 20 +
+                (merged['unique_diseases'] / merged['disease_cases'].replace(0, 1)).clip(0, 1) * 20
+            ).clip(0, 100).round(1)
+
+            ob_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=0)
+            ob_model.fit(merged[['ds', 'outbreak_score']].rename(columns={'outbreak_score': 'y'}))
+            ob_future = ob_model.make_future_dataframe(periods=periods_months, freq='MS')
+            ob_fc = ob_model.predict(ob_future)
+            ob_future_fc = ob_fc[ob_fc['ds'] > last_date]
+
+            outbreak_forecast = []
+            for _, row in ob_future_fc.iterrows():
+                prob = max(0, min(100, round(float(row['yhat']), 1)))
+                level = 'high' if prob >= 60 else ('medium' if prob >= 35 else 'low')
+                outbreak_forecast.append({'month': row['ds'].strftime('%Y-%m'), 'outbreak_probability': prob, 'risk_level': level})
+
+            # ============================================================
+            # FORECAST 3: Pandemic risk index (0–10)
+            # Factors: multi-species contagious spread + severity + appointment acceleration
+            # ============================================================
+            merged['pandemic_index'] = (
+                merged['contagious_rate'] * 5 +
+                (merged['species_diversity'] / 10.0).clip(0, 3) +
+                (merged['severe_cases'] / merged['disease_cases'].replace(0, 1)) * 2
+            ).clip(0, 10).round(2)
+
+            current_pandemic_index = round(float(merged['pandemic_index'].tail(3).mean()), 2)
+            pandemic_level = 'high' if current_pandemic_index >= 6 else ('medium' if current_pandemic_index >= 3 else 'low')
+            pandemic_descriptions = {
+                'high': 'Elevated multi-species contagious activity detected. Recommend notifying provincial veterinary and health authorities.',
+                'medium': 'Moderate disease pressure across multiple species. Enhanced surveillance and monitoring recommended.',
+                'low': 'Disease activity within normal range for this clinic. Routine monitoring sufficient.'
+            }
+
+            # ============================================================
+            # FORECAST 4: Category-level forecasts (top 5 disease categories)
+            # ============================================================
+            category_trend = {}
+            try:
+                data = self.data_loader.load_disease_data()
+                df_full = data if isinstance(data, pd.DataFrame) else (pd.DataFrame(data) if data else pd.DataFrame())
+                if not df_full.empty and 'disease_category' in df_full.columns:
+                    df_full['month'] = pd.to_datetime(df_full['diagnosis_date']).dt.to_period('M').dt.to_timestamp()
+                    for cat in df_full['disease_category'].value_counts().head(5).index.tolist():
+                        cat_data = df_full[df_full['disease_category'] == cat].groupby('month').size().reset_index(name='y').rename(columns={'month': 'ds'})
+                        if len(cat_data) >= 3:
+                            cm = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=0)
+                            cm.fit(cat_data)
+                            cp = cm.predict(cm.make_future_dataframe(periods=periods_months, freq='MS'))
+                            category_trend[cat] = [
+                                {'month': r['ds'].strftime('%Y-%m'), 'predicted': max(0, round(float(r['yhat'])))}
+                                for _, r in cp[cp['ds'] > last_date].iterrows()
+                            ]
+            except Exception:
+                pass
+
+            # Pet demographics
+            demographics = {}
+            if demo_rows:
+                demo_df = pd.DataFrame(demo_rows, columns=['species', 'count', 'avg_age_months'])
+                for _, row in demo_df.iterrows():
+                    demographics[row['species']] = {
+                        'count': int(row['count']),
+                        'avg_age_months': round(float(row['avg_age_months']), 1) if row['avg_age_months'] else None
+                    }
+
+            return {
+                'predictions': predictions,
+                'outbreak_forecast': outbreak_forecast,
+                'pandemic_risk': {
+                    'current_index': current_pandemic_index,
+                    'level': pandemic_level,
+                    'description': pandemic_descriptions[pandemic_level]
+                },
+                'trend_direction': trend_direction,
+                'peak_month': peak_month,
+                'historical_monthly_avg': round(hist_avg, 1),
+                'forecast_monthly_avg': round(fc_avg, 1),
+                'total_forecast_cases': sum(p['predicted_cases'] for p in predictions),
+                'periods_months': periods_months,
+                'category_trend': category_trend,
+                'pet_demographics': demographics,
+                'data_sources': {
+                    'disease_case_months': len(disease_df),
+                    'appointment_months': len(appt_df),
+                    'medical_record_months': len(record_df),
+                    'active_pets': sum(d['count'] for d in demographics.values()) if demographics else 0
+                },
+                'confidence': self.get_model_confidence()['level'],
+                'filters': {'species': species, 'disease_category': disease_category}
+            }
+
+        except Exception as e:
+            return {'error': f'Forecast failed: {str(e)}'}
 
 
 if __name__ == "__main__":

@@ -604,6 +604,33 @@ def train_disease_model():
         }), 500
 
 
+@app.route('/api/ml/disease/forecast', methods=['GET'])
+def forecast_disease_trends():
+    """Forecast future disease trends using Prophet time-series model"""
+    try:
+        if not disease_model:
+            return jsonify({'success': False, 'error': 'Disease model not loaded'}), 503
+
+        periods_months = request.args.get('periods', 12, type=int)
+        periods_months = max(1, min(60, periods_months))
+        species = request.args.get('species', None)
+        disease_category = request.args.get('disease_category', None)
+
+        result = disease_model.forecast_disease_trends(
+            periods_months=periods_months,
+            species=species if species else None,
+            disease_category=disease_category if disease_category else None
+        )
+
+        if 'error' in result:
+            return jsonify({'success': False, 'error': result['error']}), 400
+
+        return jsonify({'success': True, 'forecast': result}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ===========================================================================
 # SALES FORECASTING ENDPOINTS (Phase 3)
 # ===========================================================================

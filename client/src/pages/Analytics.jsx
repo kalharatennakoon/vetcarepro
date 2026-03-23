@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   getDiseaseCases,
   getDiseaseStatistics,
   getDiseaseCasesByCategory,
@@ -8,7 +8,8 @@ import {
   assessOutbreakRisk,
   analyzeDiseasePatterns,
   getSpeciesTrends,
-  trainMLModel
+  trainMLModel,
+  forecastDiseaseActivity
 } from '../services/diseaseCaseService';
 import {
   getSalesForecast,
@@ -80,6 +81,13 @@ const Analytics = () => {
     reorderSuggestions: null
   });
   const [inventoryDays, setInventoryDays] = useState(30);
+
+  // Disease Forecast State
+  const [diseaseForecast, setDiseaseForecast] = useState(null);
+  const [diseaseForecastLoading, setDiseaseForecastLoading] = useState(false);
+  const [diseaseForecastError, setDiseaseForecastError] = useState('');
+  const [forecastPeriod, setForecastPeriod] = useState(12);
+  const [showDiseaseDetails, setShowDiseaseDetails] = useState(false);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -186,11 +194,31 @@ const Analytics = () => {
 
   const fetchOutbreakRisk = async () => {
     try {
-      const days = analyticsPeriod === 'all' ? undefined : parseInt(analyticsPeriod);
-      const response = await assessOutbreakRisk({ ...riskFilters, ...(days ? { days_lookback: days } : {}) });
+      const days = analyticsPeriod === 'all' ? 3650 : parseInt(analyticsPeriod);
+      const response = await assessOutbreakRisk({ ...riskFilters, days_lookback: days });
       setOutbreakRisk(response.risk_assessment);
     } catch (err) {
       console.error('Failed to assess outbreak risk:', err);
+    }
+  };
+
+  const fetchDiseaseForecast = async (periods = forecastPeriod, species = '') => {
+    setDiseaseForecastLoading(true);
+    setDiseaseForecastError('');
+    try {
+      const res = await forecastDiseaseActivity({
+        periods,
+        species: species || null,
+      });
+      if (res.success) {
+        setDiseaseForecast(res.forecast);
+      } else {
+        setDiseaseForecastError(res.error || 'Forecast unavailable');
+      }
+    } catch (err) {
+      setDiseaseForecastError('Failed to load disease forecast');
+    } finally {
+      setDiseaseForecastLoading(false);
     }
   };
 
@@ -822,6 +850,177 @@ const Analytics = () => {
         {/* ML Analytics Tab */}
         {activeTab === 'analytics' && (
           <>
+            {/* ── Disease Activity Forecast ── */}
+            {isVetOrAdmin && (
+              <div style={styles.analyticsCard}>
+                <div style={styles.analyticsCardHeader}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <h3 style={styles.analyticsCardTitle}>
+                      <i className="fas fa-chart-line" style={{ marginRight: '0.4rem', color: '#7c3aed' }}></i>
+                      Disease, Pandemic &amp; Outbreak Forecast
+                    </h3>
+                    <div style={styles.filterBar}>
+                      <div style={styles.filterBarGroup}>
+                        <label style={styles.filterBarLabel}>Forecast Period</label>
+                        <select value={forecastPeriod} onChange={(e) => setForecastPeriod(parseInt(e.target.value))} style={styles.compactSelect}>
+                          <option value={6}>6 months</option>
+                          <option value={12}>1 year</option>
+                          <option value={24}>2 years</option>
+                          <option value={36}>3 years</option>
+                          <option value={60}>5 years</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => fetchDiseaseForecast(forecastPeriod)}
+                        disabled={diseaseForecastLoading}
+                        style={{ padding: '0.38rem 0.8rem', backgroundColor: diseaseForecastLoading ? '#9ca3af' : '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: diseaseForecastLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                      >
+                        <i className={`fas ${diseaseForecastLoading ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
+                        {diseaseForecastLoading ? 'Forecasting...' : 'Generate Forecast'}
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
+                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                    Trained on disease cases, appointments, and medical records across all species. Use these predictions to plan ahead and notify health authorities when needed.
+                  </p>
+                </div>
+                <div style={styles.analyticsCardContent}>
+                  {diseaseForecastLoading ? (
+                    <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
+                  ) : diseaseForecastError ? (
+                    <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{diseaseForecastError}</p>
+                  ) : !diseaseForecast ? (
+                    <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                      <i className="fas fa-chart-line" style={{ fontSize: '2rem', color: '#d8b4fe', marginBottom: '0.75rem', display: 'block' }}></i>
+                      <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Select a forecast period and click <strong>Generate Forecast</strong> to see disease, pandemic &amp; outbreak predictions.</p>
+                    </div>
+                  ) : (() => {
+                    const pr = diseaseForecast.pandemic_risk || {};
+                    const prColor = pr.level === 'high' ? '#dc2626' : pr.level === 'medium' ? '#d97706' : '#16a34a';
+                    const prBg = pr.level === 'high' ? '#fee2e2' : pr.level === 'medium' ? '#fef3c7' : '#dcfce7';
+                    return (
+                      <>
+                        {/* Pandemic risk banner */}
+                        <div style={{ marginBottom: '1rem', backgroundColor: prBg, border: `1px solid ${prColor}25`, borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                          <i className={`fas ${pr.level === 'high' ? 'fa-biohazard' : pr.level === 'medium' ? 'fa-triangle-exclamation' : 'fa-shield-virus'}`} style={{ color: prColor, fontSize: '1.2rem', marginTop: '0.1rem' }}></i>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                              <span style={{ fontSize: '0.88rem', fontWeight: '700', color: prColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pr.level} Pandemic Risk</span>
+                              <span style={{ fontSize: '0.72rem', backgroundColor: `${prColor}20`, color: prColor, padding: '0.1rem 0.45rem', borderRadius: '20px', fontWeight: '600' }}>Index: {pr.current_index}/10</span>
+                            </div>
+                            <p style={{ fontSize: '0.82rem', color: '#374151', margin: 0 }}>{pr.description}</p>
+                          </div>
+                        </div>
+
+                        {/* Summary cards */}
+                        <div style={styles.statsGrid}>
+                          {[
+                            {
+                              label: 'Disease Trend',
+                              value: diseaseForecast.trend_direction?.charAt(0).toUpperCase() + diseaseForecast.trend_direction?.slice(1),
+                              color: diseaseForecast.trend_direction === 'increasing' ? '#dc2626' : diseaseForecast.trend_direction === 'decreasing' ? '#16a34a' : '#2563eb',
+                              bg: diseaseForecast.trend_direction === 'increasing' ? '#fee2e2' : diseaseForecast.trend_direction === 'decreasing' ? '#dcfce7' : '#dbeafe',
+                              icon: diseaseForecast.trend_direction === 'increasing' ? 'fa-arrow-trend-up' : diseaseForecast.trend_direction === 'decreasing' ? 'fa-arrow-trend-down' : 'fa-minus',
+                            },
+                            { label: 'Total Projected Cases', value: diseaseForecast.total_forecast_cases, color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-file-medical' },
+                            { label: 'Avg Cases / Month', value: diseaseForecast.forecast_monthly_avg?.toFixed(1), color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-day' },
+                            { label: 'Peak Activity Month', value: diseaseForecast.peak_month, color: '#dc2626', bg: '#fee2e2', icon: 'fa-calendar-exclamation' },
+                          ].map((s, i) => (
+                            <div key={i} style={styles.statCard}>
+                              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                              </div>
+                              <div>
+                                <p style={styles.statLabel}>{s.label}</p>
+                                <p style={{ ...styles.statValue, color: s.color, fontSize: '1rem' }}>{s.value}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Monthly predictions table */}
+                        <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f5f3ff' }}>
+                                {['Month', 'Predicted Cases', 'Lower Bound', 'Upper Bound', 'Outbreak Risk'].map((h, i) => (
+                                  <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b21a8', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e9d5ff' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {diseaseForecast.predictions?.map((row, idx) => {
+                                const ob = diseaseForecast.outbreak_forecast?.[idx];
+                                const obColor = ob?.risk_level === 'high' ? '#dc2626' : ob?.risk_level === 'medium' ? '#d97706' : '#16a34a';
+                                return (
+                                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                    <td style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#1f2937' }}>{row.month}</td>
+                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#7c3aed', fontSize: '0.9rem' }}>{row.predicted_cases}</td>
+                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.lower_bound}</td>
+                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.upper_bound}</td>
+                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right' }}>
+                                      {ob && <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '20px', backgroundColor: `${obColor}15`, color: obColor, textTransform: 'capitalize' }}>{ob.risk_level} ({ob.outbreak_probability}%)</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Category breakdown */}
+                        {diseaseForecast.category_trend && Object.keys(diseaseForecast.category_trend).length > 0 && (() => {
+                          const allMonths = [...new Set(Object.values(diseaseForecast.category_trend).flatMap(m => m.map(x => x.month)))].sort();
+                          return (
+                            <div style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '0.75rem' }}>
+                              <h4 style={{ fontSize: '0.78rem', fontWeight: '700', color: '#6b21a8', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected Cases by Disease Category</h4>
+                              <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                  <thead>
+                                    <tr style={{ backgroundColor: '#faf5ff' }}>
+                                      <th style={{ padding: '0.4rem 0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.7rem', color: '#7c3aed', textTransform: 'uppercase', borderBottom: '1px solid #e9d5ff' }}>Category</th>
+                                      {allMonths.map(m => <th key={m} style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.7rem', color: '#7c3aed', textTransform: 'uppercase', borderBottom: '1px solid #e9d5ff', whiteSpace: 'nowrap' }}>{m}</th>)}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Object.entries(diseaseForecast.category_trend).map(([cat, months]) => {
+                                      const byMonth = Object.fromEntries(months.map(m => [m.month, m.predicted]));
+                                      return (
+                                        <tr key={cat} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                          <td style={{ padding: '0.4rem 0.75rem', color: '#374151', fontWeight: '500', textTransform: 'capitalize' }}>{cat.replace(/_/g, ' ')}</td>
+                                          {allMonths.map(m => <td key={m} style={{ padding: '0.4rem 0.75rem', textAlign: 'right', color: '#6b7280' }}>{byMonth[m] ?? '—'}</td>)}
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        <p style={{ ...styles.cardHint, marginTop: '0.75rem' }}>
+                          <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                          Trained on {diseaseForecast.data_sources?.disease_case_months} months of disease cases, {diseaseForecast.data_sources?.appointment_months} months of appointments, and {diseaseForecast.data_sources?.medical_record_months} months of medical records across {diseaseForecast.data_sources?.active_pets} active pets. Confidence: <strong>{diseaseForecast.confidence}</strong>.
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* More Details toggle */}
+            <button
+              onClick={() => setShowDiseaseDetails(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.25rem 0 0.75rem', padding: '0.5rem 1.1rem', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', color: '#4b5563', cursor: 'pointer' }}
+            >
+              <i className={`fas ${showDiseaseDetails ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ fontSize: '0.72rem' }}></i>
+              {showDiseaseDetails ? 'Hide Detailed Insights' : 'Show Detailed Insights'}
+            </button>
+
+            {showDiseaseDetails && (<>
             {/* Period selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Showing data for</span>
@@ -960,7 +1159,7 @@ const Analytics = () => {
                       {[
                         { label: 'Cases', val: outbreakRisk.case_count },
                         { label: 'Contagious', val: outbreakRisk.contagious_cases },
-                        { label: 'Period', val: `${outbreakRisk.days_analyzed}d` },
+                        { label: 'Period', val: analyticsPeriod === 'all' ? 'All time' : `${outbreakRisk.days_analyzed}d` },
                         { label: 'Confidence', val: outbreakRisk.confidence?.toUpperCase() },
                       ].map((m, i) => (
                         <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.35rem 0.5rem', textAlign: 'center' }}>
@@ -1205,8 +1404,11 @@ const Analytics = () => {
                 </div>
               </div>
             )}
+          {/* close showDiseaseDetails */}
+          </>)}
           </>
         )}
+
 
         {/* Sales Forecasting Tab */}
         {isAdmin && activeTab === 'sales' && (
