@@ -857,7 +857,7 @@ const Analytics = () => {
                   </div>
                   <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
                     <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                    Trained on disease cases, appointments, and medical records across all species. Use these predictions to plan ahead and notify health authorities when needed.
+                    Trained on disease cases, appointments, and medical records across all species.
                   </p>
                 </div>
                 <div style={styles.analyticsCardContent}>
@@ -901,7 +901,13 @@ const Analytics = () => {
                               <span style={{ fontSize: '0.88rem', fontWeight: '700', color: prColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pr.level} Pandemic Risk</span>
                               <span style={{ fontSize: '0.72rem', backgroundColor: `${prColor}20`, color: prColor, padding: '0.1rem 0.45rem', borderRadius: '20px', fontWeight: '600' }}>Index: {pr.current_index}/10</span>
                             </div>
-                            <p style={{ fontSize: '0.82rem', color: '#374151', margin: 0 }}>{pr.description}</p>
+                            <p style={{ fontSize: '0.82rem', color: '#374151', margin: '0 0 0.4rem' }}>{pr.description}</p>
+                            <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>
+                              Index scored from contagious rate, multi-species spread &amp; case severity (0–10).&nbsp;
+                              <span style={{ color: '#16a34a', fontWeight: '600' }}>Low: 0–2.9</span> ·&nbsp;
+                              <span style={{ color: '#d97706', fontWeight: '600' }}>Medium: 3–5.9</span> ·&nbsp;
+                              <span style={{ color: '#dc2626', fontWeight: '600' }}>High: 6–10</span>
+                            </p>
                           </div>
                         </div>
 
@@ -1141,6 +1147,13 @@ const Analytics = () => {
                           <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
                           <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
                         </div>
+                        <p style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.45)', margin: '0.5rem 0 0' }}>
+                          Score based on case volume, contagious rate, severity &amp; disease clustering (0–10).&nbsp;
+                          <span style={{ fontWeight: '600' }}>Low: 0–2</span> ·&nbsp;
+                          <span style={{ fontWeight: '600' }}>Medium: 3–4</span> ·&nbsp;
+                          <span style={{ fontWeight: '600' }}>High: 5–7</span> ·&nbsp;
+                          <span style={{ fontWeight: '600' }}>Critical: 8–10</span>
+                        </p>
                       </div>
                     </>
                   );
