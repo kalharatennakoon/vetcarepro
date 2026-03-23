@@ -342,6 +342,8 @@ const BillingDetail = () => {
             <div style={{textAlign: 'right'}}>
               <h3 style={styles.sectionTitle}>Created By:</h3>
               <p style={styles.infoText}>{bill.created_by_name || 'N/A'}</p>
+              {bill.created_at && <p style={styles.infoText}><strong>Created:</strong> {formatDate(bill.created_at)}</p>}
+              {bill.updated_at && bill.updated_at !== bill.created_at && <p style={styles.infoText}><strong>Updated:</strong> {formatDate(bill.updated_at)}</p>}
             </div>
           </div>
 

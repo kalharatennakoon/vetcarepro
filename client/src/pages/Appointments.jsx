@@ -867,6 +867,16 @@ const Appointments = () => {
                   <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
                     <strong>Reason:</strong> {apptDetailModal.reason}
                   </div>
+                  {(apptDetailModal.created_at || apptDetailModal.updated_at) && (
+                    <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+                      {apptDetailModal.created_at && (
+                        <span><strong>Created:</strong> {formatDate(apptDetailModal.created_at)}</span>
+                      )}
+                      {apptDetailModal.updated_at && apptDetailModal.updated_at !== apptDetailModal.created_at && (
+                        <span><strong>Updated:</strong> {formatDate(apptDetailModal.updated_at)}</span>
+                      )}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                     {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'rescheduled') && (
                       <button

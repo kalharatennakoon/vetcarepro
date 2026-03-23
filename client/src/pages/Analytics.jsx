@@ -1827,7 +1827,8 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     gap: '0.5rem',
-    marginTop: '1.5rem',
+    padding: '1rem',
+    borderTop: '1px solid #E5E7EB',
   },
   paginationButton: {
     backgroundColor: 'white',
@@ -1837,7 +1838,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
@@ -1849,7 +1850,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'pointer',
   },
   paginationButtonDisabled: {
@@ -1860,7 +1861,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '500',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'not-allowed',
   },
   paginationEllipsis: {

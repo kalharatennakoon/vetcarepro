@@ -563,6 +563,18 @@ const PetDetail = () => {
                       {pet.weight_current ? `${pet.weight_current} kg` : '-'}
                     </span>
                   </div>
+                  {pet.created_at && (
+                    <div style={styles.infoItem}>
+                      <span style={styles.infoLabel}>Created:</span>
+                      <span style={styles.infoValue}>{formatDate(pet.created_at)}</span>
+                    </div>
+                  )}
+                  {pet.updated_at && pet.updated_at !== pet.created_at && (
+                    <div style={styles.infoItem}>
+                      <span style={styles.infoLabel}>Updated:</span>
+                      <span style={styles.infoValue}>{formatDate(pet.updated_at)}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
