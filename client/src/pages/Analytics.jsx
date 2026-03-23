@@ -4,9 +4,7 @@ import {
   getDiseaseCases,
   getDiseaseStatistics,
   getDiseaseCasesByCategory,
-  getMLModelStatus,
   assessOutbreakRisk,
-  analyzeDiseasePatterns,
   getSpeciesTrends,
   trainMLModel,
   forecastDiseaseActivity
@@ -45,14 +43,9 @@ const Analytics = () => {
   const [analyticsPeriod, setAnalyticsPeriod] = useState('all');
   const [statistics, setStatistics] = useState(null);
   const [categories, setCategories] = useState([]);
-  const [modelStatus, setModelStatus] = useState(null);
   const [outbreakRisk, setOutbreakRisk] = useState(null);
-  const [patterns, setPatterns] = useState(null);
   const [trends, setTrends] = useState(null);
   const [selectedSpecies, setSelectedSpecies] = useState('Dog');
-  const [riskFilters, setRiskFilters] = useState({
-    species: '',
-  });
   const [speciesList] = useState([
     'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
     'Parrot', 'Budgie', 'Pigeon', 'Hen',
@@ -120,7 +113,7 @@ const Analytics = () => {
     if (activeTab === 'analytics') {
       fetchOutbreakRisk();
     }
-  }, [riskFilters]);
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'analytics' && selectedSpecies) {
@@ -154,22 +147,13 @@ const Analytics = () => {
     try {
       setLoading(true);
       const dateFrom = getAnalyticsDateFrom();
-      const [statsRes, categoriesRes, modelRes] = await Promise.all([
+      const [statsRes, categoriesRes] = await Promise.all([
         getDiseaseStatistics({ dateFrom }),
         getDiseaseCasesByCategory({ dateFrom }),
-        getMLModelStatus()
       ]);
 
       setStatistics(statsRes.data.statistics);
       setCategories(categoriesRes.data.categories);
-      setModelStatus(modelRes.models.disease_prediction);
-
-      try {
-        const patternsRes = await analyzeDiseasePatterns();
-        setPatterns(patternsRes.patterns);
-      } catch (patternsErr) {
-        setPatterns({ status: 'failed', reason: patternsErr.response?.data?.message || 'Pattern analysis unavailable' });
-      }
 
       await fetchTrends(selectedSpecies);
       await fetchOutbreakRisk();
@@ -195,7 +179,7 @@ const Analytics = () => {
   const fetchOutbreakRisk = async () => {
     try {
       const days = analyticsPeriod === 'all' ? 3650 : parseInt(analyticsPeriod);
-      const response = await assessOutbreakRisk({ ...riskFilters, days_lookback: days });
+      const response = await assessOutbreakRisk({ days_lookback: days });
       setOutbreakRisk(response.risk_assessment);
     } catch (err) {
       console.error('Failed to assess outbreak risk:', err);
@@ -372,15 +356,6 @@ const Analytics = () => {
     return colors[level] || { backgroundColor: '#f3f4f6', color: '#1f2937', borderColor: '#d1d5db' };
   };
 
-  const getConfidenceColor = (level) => {
-    const colors = {
-      very_low: '#dc2626',
-      low: '#ca8a04',
-      medium: '#2563eb',
-      high: '#16a34a'
-    };
-    return colors[level] || '#4b5563';
-  };
 
   const filteredCases = cases.filter(diseaseCase => {
     if (!searchTerm) return true;
@@ -427,7 +402,7 @@ const Analytics = () => {
             <i className="fas fa-chart-line" style={styles.headerIcon}></i>
             <div>
               <h1 style={styles.title}>Analytics & Insights</h1>
-              <p style={styles.subtitle}>Disease tracking, outbreak predictions, sales forecasting, and inventory demand analysis</p>
+              <p style={styles.subtitle}>Disease tracking, activity forecasting, sales forecasting, and inventory demand analysis</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -857,7 +832,7 @@ const Analytics = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h3 style={styles.analyticsCardTitle}>
                       <i className="fas fa-chart-line" style={{ marginRight: '0.4rem', color: '#7c3aed' }}></i>
-                      Disease, Pandemic &amp; Outbreak Forecast
+                      Disease Activity Forecast
                     </h3>
                     <div style={styles.filterBar}>
                       <div style={styles.filterBarGroup}>
@@ -893,14 +868,31 @@ const Analytics = () => {
                   ) : !diseaseForecast ? (
                     <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                       <i className="fas fa-chart-line" style={{ fontSize: '2rem', color: '#d8b4fe', marginBottom: '0.75rem', display: 'block' }}></i>
-                      <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Select a forecast period and click <strong>Generate Forecast</strong> to see disease, pandemic &amp; outbreak predictions.</p>
+                      <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Select a forecast period and click <strong>Generate Forecast</strong> to see predicted disease activity, pandemic risk, and monthly case volumes.</p>
                     </div>
                   ) : (() => {
                     const pr = diseaseForecast.pandemic_risk || {};
                     const prColor = pr.level === 'high' ? '#dc2626' : pr.level === 'medium' ? '#d97706' : '#16a34a';
                     const prBg = pr.level === 'high' ? '#fee2e2' : pr.level === 'medium' ? '#fef3c7' : '#dcfce7';
+                    const conf = diseaseForecast.confidence;
+                    const confProps = conf === 'high'
+                      ? { color: '#15803d', bg: '#dcfce7', label: 'High Confidence', detail: '85–95% accuracy' }
+                      : conf === 'medium'
+                      ? { color: '#1d4ed8', bg: '#dbeafe', label: 'Medium Confidence', detail: '75–85% accuracy' }
+                      : conf === 'low'
+                      ? { color: '#b45309', bg: '#fef3c7', label: 'Low Confidence', detail: '60–75% accuracy' }
+                      : { color: '#dc2626', bg: '#fee2e2', label: 'Very Low Confidence', detail: 'More data needed' };
                     return (
                       <>
+                        {/* Confidence badge */}
+                        <div style={{ marginBottom: '0.75rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.65rem', backgroundColor: confProps.bg, borderRadius: '20px', border: `1px solid ${confProps.color}30` }}>
+                            <i className="fas fa-circle-info" style={{ color: confProps.color, fontSize: '0.75rem' }}></i>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: confProps.color }}>{confProps.label}</span>
+                            <span style={{ fontSize: '0.72rem', color: confProps.color, opacity: 0.8 }}>· {confProps.detail}</span>
+                          </span>
+                        </div>
+
                         {/* Pandemic risk banner */}
                         <div style={{ marginBottom: '1rem', backgroundColor: prBg, border: `1px solid ${prColor}25`, borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                           <i className={`fas ${pr.level === 'high' ? 'fa-biohazard' : pr.level === 'medium' ? 'fa-triangle-exclamation' : 'fa-shield-virus'}`} style={{ color: prColor, fontSize: '1.2rem', marginTop: '0.1rem' }}></i>
@@ -924,16 +916,24 @@ const Analytics = () => {
                               icon: diseaseForecast.trend_direction === 'increasing' ? 'fa-arrow-trend-up' : diseaseForecast.trend_direction === 'decreasing' ? 'fa-arrow-trend-down' : 'fa-minus',
                             },
                             { label: 'Total Projected Cases', value: diseaseForecast.total_forecast_cases, color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-file-medical' },
-                            { label: 'Avg Cases / Month', value: diseaseForecast.forecast_monthly_avg?.toFixed(1), color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-day' },
-                            { label: 'Peak Activity Month', value: diseaseForecast.peak_month, color: '#dc2626', bg: '#fee2e2', icon: 'fa-calendar-exclamation' },
+                            { label: 'Predicted Cases / Month', value: diseaseForecast.forecast_monthly_avg?.toFixed(1), color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-day' },
+                            (() => {
+                              const peak = diseaseForecast.activity_forecast?.reduce((max, m) => m.activity_score > (max?.activity_score || 0) ? m : max, null);
+                              const peakColor = peak?.activity_level === 'high' ? '#dc2626' : peak?.activity_level === 'moderate' ? '#d97706' : '#16a34a';
+                              const peakBg = peak?.activity_level === 'high' ? '#fee2e2' : peak?.activity_level === 'moderate' ? '#fef3c7' : '#dcfce7';
+                              const peakFormatted = peak ? new Date(peak.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—';
+                              return { label: 'Peak Clinical Month', value: peakFormatted, color: peakColor, bg: peakBg, icon: 'fa-calendar-exclamation', hint: 'Expect higher contagious & severe cases.' };
+                            })(),
                           ].map((s, i) => (
                             <div key={i} style={styles.statCard}>
                               <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
                               </div>
-                              <div>
+                              <div style={{ flex: 1 }}>
                                 <p style={styles.statLabel}>{s.label}</p>
                                 <p style={{ ...styles.statValue, color: s.color, fontSize: '1rem' }}>{s.value}</p>
+                                {s.badge && <span style={{ fontSize: '0.68rem', fontWeight: '700', padding: '0.1rem 0.45rem', borderRadius: '20px', backgroundColor: s.badge.bg, color: s.badge.color, display: 'inline-block', marginTop: '0.2rem' }}>{s.badge.text}</span>}
+                                {s.hint && <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: '0.25rem 0 0', lineHeight: 1.3 }}>{s.hint}</p>}
                               </div>
                             </div>
                           ))}
@@ -944,15 +944,16 @@ const Analytics = () => {
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                             <thead>
                               <tr style={{ backgroundColor: '#f5f3ff' }}>
-                                {['Month', 'Predicted Cases', 'Lower Bound', 'Upper Bound', 'Outbreak Risk'].map((h, i) => (
+                                {['Month', 'Predicted Cases', 'Lower Bound', 'Upper Bound', 'Disease Activity'].map((h, i) => (
                                   <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b21a8', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e9d5ff' }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
                               {diseaseForecast.predictions?.map((row, idx) => {
-                                const ob = diseaseForecast.outbreak_forecast?.[idx];
-                                const obColor = ob?.risk_level === 'high' ? '#dc2626' : ob?.risk_level === 'medium' ? '#d97706' : '#16a34a';
+                                const ob = diseaseForecast.activity_forecast?.[idx];
+                                const obColor = ob?.activity_level === 'high' ? '#dc2626' : ob?.activity_level === 'moderate' ? '#d97706' : '#16a34a';
+                                const obLabel = ob?.activity_level === 'high' ? 'High' : ob?.activity_level === 'moderate' ? 'Moderate' : 'Normal';
                                 return (
                                   <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                     <td style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#1f2937' }}>{row.month}</td>
@@ -960,7 +961,7 @@ const Analytics = () => {
                                     <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.lower_bound}</td>
                                     <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.upper_bound}</td>
                                     <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right' }}>
-                                      {ob && <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '20px', backgroundColor: `${obColor}15`, color: obColor, textTransform: 'capitalize' }}>{ob.risk_level} ({ob.outbreak_probability}%)</span>}
+                                      {ob && <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '20px', backgroundColor: `${obColor}15`, color: obColor }}>{obLabel} ({ob.activity_score}%)</span>}
                                     </td>
                                   </tr>
                                 );
@@ -1021,105 +1022,51 @@ const Analytics = () => {
             </button>
 
             {showDiseaseDetails && (<>
-            {/* Period selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Showing data for</span>
-              {[
-                { label: 'Last 30 days', value: '30' },
-                { label: 'Last 90 days', value: '90' },
-                { label: 'Last 6 months', value: '180' },
-                { label: 'Last 1 year', value: '365' },
-                { label: 'Last 2 years', value: '730' },
-                { label: 'Last 5 years', value: '1825' },
-                { label: 'All time', value: 'all' },
-              ].map(opt => (
-                <button
-                  key={opt.value}
-                  onClick={() => setAnalyticsPeriod(opt.value)}
-                  style={{
-                    padding: '0.3rem 0.75rem',
-                    borderRadius: '20px',
-                    border: '1px solid',
-                    borderColor: analyticsPeriod === opt.value ? '#3b82f6' : '#e5e7eb',
-                    backgroundColor: analyticsPeriod === opt.value ? '#eff6ff' : 'white',
-                    color: analyticsPeriod === opt.value ? '#2563eb' : '#6b7280',
-                    fontSize: '0.78rem',
-                    fontWeight: analyticsPeriod === opt.value ? '600' : '400',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Model Status — compact strip */}
-            {modelStatus && (isAdmin || (modelStatus.loaded && modelStatus.trained)) && (
-              <div style={styles.modelStatusCard}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: modelStatus.loaded && modelStatus.trained ? '#16a34a' : '#dc2626', display: 'inline-block', flexShrink: 0 }}></span>
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>Disease Prediction Model</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: modelStatus.loaded && modelStatus.trained ? '#dcfce7' : '#fee2e2', color: modelStatus.loaded && modelStatus.trained ? '#15803d' : '#dc2626' }}>
-                      {modelStatus.loaded && modelStatus.trained ? 'Active' : 'Not Trained'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#4b5563' }}><strong style={{ color: '#1f2937' }}>{modelStatus.data_size}</strong> cases trained</span>
-                    {modelStatus.training_date && (
-                      <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>Trained: <strong style={{ color: '#1f2937' }}>{new Date(modelStatus.training_date).toLocaleString()}</strong></span>
-                    )}
-                    {modelStatus.confidence && (
-                      <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>
-                        Confidence: <strong style={{ color: getConfidenceColor(modelStatus.confidence.level) }}>{modelStatus.confidence.level.toUpperCase()} ({modelStatus.confidence.accuracy_range || 'N/A'})</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {modelStatus.confidence?.recommendation && (
-                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: '#4b5563' }}>
-                    <i className="fas fa-lightbulb" style={{ color: '#f59e0b', marginRight: '0.35rem' }}></i>
-                    {modelStatus.confidence.recommendation}
-                  </p>
-                )}
-                <p style={styles.cardHint}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  The more cases recorded, the better the predictions. Retrain after adding a batch of new cases to keep results accurate.
-                </p>
+            {/* Historical period filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.65rem 1rem', backgroundColor: '#f9fafb', borderRadius: '10px', border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontSize: '0.78rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>Historical Period</p>
+                <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: 0 }}>Filters case counts, categories &amp; activity assessment below</p>
               </div>
-            )}
+              <select
+                value={analyticsPeriod}
+                onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                style={{ ...styles.compactSelect, marginLeft: 'auto' }}
+              >
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="180">Last 6 months</option>
+                <option value="365">Last 1 year</option>
+                <option value="730">Last 2 years</option>
+                <option value="all">All time</option>
+              </select>
+            </div>
 
             {/* Statistics Overview */}
             {statistics && (
-              <>
-                <div style={styles.statsGrid}>
-                  {[
-                    { label: 'Total Cases',   value: statistics.total_cases, color: '#2563eb', bg: '#dbeafe', icon: 'fa-file-medical', clickable: true },
-                    { label: 'Affected Pets', value: statistics.affected_pets, color: '#16a34a', bg: '#dcfce7', icon: 'fa-paw' },
-                    { label: 'Contagious',    value: statistics.contagious_cases, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
-                    { label: 'Recovery Rate', value: statistics.total_cases > 0 ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%` : '0%', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-heart-pulse' },
-                  ].map((s, i) => (
-                    <div
-                      key={i}
-                      style={{ ...styles.statCard, ...(s.clickable ? { cursor: 'pointer' } : {}) }}
-                      onClick={s.clickable ? () => setActiveTab('cases') : undefined}
-                      title={s.clickable ? 'View all disease cases' : undefined}
-                    >
-                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
-                      </div>
-                      <div>
-                        <p style={styles.statLabel}>{s.label}</p>
-                        <p style={{ ...styles.statValue, color: s.color }}>{s.value}</p>
-                      </div>
+              <div style={styles.statsGrid}>
+                {[
+                  { label: 'Total Cases',   value: statistics.total_cases, color: '#2563eb', bg: '#dbeafe', icon: 'fa-file-medical', clickable: true },
+                  { label: 'Affected Pets', value: statistics.affected_pets, color: '#16a34a', bg: '#dcfce7', icon: 'fa-paw' },
+                  { label: 'Contagious',    value: statistics.contagious_cases, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
+                  { label: 'Recovery Rate', value: statistics.total_cases > 0 ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%` : '0%', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-heart-pulse' },
+                ].map((s, i) => (
+                  <div
+                    key={i}
+                    style={{ ...styles.statCard, ...(s.clickable ? { cursor: 'pointer' } : {}) }}
+                    onClick={s.clickable ? () => setActiveTab('cases') : undefined}
+                    title={s.clickable ? 'View all disease cases' : undefined}
+                  >
+                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
                     </div>
-                  ))}
-                </div>
-                <p style={{ ...styles.cardHint, borderTop: 'none', marginBottom: '1rem' }}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Click <strong>Total Cases</strong> to view the full cases list. <strong>Contagious</strong> shows how many cases can spread between animals — useful for isolation decisions.
-                </p>
-              </>
+                    <div>
+                      <p style={styles.statLabel}>{s.label}</p>
+                      <p style={{ ...styles.statValue, color: s.color }}>{s.value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
 
             {/* Outbreak Risk Assessment */}
@@ -1128,66 +1075,76 @@ const Analytics = () => {
                 <div style={styles.riskCardHeader}>
                   <h3 style={styles.riskTitle}>
                     <i className="fas fa-triangle-exclamation" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
-                    Outbreak Risk Assessment
+                    Disease Activity Assessment
                   </h3>
-                  <div style={styles.filterBar}>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Species</label>
-                      <select value={riskFilters.species} onChange={(e) => setRiskFilters(prev => ({ ...prev, species: e.target.value }))} style={styles.compactSelect}>
-                        <option value="">All Species</option>
-                        {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                  </div>
                 </div>
 
-                <div style={{ ...styles.riskResultCard, ...getRiskColor(outbreakRisk.risk_level) }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.6rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                      <span style={{ fontSize: '1.4rem' }}>
-                        {outbreakRisk.risk_level === 'critical' ? <i className="fas fa-radiation"></i>
-                          : outbreakRisk.risk_level === 'high' ? <i className="fas fa-exclamation-triangle"></i>
-                          : outbreakRisk.risk_level === 'medium' ? <i className="fas fa-bolt"></i>
-                          : <i className="fas fa-check-circle"></i>}
-                      </span>
-                      <div>
-                        <h4 style={{ fontSize: '1rem', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>{outbreakRisk.risk_level} Risk</h4>
-                        <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Score: {outbreakRisk.risk_score}/10</p>
+                {(() => {
+                  const actLevel = outbreakRisk.risk_level === 'critical' ? 'Critical Activity'
+                    : outbreakRisk.risk_level === 'high' ? 'High Activity'
+                    : outbreakRisk.risk_level === 'medium' ? 'Moderate Activity'
+                    : 'Normal Activity';
+                  const riskConf = outbreakRisk.confidence;
+                  const riskConfProps = riskConf === 'high'
+                    ? { color: '#15803d', bg: '#dcfce7', label: 'High Confidence', detail: '85–95% accuracy' }
+                    : riskConf === 'medium'
+                    ? { color: '#1d4ed8', bg: '#dbeafe', label: 'Medium Confidence', detail: '75–85% accuracy' }
+                    : riskConf === 'low'
+                    ? { color: '#b45309', bg: '#fef3c7', label: 'Low Confidence', detail: '60–75% accuracy' }
+                    : { color: '#dc2626', bg: '#fee2e2', label: 'Very Low Confidence', detail: 'More data needed' };
+                  return (
+                    <>
+                      <div style={{ marginBottom: '0.6rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.65rem', backgroundColor: riskConfProps.bg, borderRadius: '20px', border: `1px solid ${riskConfProps.color}30` }}>
+                          <i className="fas fa-circle-info" style={{ color: riskConfProps.color, fontSize: '0.75rem' }}></i>
+                          <span style={{ fontSize: '0.75rem', fontWeight: '700', color: riskConfProps.color }}>{riskConfProps.label}</span>
+                          <span style={{ fontSize: '0.72rem', color: riskConfProps.color, opacity: 0.8 }}>· {riskConfProps.detail}</span>
+                        </span>
                       </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem' }}>
-                      {[
-                        { label: 'Cases', val: outbreakRisk.case_count },
-                        { label: 'Contagious', val: outbreakRisk.contagious_cases },
-                        { label: 'Period', val: analyticsPeriod === 'all' ? 'All time' : `${outbreakRisk.days_analyzed}d` },
-                        { label: 'Confidence', val: outbreakRisk.confidence?.toUpperCase() },
-                      ].map((m, i) => (
-                        <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.35rem 0.5rem', textAlign: 'center' }}>
-                          <p style={{ fontSize: '0.65rem', opacity: 0.7, margin: '0 0 0.1rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{m.label}</p>
-                          <p style={{ fontSize: '0.95rem', fontWeight: '700', margin: 0 }}>{m.val}</p>
+                      <div style={{ ...styles.riskResultCard, ...getRiskColor(outbreakRisk.risk_level) }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.6rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <span style={{ fontSize: '1.4rem' }}>
+                              {outbreakRisk.risk_level === 'critical' ? <i className="fas fa-radiation"></i>
+                                : outbreakRisk.risk_level === 'high' ? <i className="fas fa-exclamation-triangle"></i>
+                                : outbreakRisk.risk_level === 'medium' ? <i className="fas fa-bolt"></i>
+                                : <i className="fas fa-check-circle"></i>}
+                            </span>
+                            <div>
+                              <h4 style={{ fontSize: '1rem', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>{actLevel}</h4>
+                              <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Score: {outbreakRisk.risk_score}/10 · {analyticsPeriod === 'all' ? 'All time' : `${outbreakRisk.days_analyzed} days`}</p>
+                            </div>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
+                            {[
+                              { label: 'Cases', val: outbreakRisk.case_count },
+                              { label: 'Contagious', val: outbreakRisk.contagious_cases },
+                            ].map((m, i) => (
+                              <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.35rem 0.75rem', textAlign: 'center' }}>
+                                <p style={{ fontSize: '0.65rem', opacity: 0.7, margin: '0 0 0.1rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{m.label}</p>
+                                <p style={{ fontSize: '0.95rem', fontWeight: '700', margin: 0 }}>{m.val}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  {outbreakRisk.reasons && outbreakRisk.reasons.length > 0 && (
-                    <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.4rem 0.65rem', marginBottom: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>Risk factors: </span>
-                      {outbreakRisk.reasons.map((reason, index) => (
-                        <span key={index} style={{ fontSize: '0.75rem' }}>{reason}{index < outbreakRisk.reasons.length - 1 ? ' · ' : ''}</span>
-                      ))}
-                    </div>
-                  )}
+                        {outbreakRisk.reasons && outbreakRisk.reasons.length > 0 && (
+                          <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.4rem 0.65rem', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>Contributing factors: </span>
+                            {outbreakRisk.reasons.map((reason, index) => (
+                              <span key={index} style={{ fontSize: '0.75rem' }}>{reason}{index < outbreakRisk.reasons.length - 1 ? ' · ' : ''}</span>
+                            ))}
+                          </div>
+                        )}
 
-                  <div style={{ backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: '6px', padding: '0.4rem 0.65rem' }}>
-                    <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
-                    <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
-                  </div>
-                </div>
-                <p style={{ ...styles.cardHint, borderTopColor: 'rgba(0,0,0,0.08)', marginTop: '0.75rem' }}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Filter by <strong>Species</strong> to check risk for a specific animal group. Use the <strong>Showing data for</strong> selector above to change the time period.
-                </p>
+                        <div style={{ backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: '6px', padding: '0.4rem 0.65rem' }}>
+                          <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
+                          <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -1196,12 +1153,8 @@ const Analytics = () => {
               <div style={styles.analyticsCardHeader}>
                 <h3 style={styles.analyticsCardTitle}>
                   <i className="fas fa-layer-group" style={{ marginRight: '0.4rem', color: '#6366f1' }}></i>
-                  Disease Categories
+                  Cases by Disease Category
                 </h3>
-                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Click a category name to view its cases. <strong>Avg Age</strong> is the pet's age in months at the time of diagnosis.
-                </p>
               </div>
               <div style={styles.analyticsCardContent}>
                 {categories && (
@@ -1209,20 +1162,17 @@ const Analytics = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f9fafb' }}>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'left', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Category</th>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Cases</th>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Share</th>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Contagious</th>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>Avg Age</th>
-                          <th style={{ padding: '0.5rem 0.85rem', textAlign: 'left', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>Affected Species</th>
+                          {['Category', 'Cases', 'Share', 'Contagious', 'Species'].map((h, i) => (
+                            <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
                         {categories.map((category, index) => (
                           <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#2563eb', textTransform: 'capitalize', cursor: 'pointer', textDecoration: 'none' }}
+                            <td
+                              style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#2563eb', textTransform: 'capitalize', cursor: 'pointer' }}
                               onClick={() => { setFilters(prev => ({ ...prev, disease_category: category.disease_category })); setActiveTab('cases'); }}
-                              title={`View cases in ${category.disease_category.replace(/_/g, ' ')}`}
                             >
                               {category.disease_category.replace(/_/g, ' ')}
                             </td>
@@ -1237,10 +1187,7 @@ const Analytics = () => {
                                 ? <span style={{ backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: '700', fontSize: '0.8rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{category.contagious_count}</span>
                                 : <span style={{ color: '#d1d5db' }}>—</span>}
                             </td>
-                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#374151' }}>
-                              {parseFloat(category.avg_age).toFixed(1)} mo
-                            </td>
-                            <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280', fontSize: '0.78rem' }}>
+                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#6b7280', fontSize: '0.78rem' }}>
                               {category.affected_species}
                             </td>
                           </tr>
@@ -1252,76 +1199,14 @@ const Analytics = () => {
               </div>
             </div>
 
-            {/* ML Patterns */}
-            {patterns && (
-              <div style={styles.analyticsCard}>
-                <div style={styles.analyticsCardHeader}>
-                  <h3 style={styles.analyticsCardTitle}>
-                    <i className="fas fa-circle-nodes" style={{ marginRight: '0.4rem', color: '#9333ea' }}></i>
-                    Disease Patterns — ML Clustering
-                    {patterns.status === 'success' && (
-                      <span style={{ marginLeft: '0.6rem', fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: '#f3e8ff', color: '#7c3aed' }}>
-                        {patterns.patterns_found} patterns identified
-                      </span>
-                    )}
-                  </h3>
-                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                    Each pattern groups cases that share similar traits — species, disease type, and age range. These help identify recurring disease profiles in your patient population.
-                  </p>
-                </div>
-                <div style={styles.analyticsCardContent}>
-                  {patterns.status === 'success' ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
-                      {patterns.patterns.map((pattern, index) => (
-                        <div key={index} style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '0.75rem', backgroundColor: '#faf5ff' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                            <div>
-                              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#6b21a8' }}>Pattern #{pattern.pattern_id + 1}</span>
-                              <p style={{ margin: '0.1rem 0 0', fontSize: '0.75rem', color: '#7c3aed' }}>{pattern.primary_species} · {pattern.common_category}</p>
-                            </div>
-                            <span style={{ backgroundColor: '#e9d5ff', color: '#6b21a8', fontWeight: '700', fontSize: '0.78rem', padding: '0.15rem 0.5rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>{pattern.case_count} cases</span>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                            {[
-                              { label: 'Avg Age', val: `${pattern.avg_age ? pattern.avg_age.toFixed(1) : 'N/A'} mo` },
-                              { label: 'Contagious', val: `${pattern.contagious_percentage ? pattern.contagious_percentage.toFixed(1) : '0'}%` },
-                              { label: 'Species', val: pattern.affected_species ? Object.keys(pattern.affected_species).length : 0 },
-                              { label: 'Diseases', val: pattern.common_diseases ? Object.keys(pattern.common_diseases).length : 0 },
-                            ].map((m, i) => (
-                              <div key={i} style={{ backgroundColor: 'white', borderRadius: '4px', padding: '0.3rem 0.4rem', textAlign: 'center' }}>
-                                <p style={{ fontSize: '0.65rem', color: '#9ca3af', margin: '0 0 0.1rem', textTransform: 'uppercase' }}>{m.label}</p>
-                                <p style={{ fontSize: '0.85rem', fontWeight: '700', color: '#374151', margin: 0 }}>{m.val}</p>
-                              </div>
-                            ))}
-                          </div>
-                          {pattern.affected_species && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                              {Object.entries(pattern.affected_species).map(([species, count]) => (
-                                <span key={species} style={{ padding: '0.1rem 0.4rem', backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.7rem', borderRadius: '3px' }}>
-                                  {species}: {count}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : isAdmin ? (
-                    <p style={{ color: '#4b5563', fontSize: '0.875rem' }}>{patterns.reason || 'Pattern analysis unavailable'}</p>
-                  ) : null}
-                </div>
-              </div>
-            )}
-
-            {/* Species Trends */}
+            {/* Disease Trends by Species */}
             {trends && (
               <div style={styles.analyticsCard}>
                 <div style={styles.analyticsCardHeader}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h3 style={styles.analyticsCardTitle}>
-                      <i className="fas fa-chart-line" style={{ marginRight: '0.4rem', color: '#3b82f6' }}></i>
-                      Disease Trends
+                      <i className="fas fa-paw" style={{ marginRight: '0.4rem', color: '#3b82f6' }}></i>
+                      Disease Trends by Species
                     </h3>
                     <div style={styles.filterBarGroup}>
                       <label style={styles.filterBarLabel}>Species</label>
@@ -1330,77 +1215,45 @@ const Analytics = () => {
                       </select>
                     </div>
                   </div>
-                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                    Select a species to see its disease history. Shows the most common disease types, top diagnoses, and how severe cases have typically been.
-                  </p>
                 </div>
                 <div style={styles.analyticsCardContent}>
-                  {/* Trend summary pills */}
-                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'Total Cases', val: trends.total_cases, color: '#2563eb', bg: 'rgba(59,130,246,0.06)' },
-                      { label: 'Avg Age at Diagnosis', val: trends.avg_age_at_diagnosis ? `${trends.avg_age_at_diagnosis.toFixed(1)} mo` : 'N/A', color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
-                      { label: 'Contagious %', val: `${trends.contagious_percentage ? trends.contagious_percentage.toFixed(1) : '0'}%`, color: '#dc2626', bg: 'rgba(220,38,38,0.06)' },
-                    ].map((t, i) => (
-                      <div key={i} style={{ backgroundColor: t.bg, borderRadius: '8px', padding: '0.5rem 0.85rem', minWidth: '120px' }}>
-                        <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: '0 0 0.15rem' }}>{t.label}</p>
-                        <p style={{ fontSize: '1.25rem', fontWeight: '700', color: t.color, margin: 0, lineHeight: 1.1 }}>{t.val}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Disease distribution + Most common diseases side by side */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    {trends.disease_distribution && (
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Disease Distribution</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          {Object.entries(trends.disease_distribution).map(([category, count]) => (
-                            <div key={category} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={{ width: '110px', fontSize: '0.78rem', color: '#374151', textTransform: 'capitalize', flexShrink: 0 }}>{category.replace(/_/g, ' ')}</span>
-                              <div style={{ flex: 1, backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '14px', overflow: 'hidden' }}>
-                                <div style={{ backgroundColor: '#2563eb', borderRadius: '9999px', height: '14px', width: `${(count / trends.total_cases) * 100}%`, minWidth: '24px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '0.3rem' }}>
-                                  <span style={{ fontSize: '0.65rem', color: 'white', fontWeight: '600' }}>{count}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
                     {trends.most_common_diseases && (
                       <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Most Common Diseases</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Top Diseases</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
                           {Object.entries(trends.most_common_diseases).slice(0, 5).map(([disease, count], index) => (
                             <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: index < 4 ? '1px solid #f3f4f6' : 'none' }}>
                               <span style={{ fontSize: '0.82rem', color: '#374151' }}>{disease}</span>
-                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: '600', padding: '0.1rem 0.45rem', borderRadius: '20px' }}>
-                                {count} {count === 1 ? 'case' : 'cases'}
-                              </span>
+                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: '600', padding: '0.1rem 0.45rem', borderRadius: '20px' }}>{count}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
-                  </div>
 
-                  {/* Severity distribution */}
-                  {trends.severity_distribution && (
-                    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
-                      <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severity Distribution</h4>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        {Object.entries(trends.severity_distribution).map(([severity, count]) => (
-                          <div key={severity} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '7px', padding: '0.5rem 0.85rem', textAlign: 'center', minWidth: '80px' }}>
-                            <p style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>{count}</p>
-                            <p style={{ fontSize: '0.7rem', color: '#6b7280', textTransform: 'capitalize', margin: '0.1rem 0 0' }}>{severity}</p>
-                          </div>
-                        ))}
+                    {trends.severity_distribution && (
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
+                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severity Breakdown</h4>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          {Object.entries(trends.severity_distribution).map(([severity, count]) => {
+                            const sevColor = severity === 'critical' ? '#dc2626' : severity === 'severe' ? '#ea580c' : severity === 'moderate' ? '#d97706' : '#16a34a';
+                            const sevBg = severity === 'critical' ? '#fee2e2' : severity === 'severe' ? '#ffedd5' : severity === 'moderate' ? '#fef3c7' : '#dcfce7';
+                            return (
+                              <div key={severity} style={{ backgroundColor: sevBg, border: `1px solid ${sevColor}30`, borderRadius: '8px', padding: '0.5rem 0.85rem', textAlign: 'center', minWidth: '75px', flex: 1 }}>
+                                <p style={{ fontSize: '1.2rem', fontWeight: '700', color: sevColor, margin: 0 }}>{count}</p>
+                                <p style={{ fontSize: '0.7rem', color: sevColor, textTransform: 'capitalize', margin: '0.1rem 0 0', fontWeight: '600' }}>{severity}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#4b5563' }}>
+                          <span>Total: <strong>{trends.total_cases}</strong></span>
+                          <span>Contagious: <strong style={{ color: '#dc2626' }}>{trends.contagious_percentage?.toFixed(0)}%</strong></span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             )}

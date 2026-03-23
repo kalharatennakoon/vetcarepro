@@ -848,11 +848,11 @@ class DiseasePredictionModel(BaseMLModel):
             peak_month = peak_row['ds'].strftime('%B %Y')
 
             # ============================================================
-            # FORECAST 2: Outbreak probability per month
+            # FORECAST 2: Disease activity level per month
             # Factors: contagious rate, species diversity, severity ratio, disease variety
             # ============================================================
             max_diversity = float(merged['species_diversity'].max()) or 1.0
-            merged['outbreak_score'] = (
+            merged['activity_score'] = (
                 merged['contagious_rate'] * 40 +
                 (merged['species_diversity'] / max_diversity) * 20 +
                 (merged['severe_cases'] / merged['disease_cases'].replace(0, 1)) * 20 +
@@ -860,16 +860,16 @@ class DiseasePredictionModel(BaseMLModel):
             ).clip(0, 100).round(1)
 
             ob_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=0)
-            ob_model.fit(merged[['ds', 'outbreak_score']].rename(columns={'outbreak_score': 'y'}))
+            ob_model.fit(merged[['ds', 'activity_score']].rename(columns={'activity_score': 'y'}))
             ob_future = ob_model.make_future_dataframe(periods=periods_months, freq='MS')
             ob_fc = ob_model.predict(ob_future)
             ob_future_fc = ob_fc[ob_fc['ds'] > last_date]
 
-            outbreak_forecast = []
+            activity_forecast = []
             for _, row in ob_future_fc.iterrows():
-                prob = max(0, min(100, round(float(row['yhat']), 1)))
-                level = 'high' if prob >= 60 else ('medium' if prob >= 35 else 'low')
-                outbreak_forecast.append({'month': row['ds'].strftime('%Y-%m'), 'outbreak_probability': prob, 'risk_level': level})
+                score = max(0, min(100, round(float(row['yhat']), 1)))
+                level = 'high' if score >= 60 else ('moderate' if score >= 35 else 'normal')
+                activity_forecast.append({'month': row['ds'].strftime('%Y-%m'), 'activity_score': score, 'activity_level': level})
 
             # ============================================================
             # FORECAST 3: Pandemic risk index (0–10)
@@ -923,7 +923,7 @@ class DiseasePredictionModel(BaseMLModel):
 
             return {
                 'predictions': predictions,
-                'outbreak_forecast': outbreak_forecast,
+                'activity_forecast': activity_forecast,
                 'pandemic_risk': {
                     'current_index': current_pandemic_index,
                     'level': pandemic_level,
