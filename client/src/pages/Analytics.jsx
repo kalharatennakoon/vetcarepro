@@ -199,7 +199,7 @@ const Analytics = () => {
       setLoading(true);
       const [forecastRes, trendsRes] = await Promise.all([
         getSalesForecast(salesPeriod).catch(() => ({ success: false })),
-        getSalesTrends().catch(() => ({ success: false }))
+        getSalesTrends(Math.max(1, Math.round(salesPeriod / 30))).catch(() => ({ success: false }))
       ]);
 
       setSalesData({

@@ -22,10 +22,9 @@ export const getSalesForecast = async (period = 30) => {
 /**
  * Get sales trends analysis
  */
-export const getSalesTrends = async () => {
-  const response = await axios.get(
-    `${ML_API_URL}/sales/trends`
-  );
+export const getSalesTrends = async (months) => {
+  const params = months ? `?months=${months}` : '';
+  const response = await axios.get(`${ML_API_URL}/sales/trends${params}`);
   return response.data;
 };
 
