@@ -31,7 +31,7 @@ export const getMedicalRecords = async (req, res) => {
     if (visit_date_from) filters.visit_date_from = visit_date_from;
     if (visit_date_to) filters.visit_date_to = visit_date_to;
     if (diagnosis) filters.diagnosis = diagnosis;
-    if (follow_up_required !== undefined) filters.follow_up_required = follow_up_required === 'true';
+    if (follow_up_required === 'true' || follow_up_required === 'false') filters.follow_up_required = follow_up_required === 'true';
     if (limit) filters.limit = parseInt(limit);
     if (offset) filters.offset = parseInt(offset);
 

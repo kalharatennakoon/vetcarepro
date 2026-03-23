@@ -50,25 +50,14 @@ const Layout = ({ children }) => {
 
   const getNameWithPrefix = () => {
     if (!user) return '';
-    
+
     const fullName = `${user.first_name} ${user.last_name}`;
     const initials = `${user.first_name?.charAt(0)}${user.last_name?.charAt(0)}`;
-    
-    let prefix = '';
-    
-    // Check if user is a veterinarian
-    if (user.role === 'veterinarian') {
-      prefix = 'Dr.';
-    } else {
-      // For admin and receptionist, use Mr./Ms. based on gender from database
-      const gender = user.gender || 'male'; // Default to 'male' if not set
-      prefix = gender === 'female' ? 'Ms.' : 'Mr.';
-    }
-    
+
     if (isMobile) {
-      return `${prefix} ${initials}`;
+      return initials;
     }
-    return `${prefix} ${fullName}`;
+    return fullName;
   };
 
   const getRoleDisplay = () => {
@@ -266,17 +255,15 @@ const Layout = ({ children }) => {
         </aside>
 
         {/* Content Area */}
-        <main style={styles.content}>
+        <main id="main-content" style={styles.content}>
           {children}
+          <footer style={styles.footer}>
+            <p style={styles.footerText}>
+              © 2026 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
+            </p>
+          </footer>
         </main>
       </div>
-
-      {/* Footer */}
-      <footer style={styles.footer}>
-        <p style={styles.footerText}>
-          © 2026 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
-        </p>
-      </footer>
     </div>
   );
 };
@@ -285,7 +272,8 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '100vh',
+    height: '100vh',
+    overflow: 'hidden',
     backgroundColor: '#f5f7fa',
     fontFamily: 'system-ui, -apple-system, sans-serif',
   },
@@ -297,8 +285,7 @@ const styles = {
     backgroundColor: '#ffffff',
     borderBottom: '1px solid #e5e7eb',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    position: 'sticky',
-    top: 0,
+    flexShrink: 0,
     zIndex: 100,
   },
   headerLeft: {
@@ -406,7 +393,8 @@ const styles = {
   mainContent: {
     display: 'flex',
     flex: 1,
-    position: 'relative',
+    overflow: 'hidden',
+    minHeight: 0,
   },
   sidebar: {
     width: '250px',
@@ -491,9 +479,11 @@ const styles = {
   content: {
     flex: 1,
     padding: 'clamp(1rem, 3vw, 2rem)',
-    overflow: 'auto',
+    overflowY: 'auto',
+    minHeight: 0,
     width: '100%',
     maxWidth: '100%',
+    boxSizing: 'border-box',
   },
   footer: {
     padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 2rem)',

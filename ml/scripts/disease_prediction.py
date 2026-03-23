@@ -478,7 +478,7 @@ class DiseasePredictionModel(BaseMLModel):
         # Factor 2: Contagious diseases
         contagious_count = recent_cases['is_contagious'].sum() if 'is_contagious' in recent_cases.columns else 0
         if contagious_count > 0:
-            risk_score += int(contagious_count * 1.5)
+            risk_score += min(int(contagious_count * 1.5), 4)
             reasons.append(f"{contagious_count} contagious cases")
         
         # Factor 3: Severity
@@ -522,7 +522,7 @@ class DiseasePredictionModel(BaseMLModel):
         
         return {
             'risk_level': risk_level,
-            'risk_score': risk_score,
+            'risk_score': min(risk_score, 10),
             'case_count': case_count,
             'contagious_cases': int(contagious_count),
             'days_analyzed': days_lookback,

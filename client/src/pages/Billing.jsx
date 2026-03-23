@@ -12,6 +12,8 @@ const Billing = () => {
   const [showOverdue, setShowOverdue] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({ total: 0, totalRevenue: 0, totalPaid: 0, totalPending: 0 });
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [pendingCancelId, setPendingCancelId] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
@@ -61,13 +63,16 @@ const Billing = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to cancel this bill?')) {
-      return;
-    }
+  const handleDelete = (id) => {
+    setPendingCancelId(id);
+    setShowCancelModal(true);
+  };
 
+  const confirmCancelBill = async () => {
     try {
-      await deleteBill(id);
+      await deleteBill(pendingCancelId);
+      setShowCancelModal(false);
+      setPendingCancelId(null);
       fetchBills();
     } catch (err) {
       alert('Failed to cancel bill');
@@ -360,6 +365,41 @@ const Billing = () => {
             </div>
           )}
         </>
+      )}
+      {showCancelModal && (
+        <div style={styles.modalOverlay} onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }}>
+          <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>
+                <i className="fas fa-ban" style={{ marginRight: '0.5rem', color: '#d97706' }}></i>
+                Cancel Bill
+              </h3>
+              <button onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }} style={styles.modalCloseButton}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Are you sure you want to cancel this bill? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCancelBill}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-ban" style={{ marginRight: '0.4rem' }}></i>
+                  Cancel Bill
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </Layout>
   );
@@ -684,6 +724,11 @@ const styles = {
     padding: '0.5rem',
     fontSize: '0.875rem',
   },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' },
+  modalTitle: { margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' },
+  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' },
 };
 
 export default Billing;

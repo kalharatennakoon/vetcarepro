@@ -523,15 +523,15 @@ class InventoryForecastingModel(BaseMLModel):
             'confidence': 'high' if s['days_observed'] > 30 else ('medium' if s['days_observed'] > 7 else 'low')
         }
 
-    def get_reorder_recommendations(self):
+    def get_reorder_recommendations(self, days=30):
         """Get all items that need to be reordered soon."""
         if not self.item_stats:
             if not self.load_trained_model():
                 self.train()
 
-        urgent = []       # reorder now
-        upcoming = []     # reorder within 7 days
-        sufficient = []   # stock sufficient
+        urgent = []
+        upcoming = []
+        sufficient = []
 
         for item_id, s in self.item_stats.items():
             avg_daily = s['avg_daily_demand']
@@ -551,16 +551,16 @@ class InventoryForecastingModel(BaseMLModel):
                 'days_until_stockout': days_until_stockout,
                 'suggested_order_quantity': max(
                     s['reorder_quantity'],
-                    int(np.ceil(avg_daily * 30))
+                    int(np.ceil(avg_daily * days))
                 ),
                 'estimated_cost': round(
-                    max(s['reorder_quantity'], int(avg_daily * 30)) * s.get('unit_cost', 0), 2
+                    max(s['reorder_quantity'], int(avg_daily * days)) * s.get('unit_cost', 0), 2
                 )
             }
 
             if current_stock <= reorder_level or days_until_stockout <= lead_time:
                 urgent.append(rec)
-            elif days_until_stockout <= lead_time + 7:
+            elif days_until_stockout <= lead_time + days:
                 upcoming.append(rec)
             else:
                 sufficient.append(rec)

@@ -38,6 +38,7 @@ function InventoryForecasting() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [trainingLoading, setTrainingLoading] = useState(false);
+  const [trainSuccess, setTrainSuccess] = useState(false);
   const [itemLookupLoading, setItemLookupLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('reorder');
@@ -84,12 +85,14 @@ function InventoryForecasting() {
   }, [loadAllData]);
 
   const handleTrainModel = async () => {
-    if (!window.confirm('Training the inventory model may take a minute. Proceed?')) return;
     setTrainingLoading(true);
+    setTrainSuccess(false);
     setError(null);
     try {
       await axios.post(`${API_URL}/ml/inventory/train`, {}, getHeaders());
       await loadAllData();
+      setTrainSuccess(true);
+      setTimeout(() => setTrainSuccess(false), 5000);
     } catch (err) {
       setError(err.response?.data?.message || 'Training failed. Make sure inventory data exists.');
     } finally {
@@ -150,7 +153,7 @@ function InventoryForecasting() {
   const recommendations = reorderRecs?.recommendations || reorderRecs?.data?.recommendations || [];
   const fastItems = fastMoving?.fast_moving || fastMoving?.data?.fast_moving || [];
   const slowItems = fastMoving?.slow_moving || fastMoving?.data?.slow_moving || [];
-  const categories = categoryAnalysis?.categories || categoryAnalysis?.data?.categories || [];
+  const categories = categoryAnalysis?.category_analysis || categoryAnalysis?.data?.category_analysis || [];
 
   const urgentItems = recommendations.filter(r => (r.urgency || r.priority) === 'urgent');
   const soonItems = recommendations.filter(r => (r.urgency || r.priority) === 'soon');
@@ -206,6 +209,14 @@ function InventoryForecasting() {
           </div>
         )}
 
+        {/* Success Banner */}
+        {trainSuccess && (
+          <div style={styles.successAlert}>
+            <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
+            Inventory forecasting model trained successfully! Recommendations have been updated.
+          </div>
+        )}
+
         {/* Stat Cards */}
         <div style={styles.statGrid}>
           <div style={styles.statCard}>
@@ -249,6 +260,43 @@ function InventoryForecasting() {
             </div>
           </div>
         </div>
+
+        {/* Model Status Card */}
+        {(inventoryModelInfo || user?.role === 'admin') && (
+          <div style={styles.modelStatusCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: inventoryModelInfo?.trained ? '#16a34a' : '#dc2626', display: 'inline-block', flexShrink: 0 }}></span>
+                <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>Inventory Forecasting Model</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: inventoryModelInfo?.trained ? '#dcfce7' : '#fee2e2', color: inventoryModelInfo?.trained ? '#15803d' : '#dc2626' }}>
+                  {inventoryModelInfo?.trained ? 'Active' : 'Not Trained'}
+                </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                  Gradient Boosting
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {inventoryModelInfo?.items_tracked && (
+                  <span style={{ fontSize: '0.8rem', color: '#4b5563' }}><strong style={{ color: '#1f2937' }}>{inventoryModelInfo.items_tracked}</strong> items tracked</span>
+                )}
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={handleTrainModel}
+                    disabled={trainingLoading}
+                    style={{ padding: '0.35rem 0.9rem', backgroundColor: trainingLoading ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: trainingLoading ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <i className={`fas ${trainingLoading ? 'fa-spinner fa-spin' : 'fa-rotate'}`}></i>
+                    {trainingLoading ? 'Training...' : 'Retrain Model'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <p style={styles.cardHint}>
+              <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+              Retrain after adding new inventory or billing data to keep demand predictions and reorder suggestions accurate.
+            </p>
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={styles.tabBar}>
@@ -496,7 +544,7 @@ function InventoryForecasting() {
                           <YAxis tick={{ fontSize: 11 }} />
                           <Tooltip />
                           <Bar
-                            dataKey={categories[0]?.avg_daily_demand != null ? 'avg_daily_demand' : 'daily_demand'}
+                            dataKey="total_avg_daily_demand"
                             name="Avg Daily Demand"
                             radius={[4, 4, 0, 0]}
                           >
@@ -514,7 +562,7 @@ function InventoryForecasting() {
                               <th style={styles.th}>Category</th>
                               <th style={styles.th}>Items</th>
                               <th style={styles.th}>Avg Daily Demand</th>
-                              <th style={styles.th}>Total Stock Value</th>
+                              <th style={styles.th}>Current Stock (units)</th>
                               <th style={styles.th}>Low Stock Items</th>
                             </tr>
                           </thead>
@@ -527,11 +575,11 @@ function InventoryForecasting() {
                                 </td>
                                 <td style={styles.td}>{cat.item_count || cat.items || 'N/A'}</td>
                                 <td style={{ ...styles.td, fontWeight: '600', color: '#3b82f6' }}>
-                                  {(cat.avg_daily_demand || cat.daily_demand || 0).toFixed(3)} u/day
+                                  {(cat.total_avg_daily_demand || cat.avg_daily_demand || 0).toFixed(3)} u/day
                                 </td>
-                                <td style={styles.td}>{formatCurrency(cat.total_value || cat.stock_value)}</td>
-                                <td style={{ ...styles.td, color: (cat.low_stock_count || cat.low_stock || 0) > 0 ? '#ef4444' : '#10b981', fontWeight: '600' }}>
-                                  {cat.low_stock_count ?? cat.low_stock ?? 0}
+                                <td style={styles.td}>{cat.total_current_stock != null ? cat.total_current_stock.toLocaleString() : 'N/A'}</td>
+                                <td style={{ ...styles.td, color: (cat.items_needing_reorder || cat.low_stock_count || 0) > 0 ? '#ef4444' : '#10b981', fontWeight: '600' }}>
+                                  {cat.items_needing_reorder ?? cat.low_stock_count ?? 0}
                                 </td>
                               </tr>
                             ))}
@@ -680,26 +728,6 @@ function InventoryForecasting() {
               </div>
             )}
 
-            {/* Model Info */}
-            {inventoryModelInfo && (
-              <div style={styles.modelInfoBar}>
-                <i className="fas fa-robot" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                <span style={{ fontWeight: '600', marginRight: '1rem' }}>Model Info:</span>
-                <span style={styles.modelInfoBadge}>
-                  {inventoryModelInfo.algorithm || inventoryModelInfo.model_type || 'Gradient Boosting'}
-                </span>
-                {inventoryModelInfo.trained_at && (
-                  <span style={{ marginLeft: '1rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                    Last trained: {formatDate(inventoryModelInfo.trained_at)}
-                  </span>
-                )}
-                {inventoryModelInfo.training_samples && (
-                  <span style={{ marginLeft: '1rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                    Samples: {inventoryModelInfo.training_samples}
-                  </span>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -757,6 +785,10 @@ const styles = {
   lookupMetricValue: { margin: '0.25rem 0 0', fontSize: '0.95rem', fontWeight: '700', color: '#1f2937' },
   modelInfoBar: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#374151' },
   modelInfoBadge: { backgroundColor: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600' },
+  modelStatusCard: { background: 'linear-gradient(to right, #eff6ff, #f0fdf4)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '0.85rem 1.25rem', marginBottom: '1.5rem' },
+  successAlert: { backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.875rem 1rem', marginBottom: '1.5rem', fontSize: '0.875rem', fontWeight: '500', display: 'flex', alignItems: 'center' },
+  cardHint: { margin: '0.6rem 0 0', fontSize: '0.73rem', color: '#6b7280', lineHeight: '1.5', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '0.5rem' },
+  cardHintIcon: { color: '#93c5fd', marginRight: '0.35rem', fontSize: '0.7rem' },
 };
 
 export default InventoryForecasting;

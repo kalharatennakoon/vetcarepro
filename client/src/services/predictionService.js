@@ -1,6 +1,11 @@
 import axios from 'axios';
 
 const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api/ml';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const getAuthHeaders = () => ({
+  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+});
 
 /**
  * Get sales forecast
@@ -17,10 +22,9 @@ export const getSalesForecast = async (period = 30) => {
 /**
  * Get sales trends analysis
  */
-export const getSalesTrends = async () => {
-  const response = await axios.get(
-    `${ML_API_URL}/sales/trends`
-  );
+export const getSalesTrends = async (months) => {
+  const params = months ? `?months=${months}` : '';
+  const response = await axios.get(`${ML_API_URL}/sales/trends${params}`);
   return response.data;
 };
 
@@ -40,9 +44,24 @@ export const getInventoryForecast = async (days = 30, itemId = null) => {
 /**
  * Get intelligent reorder suggestions
  */
-export const getReorderSuggestions = async () => {
-  const response = await axios.get(
-    `${ML_API_URL}/inventory/reorder-suggestions`
-  );
+export const getReorderSuggestions = async (days) => {
+  const params = days ? `?days=${days}` : '';
+  const response = await axios.get(`${ML_API_URL}/inventory/reorder-suggestions${params}`);
+  return response.data;
+};
+
+/**
+ * Train the sales forecasting model (Admin only)
+ */
+export const trainSalesModel = async () => {
+  const response = await axios.post(`${API_URL}/ml/sales/train`, {}, getAuthHeaders());
+  return response.data;
+};
+
+/**
+ * Train the inventory forecasting model (Admin only)
+ */
+export const trainInventoryModel = async () => {
+  const response = await axios.post(`${API_URL}/ml/inventory/train`, {}, getAuthHeaders());
   return response.data;
 };

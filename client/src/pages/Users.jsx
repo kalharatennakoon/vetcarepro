@@ -21,6 +21,7 @@ const Users = () => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetPasswordValue, setResetPasswordValue] = useState('');
   const [resetting, setResetting] = useState(false);
+  const [deactivateModal, setDeactivateModal] = useState({ open: false, userId: null });
   
   const [formData, setFormData] = useState({
     first_name: '',
@@ -119,14 +120,15 @@ const Users = () => {
     setSuccess('');
   };
 
-  const handleDelete = async (userId) => {
-    if (!window.confirm('Are you sure you want to deactivate this user?')) {
-      return;
-    }
+  const handleDelete = (userId) => {
+    setDeactivateModal({ open: true, userId });
+  };
 
+  const confirmDeactivate = async () => {
     try {
-      await deleteUser(userId);
+      await deleteUser(deactivateModal.userId);
       setSuccess('User deactivated successfully');
+      setDeactivateModal({ open: false, userId: null });
       fetchUsers();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to deactivate user');
@@ -707,6 +709,41 @@ const Users = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {deactivateModal.open && (
+        <div style={styles.modalOverlay} onClick={() => setDeactivateModal({ open: false, userId: null })}>
+          <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>
+                <i className="fas fa-user-slash" style={{ marginRight: '0.5rem', color: '#d97706' }}></i>
+                Deactivate User
+              </h3>
+              <button onClick={() => setDeactivateModal({ open: false, userId: null })} style={styles.closeButton}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Are you sure you want to deactivate this user? They will no longer be able to log in.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setDeactivateModal({ open: false, userId: null })}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeactivate}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#d97706', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-user-slash" style={{ marginRight: '0.4rem' }}></i>
+                  Deactivate
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

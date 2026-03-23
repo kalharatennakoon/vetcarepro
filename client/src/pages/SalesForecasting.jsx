@@ -36,6 +36,7 @@ function SalesForecasting() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [trainingLoading, setTrainingLoading] = useState(false);
+  const [trainSuccess, setTrainSuccess] = useState(false);
   const [monthPredLoading, setMonthPredLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('forecast');
@@ -84,12 +85,14 @@ function SalesForecasting() {
   }, [loadAllData]);
 
   const handleTrainModel = async () => {
-    if (!window.confirm('Training the sales model may take a minute. Proceed?')) return;
     setTrainingLoading(true);
+    setTrainSuccess(false);
     setError(null);
     try {
       await axios.post(`${API_URL}/ml/sales/train`, {}, getHeaders());
       await loadAllData();
+      setTrainSuccess(true);
+      setTimeout(() => setTrainSuccess(false), 5000);
     } catch (err) {
       setError(err.response?.data?.message || 'Training failed. Make sure billing data exists.');
     } finally {
@@ -129,9 +132,13 @@ function SalesForecasting() {
 
   // Build stat cards data
   const salesModelInfo = modelStatus?.models?.sales_forecasting || modelStatus?.sales_model || null;
-  const forecastData = forecast?.forecast || forecast?.data?.forecast || [];
-  const historicalData = trends?.monthly_data || trends?.data?.monthly_data || [];
-  const serviceData = topServices?.services || topServices?.data?.services || [];
+  const forecastData = forecast?.forecast?.daily_forecast || forecast?.data?.forecast?.daily_forecast || [];
+  const trendsObj = trends?.trends || trends?.data?.trends || {};
+  const historicalData = (trendsObj?.monthly_trends || []).map(r => ({
+    ...r,
+    month_key: `${r.year}-${String(r.month).padStart(2, '0')}`
+  }));
+  const serviceData = topServices?.top_services || topServices?.data?.top_services || [];
   const paymentMethodLabels = {
     cash: 'Cash',
     card: 'Debit/Credit Card',
@@ -139,15 +146,15 @@ function SalesForecasting() {
     mobile_payment: 'Mobile Payment/QR',
     insurance: 'Insurance',
   };
-  const rawPaymentData = trends?.payment_methods || trends?.data?.payment_methods || [];
-  const paymentData = rawPaymentData.map(item => {
-    const key = item.payment_method != null ? 'payment_method' : 'method';
-    return { ...item, [key]: paymentMethodLabels[item[key]] || item[key] };
-  });
-  const dayOfWeekData = trends?.day_of_week || trends?.data?.day_of_week || [];
-  const totalForecastRevenue = forecastData.reduce((sum, d) => sum + (d.yhat || d.predicted || 0), 0);
+  const rawPaymentDict = trendsObj?.payment_method_breakdown || {};
+  const paymentData = Object.entries(rawPaymentDict).map(([k, v]) => ({
+    payment_method: paymentMethodLabels[k] || k,
+    amount: v
+  }));
+  const dayOfWeekData = trendsObj?.day_of_week_patterns || [];
+  const totalForecastRevenue = forecastData.reduce((sum, d) => sum + (d.predicted_revenue || 0), 0);
   const avgMonthlyRevenue = historicalData.length > 0
-    ? historicalData.reduce((sum, d) => sum + (d.revenue || d.total_revenue || 0), 0) / historicalData.length
+    ? historicalData.reduce((sum, d) => sum + parseFloat(d.revenue || d.total_revenue || 0), 0) / historicalData.length
     : 0;
 
   return (
@@ -186,6 +193,14 @@ function SalesForecasting() {
           <div style={styles.errorAlert}>
             <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
             {error}
+          </div>
+        )}
+
+        {/* Success Banner */}
+        {trainSuccess && (
+          <div style={styles.successAlert}>
+            <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
+            Sales forecasting model trained successfully! Forecasts have been updated.
           </div>
         )}
 
@@ -232,6 +247,48 @@ function SalesForecasting() {
             </div>
           </div>
         </div>
+
+        {/* Model Status Card */}
+        {(salesModelInfo || user?.role === 'admin') && (
+          <div style={styles.modelStatusCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: salesModelInfo?.trained ? '#16a34a' : '#dc2626', display: 'inline-block', flexShrink: 0 }}></span>
+                <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#1f2937' }}>Sales Forecasting Model</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: salesModelInfo?.trained ? '#dcfce7' : '#fee2e2', color: salesModelInfo?.trained ? '#15803d' : '#dc2626' }}>
+                  {salesModelInfo?.trained ? 'Active' : 'Not Trained'}
+                </span>
+                <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                  Prophet + Random Forest
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {salesModelInfo?.training_data?.daily_records && (
+                  <span style={{ fontSize: '0.8rem', color: '#4b5563' }}><strong style={{ color: '#1f2937' }}>{salesModelInfo.training_data.daily_records}</strong> daily records</span>
+                )}
+                {salesModelInfo?.training_data?.date_range && (
+                  <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                    Range: <strong style={{ color: '#1f2937' }}>{salesModelInfo.training_data.date_range.start}</strong> → <strong style={{ color: '#1f2937' }}>{salesModelInfo.training_data.date_range.end}</strong>
+                  </span>
+                )}
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={handleTrainModel}
+                    disabled={trainingLoading}
+                    style={{ padding: '0.35rem 0.9rem', backgroundColor: trainingLoading ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: trainingLoading ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <i className={`fas ${trainingLoading ? 'fa-spinner fa-spin' : 'fa-rotate'}`}></i>
+                    {trainingLoading ? 'Training...' : 'Retrain Model'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <p style={styles.cardHint}>
+              <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+              Retrain after adding new billing data to keep forecasts accurate. Training uses all historical billing records.
+            </p>
+          </div>
+        )}
 
         {/* Tabs */}
         <div style={styles.tabBar}>
@@ -297,7 +354,7 @@ function SalesForecasting() {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis
-                          dataKey="ds"
+                          dataKey="date"
                           tickFormatter={(v) => {
                             const d = new Date(v);
                             return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -310,10 +367,10 @@ function SalesForecasting() {
                           labelFormatter={(l) => formatDate(l)}
                         />
                         <Legend />
-                        {forecastData[0]?.yhat_lower != null && (
+                        {forecastData[0]?.upper_bound != null && (
                           <Area
                             type="monotone"
-                            dataKey="yhat_upper"
+                            dataKey="upper_bound"
                             stroke="none"
                             fill="url(#confGrad)"
                             name="Upper Bound"
@@ -321,16 +378,16 @@ function SalesForecasting() {
                         )}
                         <Area
                           type="monotone"
-                          dataKey={forecastData[0]?.yhat != null ? 'yhat' : 'predicted'}
+                          dataKey="predicted_revenue"
                           stroke="#3b82f6"
                           strokeWidth={2}
                           fill="url(#forecastGrad)"
                           name="Predicted Revenue"
                         />
-                        {forecastData[0]?.yhat_lower != null && (
+                        {forecastData[0]?.lower_bound != null && (
                           <Area
                             type="monotone"
-                            dataKey="yhat_lower"
+                            dataKey="lower_bound"
                             stroke="none"
                             fill="url(#confGrad)"
                             name="Lower Bound"
@@ -380,7 +437,7 @@ function SalesForecasting() {
                         <BarChart data={historicalData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                           <XAxis
-                            dataKey="month"
+                            dataKey="month_key"
                             tickFormatter={(v) => {
                               const d = new Date(v + '-01');
                               return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
@@ -457,7 +514,7 @@ function SalesForecasting() {
                         <ResponsiveContainer width="100%" height={220}>
                           <BarChart data={dayOfWeekData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey={dayOfWeekData[0]?.day_name != null ? 'day_name' : 'day'} tick={{ fontSize: 11 }} />
+                            <XAxis dataKey="day_of_week" tick={{ fontSize: 11 }} />
                             <YAxis tickFormatter={(v) => `Rs.${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
                             <Tooltip formatter={(val) => [formatCurrency(val), 'Avg Revenue']} />
                             <Bar
@@ -504,7 +561,7 @@ function SalesForecasting() {
                           <XAxis type="number" tickFormatter={(v) => `Rs.${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
                           <YAxis
                             type="category"
-                            dataKey={serviceData[0]?.service_name != null ? 'service_name' : 'name'}
+                            dataKey="item_name"
                             tick={{ fontSize: 11 }}
                             width={115}
                           />
@@ -545,16 +602,13 @@ function SalesForecasting() {
                                     #{i + 1}
                                   </span>
                                 </td>
-                                <td style={styles.td}>{svc.service_name || svc.name}</td>
+                                <td style={styles.td}>{svc.item_name || svc.service_name || svc.name}</td>
                                 <td style={{ ...styles.td, fontWeight: '600', color: '#10b981' }}>
                                   {formatCurrency(svc.total_revenue || svc.revenue)}
                                 </td>
-                                <td style={styles.td}>{svc.transaction_count || svc.count || 'N/A'}</td>
+                                <td style={styles.td}>{svc.times_billed || svc.transaction_count || svc.count || 'N/A'}</td>
                                 <td style={styles.td}>
-                                  {formatCurrency(
-                                    svc.avg_value || svc.avg_revenue ||
-                                    ((svc.total_revenue || svc.revenue) / (svc.transaction_count || svc.count || 1))
-                                  )}
+                                  {formatCurrency(svc.avg_price || svc.avg_value || svc.avg_revenue)}
                                 </td>
                               </tr>
                             ))}
@@ -684,26 +738,6 @@ function SalesForecasting() {
               </div>
             )}
 
-            {/* Model Info */}
-            {salesModelInfo && (
-              <div style={styles.modelInfoBar}>
-                <i className="fas fa-robot" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                <span style={{ fontWeight: '600', marginRight: '1rem' }}>Model Info:</span>
-                <span style={styles.modelInfoBadge}>
-                  {salesModelInfo.algorithm || salesModelInfo.model_type || 'Prophet + Random Forest'}
-                </span>
-                {salesModelInfo.trained_at && (
-                  <span style={{ marginLeft: '1rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                    Last trained: {formatDate(salesModelInfo.trained_at)}
-                  </span>
-                )}
-                {salesModelInfo.training_samples && (
-                  <span style={{ marginLeft: '1rem', color: '#6b7280', fontSize: '0.8rem' }}>
-                    Samples: {salesModelInfo.training_samples}
-                  </span>
-                )}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -762,6 +796,10 @@ const styles = {
   predBoundValue: { margin: '0.25rem 0 0', fontSize: '1rem', fontWeight: '600', color: '#374151' },
   modelInfoBar: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#374151' },
   modelInfoBadge: { backgroundColor: '#dbeafe', color: '#1e40af', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: '600' },
+  modelStatusCard: { background: 'linear-gradient(to right, #eff6ff, #f0fdf4)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '0.85rem 1.25rem', marginBottom: '1.5rem' },
+  successAlert: { backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.875rem 1rem', marginBottom: '1.5rem', fontSize: '0.875rem', fontWeight: '500', display: 'flex', alignItems: 'center' },
+  cardHint: { margin: '0.6rem 0 0', fontSize: '0.73rem', color: '#6b7280', lineHeight: '1.5', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '0.5rem' },
+  cardHintIcon: { color: '#93c5fd', marginRight: '0.35rem', fontSize: '0.7rem' },
 };
 
 export default SalesForecasting;

@@ -662,10 +662,13 @@ class SalesForecastingModel(BaseMLModel):
             ).reset_index().sort_values(['year', 'month'])
 
             # Day of week patterns
-            dow = billing_df.groupby('day_of_week').agg(
+            day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+            dow = recent.groupby('day_of_week').agg(
                 avg_revenue=('daily_revenue', 'mean'),
                 total_transactions=('transaction_count', 'sum')
             ).reset_index()
+            dow['day_order'] = pd.Categorical(dow['day_of_week'], categories=day_order, ordered=True)
+            dow = dow.sort_values('day_order').drop(columns='day_order').reset_index(drop=True)
 
             # Service type breakdown
             service_revenue = []
@@ -685,10 +688,19 @@ class SalesForecastingModel(BaseMLModel):
                 'bank_transfer': float(billing_df['bank_revenue'].sum())
             }
 
-            # YoY comparison
+            # YoY comparison — same period this year vs same period last year
             current_year = datetime.now().year
-            prev_year_rev = float(billing_df[billing_df['year'] == current_year - 1]['daily_revenue'].sum())
-            curr_year_rev = float(billing_df[billing_df['year'] == current_year]['daily_revenue'].sum())
+            current_month = datetime.now().month
+            curr_ytd = billing_df[
+                (billing_df['year'] == current_year) &
+                (billing_df['month'] <= current_month)
+            ]['daily_revenue'].sum()
+            prev_ytd = billing_df[
+                (billing_df['year'] == current_year - 1) &
+                (billing_df['month'] <= current_month)
+            ]['daily_revenue'].sum()
+            curr_year_rev = float(curr_ytd)
+            prev_year_rev = float(prev_ytd)
             yoy_growth = 0
             if prev_year_rev > 0:
                 yoy_growth = round(((curr_year_rev - prev_year_rev) / prev_year_rev) * 100, 2)

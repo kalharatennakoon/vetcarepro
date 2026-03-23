@@ -8,6 +8,7 @@ const MedicalRecordDetail = () => {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -32,11 +33,7 @@ const MedicalRecordDetail = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this medical record? This action cannot be undone.')) {
-      return;
-    }
-
+  const confirmDelete = async () => {
     try {
       await deleteMedicalRecord(id);
       navigate('/medical-records');
@@ -104,7 +101,7 @@ const MedicalRecordDetail = () => {
             <button onClick={() => navigate(`/medical-records/${id}/edit`)} style={styles.editButton}>
               Edit Record
             </button>
-            <button onClick={handleDelete} style={styles.deleteButton}>
+            <button onClick={() => setShowDeleteModal(true)} style={styles.deleteButton}>
               Delete Record
             </button>
           </div>
@@ -299,6 +296,42 @@ const MedicalRecordDetail = () => {
         </div>
       </div>
     </div>
+
+    {showDeleteModal && (
+      <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
+        <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+              Delete Medical Record
+            </h3>
+            <button onClick={() => setShowDeleteModal(false)} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+              Are you sure you want to delete this medical record? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                Delete Record
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </Layout>
   );
 };
@@ -465,6 +498,11 @@ const styles = {
     fontSize: '1rem',
     color: '#6b7280',
   },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' },
+  modalTitle: { margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' },
+  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' },
 };
 
 export default MedicalRecordDetail;

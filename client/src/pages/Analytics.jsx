@@ -13,13 +13,16 @@ import {
 import {
   getSalesForecast,
   getSalesTrends,
-  getReorderSuggestions
+  getReorderSuggestions,
+  trainSalesModel,
+  trainInventoryModel
 } from '../services/predictionService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('cases');
+  useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,6 +62,10 @@ const Analytics = () => {
   ]);
   const [training, setTraining] = useState(false);
   const [trainSuccess, setTrainSuccess] = useState(false);
+  const [salesTraining, setSalesTraining] = useState(false);
+  const [salesTrainSuccess, setSalesTrainSuccess] = useState(false);
+  const [inventoryTraining, setInventoryTraining] = useState(false);
+  const [inventoryTrainSuccess, setInventoryTrainSuccess] = useState(false);
 
   // Sales Forecast State
   const [salesData, setSalesData] = useState({
@@ -192,7 +199,7 @@ const Analytics = () => {
       setLoading(true);
       const [forecastRes, trendsRes] = await Promise.all([
         getSalesForecast(salesPeriod).catch(() => ({ success: false })),
-        getSalesTrends().catch(() => ({ success: false }))
+        getSalesTrends(Math.max(1, Math.round(salesPeriod / 30))).catch(() => ({ success: false }))
       ]);
 
       setSalesData({
@@ -211,7 +218,7 @@ const Analytics = () => {
   const fetchInventoryData = async () => {
     try {
       setLoading(true);
-      const suggestionsRes = await getReorderSuggestions().catch(() => ({ success: false }));
+      const suggestionsRes = await getReorderSuggestions(inventoryDays).catch(() => ({ success: false }));
 
       setInventoryData({
         forecast: null,
@@ -243,6 +250,38 @@ const Analytics = () => {
       setError(err.response?.data?.message || 'Failed to train model');
     } finally {
       setTraining(false);
+    }
+  };
+
+  const handleTrainSalesModel = async () => {
+    setSalesTraining(true);
+    setSalesTrainSuccess(false);
+    setError('');
+    try {
+      await trainSalesModel();
+      await fetchSalesData();
+      setSalesTrainSuccess(true);
+      setTimeout(() => setSalesTrainSuccess(false), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to train sales model');
+    } finally {
+      setSalesTraining(false);
+    }
+  };
+
+  const handleTrainInventoryModel = async () => {
+    setInventoryTraining(true);
+    setInventoryTrainSuccess(false);
+    setError('');
+    try {
+      await trainInventoryModel();
+      await fetchInventoryData();
+      setInventoryTrainSuccess(true);
+      setTimeout(() => setInventoryTrainSuccess(false), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to train inventory model');
+    } finally {
+      setInventoryTraining(false);
     }
   };
 
@@ -387,6 +426,34 @@ const Analytics = () => {
                 )}
               </button>
             )}
+            {isAdmin && activeTab === 'sales' && (
+              <button
+                onClick={handleTrainSalesModel}
+                disabled={salesTraining}
+                style={{
+                  ...styles.primaryButton,
+                  backgroundColor: salesTraining ? '#9ca3af' : '#3b82f6',
+                  cursor: salesTraining ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <i className={`fas ${salesTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                {salesTraining ? 'Training...' : 'Retrain Sales Model'}
+              </button>
+            )}
+            {isAdmin && activeTab === 'inventory' && (
+              <button
+                onClick={handleTrainInventoryModel}
+                disabled={inventoryTraining}
+                style={{
+                  ...styles.primaryButton,
+                  backgroundColor: inventoryTraining ? '#9ca3af' : '#10b981',
+                  cursor: inventoryTraining ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <i className={`fas ${inventoryTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                {inventoryTraining ? 'Training...' : 'Retrain Inventory Model'}
+              </button>
+            )}
             {isVetOrAdmin && activeTab === 'cases' && (
               <button
                 onClick={() => navigate('/disease-cases/create')}
@@ -405,7 +472,19 @@ const Analytics = () => {
         {trainSuccess && (
           <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
             <i className="fas fa-check-circle"></i>
-            Model trained successfully!
+            Disease prediction model trained successfully!
+          </div>
+        )}
+        {salesTrainSuccess && (
+          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+            <i className="fas fa-check-circle"></i>
+            Sales forecasting model trained successfully! Forecasts have been updated.
+          </div>
+        )}
+        {inventoryTrainSuccess && (
+          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+            <i className="fas fa-check-circle"></i>
+            Inventory forecasting model trained successfully! Recommendations have been updated.
           </div>
         )}
 
@@ -1359,7 +1438,7 @@ const Analytics = () => {
                             <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                               <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
                               <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color, fontWeight: '600' }}>{item.recommended_reorder_quantity ?? item.reorder_quantity ?? 'N/A'}</td>
+                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color, fontWeight: '600' }}>{item.suggested_order_quantity ?? 'N/A'}</td>
                               <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</td>
                               <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280' }}>{item.category || '—'}</td>
                             </tr>

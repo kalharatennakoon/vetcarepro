@@ -463,7 +463,7 @@ export const uploadPetImageHandler = async (req, res) => {
  */
 export const deletePetImageHandler = async (req, res) => {
   try {
-    const petId = parseInt(req.params.id);
+    const petId = req.params.id;
 
     // Get existing pet
     const existingPet = await getPetById(petId);
@@ -475,7 +475,7 @@ export const deletePetImageHandler = async (req, res) => {
     }
 
     // Check if pet has an image
-    if (!existingPet.image) {
+    if (!existingPet.photo_url) {
       return res.status(400).json({
         status: 'error',
         message: 'Pet does not have an image'
@@ -483,10 +483,10 @@ export const deletePetImageHandler = async (req, res) => {
     }
 
     // Delete the image file
-    deleteImageFile(existingPet.image);
+    deleteImageFile(existingPet.photo_url);
 
     // Update pet to remove image path
-    const updatedPet = await updatePet(petId, { image: null }, req.user.user_id);
+    const updatedPet = await updatePet(petId, { photo_url: null }, req.user.user_id);
 
     res.status(200).json({
       status: 'success',
