@@ -291,12 +291,9 @@ const Appointments = () => {
   };
 
   const handleDayClick = (dateStr, dayAppointments) => {
-    // Show modal with all appointments for the clicked day
-    if (dayAppointments.length > 0) {
-      setSelectedDate(dateStr);
-      setSelectedDayAppointments(dayAppointments);
-      setShowDayModal(true);
-    }
+    setSelectedDate(dateStr);
+    setSelectedDayAppointments(dayAppointments);
+    setShowDayModal(true);
   };
 
   const handleCloseDayModal = () => {
@@ -306,6 +303,7 @@ const Appointments = () => {
   };
 
   const handleAppointmentClick = (appointment) => {
+    setShowDayModal(false);
     setApptDetailModal(appointment);
   };
 
@@ -622,7 +620,7 @@ const Appointments = () => {
                           ...(day.isCurrentMonth ? {} : styles.calendarDayOtherMonth),
                           ...(day.isToday ? styles.calendarDayToday : {}),
                           ...(day.isSelectedDate ? styles.calendarDaySelected : {}),
-                          cursor: day.appointments.length > 0 ? 'pointer' : 'default',
+                          cursor: 'pointer',
                         }}
                         onClick={() => handleDayClick(day.dateStr, day.appointments)}
                       >
@@ -646,10 +644,6 @@ const Appointments = () => {
                               style={{
                                 ...styles.appointmentCard,
                                 borderLeftColor: getStatusBorderColor(apt.status)
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAppointmentClick(apt);
                               }}
                             >
                               <div style={styles.appointmentCardTime}>
