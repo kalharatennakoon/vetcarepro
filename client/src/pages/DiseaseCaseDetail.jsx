@@ -21,6 +21,7 @@ const DiseaseCaseDetail = () => {
   const [uploading, setUploading] = useState(false);
   const [labError, setLabError] = useState('');
   const [labSuccess, setLabSuccess] = useState('');
+  const [deleteLabReportModal, setDeleteLabReportModal] = useState({ open: false, reportId: null, reportName: '' });
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -111,10 +112,14 @@ const DiseaseCaseDetail = () => {
     }
   };
 
-  const handleDeleteLabReport = async (reportId) => {
-    if (!window.confirm('Delete this lab report?')) return;
+  const handleDeleteLabReport = (reportId, reportName) => {
+    setDeleteLabReportModal({ open: true, reportId, reportName: reportName || '' });
+  };
+
+  const confirmDeleteLabReport = async () => {
     try {
-      await deleteLabReport(reportId);
+      await deleteLabReport(deleteLabReportModal.reportId);
+      setDeleteLabReportModal({ open: false, reportId: null, reportName: '' });
       fetchLabReports(diseaseCase.pet_id, diseaseCase.case_id);
     } catch (err) {
       setLabError(err.response?.data?.message || 'Failed to delete lab report');
@@ -449,7 +454,7 @@ const DiseaseCaseDetail = () => {
                             <i className="fas fa-eye"></i>
                           </button>
                           {isVetOrAdmin && (
-                            <button onClick={() => handleDeleteLabReport(report.report_id)} style={styles.labDeleteBtn} title="Delete">
+                            <button onClick={() => handleDeleteLabReport(report.report_id, report.report_name)} style={styles.labDeleteBtn} title="Delete">
                               <i className="fas fa-trash"></i>
                             </button>
                           )}
@@ -617,6 +622,42 @@ const DiseaseCaseDetail = () => {
           </div>
         </div>
       </div>
+
+      {deleteLabReportModal.open && (
+        <div style={styles.modalOverlay} onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>
+                <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+                Delete Lab Report
+              </h3>
+              <button onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Are you sure you want to delete this lab report? This cannot be undone.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteLabReport}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                  Delete Report
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

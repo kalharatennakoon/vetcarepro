@@ -41,6 +41,8 @@ const PetDetail = () => {
   const [ownerEmailForm, setOwnerEmailForm] = useState({ subject: '', message: '' });
   const [ownerEmailSending, setOwnerEmailSending] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
+  const [deleteLabReportModal, setDeleteLabReportModal] = useState({ open: false, reportId: null, reportName: '' });
   const [deletability, setDeletability] = useState(null);
   const [deactivateReason, setDeactivateReason] = useState('');
   const [deceasedDate, setDeceasedDate] = useState('');
@@ -240,10 +242,7 @@ const PetDetail = () => {
   };
 
   const handleImageDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this pet image?')) {
-      return;
-    }
-
+    setShowDeleteImageModal(false);
     try {
       setUploadingImage(true);
       setError('');
@@ -310,11 +309,15 @@ const PetDetail = () => {
     }
   };
 
-  const handleDeleteLabReport = async (reportId, reportName) => {
-    if (!window.confirm(`Delete lab report "${reportName}"? This cannot be undone.`)) return;
+  const handleDeleteLabReport = (reportId, reportName) => {
+    setDeleteLabReportModal({ open: true, reportId, reportName });
+  };
+
+  const confirmDeleteLabReport = async () => {
     try {
-      await deleteLabReport(reportId);
+      await deleteLabReport(deleteLabReportModal.reportId);
       showSuccess('Lab report deleted');
+      setDeleteLabReportModal({ open: false, reportId: null, reportName: '' });
       fetchLabReports();
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to delete lab report');
@@ -618,7 +621,7 @@ const PetDetail = () => {
                         {pet?.photo_url && (
                           <button
                             type="button"
-                            onClick={handleImageDelete}
+                            onClick={() => setShowDeleteImageModal(true)}
                             disabled={uploadingImage}
                             style={styles.deleteImageButton}
                           >
@@ -822,10 +825,10 @@ const PetDetail = () => {
                       {vaccinations.map((vacc) => (
                         <tr key={vacc.vaccination_id} style={styles.tableRow}>
                           <td style={styles.td}>{vacc.vaccine_name}</td>
-                          <td style={styles.td}>{formatDate(vacc.date_given)}</td>
+                          <td style={styles.td}>{formatDate(vacc.vaccination_date)}</td>
                           <td style={styles.td}>{formatDate(vacc.next_due_date)}</td>
                           <td style={styles.td}>{vacc.batch_number || '-'}</td>
-                          <td style={styles.td}>{vacc.vet_name || '-'}</td>
+                          <td style={styles.td}>{vacc.administered_by_name || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -983,7 +986,83 @@ const PetDetail = () => {
       </div>
     </div>
 
+    {deleteLabReportModal.open && (
+      <div style={styles.modalOverlay} onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}>
+        <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+              Delete Lab Report
+            </h3>
+            <button onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+              Delete "<strong>{deleteLabReportModal.reportName}</strong>"? This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteLabReport}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                Delete Report
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* Delete / Inactivate Modal */}
+    {showDeleteImageModal && (
+      <div style={styles.modalOverlay} onClick={() => setShowDeleteImageModal(false)}>
+        <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+              Remove Pet Image
+            </h3>
+            <button onClick={() => setShowDeleteImageModal(false)} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            <p style={{ margin: '0 0 0.5rem', color: '#374151', fontSize: '0.95rem' }}>
+              Are you sure you want to remove the photo for <strong>{pet?.pet_name}</strong>?
+            </p>
+            <p style={{ margin: '0 0 1.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
+              This action cannot be undone. You can upload a new image afterwards.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowDeleteImageModal(false)}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImageDelete}
+                disabled={uploadingImage}
+                style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: uploadingImage ? 'not-allowed' : 'pointer', opacity: uploadingImage ? 0.7 : 1 }}
+              >
+                <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                {uploadingImage ? 'Removing...' : 'Remove Image'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     {showDeleteModal && deletability && (
       <div style={styles.modalOverlay} onClick={() => setShowDeleteModal(false)}>
         <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>

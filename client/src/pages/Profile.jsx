@@ -17,6 +17,7 @@ function Profile() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
+  const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
   const [croppedImageBlob, setCroppedImageBlob] = useState(null);
   const [activityStats, setActivityStats] = useState(null);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
@@ -246,10 +247,6 @@ function Profile() {
   };
 
   const handleImageDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete your profile image?')) {
-      return;
-    }
-
     try {
       setUploadingImage(true);
       setError(null);
@@ -427,7 +424,7 @@ function Profile() {
                         {profileData?.profile_image && (
                           <button
                             type="button"
-                            onClick={handleImageDelete}
+                            onClick={() => setShowDeleteImageModal(true)}
                             disabled={uploadingImage}
                             style={styles.deleteImageButton}
                           >
@@ -821,6 +818,43 @@ function Profile() {
           </div>
         )}
       </div>
+
+      {showDeleteImageModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowDeleteImageModal(false)}>
+          <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>
+                <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+                Remove Profile Image
+              </h3>
+              <button onClick={() => setShowDeleteImageModal(false)} style={styles.modalCloseButton}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Are you sure you want to remove your profile photo? You can upload a new one at any time.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowDeleteImageModal(false)}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { setShowDeleteImageModal(false); handleImageDelete(); }}
+                  disabled={uploadingImage}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: uploadingImage ? 'not-allowed' : 'pointer', opacity: uploadingImage ? 0.7 : 1 }}
+                >
+                  <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                  Remove Image
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
@@ -1245,6 +1279,11 @@ const styles = {
     animation: 'spin 1s linear infinite',
     marginBottom: '1rem',
   },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' },
+  modalTitle: { margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' },
+  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' },
 };
 
 export default Profile;

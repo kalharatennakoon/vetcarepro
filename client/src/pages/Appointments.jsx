@@ -29,6 +29,9 @@ const Appointments = () => {
   const [apptDetailModal, setApptDetailModal] = useState(null);
   const [pendingViewDate, setPendingViewDate] = useState(null);
   const [pendingViewApptId, setPendingViewApptId] = useState(null);
+  const [showDeleteApptModal, setShowDeleteApptModal] = useState(false);
+  const [pendingDeleteApptId, setPendingDeleteApptId] = useState(null);
+  const [cancelApptModal, setCancelApptModal] = useState({ open: false, appointmentId: null, closeDetailModal: false });
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -121,18 +124,27 @@ const Appointments = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this appointment?')) {
-      return;
-    }
+  const handleDelete = (id) => {
+    setPendingDeleteApptId(id);
+    setShowDeleteApptModal(true);
+  };
 
+  const confirmDeleteAppointment = async () => {
     try {
-      await deleteAppointment(id);
+      await deleteAppointment(pendingDeleteApptId);
+      setShowDeleteApptModal(false);
+      setPendingDeleteApptId(null);
       fetchAppointments();
     } catch (err) {
       alert('Failed to delete appointment');
       console.error(err);
     }
+  };
+
+  const confirmCancelAppointment = async () => {
+    await handleStatusUpdate(cancelApptModal.appointmentId, 'cancelled');
+    if (cancelApptModal.closeDetailModal) setApptDetailModal(null);
+    setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false });
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
@@ -790,7 +802,7 @@ const Appointments = () => {
                           {/* Cancel — scheduled, confirmed, rescheduled only (not in_progress, not completed) */}
                           {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
                             <button
-                              onClick={() => { if (window.confirm('Are you sure you want to cancel this appointment?')) handleStatusUpdate(appointment.appointment_id, 'cancelled'); }}
+                              onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
                               style={styles.cancelButton}
                             >
                               <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
@@ -888,7 +900,7 @@ const Appointments = () => {
                     )}
                     {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
                       <button
-                        onClick={async () => { if (window.confirm('Cancel this appointment?')) { await handleStatusUpdate(apptDetailModal.appointment_id, 'cancelled'); setApptDetailModal(null); } }}
+                        onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-times"></i> Cancel
@@ -1010,6 +1022,77 @@ const Appointments = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {showDeleteApptModal && (
+            <div style={styles.modalOverlay} onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}>
+              <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+                    Delete Appointment
+                  </h3>
+                  <button onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                  <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                    Are you sure you want to delete this appointment?
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={confirmDeleteAppointment}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                    >
+                      <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {cancelApptModal.open && (
+            <div style={styles.modalOverlay} onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })}>
+              <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className="fas fa-times-circle" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
+                    Cancel Appointment
+                  </h3>
+                  <button onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                  <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                    Are you sure you want to cancel this appointment?
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                    >
+                      Keep
+                    </button>
+                    <button
+                      onClick={confirmCancelAppointment}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                    >
+                      <i className="fas fa-times" style={{ marginRight: '0.4rem' }}></i>
+                      Cancel Appointment
+                    </button>
                   </div>
                 </div>
               </div>
