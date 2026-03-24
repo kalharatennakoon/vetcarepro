@@ -10,6 +10,7 @@ import {
   deleteBill
 } from '../models/billingModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { insertAuditLog } from '../models/auditLogModel.js';
 
 import {
   getAllPayments,
@@ -315,7 +316,8 @@ export const removeBill = async (req, res) => {
       });
     }
 
-    const deletedBill = await deleteBill(id, userId);
+    const reason = req.body?.reason || 'No reason provided';
+    const deletedBill = await deleteBill(id, userId, reason);
 
     if (!deletedBill) {
       return res.status(404).json({
@@ -323,6 +325,17 @@ export const removeBill = async (req, res) => {
         message: 'Bill not found'
       });
     }
+
+    await insertAuditLog({
+      userId,
+      action: 'CANCEL',
+      tableName: 'billing',
+      recordId: id,
+      oldValues: { payment_status: deletedBill.payment_status },
+      newValues: { payment_status: 'cancelled', reason },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
 
     res.status(200).json({
       status: 'success',
