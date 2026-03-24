@@ -25,6 +25,7 @@ const DiseaseCaseDetail = () => {
   const [deleteLabReportModal, setDeleteLabReportModal] = useState({ open: false, reportId: null, reportName: '' });
   const [apptModal, setApptModal] = useState(null);
   const [apptModalLoading, setApptModalLoading] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,7 +58,9 @@ const DiseaseCaseDetail = () => {
     try {
       setDeleting(true);
       await deleteDiseaseCase(id, deleteReason, deleteNotes);
-      navigate('/disease-cases');
+      setShowDeleteModal(false);
+      setDeleteSuccess(true);
+      setTimeout(() => navigate('/disease-cases'), 3000);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete disease case');
       setShowDeleteModal(false);
@@ -267,6 +270,13 @@ const DiseaseCaseDetail = () => {
           <div style={styles.errorBox}>
             <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
             {error}
+          </div>
+        )}
+
+        {deleteSuccess && (
+          <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999, backgroundColor: '#166534', color: '#fff', padding: '0.85rem 1.25rem', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.95rem', fontWeight: '500' }}>
+            <i className="fas fa-circle-check" style={{ fontSize: '1.1rem' }}></i>
+            Disease case deleted successfully.
           </div>
         )}
 
