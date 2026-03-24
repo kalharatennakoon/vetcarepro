@@ -517,18 +517,18 @@ class SalesForecastingModel(BaseMLModel):
             monthly_agg = df_result.groupby(df_result['date'].dt.to_period('M')).agg(
                 monthly_revenue=('predicted_revenue', 'sum'),
                 avg_daily_revenue=('predicted_revenue', 'mean'),
-                upper_bound=('upper_bound', 'sum')
             ).reset_index()
 
-            # Compute lower bound from historical monthly std dev.
-            # Prophet's per-day yhat_lower is too wide with limited data (sums to near-zero),
-            # so use ±1 std of actual historical monthly revenue instead.
-            if self.monthly_summary is not None and len(self.monthly_summary) > 1:
-                hist_std = float(pd.to_numeric(self.monthly_summary['monthly_revenue'], errors='coerce').std())
-            else:
-                hist_std = float(monthly_agg['monthly_revenue'].mean()) * 0.20
             monthly_agg['monthly_revenue'] = pd.to_numeric(monthly_agg['monthly_revenue'], errors='coerce')
-            monthly_agg['lower_bound'] = (monthly_agg['monthly_revenue'] - hist_std).clip(lower=0).round(2)
+            if self.monthly_summary is not None and len(self.monthly_summary) > 1:
+                hist_rev = pd.to_numeric(self.monthly_summary['monthly_revenue'], errors='coerce')
+                hist_mean = float(hist_rev.mean())
+                hist_std = float(hist_rev.std())
+                cv = (hist_std / hist_mean) if hist_mean > 0 else 0.20
+            else:
+                cv = 0.20
+            monthly_agg['lower_bound'] = (monthly_agg['monthly_revenue'] * (1 - cv)).clip(lower=0).round(2)
+            monthly_agg['upper_bound'] = (monthly_agg['monthly_revenue'] * (1 + cv)).round(2)
             monthly_agg['monthly_revenue'] = monthly_agg['monthly_revenue'].round(2)
             monthly_agg['month'] = monthly_agg['date'].astype(str)
             monthly_agg = monthly_agg.drop(columns=['date'])
