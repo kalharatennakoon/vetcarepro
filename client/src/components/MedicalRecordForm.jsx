@@ -130,6 +130,16 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'appointment_id') {
+      const selected = appointments.find(a => String(a.appointment_id) === String(value));
+      setFormData(prev => ({
+        ...prev,
+        appointment_id: value,
+        visit_date: selected ? selected.appointment_date.split('T')[0] : prev.visit_date
+      }));
+      setError('');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
@@ -329,10 +339,12 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                 name="visit_date"
                 value={formData.visit_date}
                 onChange={handleChange}
-                style={styles.input}
+                style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280' }}
                 max={new Date().toISOString().split('T')[0]}
+                disabled
                 required
               />
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Auto-filled from selected appointment</span>
             </div>
           </div>
 
