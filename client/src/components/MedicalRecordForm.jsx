@@ -46,6 +46,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   useEffect(() => {
     if (formData.pet_id) {
       fetchPetAppointments(formData.pet_id);
+    } else {
+      setAppointments([]);
     }
   }, [formData.pet_id]);
 
@@ -64,10 +66,15 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const fetchPetAppointments = async (petId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/appointments?pet_id=${petId}&status=completed`, {
+      const response = await axios.get(`${API_URL}/appointments?pet_id=${petId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAppointments(response.data.data.appointments || []);
+      const today = new Date().toISOString().split('T')[0];
+      const past = (response.data.data.appointments || []).filter(a =>
+        a.appointment_date <= today &&
+        !['cancelled', 'scheduled', 'no_show'].includes(a.status)
+      );
+      setAppointments(past);
     } catch (err) {
       console.error('Failed to fetch appointments:', err);
     }
@@ -125,7 +132,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
+      ...(name === 'pet_id' ? { appointment_id: '' } : {})
     }));
     setError('');
   };
@@ -143,8 +151,28 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       setError('Visit date is required');
       return false;
     }
+    if (!formData.appointment_id) {
+      setError('Related Appointment is required');
+      return false;
+    }
+    if (!formData.chief_complaint.trim()) {
+      setError('Chief Complaint is required');
+      return false;
+    }
+    if (!formData.symptoms.trim()) {
+      setError('Symptoms are required');
+      return false;
+    }
     if (!formData.diagnosis.trim()) {
       setError('Diagnosis is required');
+      return false;
+    }
+    if (!formData.treatment.trim()) {
+      setError('Treatment Provided is required');
+      return false;
+    }
+    if (!formData.prescription.trim()) {
+      setError('Prescription is required');
       return false;
     }
     
@@ -183,14 +211,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
       const recordData = {
         pet_id: formData.pet_id,
-        appointment_id: formData.appointment_id || null,
+        appointment_id: formData.appointment_id,
         veterinarian_id: parseInt(formData.veterinarian_id),
         visit_date: formData.visit_date,
-        chief_complaint: formData.chief_complaint.trim() || null,
-        symptoms: formData.symptoms.trim() || null,
+        chief_complaint: formData.chief_complaint.trim(),
+        symptoms: formData.symptoms.trim(),
         diagnosis: formData.diagnosis.trim(),
-        treatment: formData.treatment.trim() || null,
-        prescription: formData.prescription.trim() || null,
+        treatment: formData.treatment.trim(),
+        prescription: formData.prescription.trim(),
         lab_tests: formData.lab_tests.trim() || null,
         lab_results: formData.lab_results.trim() || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -309,17 +337,17 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Related Appointment</label>
+            <label style={styles.label}>Related Appointment <span style={{ color: '#dc2626' }}>*</span></label>
             <select
               name="appointment_id"
               value={formData.appointment_id}
               onChange={handleChange}
               style={styles.input}
             >
-              <option value="">No Related Appointment</option>
+              <option value="">{formData.pet_id ? (appointments.length === 0 ? 'No past appointments found' : 'Select an appointment...') : 'Select a pet first'}</option>
               {appointments.map(appt => (
                 <option key={appt.appointment_id} value={appt.appointment_id}>
-                  {new Date(appt.appointment_date).toLocaleDateString()} - {appt.reason}
+                  {new Date(appt.appointment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} — {appt.reason} ({appt.status})
                 </option>
               ))}
             </select>
@@ -331,7 +359,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Clinical Findings</h3>
           
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Chief Complaint</label>
+            <label style={styles.label}>Chief Complaint <span style={{ color: '#dc2626' }}>*</span></label>
             <input
               type="text"
               name="chief_complaint"
@@ -343,7 +371,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Symptoms</label>
+            <label style={styles.label}>Symptoms <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="symptoms"
               value={formData.symptoms}
@@ -439,7 +467,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Treatment & Prescription</h3>
           
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Treatment Provided</label>
+            <label style={styles.label}>Treatment Provided <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="treatment"
               value={formData.treatment}
@@ -451,7 +479,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Prescription</label>
+            <label style={styles.label}>Prescription <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="prescription"
               value={formData.prescription}

@@ -51,16 +51,6 @@ const MedicalRecordDetail = () => {
     });
   };
 
-  const formatDateTime = (dateString, timeString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-    return timeString ? `${date} at ${timeString}` : date;
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -162,9 +152,11 @@ const MedicalRecordDetail = () => {
             </div>
             {record.appointment_id && (
               <div style={styles.infoItem}>
-                <span style={styles.label}>Appointment:</span>
+                <span style={styles.label}>Related Appointment:</span>
                 <span style={styles.value}>
-                  {formatDateTime(record.appointment_date, record.appointment_time)}
+                  {record.appointment_date
+                    ? `${formatDate(record.appointment_date)}${record.appointment_time ? ' at ' + record.appointment_time.slice(0, 5) : ''}${record.appointment_reason ? ' — ' + record.appointment_reason : ''}`
+                    : record.appointment_id}
                 </span>
               </div>
             )}
