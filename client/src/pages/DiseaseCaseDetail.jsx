@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getDiseaseCaseById, deleteDiseaseCase } from '../services/diseaseCaseService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport } from '../services/labReportService';
+import { getAppointmentById } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -22,6 +23,8 @@ const DiseaseCaseDetail = () => {
   const [labError, setLabError] = useState('');
   const [labSuccess, setLabSuccess] = useState('');
   const [deleteLabReportModal, setDeleteLabReportModal] = useState({ open: false, reportId: null, reportName: '' });
+  const [apptModal, setApptModal] = useState(null);
+  const [apptModalLoading, setApptModalLoading] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -154,6 +157,45 @@ const DiseaseCaseDetail = () => {
     return map[outcome] || { background: '#f3f4f6', color: '#374151' };
   };
 
+  const openApptModal = async (apptId) => {
+    if (!apptId) return;
+    try {
+      setApptModalLoading(true);
+      setApptModal({});
+      const res = await getAppointmentById(apptId);
+      setApptModal(res.data.appointment);
+    } catch (err) {
+      console.error('Failed to load appointment:', err);
+      setApptModal(null);
+    } finally {
+      setApptModalLoading(false);
+    }
+  };
+
+  const getApptStatusColor = (status) => {
+    const colors = { scheduled: '#3b82f6', confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
+    return colors[status] || '#6b7280';
+  };
+
+  const formatTime = (t) => {
+    if (!t) return '-';
+    const [h, m] = t.slice(0, 5).split(':');
+    const hr = parseInt(h);
+    return `${hr % 12 || 12}:${m} ${hr < 12 ? 'AM' : 'PM'}`;
+  };
+
+  const calcAgeAtDiagnosis = (dob, diagDate) => {
+    if (!dob || !diagDate) return null;
+    const birth = new Date(dob);
+    const diag = new Date(diagDate);
+    let years = diag.getFullYear() - birth.getFullYear();
+    let months = diag.getMonth() - birth.getMonth();
+    if (months < 0) { years--; months += 12; }
+    if (years > 0 && months > 0) return `${years} yr ${months} mo`;
+    if (years > 0) return `${years} yr`;
+    return `${months} mo`;
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -276,7 +318,7 @@ const DiseaseCaseDetail = () => {
                 <div style={styles.infoItem}>
                   <span style={styles.label}>Age at Diagnosis</span>
                   <span style={styles.value}>
-                    {diseaseCase.age_at_diagnosis ? `${diseaseCase.age_at_diagnosis} months` : 'N/A'}
+                    {calcAgeAtDiagnosis(diseaseCase.date_of_birth, diseaseCase.diagnosis_date) || 'N/A'}
                   </span>
                 </div>
               </div>
@@ -326,6 +368,47 @@ const DiseaseCaseDetail = () => {
                     {diseaseCase.disease_category?.replace(/_/g, ' ')}
                   </span>
                 </div>
+                {diseaseCase.diagnosis_method && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.label}>Diagnosis Method</span>
+                    <span style={{ ...styles.value, textTransform: 'capitalize' }}>
+                      {diseaseCase.diagnosis_method.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                )}
+                {diseaseCase.treatment_duration_days && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.label}>Treatment Duration</span>
+                    <span style={styles.value}>{diseaseCase.treatment_duration_days} days</span>
+                  </div>
+                )}
+                <div style={styles.infoItem}>
+                  <span style={styles.label}>Contagious Disease</span>
+                  <span style={{
+                    ...styles.value,
+                    color: diseaseCase.is_contagious ? '#991b1b' : '#166534',
+                    fontWeight: '600',
+                  }}>
+                    {diseaseCase.is_contagious ? 'Yes' : 'No'}
+                    {diseaseCase.is_contagious && diseaseCase.transmission_method && (
+                      <span style={{ fontWeight: '400', color: '#374151', marginLeft: '0.4rem' }}>
+                        — {diseaseCase.transmission_method.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {diseaseCase.appointment_id && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.label}>Related Appointment</span>
+                    <span
+                      onClick={() => openApptModal(diseaseCase.appointment_id)}
+                      style={{ ...styles.value, color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}
+                    >
+                      <i className="fas fa-calendar-check" style={{ marginRight: '0.35rem', fontSize: '0.8rem' }}></i>
+                      {diseaseCase.appointment_id}
+                    </span>
+                  </div>
+                )}
                 {diseaseCase.symptoms && (
                   <div style={styles.infoItem}>
                     <span style={styles.label}>Symptoms</span>
@@ -735,6 +818,68 @@ const DiseaseCaseDetail = () => {
           </div>
         </div>
       )}
+      {/* Appointment Detail Modal */}
+      {apptModal && (
+        <div style={styles.modalOverlay} onClick={() => setApptModal(null)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '520px', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#111827' }}>
+                <i className="fas fa-calendar-check" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>
+                Appointment Details
+              </h3>
+              <button onClick={() => setApptModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              {apptModalLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                  <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}></i>
+                  Loading...
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {apptModal.appointment_id}
+                    </span>
+                    {apptModal.status && (
+                      <span style={{ backgroundColor: `${getApptStatusColor(apptModal.status)}20`, color: getApptStatusColor(apptModal.status), padding: '0.2rem 0.65rem', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: '700', textTransform: 'capitalize' }}>
+                        {apptModal.status.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
+                  {[
+                    { icon: 'fa-paw',           label: 'Pet',          val: apptModal.pet_name },
+                    { icon: 'fa-user',          label: 'Owner',        val: `${apptModal.customer_first_name || ''} ${apptModal.customer_last_name || ''}`.trim() || null },
+                    { icon: 'fa-user-doctor',   label: 'Veterinarian', val: apptModal.veterinarian_name ? `Dr. ${apptModal.veterinarian_name}` : null },
+                    { icon: 'fa-calendar',      label: 'Date',         val: apptModal.appointment_date ? formatDate(apptModal.appointment_date) : null },
+                    { icon: 'fa-clock',         label: 'Time',         val: apptModal.appointment_time ? formatTime(apptModal.appointment_time) : null },
+                    { icon: 'fa-hourglass-half',label: 'Duration',     val: apptModal.duration_minutes ? `${apptModal.duration_minutes} min` : null },
+                    { icon: 'fa-tag',           label: 'Type',         val: apptModal.appointment_type?.replace(/_/g, ' ') },
+                    { icon: 'fa-notes-medical', label: 'Reason',       val: apptModal.reason },
+                  ].filter(r => r.val).map(r => (
+                    <div key={r.label} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <i className={`fas ${r.icon}`} style={{ color: '#6b7280', width: '16px', marginTop: '0.15rem', flexShrink: 0 }}></i>
+                      <div>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.label}</div>
+                        <div style={{ fontSize: '0.9rem', color: '#111827', textTransform: r.label === 'Type' ? 'capitalize' : 'none' }}>{r.val}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {apptModal.notes && (
+                    <div style={{ marginTop: '0.5rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.35rem' }}>Notes</div>
+                      <div style={{ fontSize: '0.88rem', color: '#374151', lineHeight: '1.5' }}>{apptModal.notes}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 };
