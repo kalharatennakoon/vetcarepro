@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMedicalRecordById, deleteMedicalRecord } from '../services/medicalRecordService';
+import { getAppointmentById } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
@@ -9,6 +10,8 @@ const MedicalRecordDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [apptModal, setApptModal] = useState(null);
+  const [apptModalLoading, setApptModalLoading] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -40,6 +43,37 @@ const MedicalRecordDetail = () => {
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete medical record');
     }
+  };
+
+  const openApptModal = async (appointmentId) => {
+    try {
+      setApptModalLoading(true);
+      setApptModal({});
+      const response = await getAppointmentById(appointmentId);
+      setApptModal(response.data.appointment);
+    } catch (err) {
+      console.error('Failed to load appointment:', err);
+      setApptModal(null);
+    } finally {
+      setApptModalLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = { scheduled: '#3b82f6', confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
+    return colors[status] || '#6b7280';
+  };
+
+  const getTypeIcon = (type) => {
+    const icons = { checkup: 'fa-stethoscope', vaccination: 'fa-syringe', surgery: 'fa-procedures', emergency: 'fa-ambulance', follow_up: 'fa-redo', consultation: 'fa-comments' };
+    return icons[type] || 'fa-calendar-check';
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '-';
+    const [h, m] = timeString.split(':');
+    const hour = parseInt(h);
+    return `${hour % 12 || 12}:${m} ${hour < 12 ? 'AM' : 'PM'}`;
   };
 
   const formatDate = (dateString) => {
@@ -153,7 +187,10 @@ const MedicalRecordDetail = () => {
             {record.appointment_id && (
               <div style={styles.infoItem}>
                 <span style={styles.label}>Related Appointment:</span>
-                <span style={styles.value}>
+                <span
+                  style={{ ...styles.linkValue, fontSize: '0.95rem' }}
+                  onClick={() => openApptModal(record.appointment_id)}
+                >
                   {record.appointment_date
                     ? `${formatDate(record.appointment_date)}${record.appointment_time ? ' at ' + record.appointment_time.slice(0, 5) : ''}${record.appointment_reason ? ' — ' + record.appointment_reason : ''}`
                     : record.appointment_id}
@@ -320,6 +357,60 @@ const MedicalRecordDetail = () => {
                 Delete Record
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+    )}
+    {/* Appointment Detail Modal */}
+    {apptModal !== null && (
+      <div style={styles.modalOverlay} onClick={() => setApptModal(null)}>
+        <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+          <div style={styles.modalHeader}>
+            <h3 style={styles.modalTitle}>
+              {!apptModalLoading && apptModal.appointment_type && (
+                <i className={`fas ${getTypeIcon(apptModal.appointment_type)}`} style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
+              )}
+              Appointment Details
+            </h3>
+            <button onClick={() => setApptModal(null)} style={styles.modalCloseButton}>
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+          <div style={{ padding: '1.5rem' }}>
+            {apptModalLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>Loading...</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <span style={{ backgroundColor: `${getStatusColor(apptModal.status)}20`, color: getStatusColor(apptModal.status), fontSize: '0.875rem', padding: '0.3rem 0.75rem', borderRadius: '9999px', fontWeight: '600' }}>
+                    {apptModal.status?.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280', textTransform: 'capitalize' }}>{apptModal.appointment_type?.replace('_', ' ')}</span>
+                </div>
+                {[
+                  { icon: 'fa-paw',         label: 'Pet',          value: apptModal.pet_name },
+                  { icon: 'fa-user',        label: 'Owner',        value: `${apptModal.customer_first_name || ''} ${apptModal.customer_last_name || ''}`.trim() },
+                  apptModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptModal.veterinarian_name}` } : null,
+                  { icon: 'fa-calendar',    label: 'Date',         value: formatDate(apptModal.appointment_date) },
+                  { icon: 'fa-clock',       label: 'Time',         value: formatTime(apptModal.appointment_time) },
+                  { icon: 'fa-hourglass-half', label: 'Duration',  value: `${apptModal.duration_minutes} min` },
+                ].filter(Boolean).map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
+                    <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#9ca3af', fontSize: '0.8rem' }}></i>
+                    <span style={{ fontSize: '0.8rem', color: '#6b7280', minWidth: '90px' }}>{row.label}</span>
+                    <span style={{ fontSize: '0.875rem', color: '#111827', fontWeight: '500' }}>{row.value}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
+                  <strong>Reason:</strong> {apptModal.reason}
+                </div>
+                {apptModal.notes && (
+                  <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
+                    <strong>Notes:</strong> {apptModal.notes}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>

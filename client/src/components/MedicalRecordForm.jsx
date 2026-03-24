@@ -135,7 +135,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       setFormData(prev => ({
         ...prev,
         appointment_id: value,
-        visit_date: selected ? selected.appointment_date.split('T')[0] : prev.visit_date
+        visit_date: selected ? selected.appointment_date.split('T')[0] : prev.visit_date,
+        veterinarian_id: selected ? String(selected.veterinarian_id) : prev.veterinarian_id
       }));
       setError('');
       return;
@@ -312,13 +313,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>
-                Veterinarian <span style={styles.required}>*</span>
+                Veterinarian
               </label>
               <select
                 name="veterinarian_id"
                 value={formData.veterinarian_id}
                 onChange={handleChange}
-                style={styles.input}
+                style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280' }}
+                disabled
                 required
               >
                 <option value="">Select Veterinarian</option>
@@ -328,11 +330,12 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                   </option>
                 ))}
               </select>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Auto-filled from selected appointment</span>
             </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>
-                Visit Date <span style={styles.required}>*</span>
+                Visit Date
               </label>
               <input
                 type="date"
