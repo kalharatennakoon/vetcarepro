@@ -186,7 +186,11 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       setError('Prescription is required');
       return false;
     }
-    
+    if (formData.follow_up_required && !formData.follow_up_date) {
+      setError('Follow-up Date is required when Follow-up Required is checked');
+      return false;
+    }
+
     // Validate vital signs if provided
     if (formData.temperature && (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 43)) {
       setError('Temperature must be between 35°C and 43°C');
@@ -554,7 +558,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
           {formData.follow_up_required && (
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Follow-up Date</label>
+              <label style={styles.label}>Follow-up Date <span style={styles.required}>*</span></label>
               <input
                 type="date"
                 name="follow_up_date"
