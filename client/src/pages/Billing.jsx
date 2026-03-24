@@ -30,33 +30,27 @@ const Billing = () => {
   const fetchBills = async () => {
     try {
       setLoading(true);
+
+      // Fetch filtered list for the table
       let response;
-      
       if (showOverdue) {
         response = await getOverdueBills();
-        setBills(response.data.bills);
       } else {
         const filters = {};
         if (search) filters.search = search;
         if (paymentStatus) filters.payment_status = paymentStatus;
-        
         response = await getBills(filters);
-        setBills(response.data.bills);
       }
-      
-      // Calculate stats — exclude cancelled bills
-      const activeBills = response.data.bills.filter(b => b.payment_status !== 'cancelled');
-      const totalRevenue = activeBills.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0);
-      const totalPaid = activeBills.reduce((sum, bill) => sum + parseFloat(bill.paid_amount || 0), 0);
-      const totalPending = activeBills.reduce((sum, bill) => sum + parseFloat(bill.balance_amount || 0), 0);
+      setBills(response.data.bills);
 
-      setStats({
-        total: activeBills.length,
-        totalRevenue,
-        totalPaid,
-        totalPending
-      });
-      
+      // Fetch all bills (no filter) for stats — always reflects full picture
+      const allResponse = await getBills({});
+      const activeBills = allResponse.data.bills.filter(b => b.payment_status !== 'cancelled');
+      const totalRevenue = activeBills.reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+      const totalPaid = activeBills.reduce((sum, b) => sum + parseFloat(b.paid_amount || 0), 0);
+      const totalPending = activeBills.reduce((sum, b) => sum + parseFloat(b.balance_amount || 0), 0);
+      setStats({ total: activeBills.length, totalRevenue, totalPaid, totalPending });
+
       setError('');
     } catch (err) {
       setError('Failed to load bills');
@@ -127,7 +121,8 @@ const Billing = () => {
       unpaid: { backgroundColor: '#FEE2E2', color: '#991B1B' },
       partially_paid: { backgroundColor: '#FEF3C7', color: '#92400E' },
       fully_paid: { backgroundColor: '#D1FAE5', color: '#065F46' },
-      overdue: { backgroundColor: '#FECACA', color: '#7F1D1D' }
+      overdue: { backgroundColor: '#FECACA', color: '#7F1D1D' },
+      cancelled: { backgroundColor: '#F3F4F6', color: '#6B7280' }
     };
 
     return (
@@ -222,6 +217,7 @@ const Billing = () => {
           <option value="unpaid">Unpaid</option>
           <option value="partially_paid">Partially Paid</option>
           <option value="fully_paid">Fully Paid</option>
+          <option value="cancelled">Cancelled</option>
         </select>
 
         <button 
