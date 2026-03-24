@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,7 +18,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
     pet_id: petId || '',
     appointment_id: '',
     veterinarian_id: '',
-    visit_date: new Date().toISOString().split('T')[0],
+    visit_date: localToday(),
     chief_complaint: '',
     symptoms: '',
     diagnosis: '',
@@ -69,7 +74,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       const response = await axios.get(`${API_URL}/appointments?pet_id=${petId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const today = new Date().toISOString().split('T')[0];
+      const today = localToday();
       const past = (response.data.data.appointments || []).filter(a =>
         a.appointment_date <= today &&
         !['cancelled', 'scheduled', 'no_show'].includes(a.status)
@@ -347,7 +352,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                 value={formData.visit_date}
                 onChange={handleChange}
                 style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280' }}
-                max={new Date().toISOString().split('T')[0]}
+                max={localToday()}
                 disabled
                 required
               />
@@ -565,7 +570,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                 value={formData.follow_up_date}
                 onChange={handleChange}
                 style={styles.input}
-                min={new Date().toISOString().split('T')[0]}
+                min={localToday()}
               />
             </div>
           )}
