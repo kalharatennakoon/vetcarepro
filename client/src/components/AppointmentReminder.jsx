@@ -40,7 +40,7 @@ const AppointmentReminder = () => {
         const now = Date.now();
 
         appointments.forEach((appt) => {
-          if (appt.status === 'cancelled' || appt.status === 'completed') return;
+          if (appt.status !== 'confirmed') return;
           if (user.role === 'veterinarian' && appt.veterinarian_id !== user.user_id) return;
 
           const key = `${appt.appointment_id}-${today}`;

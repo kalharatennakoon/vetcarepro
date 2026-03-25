@@ -337,14 +337,11 @@ const Pets = () => {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                style={{
-                  ...styles.paginationButton,
-                  ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
-                }}
+                style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
               >
                 <i className="fas fa-chevron-left"></i>
               </button>
-              
+
               {getPageNumbers().map((page, index) => (
                 page === '...' ? (
                   <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
@@ -352,23 +349,17 @@ const Pets = () => {
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    style={{
-                      ...styles.paginationButton,
-                      ...(currentPage === page ? styles.paginationButtonActive : {})
-                    }}
+                    style={currentPage === page ? styles.paginationButtonActive : styles.paginationButton}
                   >
                     {page}
                   </button>
                 )
               ))}
-              
+
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                style={{
-                  ...styles.paginationButton,
-                  ...(currentPage === totalPages ? styles.paginationButtonDisabled : {})
-                }}
+                style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
               >
                 <i className="fas fa-chevron-right"></i>
               </button>
@@ -704,34 +695,45 @@ const styles = {
     alignItems: 'center',
     gap: '0.5rem',
     padding: '1rem',
-    borderTop: '1px solid #f3f4f6',
-    backgroundColor: 'white',
-    position: 'sticky',
-    bottom: 0,
+    borderTop: '1px solid #E5E7EB',
   },
   paginationButton: {
-    padding: '0.5rem 0.75rem',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'white',
+    color: '#374151',
     border: '1px solid #d1d5db',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: '#374151',
-    minWidth: '40px',
     transition: 'all 0.2s',
   },
   paginationButtonActive: {
     backgroundColor: '#3B82F6',
     color: 'white',
-    borderColor: '#3B82F6',
+    border: '1px solid #3B82F6',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    borderRadius: '6px',
+    cursor: 'pointer',
   },
   paginationButtonDisabled: {
-    opacity: 0.5,
+    backgroundColor: '#F3F4F6',
+    color: '#D1D5DB',
+    border: '1px solid #D1D5DB',
+    padding: '0.5rem 0.75rem',
+    minWidth: '40px',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    borderRadius: '6px',
     cursor: 'not-allowed',
   },
   paginationEllipsis: {
-    padding: '0.5rem',
     color: '#9ca3af',
+    padding: '0.5rem',
     fontSize: '0.875rem',
   },
   emptyState: {

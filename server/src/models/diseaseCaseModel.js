@@ -222,9 +222,11 @@ export const createDiseaseCase = async (caseData, userId) => {
   const query = `
     INSERT INTO disease_cases (
       pet_id,
+      appointment_id,
       disease_name,
       disease_category,
       diagnosis_date,
+      diagnosis_method,
       species,
       breed,
       age_at_diagnosis,
@@ -242,15 +244,17 @@ export const createDiseaseCase = async (caseData, userId) => {
       followup_notes,
       created_by,
       updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $20)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $22)
     RETURNING *
   `;
 
   const values = [
     caseData.pet_id,
+    caseData.appointment_id || null,
     caseData.disease_name,
     caseData.disease_category || null,
     caseData.diagnosis_date,
+    caseData.diagnosis_method || null,
     caseData.species || null,
     caseData.breed || null,
     caseData.age_at_diagnosis || null,
@@ -280,34 +284,38 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
   const query = `
     UPDATE disease_cases
     SET
-      disease_name = $1,
-      disease_category = $2,
-      diagnosis_date = $3,
-      species = $4,
-      breed = $5,
-      age_at_diagnosis = $6,
-      severity = $7,
-      outcome = $8,
-      treatment_duration_days = $9,
-      symptoms = $10,
-      region = $11,
-      is_contagious = $12,
-      transmission_method = $13,
-      notes = $14,
-      requires_followup = $15,
-      followup_type = $16,
-      next_followup_date = $17,
-      followup_notes = $18,
-      updated_by = $19,
+      appointment_id = $1,
+      disease_name = $2,
+      disease_category = $3,
+      diagnosis_date = $4,
+      diagnosis_method = $5,
+      species = $6,
+      breed = $7,
+      age_at_diagnosis = $8,
+      severity = $9,
+      outcome = $10,
+      treatment_duration_days = $11,
+      symptoms = $12,
+      region = $13,
+      is_contagious = $14,
+      transmission_method = $15,
+      notes = $16,
+      requires_followup = $17,
+      followup_type = $18,
+      next_followup_date = $19,
+      followup_notes = $20,
+      updated_by = $21,
       updated_at = CURRENT_TIMESTAMP
-    WHERE case_id = $20
+    WHERE case_id = $22
     RETURNING *
   `;
 
   const values = [
+    caseData.appointment_id || null,
     caseData.disease_name,
     caseData.disease_category || null,
     caseData.diagnosis_date,
+    caseData.diagnosis_method || null,
     caseData.species || null,
     caseData.breed || null,
     caseData.age_at_diagnosis || null,

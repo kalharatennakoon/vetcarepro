@@ -488,17 +488,16 @@ export const getOverdueBills = async () => {
 /**
  * Delete bill (soft delete - mark as cancelled)
  */
-export const deleteBill = async (billId, userId) => {
-  // Note: This is a soft delete. We update the status rather than actually deleting
+export const deleteBill = async (billId, userId, reason) => {
   const query = `
     UPDATE billing SET
       payment_status = 'cancelled',
-      notes = CONCAT(COALESCE(notes, ''), ' [CANCELLED]'),
+      notes = CONCAT(COALESCE(notes, ''), ' [CANCELLED: ', $3::text, ']'),
       updated_by = $1
     WHERE bill_id = $2
     RETURNING *
   `;
 
-  const result = await pool.query(query, [userId, billId]);
+  const result = await pool.query(query, [userId, billId, reason]);
   return result.rows[0];
 };

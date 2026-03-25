@@ -79,8 +79,8 @@ export const getOverdueBills = async () => {
 /**
  * Delete bill
  */
-export const deleteBill = async (id) => {
-  const response = await axios.delete(`${API_URL}/billing/${id}`);
+export const deleteBill = async (id, reason) => {
+  const response = await axios.delete(`${API_URL}/billing/${id}`, { data: { reason } });
   return response.data;
 };
 

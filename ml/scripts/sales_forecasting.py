@@ -504,7 +504,7 @@ class SalesForecastingModel(BaseMLModel):
                 result.append({
                     'date': row['ds'].strftime('%Y-%m-%d'),
                     'predicted_revenue': max(0, round(float(row['yhat']), 2)),
-                    'lower_bound': max(0, round(float(row['yhat_lower']), 2)),
+                    'lower_bound': round(float(row['yhat_lower']), 2),
                     'upper_bound': max(0, round(float(row['yhat_upper']), 2)),
                     'trend': round(float(row['trend']), 2),
                     'weekly_seasonality': round(float(row.get('weekly', 0)), 2),
@@ -517,9 +517,19 @@ class SalesForecastingModel(BaseMLModel):
             monthly_agg = df_result.groupby(df_result['date'].dt.to_period('M')).agg(
                 monthly_revenue=('predicted_revenue', 'sum'),
                 avg_daily_revenue=('predicted_revenue', 'mean'),
-                lower_bound=('lower_bound', 'sum'),
-                upper_bound=('upper_bound', 'sum')
             ).reset_index()
+
+            monthly_agg['monthly_revenue'] = pd.to_numeric(monthly_agg['monthly_revenue'], errors='coerce')
+            if self.monthly_summary is not None and len(self.monthly_summary) > 1:
+                hist_rev = pd.to_numeric(self.monthly_summary['monthly_revenue'], errors='coerce')
+                hist_mean = float(hist_rev.mean())
+                hist_std = float(hist_rev.std())
+                cv = (hist_std / hist_mean) if hist_mean > 0 else 0.20
+            else:
+                cv = 0.20
+            monthly_agg['lower_bound'] = (monthly_agg['monthly_revenue'] * (1 - cv)).clip(lower=0).round(2)
+            monthly_agg['upper_bound'] = (monthly_agg['monthly_revenue'] * (1 + cv)).round(2)
+            monthly_agg['monthly_revenue'] = monthly_agg['monthly_revenue'].round(2)
             monthly_agg['month'] = monthly_agg['date'].astype(str)
             monthly_agg = monthly_agg.drop(columns=['date'])
 

@@ -134,7 +134,8 @@ const BillingDetail = () => {
       unpaid: { bg: '#FEE2E2', color: '#991B1B', text: 'UNPAID' },
       partially_paid: { bg: '#FEF3C7', color: '#92400E', text: 'PARTIALLY PAID' },
       fully_paid: { bg: '#D1FAE5', color: '#065F46', text: 'FULLY PAID' },
-      overdue: { bg: '#FECACA', color: '#7F1D1D', text: 'OVERDUE' }
+      overdue: { bg: '#FECACA', color: '#7F1D1D', text: 'OVERDUE' },
+      cancelled: { bg: '#F3F4F6', color: '#6B7280', text: 'CANCELLED' }
     };
 
     const config = statusConfig[status] || statusConfig.unpaid;
@@ -275,7 +276,7 @@ const BillingDetail = () => {
             ← Back to Billing
           </button>
           <div style={styles.headerActions}>
-            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && !showPaymentForm && (
+            {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && bill.payment_status !== 'cancelled' && !showPaymentForm && (
               <button
                 onClick={() => {
                   setShowPaymentForm(true);
@@ -342,6 +343,8 @@ const BillingDetail = () => {
             <div style={{textAlign: 'right'}}>
               <h3 style={styles.sectionTitle}>Created By:</h3>
               <p style={styles.infoText}>{bill.created_by_name || 'N/A'}</p>
+              {bill.created_at && <p style={styles.infoText}><strong>Created:</strong> {formatDate(bill.created_at)}</p>}
+              {bill.updated_at && bill.updated_at !== bill.created_at && <p style={styles.infoText}><strong>Updated:</strong> {formatDate(bill.updated_at)}</p>}
             </div>
           </div>
 

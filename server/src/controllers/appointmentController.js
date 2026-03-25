@@ -31,7 +31,7 @@ export const getAppointments = async (req, res) => {
     if (status) filters.status = status;
     if (veterinarian_id) filters.veterinarian_id = parseInt(veterinarian_id);
     if (customer_id) filters.customer_id = parseInt(customer_id);
-    if (pet_id) filters.pet_id = parseInt(pet_id);
+    if (pet_id) filters.pet_id = pet_id;
     if (limit) filters.limit = parseInt(limit);
     if (offset) filters.offset = parseInt(offset);
 

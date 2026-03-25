@@ -14,6 +14,8 @@ const Billing = () => {
   const [stats, setStats] = useState({ total: 0, totalRevenue: 0, totalPaid: 0, totalPending: 0 });
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingCancelId, setPendingCancelId] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelSuccess, setCancelSuccess] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
@@ -28,32 +30,27 @@ const Billing = () => {
   const fetchBills = async () => {
     try {
       setLoading(true);
+
+      // Fetch filtered list for the table
       let response;
-      
       if (showOverdue) {
         response = await getOverdueBills();
-        setBills(response.data.bills);
       } else {
         const filters = {};
         if (search) filters.search = search;
         if (paymentStatus) filters.payment_status = paymentStatus;
-        
         response = await getBills(filters);
-        setBills(response.data.bills);
       }
-      
-      // Calculate stats
-      const totalRevenue = response.data.bills.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0);
-      const totalPaid = response.data.bills.reduce((sum, bill) => sum + parseFloat(bill.paid_amount || 0), 0);
-      const totalPending = response.data.bills.reduce((sum, bill) => sum + parseFloat(bill.balance_amount || 0), 0);
-      
-      setStats({
-        total: response.total || response.data.bills.length,
-        totalRevenue,
-        totalPaid,
-        totalPending
-      });
-      
+      setBills(response.data.bills);
+
+      // Fetch all bills (no filter) for stats — always reflects full picture
+      const allResponse = await getBills({});
+      const activeBills = allResponse.data.bills.filter(b => b.payment_status !== 'cancelled');
+      const totalRevenue = activeBills.reduce((sum, b) => sum + parseFloat(b.total_amount || 0), 0);
+      const totalPaid = activeBills.reduce((sum, b) => sum + parseFloat(b.paid_amount || 0), 0);
+      const totalPending = activeBills.reduce((sum, b) => sum + parseFloat(b.balance_amount || 0), 0);
+      setStats({ total: activeBills.length, totalRevenue, totalPaid, totalPending });
+
       setError('');
     } catch (err) {
       setError('Failed to load bills');
@@ -65,14 +62,19 @@ const Billing = () => {
 
   const handleDelete = (id) => {
     setPendingCancelId(id);
+    setCancelReason('');
     setShowCancelModal(true);
   };
 
   const confirmCancelBill = async () => {
+    if (!cancelReason) return;
     try {
-      await deleteBill(pendingCancelId);
+      await deleteBill(pendingCancelId, cancelReason);
       setShowCancelModal(false);
       setPendingCancelId(null);
+      setCancelReason('');
+      setCancelSuccess(true);
+      setTimeout(() => setCancelSuccess(false), 4000);
       fetchBills();
     } catch (err) {
       alert('Failed to cancel bill');
@@ -119,7 +121,8 @@ const Billing = () => {
       unpaid: { backgroundColor: '#FEE2E2', color: '#991B1B' },
       partially_paid: { backgroundColor: '#FEF3C7', color: '#92400E' },
       fully_paid: { backgroundColor: '#D1FAE5', color: '#065F46' },
-      overdue: { backgroundColor: '#FECACA', color: '#7F1D1D' }
+      overdue: { backgroundColor: '#FECACA', color: '#7F1D1D' },
+      cancelled: { backgroundColor: '#F3F4F6', color: '#6B7280' }
     };
 
     return (
@@ -214,6 +217,7 @@ const Billing = () => {
           <option value="unpaid">Unpaid</option>
           <option value="partially_paid">Partially Paid</option>
           <option value="fully_paid">Fully Paid</option>
+          <option value="cancelled">Cancelled</option>
         </select>
 
         <button 
@@ -232,6 +236,14 @@ const Billing = () => {
       {error && (
         <div style={styles.errorBox}>
           {error}
+        </div>
+      )}
+
+      {/* Cancel Success Notification */}
+      {cancelSuccess && (
+        <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.875rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <i className="fas fa-check-circle"></i>
+          Bill cancelled successfully.
         </div>
       )}
 
@@ -295,7 +307,7 @@ const Billing = () => {
                           >
                             View
                           </button>
-                          {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && (
+                          {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && bill.payment_status !== 'cancelled' && (
                             <button
                               onClick={() => navigate(`/billing/${bill.bill_id}`, { state: { openPaymentForm: true } })}
                               style={styles.payButton}
@@ -304,7 +316,7 @@ const Billing = () => {
                               Pay
                             </button>
                           )}
-                          {user?.role === 'admin' && (
+                          {user?.role === 'admin' && bill.payment_status !== 'cancelled' && (
                             <button
                               onClick={() => handleDelete(bill.bill_id)}
                               style={styles.deleteButton}
@@ -367,31 +379,49 @@ const Billing = () => {
         </>
       )}
       {showCancelModal && (
-        <div style={styles.modalOverlay} onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }}>
+        <div style={styles.modalOverlay} onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}>
           <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <h3 style={styles.modalTitle}>
                 <i className="fas fa-ban" style={{ marginRight: '0.5rem', color: '#d97706' }}></i>
                 Cancel Bill
               </h3>
-              <button onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }} style={styles.modalCloseButton}>
+              <button onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }} style={styles.modalCloseButton}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
             <div style={{ padding: '1.5rem' }}>
-              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+              <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
                 Are you sure you want to cancel this bill? This action cannot be undone.
               </p>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>
+                  Reason for cancellation <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <select
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '7px', border: '1px solid #d1d5db', fontSize: '0.875rem', color: '#374151', backgroundColor: '#fff' }}
+                >
+                  <option value="">Select a reason...</option>
+                  <option value="Duplicate bill">Duplicate bill</option>
+                  <option value="Billing error">Billing error</option>
+                  <option value="Customer request">Customer request</option>
+                  <option value="Service not rendered">Service not rendered</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button
-                  onClick={() => { setShowCancelModal(false); setPendingCancelId(null); }}
+                  onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}
                   style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
                 >
-                  Cancel
+                  Back
                 </button>
                 <button
                   onClick={confirmCancelBill}
-                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                  disabled={!cancelReason}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: cancelReason ? '#dc2626' : '#9ca3af', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: cancelReason ? 'pointer' : 'not-allowed' }}
                 >
                   <i className="fas fa-ban" style={{ marginRight: '0.4rem' }}></i>
                   Cancel Bill

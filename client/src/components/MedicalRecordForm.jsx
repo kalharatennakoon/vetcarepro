@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,7 +18,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
     pet_id: petId || '',
     appointment_id: '',
     veterinarian_id: '',
-    visit_date: new Date().toISOString().split('T')[0],
+    visit_date: localToday(),
     chief_complaint: '',
     symptoms: '',
     diagnosis: '',
@@ -46,6 +51,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   useEffect(() => {
     if (formData.pet_id) {
       fetchPetAppointments(formData.pet_id);
+    } else {
+      setAppointments([]);
     }
   }, [formData.pet_id]);
 
@@ -64,10 +71,15 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const fetchPetAppointments = async (petId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/appointments?pet_id=${petId}&status=completed`, {
+      const response = await axios.get(`${API_URL}/appointments?pet_id=${petId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAppointments(response.data.data.appointments || []);
+      const today = localToday();
+      const past = (response.data.data.appointments || []).filter(a =>
+        a.appointment_date <= today &&
+        !['cancelled', 'scheduled', 'no_show'].includes(a.status)
+      );
+      setAppointments(past);
     } catch (err) {
       console.error('Failed to fetch appointments:', err);
     }
@@ -123,9 +135,21 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'appointment_id') {
+      const selected = appointments.find(a => String(a.appointment_id) === String(value));
+      setFormData(prev => ({
+        ...prev,
+        appointment_id: value,
+        visit_date: selected ? selected.appointment_date.split('T')[0] : prev.visit_date,
+        veterinarian_id: selected ? String(selected.veterinarian_id) : prev.veterinarian_id
+      }));
+      setError('');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
+      ...(name === 'pet_id' ? { appointment_id: '' } : {})
     }));
     setError('');
   };
@@ -143,11 +167,35 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       setError('Visit date is required');
       return false;
     }
+    if (!formData.appointment_id) {
+      setError('Related Appointment is required');
+      return false;
+    }
+    if (!formData.chief_complaint.trim()) {
+      setError('Chief Complaint is required');
+      return false;
+    }
+    if (!formData.symptoms.trim()) {
+      setError('Symptoms are required');
+      return false;
+    }
     if (!formData.diagnosis.trim()) {
       setError('Diagnosis is required');
       return false;
     }
-    
+    if (!formData.treatment.trim()) {
+      setError('Treatment Provided is required');
+      return false;
+    }
+    if (!formData.prescription.trim()) {
+      setError('Prescription is required');
+      return false;
+    }
+    if (formData.follow_up_required && !formData.follow_up_date) {
+      setError('Follow-up Date is required when Follow-up Required is checked');
+      return false;
+    }
+
     // Validate vital signs if provided
     if (formData.temperature && (parseFloat(formData.temperature) < 35 || parseFloat(formData.temperature) > 43)) {
       setError('Temperature must be between 35°C and 43°C');
@@ -183,14 +231,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
       const recordData = {
         pet_id: formData.pet_id,
-        appointment_id: formData.appointment_id || null,
+        appointment_id: formData.appointment_id,
         veterinarian_id: parseInt(formData.veterinarian_id),
         visit_date: formData.visit_date,
-        chief_complaint: formData.chief_complaint.trim() || null,
-        symptoms: formData.symptoms.trim() || null,
+        chief_complaint: formData.chief_complaint.trim(),
+        symptoms: formData.symptoms.trim(),
         diagnosis: formData.diagnosis.trim(),
-        treatment: formData.treatment.trim() || null,
-        prescription: formData.prescription.trim() || null,
+        treatment: formData.treatment.trim(),
+        prescription: formData.prescription.trim(),
         lab_tests: formData.lab_tests.trim() || null,
         lab_results: formData.lab_results.trim() || null,
         weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -274,13 +322,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>
-                Veterinarian <span style={styles.required}>*</span>
+                Veterinarian
               </label>
               <select
                 name="veterinarian_id"
                 value={formData.veterinarian_id}
                 onChange={handleChange}
-                style={styles.input}
+                style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280' }}
+                disabled
                 required
               >
                 <option value="">Select Veterinarian</option>
@@ -290,36 +339,39 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
                   </option>
                 ))}
               </select>
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Auto-filled from selected appointment</span>
             </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>
-                Visit Date <span style={styles.required}>*</span>
+                Visit Date
               </label>
               <input
                 type="date"
                 name="visit_date"
                 value={formData.visit_date}
                 onChange={handleChange}
-                style={styles.input}
-                max={new Date().toISOString().split('T')[0]}
+                style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280' }}
+                max={localToday()}
+                disabled
                 required
               />
+              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Auto-filled from selected appointment</span>
             </div>
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Related Appointment</label>
+            <label style={styles.label}>Related Appointment <span style={{ color: '#dc2626' }}>*</span></label>
             <select
               name="appointment_id"
               value={formData.appointment_id}
               onChange={handleChange}
               style={styles.input}
             >
-              <option value="">No Related Appointment</option>
+              <option value="">{formData.pet_id ? (appointments.length === 0 ? 'No past appointments found' : 'Select an appointment...') : 'Select a pet first'}</option>
               {appointments.map(appt => (
                 <option key={appt.appointment_id} value={appt.appointment_id}>
-                  {new Date(appt.appointment_date).toLocaleDateString()} - {appt.reason}
+                  {new Date(appt.appointment_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} — {appt.reason} ({appt.status})
                 </option>
               ))}
             </select>
@@ -331,7 +383,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Clinical Findings</h3>
           
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Chief Complaint</label>
+            <label style={styles.label}>Chief Complaint <span style={{ color: '#dc2626' }}>*</span></label>
             <input
               type="text"
               name="chief_complaint"
@@ -343,7 +395,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Symptoms</label>
+            <label style={styles.label}>Symptoms <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="symptoms"
               value={formData.symptoms}
@@ -439,7 +491,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Treatment & Prescription</h3>
           
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Treatment Provided</label>
+            <label style={styles.label}>Treatment Provided <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="treatment"
               value={formData.treatment}
@@ -451,7 +503,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           </div>
 
           <div style={styles.inputGroup}>
-            <label style={styles.label}>Prescription</label>
+            <label style={styles.label}>Prescription <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea
               name="prescription"
               value={formData.prescription}
@@ -511,14 +563,14 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
           {formData.follow_up_required && (
             <div style={styles.inputGroup}>
-              <label style={styles.label}>Follow-up Date</label>
+              <label style={styles.label}>Follow-up Date <span style={styles.required}>*</span></label>
               <input
                 type="date"
                 name="follow_up_date"
                 value={formData.follow_up_date}
                 onChange={handleChange}
                 style={styles.input}
-                min={new Date().toISOString().split('T')[0]}
+                min={localToday()}
               />
             </div>
           )}

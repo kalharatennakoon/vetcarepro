@@ -7,7 +7,8 @@ import {
   assessOutbreakRisk,
   getSpeciesTrends,
   trainMLModel,
-  forecastDiseaseActivity
+  forecastDiseaseActivity,
+  getMLModelStatus
 } from '../services/diseaseCaseService';
 import {
   getSalesForecast,
@@ -60,6 +61,7 @@ const Analytics = () => {
   const [salesTrainSuccess, setSalesTrainSuccess] = useState(false);
   const [inventoryTraining, setInventoryTraining] = useState(false);
   const [inventoryTrainSuccess, setInventoryTrainSuccess] = useState(false);
+  const [modelStatus, setModelStatus] = useState(null);
 
   // Sales Forecast State
   const [salesData, setSalesData] = useState({
@@ -113,6 +115,10 @@ const Analytics = () => {
     if (activeTab === 'analytics') {
       fetchOutbreakRisk();
     }
+  }, []);
+
+  useEffect(() => {
+    getMLModelStatus().then(res => setModelStatus(res)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -256,6 +262,7 @@ const Analytics = () => {
       setError('');
       await trainMLModel();
       await fetchMLData();
+      getMLModelStatus().then(res => setModelStatus(res)).catch(() => {});
       setTrainSuccess(true);
       setTimeout(() => setTrainSuccess(false), 4000);
     } catch (err) {
@@ -272,6 +279,7 @@ const Analytics = () => {
     try {
       await trainSalesModel();
       await fetchSalesData();
+      getMLModelStatus().then(res => setModelStatus(res)).catch(() => {});
       setSalesTrainSuccess(true);
       setTimeout(() => setSalesTrainSuccess(false), 5000);
     } catch (err) {
@@ -288,6 +296,7 @@ const Analytics = () => {
     try {
       await trainInventoryModel();
       await fetchInventoryData();
+      getMLModelStatus().then(res => setModelStatus(res)).catch(() => {});
       setInventoryTrainSuccess(true);
       setTimeout(() => setInventoryTrainSuccess(false), 5000);
     } catch (err) {
@@ -407,55 +416,76 @@ const Analytics = () => {
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             {isAdmin && activeTab === 'analytics' && (
-              <button
-                onClick={handleTrainModel}
-                disabled={training}
-                style={{
-                  ...styles.primaryButton,
-                  backgroundColor: training ? '#9ca3af' : '#9333ea',
-                  cursor: training ? 'not-allowed' : 'pointer'
-                }}
-              >
-                {training ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>
-                    Training...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Retrain Model
-                  </>
-                )}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <button
+                  onClick={handleTrainModel}
+                  disabled={training}
+                  style={{
+                    ...styles.primaryButton,
+                    backgroundColor: training ? '#9ca3af' : '#9333ea',
+                    cursor: training ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {training ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>
+                      Training...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
+                      Retrain Model
+                    </>
+                  )}
+                </button>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                  {modelStatus?.models?.disease_prediction?.last_trained_at
+                    ? `Last trained: ${new Date(modelStatus.models.disease_prediction.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Never trained'}
+                </span>
+              </div>
             )}
             {isAdmin && activeTab === 'sales' && (
-              <button
-                onClick={handleTrainSalesModel}
-                disabled={salesTraining}
-                style={{
-                  ...styles.primaryButton,
-                  backgroundColor: salesTraining ? '#9ca3af' : '#3b82f6',
-                  cursor: salesTraining ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <i className={`fas ${salesTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
-                {salesTraining ? 'Training...' : 'Retrain Sales Model'}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <button
+                  onClick={handleTrainSalesModel}
+                  disabled={salesTraining}
+                  style={{
+                    ...styles.primaryButton,
+                    backgroundColor: salesTraining ? '#9ca3af' : '#3b82f6',
+                    cursor: salesTraining ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <i className={`fas ${salesTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                  {salesTraining ? 'Training...' : 'Retrain Sales Model'}
+                </button>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                  {modelStatus?.models?.sales_forecasting?.last_trained_at
+                    ? `Last trained: ${new Date(modelStatus.models.sales_forecasting.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Never trained'}
+                </span>
+              </div>
             )}
             {isAdmin && activeTab === 'inventory' && (
-              <button
-                onClick={handleTrainInventoryModel}
-                disabled={inventoryTraining}
-                style={{
-                  ...styles.primaryButton,
-                  backgroundColor: inventoryTraining ? '#9ca3af' : '#10b981',
-                  cursor: inventoryTraining ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <i className={`fas ${inventoryTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
-                {inventoryTraining ? 'Training...' : 'Retrain Inventory Model'}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                <button
+                  onClick={handleTrainInventoryModel}
+                  disabled={inventoryTraining}
+                  style={{
+                    ...styles.primaryButton,
+                    backgroundColor: inventoryTraining ? '#9ca3af' : '#10b981',
+                    cursor: inventoryTraining ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <i className={`fas ${inventoryTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                  {inventoryTraining ? 'Training...' : 'Retrain Inventory Model'}
+                </button>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                  {modelStatus?.models?.inventory_forecasting?.last_trained_at
+                    ? `Last trained: ${new Date(modelStatus.models.inventory_forecasting.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                    : 'Never trained'}
+                </span>
+              </div>
             )}
             {isVetOrAdmin && activeTab === 'cases' && (
               <button
@@ -1827,7 +1857,8 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     gap: '0.5rem',
-    marginTop: '1.5rem',
+    padding: '1rem',
+    borderTop: '1px solid #E5E7EB',
   },
   paginationButton: {
     backgroundColor: 'white',
@@ -1837,7 +1868,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
@@ -1849,7 +1880,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '600',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'pointer',
   },
   paginationButtonDisabled: {
@@ -1860,7 +1891,7 @@ const styles = {
     minWidth: '40px',
     fontSize: '0.875rem',
     fontWeight: '500',
-    borderRadius: '8px',
+    borderRadius: '6px',
     cursor: 'not-allowed',
   },
   paginationEllipsis: {
