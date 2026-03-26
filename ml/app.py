@@ -912,7 +912,7 @@ def forecast_inventory():
                 'error': 'item_id is required'
             }), 400
 
-        days = int(data.get('days', 30))
+        days = max(7, min(365, int(data.get('days', 30))))
         result = inventory_model.predict_item_demand(item_id=item_id, days=days)
 
         if 'error' in result:
