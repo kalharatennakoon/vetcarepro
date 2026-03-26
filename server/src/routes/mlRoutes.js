@@ -70,6 +70,16 @@ router.post('/disease/pet-risk', mlController.predictPetRisk);
 // @access  Private (vet + admin)
 router.post('/disease/cancer-risk', mlController.predictCancerRisk);
 
+// @route   POST /api/ml/disease/outbreak-risk
+// @desc    Assess disease activity risk based on recent cases
+// @access  Private
+router.post('/disease/outbreak-risk', mlController.assessOutbreakRisk);
+
+// @route   GET /api/ml/disease/forecast
+// @desc    Get monthly disease activity forecast
+// @access  Private
+router.get('/disease/forecast', mlController.getDiseaseForecast);
+
 // @route   GET /api/ml/disease/outbreak-trend
 // @desc    Project outbreak trend forward (?species=&days_ahead=90)
 // @access  Private (vet + admin)

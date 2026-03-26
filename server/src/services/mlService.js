@@ -305,6 +305,26 @@ const predictCancerRisk = async (params) => {
   }
 };
 
+const assessOutbreakRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/outbreak-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Outbreak risk assessment failed:', error.message);
+    throw new Error('Failed to assess outbreak risk');
+  }
+};
+
+const getDiseaseForecast = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/forecast', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Disease forecast failed:', error.message);
+    throw new Error('Failed to get disease forecast');
+  }
+};
+
 const getOutbreakTrend = async (params = {}) => {
   try {
     const response = await mlClient.get('/api/ml/disease/outbreak-trend', { params });
@@ -380,6 +400,8 @@ export {
   trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  assessOutbreakRisk,
+  getDiseaseForecast,
   predictPetRisk,
   predictCancerRisk,
   getOutbreakTrend,
