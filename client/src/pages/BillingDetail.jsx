@@ -444,7 +444,7 @@ const BillingDetail = () => {
                 Linked Appointment
               </h2>
               <button
-                onClick={() => navigate('/appointments', { state: { highlightAppointmentId: bill.appointment_id, appointmentDate: bill.appointment_date } })}
+                onClick={() => navigate('/appointments', { state: { highlightAppointmentId: bill.appointment_id, appointmentDate: bill.appointment_date, appointmentStatus: 'completed' } })}
                 style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
               >
                 View in Appointments

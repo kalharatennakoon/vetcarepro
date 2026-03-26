@@ -235,12 +235,19 @@ export const updateAppointmentStatus = async (appointmentId, status, updatedBy, 
   const query = `
     UPDATE appointments
     SET status = $1, updated_by = $2,
-        cancellation_reason = CASE WHEN $5 THEN $4 ELSE cancellation_reason END
+        cancellation_reason = CASE WHEN $5 THEN $4 ELSE cancellation_reason END,
+        started_at   = CASE WHEN $6 THEN NOW() ELSE started_at END,
+        completed_at = CASE WHEN $7 THEN NOW() ELSE completed_at END
     WHERE appointment_id = $3
     RETURNING *
   `;
 
-  const result = await pool.query(query, [status, updatedBy, appointmentId, cancellationReason, status === 'cancelled']);
+  const result = await pool.query(query, [
+    status, updatedBy, appointmentId, cancellationReason,
+    status === 'cancelled',
+    status === 'in_progress',
+    status === 'completed'
+  ]);
   return result.rows[0];
 };
 

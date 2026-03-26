@@ -65,6 +65,19 @@ const Appointments = () => {
   };
 
   // Helper functions - defined early to avoid hoisting issues
+
+  const formatActualDuration = (startedAt, completedAt) => {
+    if (!startedAt || !completedAt) return null;
+    const diffMs = new Date(completedAt) - new Date(startedAt);
+    if (diffMs <= 0) return null;
+    const totalMinutes = Math.round(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}m`;
+  };
+
   // Helper function to format date as YYYY-MM-DD without timezone conversion
   const formatDateLocal = (date) => {
     const year = date.getFullYear();
@@ -102,9 +115,10 @@ const Appointments = () => {
     } else if (location.state?.highlightAppointmentId) {
       const apptId = location.state.highlightAppointmentId;
       const apptDate = location.state.appointmentDate ? location.state.appointmentDate.split('T')[0] : '';
+      const apptStatus = location.state.appointmentStatus || '';
       const todayStr = formatDateLocal(new Date());
       setViewMode('list');
-      setListTab(apptDate && apptDate < todayStr ? 'past' : 'upcoming');
+      setListTab(apptDate && apptDate < todayStr || apptStatus === 'completed' || apptStatus === 'cancelled' ? 'past' : 'upcoming');
       setHighlightedApptId(apptId);
       window.history.replaceState({}, document.title);
     } else if (location.state?.viewDate) {
@@ -427,13 +441,13 @@ const Appointments = () => {
 
   const today = formatDateLocal(new Date());
   const upcomingAppointments = filteredAppointments
-    .filter(a => getISTDate(a.appointment_date) >= today)
+    .filter(a => getISTDate(a.appointment_date) >= today && a.status !== 'completed' && a.status !== 'cancelled')
     .sort((a, b) => {
       const d = new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
       return d !== 0 ? d : a.appointment_time.localeCompare(b.appointment_time);
     });
   const pastAppointments = filteredAppointments
-    .filter(a => getISTDate(a.appointment_date) < today)
+    .filter(a => getISTDate(a.appointment_date) < today || a.status === 'completed' || a.status === 'cancelled')
     .sort((a, b) => {
       const d = new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
       return d !== 0 ? d : b.appointment_time.localeCompare(a.appointment_time);
@@ -792,9 +806,15 @@ const Appointments = () => {
                             <span style={styles.infoValue}>{formatTime(appointment.appointment_time)}</span>
                           </div>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> Duration:</span>
+                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> {appointment.status === 'completed' ? 'Scheduled:' : 'Duration:'}</span>
                             <span style={styles.infoValue}>{appointment.duration_minutes} min</span>
                           </div>
+                          {appointment.status === 'completed' && appointment.started_at && appointment.completed_at && (
+                            <div style={styles.infoRow}>
+                              <span style={styles.infoLabel}><i className="fas fa-stopwatch"></i> Actual:</span>
+                              <span style={{ ...styles.infoValue, color: '#059669', fontWeight: 600 }}>{formatActualDuration(appointment.started_at, appointment.completed_at)}</span>
+                            </div>
+                          )}
                           <div style={styles.infoRow}>
                             <span style={styles.infoLabel}><i className="fas fa-clipboard"></i> Type:</span>
                             <span style={styles.infoValue}>{appointment.appointment_type}</span>
@@ -895,12 +915,15 @@ const Appointments = () => {
                     apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
                     { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
                     { icon: 'fa-clock', label: 'Time', value: formatTime(apptDetailModal.appointment_time) },
-                    { icon: 'fa-hourglass-half', label: 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                    { icon: 'fa-hourglass-half', label: apptDetailModal.status === 'completed' ? 'Scheduled' : 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                    apptDetailModal.status === 'completed' && apptDetailModal.started_at && apptDetailModal.completed_at
+                      ? { icon: 'fa-stopwatch', label: 'Actual', value: formatActualDuration(apptDetailModal.started_at, apptDetailModal.completed_at), highlight: true }
+                      : null,
                   ].filter(Boolean).map((row, i) => (
                     <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                       <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#9ca3af', fontSize: '0.8rem' }}></i>
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', minWidth: '80px' }}>{row.label}</span>
-                      <span style={{ fontSize: '0.875rem', color: '#111827', fontWeight: '500' }}>{row.value}</span>
+                      <span style={{ fontSize: '0.875rem', color: row.highlight ? '#059669' : '#111827', fontWeight: row.highlight ? 600 : 500 }}>{row.value}</span>
                     </div>
                   ))}
                   <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
@@ -975,7 +998,7 @@ const Appointments = () => {
                       onClick={() => {
                         const apptDate = getISTDate(apptDetailModal.appointment_date);
                         const todayStr = formatDateLocal(new Date());
-                        setListTab(apptDate >= todayStr ? 'upcoming' : 'past');
+                        setListTab(apptDate >= todayStr && apptDetailModal.status !== 'completed' && apptDetailModal.status !== 'cancelled' ? 'upcoming' : 'past');
                         setHighlightedApptId(apptDetailModal.appointment_id);
                         setApptDetailModal(null);
                         setShowDayModal(false);
