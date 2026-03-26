@@ -338,6 +338,8 @@ function SalesForecasting() {
                       onChange={(e) => setForecastPeriods(Number(e.target.value))}
                       style={styles.selectSm}
                     >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
                       <option value={30}>30 days</option>
                       <option value={60}>60 days</option>
                       <option value={90}>90 days</option>
