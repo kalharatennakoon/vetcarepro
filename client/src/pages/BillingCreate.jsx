@@ -40,7 +40,7 @@ const BillingCreate = () => {
 
   const [items, setItems] = useState([
     {
-      item_type: 'service',
+      item_type: 'inventory_item',
       item_id: null,
       item_name: '',
       quantity: 1,
@@ -99,7 +99,7 @@ const BillingCreate = () => {
 
   const addItem = () => {
     setItems([...items, {
-      item_type: 'service',
+      item_type: 'inventory_item',
       item_id: null,
       item_name: '',
       quantity: 1,
@@ -243,7 +243,7 @@ const BillingCreate = () => {
         <div style={styles.header}>
           <div>
             <h2 style={styles.title}>Create New Invoice</h2>
-            <p style={styles.subtitle}>Generate invoice for services or products</p>
+            <p style={styles.subtitle}>Generate invoice for retail purchases (accessories, pet food, products, etc.)</p>
           </div>
           <button 
             onClick={() => navigate('/billing')} 
@@ -337,9 +337,8 @@ const BillingCreate = () => {
                         onChange={(e) => updateItem(index, 'item_type', e.target.value)}
                         style={styles.input}
                       >
-                        <option value="consultation">Consultation</option>
-                        <option value="service">Service / Procedure</option>
                         <option value="inventory_item">Inventory Item</option>
+                        <option value="service">Other / Miscellaneous</option>
                       </select>
                     </div>
 

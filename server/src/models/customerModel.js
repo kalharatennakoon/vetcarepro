@@ -289,7 +289,7 @@ export const getCustomerCount = async () => {
 export const checkCustomerDeletability = async (customerId) => {
   const query = `
     SELECT
-      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1 AND a.status IN ('scheduled','confirmed','in_progress'))::int AS active_appointments,
+      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1 AND a.status IN ('confirmed','in_progress'))::int AS active_appointments,
       (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS total_appointments,
       (SELECT COUNT(*) FROM medical_records mr JOIN pets p ON mr.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS medical_records,
       (SELECT COUNT(*) FROM vaccinations v JOIN pets p ON v.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS vaccinations,

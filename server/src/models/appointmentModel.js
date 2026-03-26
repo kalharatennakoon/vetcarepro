@@ -124,7 +124,7 @@ export const createAppointment = async (appointmentData, createdBy) => {
     appointmentData.appointment_type,
     appointmentData.reason,
     appointmentData.estimated_cost || null,
-    appointmentData.status || 'scheduled',
+    appointmentData.status || 'confirmed',
     appointmentData.notes || null,
     createdBy
   ];
@@ -231,15 +231,16 @@ export const deleteAppointment = async (appointmentId) => {
 /**
  * Update appointment status
  */
-export const updateAppointmentStatus = async (appointmentId, status, updatedBy) => {
+export const updateAppointmentStatus = async (appointmentId, status, updatedBy, cancellationReason = null) => {
   const query = `
-    UPDATE appointments 
-    SET status = $1, updated_by = $2
+    UPDATE appointments
+    SET status = $1, updated_by = $2,
+        cancellation_reason = CASE WHEN $5 THEN $4 ELSE cancellation_reason END
     WHERE appointment_id = $3
     RETURNING *
   `;
 
-  const result = await pool.query(query, [status, updatedBy, appointmentId]);
+  const result = await pool.query(query, [status, updatedBy, appointmentId, cancellationReason, status === 'cancelled']);
   return result.rows[0];
 };
 

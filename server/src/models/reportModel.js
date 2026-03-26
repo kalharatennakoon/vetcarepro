@@ -110,7 +110,7 @@ class ReportModel {
       SELECT 
         DATE(a.appointment_date) as date,
         COUNT(*) as total_appointments,
-        COUNT(CASE WHEN a.status = 'scheduled' THEN 1 END) as scheduled,
+        COUNT(CASE WHEN a.status = 'confirmed' THEN 1 END) as confirmed,
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled,
         COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
@@ -349,7 +349,22 @@ class ReportModel {
    */
   static async getVeterinarianPerformance(startDate, endDate) {
     const query = `
-      SELECT 
+      WITH vet_bills AS (
+        SELECT DISTINCT ON (b.bill_id)
+          b.bill_id,
+          b.total_amount,
+          a.veterinarian_id
+        FROM billing b
+        JOIN appointments a ON (
+          (b.appointment_id IS NOT NULL AND b.appointment_id = a.appointment_id)
+          OR (b.appointment_id IS NULL AND b.customer_id = a.customer_id AND b.bill_date = a.appointment_date)
+        )
+        WHERE b.bill_date BETWEEN $1 AND $2
+          AND a.appointment_date BETWEEN $1 AND $2
+          AND a.veterinarian_id IS NOT NULL
+        ORDER BY b.bill_id, a.appointment_id
+      )
+      SELECT
         u.user_id,
         u.first_name || ' ' || u.last_name as veterinarian_name,
         u.role,
@@ -357,19 +372,18 @@ class ReportModel {
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_appointments,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_appointments,
         ROUND(
-          COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric / 
+          COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric /
           NULLIF(COUNT(*), 0) * 100, 2
         ) as completion_rate,
         COUNT(DISTINCT a.pet_id) as unique_patients,
         COUNT(DISTINCT mr.record_id) as medical_records_created,
-        COALESCE(SUM(b.total_amount), 0) as total_revenue_generated
+        COALESCE(SUM(vb.total_amount), 0) as total_revenue_generated
       FROM users u
-      LEFT JOIN appointments a ON u.user_id = a.veterinarian_id 
+      LEFT JOIN appointments a ON u.user_id = a.veterinarian_id
         AND a.appointment_date BETWEEN $1 AND $2
-      LEFT JOIN medical_records mr ON u.user_id = mr.created_by 
+      LEFT JOIN medical_records mr ON u.user_id = mr.created_by
         AND mr.visit_date BETWEEN $1 AND $2
-      LEFT JOIN billing b ON a.appointment_id = b.appointment_id
-        AND b.bill_date BETWEEN $1 AND $2
+      LEFT JOIN vet_bills vb ON vb.veterinarian_id = u.user_id
       WHERE u.role = 'veterinarian'
       GROUP BY u.user_id, u.first_name, u.last_name, u.role
       ORDER BY total_appointments DESC

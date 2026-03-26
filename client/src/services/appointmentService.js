@@ -62,7 +62,7 @@ export const deleteAppointment = async (id) => {
 /**
  * Update appointment status
  */
-export const updateAppointmentStatus = async (id, status) => {
-  const response = await axios.patch(`${API_URL}/appointments/${id}/status`, { status }, getAuthHeader());
+export const updateAppointmentStatus = async (id, status, cancellationReason = null) => {
+  const response = await axios.patch(`${API_URL}/appointments/${id}/status`, { status, cancellation_reason: cancellationReason }, getAuthHeader());
   return response.data;
 };

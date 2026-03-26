@@ -11,6 +11,8 @@ import {
 import { getCustomerById } from '../models/customerModel.js';
 import { getPetById } from '../models/petModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { createBill } from '../models/billingModel.js';
+import pool from '../config/database.js';
 
 /**
  * Appointment Controller
@@ -273,7 +275,7 @@ export const deleteAppointmentById = async (req, res) => {
 export const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, cancellation_reason } = req.body;
 
     // Check if appointment exists
     const existingAppointment = await getAppointmentById(id);
@@ -285,7 +287,7 @@ export const updateStatus = async (req, res) => {
     }
 
     // Validate status
-    const validStatuses = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'];
+    const validStatuses = ['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         status: 'error',
@@ -296,14 +298,50 @@ export const updateStatus = async (req, res) => {
     const updatedAppointment = await updateAppointmentStatus(
       id,
       status,
-      req.user.user_id
+      req.user.user_id,
+      cancellation_reason || null
     );
+
+    let draftBill = null;
+    if (status === 'completed') {
+      // Check if a bill already exists for this appointment
+      const existingBill = await pool.query(
+        'SELECT bill_id FROM billing WHERE appointment_id = $1 LIMIT 1',
+        [id]
+      );
+
+      if (existingBill.rows.length === 0) {
+        const appt = existingAppointment;
+        const typeLabel = (appt.appointment_type || 'service')
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, c => c.toUpperCase());
+
+        draftBill = await createBill({
+          customer_id: appt.customer_id,
+          appointment_id: id,
+          bill_date: new Date().toISOString().split('T')[0],
+          paid_amount: 0,
+          items: [{
+            item_type: appt.appointment_type === 'consultation' ? 'consultation' : 'service',
+            item_id: null,
+            item_name: typeLabel,
+            quantity: 1,
+            unit_price: 0,
+            discount: 0
+          }],
+          notes: `Auto-generated for appointment on ${appt.appointment_date}${appt.pet_name ? ` — ${appt.pet_name}` : ''}`
+        }, req.user.user_id);
+      } else {
+        draftBill = existingBill.rows[0];
+      }
+    }
 
     res.status(200).json({
       status: 'success',
       message: 'Appointment status updated successfully',
       data: {
-        appointment: updatedAppointment
+        appointment: updatedAppointment,
+        ...(draftBill && { bill_id: draftBill.bill_id })
       }
     });
   } catch (error) {

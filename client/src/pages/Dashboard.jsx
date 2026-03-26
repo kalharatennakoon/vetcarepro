@@ -109,33 +109,31 @@ const Dashboard = () => {
       // Detailed breakdown of today's appointments
       const completedToday = todayAppointments.filter(a => a.status === 'completed');
       const cancelledToday = todayAppointments.filter(a => a.status === 'cancelled');
-      const scheduledToday = todayAppointments.filter(a => a.status === 'scheduled' || a.status === 'checked_in');
-      
-      // Appointments that are overdue (past their scheduled time but still scheduled)
+      const scheduledToday = todayAppointments.filter(a => a.status === 'confirmed');
+
+      // Appointments that are overdue (past their scheduled time but still confirmed)
       const overdueToday = todayAppointments.filter(a => {
-        if (a.status !== 'scheduled' && a.status !== 'checked_in') return false;
+        if (a.status !== 'confirmed') return false;
         if (!a.appointment_time) return false;
-        
+
         const [hours, minutes] = a.appointment_time.split(':').map(Number);
         const appointmentTimeMinutes = hours * 60 + minutes;
-        
+
         return appointmentTimeMinutes < currentTime;
       });
 
       // Appointments still upcoming today
       const upcomingToday = todayAppointments.filter(a => {
-        if (a.status !== 'scheduled') return false;
+        if (a.status !== 'confirmed') return false;
         if (!a.appointment_time) return false;
-        
+
         const [hours, minutes] = a.appointment_time.split(':').map(Number);
         const appointmentTimeMinutes = hours * 60 + minutes;
-        
+
         return appointmentTimeMinutes > currentTime;
       });
 
-      const waitingAppointments = todayAppointments.filter(a => 
-        a.status === 'scheduled' || a.status === 'checked_in'
-      );
+      const waitingAppointments = todayAppointments.filter(a => a.status === 'confirmed');
       const urgentCases = todayAppointments.filter(a => 
         a.appointment_type?.toLowerCase().includes('emergency') || 
         a.appointment_type?.toLowerCase().includes('urgent')
@@ -200,7 +198,7 @@ const Dashboard = () => {
         followUpsCount: followUpCases.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         followUpCases,
-        vetWaiting: vetTodayAppts.filter(a => a.status === 'scheduled' || a.status === 'confirmed').length,
+        vetWaiting: vetTodayAppts.filter(a => a.status === 'confirmed').length,
         vetCompleted: vetTodayAppts.filter(a => a.status === 'completed').length,
         vetUrgent: vetTodayAppts.filter(a => a.appointment_type?.toLowerCase().includes('emergency')).length,
         vetScheduleToday: [...vetTodayAppts].sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || '')),
@@ -248,13 +246,12 @@ const Dashboard = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      'scheduled': { bg: '#e0e7ff', color: '#3730a3', text: 'Scheduled' },
-      'checked_in': { bg: '#d1fae5', color: '#065f46', text: 'Checked In' },
+      'confirmed': { bg: '#d1fae5', color: '#065f46', text: 'Confirmed' },
       'in_progress': { bg: '#dbeafe', color: '#1e3a8a', text: 'In Progress' },
       'completed': { bg: '#f3f4f6', color: '#374151', text: 'Completed' },
       'cancelled': { bg: '#fee2e2', color: '#991b1b', text: 'Cancelled' }
     };
-    return badges[status] || badges.scheduled;
+    return badges[status] || badges['confirmed'];
   };
 
   const handlePasswordChangeSuccess = async () => {

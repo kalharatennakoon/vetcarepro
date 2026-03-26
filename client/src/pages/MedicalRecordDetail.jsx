@@ -60,7 +60,7 @@ const MedicalRecordDetail = () => {
   };
 
   const getStatusColor = (status) => {
-    const colors = { scheduled: '#3b82f6', confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
+    const colors = { confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
     return colors[status] || '#6b7280';
   };
 

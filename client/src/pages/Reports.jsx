@@ -503,7 +503,7 @@ function Reports() {
         total: parseInt(item.total_appointments || 0),
         completed: parseInt(item.completed || 0),
         cancelled: parseInt(item.cancelled || 0),
-        scheduled: parseInt(item.scheduled || 0)
+        confirmed: parseInt(item.confirmed || 0)
       }));
 
       return (
@@ -517,7 +517,7 @@ function Reports() {
               <Tooltip />
               <Legend />
               <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
-              <Bar dataKey="scheduled" stackId="a" fill="#667eea" name="Scheduled" />
+              <Bar dataKey="confirmed" stackId="a" fill="#667eea" name="Confirmed" />
               <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>

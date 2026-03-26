@@ -91,7 +91,7 @@ const DiseaseCaseCreate = () => {
       const today = localToday();
       const past = (response.data.data.appointments || []).filter(a =>
         a.appointment_date <= today &&
-        !['cancelled', 'scheduled', 'no_show'].includes(a.status)
+        !['cancelled', 'no_show'].includes(a.status)
       );
       setAppointments(past);
     } catch (err) {
