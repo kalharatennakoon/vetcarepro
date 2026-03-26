@@ -36,6 +36,7 @@ const Appointments = () => {
   const [emailApptNote, setEmailApptNote] = useState('');
   const [emailApptSending, setEmailApptSending] = useState(false);
   const [pendingEmailApptId, setPendingEmailApptId] = useState(null);
+  const [highlightedApptId, setHighlightedApptId] = useState(null);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -120,6 +121,17 @@ const Appointments = () => {
     setPendingViewDate(null);
     setPendingViewApptId(null);
   }, [appointments, pendingViewDate]);
+
+  // Scroll to and briefly highlight the appointment when switching to list view
+  useEffect(() => {
+    if (!highlightedApptId || viewMode !== 'list') return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`appt-card-${highlightedApptId}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    const clearTimer = setTimeout(() => setHighlightedApptId(null), 3000);
+    return () => { clearTimeout(timer); clearTimeout(clearTimer); };
+  }, [highlightedApptId, viewMode]);
 
   const fetchAppointments = async () => {
     try {
@@ -738,7 +750,7 @@ const Appointments = () => {
                     ) : (
                       <div style={styles.cardsGrid}>
                         {tabAppointments.map((appointment) => (
-                        <div key={appointment.appointment_id} style={styles.card}>
+                        <div key={appointment.appointment_id} id={`appt-card-${appointment.appointment_id}`} style={{ ...styles.card, ...(highlightedApptId === appointment.appointment_id ? { outline: '2px solid #2563eb', boxShadow: '0 0 0 4px #dbeafe' } : {}) }}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
@@ -943,7 +955,15 @@ const Appointments = () => {
                       </button>
                     )}
                     <button
-                      onClick={() => { setApptDetailModal(null); setShowDayModal(false); setViewMode('list'); }}
+                      onClick={() => {
+                        const apptDate = getISTDate(apptDetailModal.appointment_date);
+                        const todayStr = formatDateLocal(new Date());
+                        setListTab(apptDate >= todayStr ? 'upcoming' : 'past');
+                        setHighlightedApptId(apptDetailModal.appointment_id);
+                        setApptDetailModal(null);
+                        setShowDayModal(false);
+                        setViewMode('list');
+                      }}
                       style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                     >
                       <i className="fas fa-list"></i> View in List
