@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { sendAppointmentConfirmationEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ const Appointments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedVet, setSelectedVet] = useState('');
+  const [selectedVet] = useState('');
   const [lastSearchQuery, setLastSearchQuery] = useState('');
   const [lastFilterStatus, setLastFilterStatus] = useState('');
   const [lastSelectedVet, setLastSelectedVet] = useState('');
@@ -38,9 +38,8 @@ const Appointments = () => {
   const [pendingEmailApptId, setPendingEmailApptId] = useState(null);
   const [highlightedApptId, setHighlightedApptId] = useState(null);
   
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
 
   const openEmailApptModal = (appointmentId) => {
@@ -399,10 +398,6 @@ const Appointments = () => {
     });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   if (showForm) {
     return (
@@ -815,8 +810,8 @@ const Appointments = () => {
                               <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
                             </button>
                           )}
-                          {/* Complete — confirmed or in_progress */}
-                          {(appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
+                          {/* Complete — in_progress only */}
+                          {appointment.status === 'in_progress' && (
                             <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')} style={styles.completeButton}>
                               <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
                             </button>
@@ -908,7 +903,7 @@ const Appointments = () => {
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                     {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'rescheduled') && (
                       <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'confirmed'); setApptDetailModal(null); }}
+                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'confirmed'); setApptDetailModal(null); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-check"></i> Confirm
@@ -916,15 +911,15 @@ const Appointments = () => {
                     )}
                     {apptDetailModal.status === 'confirmed' && (
                       <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress'); setApptDetailModal(null); }}
+                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress'); setApptDetailModal(null); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-play"></i> Start
                       </button>
                     )}
-                    {(apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'in_progress') && (
+                    {apptDetailModal.status === 'in_progress' && (
                       <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'completed'); setApptDetailModal(null); }}
+                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed'); setApptDetailModal(null); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-check-double"></i> Complete
@@ -951,7 +946,7 @@ const Appointments = () => {
                         onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
-                        <i className="fas fa-edit"></i> Edit
+                        <i className="fas fa-edit"></i> Edit/Reschedule
                       </button>
                     )}
                     <button
