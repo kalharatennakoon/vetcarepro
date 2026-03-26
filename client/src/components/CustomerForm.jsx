@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 import { createPet } from '../services/petService';
@@ -15,6 +15,7 @@ const SPECIES_LIST = [
 const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
   const [addPet, setAddPet] = useState(false);
   const [petData, setPetData] = useState({
     pet_name: '',
@@ -50,6 +51,12 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       loadCustomer();
     }
   }, [customerId]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const loadCustomer = async () => {
     try {
@@ -218,7 +225,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
 
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && (
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             {error}
           </div>
         )}

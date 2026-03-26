@@ -48,7 +48,9 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
   const fetchCustomers = async () => {
     try {
       const response = await getCustomers({});
-      setCustomers(response.data.customers || []);
+      const list = response.data.customers || [];
+      list.sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`));
+      setCustomers(list);
     } catch (err) {
       console.error('Failed to fetch customers:', err);
     }

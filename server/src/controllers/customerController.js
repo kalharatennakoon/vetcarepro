@@ -7,6 +7,8 @@ import {
   inactivateCustomer,
   hardDeleteCustomer,
   phoneExists,
+  emailExists,
+  nicExists,
   getCustomerCount
 } from '../models/customerModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
@@ -94,12 +96,14 @@ export const createNewCustomer = async (req, res) => {
   try {
     const customerData = req.body;
 
-    // Check if phone already exists
     if (await phoneExists(customerData.phone)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Phone number already exists'
-      });
+      return res.status(400).json({ status: 'error', message: 'A customer with this phone number already exists' });
+    }
+    if (await emailExists(customerData.email)) {
+      return res.status(400).json({ status: 'error', message: 'A customer with this email address already exists' });
+    }
+    if (await nicExists(customerData.nic)) {
+      return res.status(400).json({ status: 'error', message: 'A customer with this NIC already exists' });
     }
 
     const newCustomer = await createCustomer(customerData, req.user.user_id);
@@ -150,13 +154,19 @@ export const updateCustomerById = async (req, res) => {
       });
     }
 
-    // Check if phone is being changed and if it already exists
     if (customerData.phone && customerData.phone !== existingCustomer.phone) {
       if (await phoneExists(customerData.phone, id)) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'Phone number already exists'
-        });
+        return res.status(400).json({ status: 'error', message: 'A customer with this phone number already exists' });
+      }
+    }
+    if (customerData.email && customerData.email !== existingCustomer.email) {
+      if (await emailExists(customerData.email, id)) {
+        return res.status(400).json({ status: 'error', message: 'A customer with this email address already exists' });
+      }
+    }
+    if (customerData.nic && customerData.nic !== existingCustomer.nic) {
+      if (await nicExists(customerData.nic, id)) {
+        return res.status(400).json({ status: 'error', message: 'A customer with this NIC already exists' });
       }
     }
 

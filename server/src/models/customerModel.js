@@ -236,12 +236,40 @@ export const deleteCustomer = async (customerId) => {
 export const phoneExists = async (phone, excludeCustomerId = null) => {
   let query = 'SELECT 1 FROM customers WHERE phone = $1';
   const params = [phone];
-
   if (excludeCustomerId) {
     query += ' AND customer_id <> $2';
     params.push(excludeCustomerId);
   }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
 
+/**
+ * Check if email exists (only when a value is provided)
+ */
+export const emailExists = async (email, excludeCustomerId = null) => {
+  if (!email) return false;
+  let query = 'SELECT 1 FROM customers WHERE email = $1';
+  const params = [email];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
+ * Check if NIC exists (only when a value is provided)
+ */
+export const nicExists = async (nic, excludeCustomerId = null) => {
+  if (!nic) return false;
+  let query = 'SELECT 1 FROM customers WHERE nic = $1';
+  const params = [nic];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
   const result = await pool.query(query, params);
   return result.rows.length > 0;
 };
