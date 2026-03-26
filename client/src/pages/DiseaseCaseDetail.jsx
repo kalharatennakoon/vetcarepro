@@ -274,8 +274,8 @@ const DiseaseCaseDetail = () => {
         )}
 
         {deleteSuccess && (
-          <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999, backgroundColor: '#166534', color: '#fff', padding: '0.85rem 1.25rem', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.95rem', fontWeight: '500' }}>
-            <i className="fas fa-circle-check" style={{ fontSize: '1.1rem' }}></i>
+          <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #16a34a', borderLeft: '4px solid #16a34a', padding: '14px 16px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', fontWeight: '500', maxWidth: '380px' }}>
+            <i className="fas fa-circle-check" style={{ color: '#15803d', fontSize: '16px', flexShrink: 0 }}></i>
             Disease case deleted successfully.
           </div>
         )}
