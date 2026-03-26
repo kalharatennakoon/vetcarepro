@@ -378,7 +378,7 @@ const BillingDetail = () => {
                     <td style={styles.td}>{item.item_name}</td>
                     <td style={styles.td}>
                       <span style={styles.itemTypeBadge}>
-                        {item.item_type ? ({ consultation: 'Consultation', service: 'Service / Procedure', inventory_item: 'Inventory Item', vaccination: 'Inventory Item' }[item.item_type] || item.item_type) : '-'}
+                        {item.item_type === 'inventory_item' ? 'Inventory Item' : item.item_type === 'service' ? 'Service' : item.item_type || '-'}
                       </span>
                     </td>
                     <td style={styles.tdRight}>{item.quantity}</td>
@@ -434,6 +434,68 @@ const BillingDetail = () => {
             </div>
           )}
         </div>
+
+        {/* Linked Appointment (internal only — not printed) */}
+        {bill.appointment_id && (
+          <div style={styles.apptCard} className="no-print">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={styles.cardTitle}>
+                <i className="fas fa-calendar-check" style={{ marginRight: '8px', color: '#3B82F6' }}></i>
+                Linked Appointment
+              </h2>
+              <button
+                onClick={() => navigate('/appointments', { state: { highlightAppointmentId: bill.appointment_id, appointmentDate: bill.appointment_date } })}
+                style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+              >
+                View in Appointments
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+              <div>
+                <p style={styles.apptLabel}>Appointment ID</p>
+                <p style={styles.apptValue}>{bill.appointment_id}</p>
+              </div>
+              {bill.pet_name && (
+                <div>
+                  <p style={styles.apptLabel}>Pet</p>
+                  <p style={styles.apptValue}>{bill.pet_name}</p>
+                </div>
+              )}
+              {bill.appointment_type && (
+                <div>
+                  <p style={styles.apptLabel}>Type</p>
+                  <p style={{ ...styles.apptValue, textTransform: 'capitalize' }}>{bill.appointment_type.replace('_', ' ')}</p>
+                </div>
+              )}
+              {bill.appointment_date && (
+                <div>
+                  <p style={styles.apptLabel}>Date</p>
+                  <p style={styles.apptValue}>{new Date(bill.appointment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                </div>
+              )}
+              {bill.appointment_time && (
+                <div>
+                  <p style={styles.apptLabel}>Time</p>
+                  <p style={styles.apptValue}>
+                    {(() => {
+                      const [h, m] = bill.appointment_time.split(':');
+                      const hour = parseInt(h);
+                      const ampm = hour >= 12 ? 'PM' : 'AM';
+                      const hour12 = hour % 12 || 12;
+                      return `${hour12}:${m} ${ampm}`;
+                    })()}
+                  </p>
+                </div>
+              )}
+              {bill.veterinarian_name && (
+                <div>
+                  <p style={styles.apptLabel}>Veterinarian</p>
+                  <p style={styles.apptValue}>Dr. {bill.veterinarian_name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Payment Form */}
         {showPaymentForm && (
@@ -1005,6 +1067,27 @@ const styles = {
     fontSize: '14px',
     color: '#6B7280',
     margin: '0 0 20px 0'
+  },
+  apptCard: {
+    backgroundColor: '#EFF6FF',
+    border: '1px solid #BFDBFE',
+    padding: '24px 32px',
+    borderRadius: '12px',
+    marginBottom: '24px'
+  },
+  apptLabel: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    margin: '0 0 4px 0'
+  },
+  apptValue: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#1E3A8A',
+    margin: 0
   }
 };
 

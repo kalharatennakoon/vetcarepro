@@ -120,10 +120,18 @@ export const getBillById = async (billId) => {
            c.email as customer_email,
            c.phone as customer_phone,
            c.address as customer_address,
-           u.first_name || ' ' || u.last_name as created_by_name
+           u.first_name || ' ' || u.last_name as created_by_name,
+           a.appointment_type,
+           a.appointment_date,
+           a.appointment_time,
+           p.pet_name,
+           v.first_name || ' ' || v.last_name as veterinarian_name
     FROM billing b
     JOIN customers c ON b.customer_id = c.customer_id
     LEFT JOIN users u ON b.created_by = u.user_id
+    LEFT JOIN appointments a ON b.appointment_id = a.appointment_id
+    LEFT JOIN pets p ON a.pet_id = p.pet_id
+    LEFT JOIN users v ON a.veterinarian_id = v.user_id
     WHERE b.bill_id = $1
   `;
   

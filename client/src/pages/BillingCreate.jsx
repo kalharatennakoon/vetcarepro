@@ -1,20 +1,62 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createBill } from '../services/billingService';
 import { useNotification } from '../context/NotificationContext';
 import { getCustomers } from '../services/customerService';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 
+const SERVICE_TYPE_LABELS = {
+  consultation: 'Consultation',
+  checkup: 'General Checkup',
+  vaccination: 'Vaccination',
+  surgery: 'Surgery',
+  emergency: 'Emergency',
+  follow_up: 'Follow-up Visit',
+  service: 'Veterinary Service',
+};
+
 const BillingCreate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
-  
+
+  const appointmentData = location.state?.appointmentData || null;
+  const returnedCustomerId = location.state?.newCustomerId || null;
+
+  const APPT_TYPE_INVENTORY_HINT = {
+    consultation: { inv_category: 'pharmaceuticals',   inv_subcategory: 'Medicines' },
+    checkup:      { inv_category: 'pharmaceuticals',   inv_subcategory: 'Medicines' },
+    vaccination:  { inv_category: 'pharmaceuticals',   inv_subcategory: 'Vaccines' },
+    surgery:      { inv_category: 'surgical_clinical', inv_subcategory: '' },
+    emergency:    { inv_category: 'pharmaceuticals',   inv_subcategory: 'Medicines' },
+    follow_up:    { inv_category: 'pharmaceuticals',   inv_subcategory: 'Medicines' },
+  };
+
+  const RETAIL_CATEGORIES = ['accessories', 'pet_food_nutrition', 'pharmaceuticals', 'retail_otc', 'supplements'];
+
+  const getInitialServiceItem = (apptData) => {
+    if (!apptData) return null;
+    const label = SERVICE_TYPE_LABELS[apptData.appointment_type] || 'Veterinary Service';
+    const hint = APPT_TYPE_INVENTORY_HINT[apptData.appointment_type] || { inv_category: '', inv_subcategory: '' };
+    return {
+      item_type: 'inventory_item',
+      item_id: null,
+      item_name: label,
+      quantity: 1,
+      unit_price: 0,
+      discount: 0,
+      inv_category: hint.inv_category,
+      inv_subcategory: hint.inv_subcategory,
+    };
+  };
+
   const [formData, setFormData] = useState({
-    customer_id: '',
+    customer_id: appointmentData?.customer_id || '',
+    appointment_id: appointmentData?.appointment_id || null,
     bill_date: new Date().toISOString().split('T')[0],
     due_date: '',
     discount_percentage: 0,
@@ -38,8 +80,10 @@ const BillingCreate = () => {
     cleaning_maintenance:  'Cleaning & Maintenance Supplies',
   };
 
-  const [items, setItems] = useState([
-    {
+  const [items, setItems] = useState(() => {
+    const serviceItem = getInitialServiceItem(appointmentData);
+    if (serviceItem) return [serviceItem];
+    return [{
       item_type: 'inventory_item',
       item_id: null,
       item_name: '',
@@ -48,13 +92,20 @@ const BillingCreate = () => {
       discount: 0,
       inv_category: '',
       inv_subcategory: '',
-    }
-  ]);
+    }];
+  });
 
   useEffect(() => {
     fetchCustomers();
     fetchInventory();
   }, []);
+
+  useEffect(() => {
+    if (returnedCustomerId && customers.length > 0) {
+      setFormData(prev => ({ ...prev, customer_id: returnedCustomerId }));
+      window.history.replaceState({}, document.title);
+    }
+  }, [returnedCustomerId, customers]);
 
   const fetchCustomers = async () => {
     try {
@@ -76,7 +127,8 @@ const BillingCreate = () => {
 
   const getInvCategories = () => {
     const cats = [...new Set(inventoryItems.map(i => i.category).filter(Boolean))];
-    return cats.sort();
+    const filtered = appointmentData ? cats : cats.filter(c => RETAIL_CATEGORIES.includes(c));
+    return filtered.sort();
   };
 
   const getInvSubcategories = (category) => {
@@ -243,15 +295,41 @@ const BillingCreate = () => {
         <div style={styles.header}>
           <div>
             <h2 style={styles.title}>Create New Invoice</h2>
-            <p style={styles.subtitle}>Generate invoice for retail purchases (accessories, pet food, products, etc.)</p>
+            <p style={styles.subtitle}>
+              {appointmentData
+                ? 'Create invoice for completed appointment'
+                : 'Generate invoice for retail purchases (accessories, pet food, products, etc.)'}
+            </p>
           </div>
-          <button 
-            onClick={() => navigate('/billing')} 
+          <button
+            onClick={() => navigate('/billing')}
             style={styles.cancelButton}
           >
             Cancel
           </button>
         </div>
+
+        {/* Appointment context banner */}
+        {appointmentData && (
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.875rem 1rem', marginBottom: '1rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.875rem', color: '#1e40af' }}>
+            <span style={{ fontWeight: 600 }}>
+              <i className="fas fa-calendar-check" style={{ marginRight: '0.4rem' }}></i>
+              Appointment #{appointmentData.appointment_id}
+            </span>
+            {appointmentData.pet_name && (
+              <span><i className="fas fa-paw" style={{ marginRight: '0.3rem' }}></i>{appointmentData.pet_name}</span>
+            )}
+            {appointmentData.appointment_type && (
+              <span><i className="fas fa-stethoscope" style={{ marginRight: '0.3rem' }}></i>{SERVICE_TYPE_LABELS[appointmentData.appointment_type] || appointmentData.appointment_type}</span>
+            )}
+            {appointmentData.appointment_date && (
+              <span><i className="fas fa-clock" style={{ marginRight: '0.3rem' }}></i>{new Date(appointmentData.appointment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+            )}
+            {appointmentData.veterinarian_name && (
+              <span><i className="fas fa-user-md" style={{ marginRight: '0.3rem' }}></i>Dr. {appointmentData.veterinarian_name}</span>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
@@ -261,31 +339,44 @@ const BillingCreate = () => {
             
             <div style={styles.formRow}>
               <div style={styles.formGroup}>
-                <label style={styles.label}>Customer<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <select
-                  value={formData.customer_id}
-                  onChange={(e) => setFormData({...formData, customer_id: e.target.value})}
-                  style={styles.input}
-                  required
-                >
-                  <option value="">Select Customer</option>
-                  {customers.map(customer => (
-                    <option key={customer.customer_id} value={customer.customer_id}>
-                      {customer.first_name} {customer.last_name} - {customer.phone}
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ ...styles.label, marginBottom: 0 }}>Customer<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
+                  {!appointmentData && (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/customers/new', { state: { returnTo: '/billing/new' } })}
+                      style={{ background: 'none', border: 'none', color: '#3B82F6', fontSize: '0.78rem', cursor: 'pointer', padding: 0, fontWeight: '500' }}
+                    >
+                      <i className="fas fa-user-plus" style={{ marginRight: '0.3rem' }}></i>Register new customer
+                    </button>
+                  )}
+                </div>
+                {appointmentData ? (
+                  <div style={{ ...styles.input, backgroundColor: '#F3F4F6', color: '#374151', cursor: 'not-allowed' }}>
+                    {appointmentData.customer_first_name} {appointmentData.customer_last_name}
+                  </div>
+                ) : (
+                  <select
+                    value={formData.customer_id}
+                    onChange={(e) => setFormData({...formData, customer_id: e.target.value})}
+                    style={styles.input}
+                    required
+                  >
+                    <option value="">Select Customer</option>
+                    {customers.map(customer => (
+                      <option key={customer.customer_id} value={customer.customer_id}>
+                        {customer.first_name} {customer.last_name} - {customer.phone}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div style={styles.formGroup}>
                 <label style={styles.label}>Purchase Date<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <input
-                  type="date"
-                  value={formData.bill_date}
-                  onChange={(e) => setFormData({...formData, bill_date: e.target.value})}
-                  style={styles.input}
-                  required
-                />
+                <div style={{ ...styles.input, backgroundColor: '#F3F4F6', color: '#374151', cursor: 'not-allowed' }}>
+                  {formData.bill_date}
+                </div>
               </div>
             </div>
 
@@ -338,7 +429,7 @@ const BillingCreate = () => {
                         style={styles.input}
                       >
                         <option value="inventory_item">Inventory Item</option>
-                        <option value="service">Other / Miscellaneous</option>
+                        <option value="service">Other / Service</option>
                       </select>
                     </div>
 
@@ -448,6 +539,16 @@ const BillingCreate = () => {
                         {formatCurrency(item.quantity * item.unit_price - (item.discount || 0))}
                       </div>
                     </div>
+
+                    {!appointmentData && item.item_type === 'inventory_item' && item.item_id && (() => {
+                      const inv = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
+                      return inv?.requires_prescription ? (
+                        <div style={styles.rxWarning}>
+                          <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem', flexShrink: 0 }}></i>
+                          <strong>Prescription Required</strong> — This item cannot be sold without a valid veterinary prescription. Verify the prescription before proceeding.
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
 
                   {items.length > 1 && (
@@ -724,7 +825,19 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     color: '#1E40AF',
-    marginTop: '28px'
+  },
+  rxWarning: {
+    gridColumn: '1 / -1',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '0.4rem',
+    backgroundColor: '#FEF3C7',
+    border: '1px solid #F59E0B',
+    borderRadius: '6px',
+    padding: '0.6rem 0.875rem',
+    fontSize: '0.8rem',
+    color: '#92400E',
+    marginTop: '4px'
   },
   removeButton: {
     backgroundColor: '#DC2626',

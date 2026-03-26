@@ -99,6 +99,14 @@ const Appointments = () => {
       setEditingId(location.state.editAppointmentId);
       setShowForm(true);
       window.history.replaceState({}, document.title);
+    } else if (location.state?.highlightAppointmentId) {
+      const apptId = location.state.highlightAppointmentId;
+      const apptDate = location.state.appointmentDate ? location.state.appointmentDate.split('T')[0] : '';
+      const todayStr = formatDateLocal(new Date());
+      setViewMode('list');
+      setListTab(apptDate && apptDate < todayStr ? 'past' : 'upcoming');
+      setHighlightedApptId(apptId);
+      window.history.replaceState({}, document.title);
     } else if (location.state?.viewDate) {
       const dateStr = location.state.viewDate.split('T')[0];
       const aptDate = new Date(dateStr + 'T00:00:00');
@@ -127,11 +135,13 @@ const Appointments = () => {
     if (!highlightedApptId || viewMode !== 'list') return;
     const timer = setTimeout(() => {
       const el = document.getElementById(`appt-card-${highlightedApptId}`);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 80);
-    const clearTimer = setTimeout(() => setHighlightedApptId(null), 3000);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    const clearTimer = setTimeout(() => setHighlightedApptId(null), 3500);
     return () => { clearTimeout(timer); clearTimeout(clearTimer); };
-  }, [highlightedApptId, viewMode]);
+  }, [highlightedApptId, viewMode, appointments]);
 
   const fetchAppointments = async () => {
     try {
@@ -176,12 +186,12 @@ const Appointments = () => {
     setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' });
   };
 
-  const handleStatusUpdate = async (id, newStatus, cancellationReason = null) => {
+  const handleStatusUpdate = async (id, newStatus, cancellationReason = null, appointmentData = null) => {
     try {
-      const res = await updateAppointmentStatus(id, newStatus, cancellationReason);
+      await updateAppointmentStatus(id, newStatus, cancellationReason);
       fetchAppointments();
-      if (newStatus === 'completed' && res.data?.bill_id) {
-        navigate(`/billing/${res.data.bill_id}`);
+      if (newStatus === 'completed' && appointmentData) {
+        navigate('/billing/new', { state: { appointmentData } });
       } else {
         showSuccess(`Appointment ${newStatus.replace('_', ' ')}`);
       }
@@ -809,7 +819,16 @@ const Appointments = () => {
                           )}
                           {/* Complete — in_progress only */}
                           {appointment.status === 'in_progress' && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')} style={styles.completeButton}>
+                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
+                              appointment_id: appointment.appointment_id,
+                              customer_id: appointment.customer_id,
+                              customer_first_name: appointment.customer_first_name,
+                              customer_last_name: appointment.customer_last_name,
+                              pet_name: appointment.pet_name,
+                              appointment_type: appointment.appointment_type,
+                              appointment_date: appointment.appointment_date,
+                              veterinarian_name: appointment.veterinarian_name
+                            })} style={styles.completeButton}>
                               <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
                             </button>
                           )}
@@ -913,7 +932,16 @@ const Appointments = () => {
                     )}
                     {apptDetailModal.status === 'in_progress' && (
                       <button
-                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed'); setApptDetailModal(null); }}
+                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
+                          appointment_id: apptDetailModal.appointment_id,
+                          customer_id: apptDetailModal.customer_id,
+                          customer_first_name: apptDetailModal.customer_first_name,
+                          customer_last_name: apptDetailModal.customer_last_name,
+                          pet_name: apptDetailModal.pet_name,
+                          appointment_type: apptDetailModal.appointment_type,
+                          appointment_date: apptDetailModal.appointment_date,
+                          veterinarian_name: apptDetailModal.veterinarian_name
+                        }); setApptDetailModal(null); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-check-double"></i> Complete

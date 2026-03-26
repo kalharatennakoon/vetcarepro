@@ -174,12 +174,13 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
         if (cleanedData[field] === '') cleanedData[field] = null;
       });
 
+      let newCustomerId = null;
       if (isEditMode) {
         await axios.put(`${API_URL}/customers/${customerId}`, cleanedData, config);
         showSuccess('Customer details updated successfully');
       } else {
         const res = await axios.post(`${API_URL}/customers`, cleanedData, config);
-        const newCustomerId = res.data.data.customer.customer_id;
+        newCustomerId = res.data.data.customer.customer_id;
         if (addPet) {
           await createPet({
             customer_id: newCustomerId,
@@ -197,7 +198,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
         }
       }
 
-      onSuccess?.();
+      onSuccess?.(newCustomerId);
     } catch (err) {
       setError(err.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} customer`);
     } finally {

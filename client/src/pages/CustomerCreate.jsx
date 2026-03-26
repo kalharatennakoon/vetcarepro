@@ -1,16 +1,18 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import CustomerForm from '../components/CustomerForm';
 import Layout from '../components/Layout';
 
 const CustomerCreate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.state?.returnTo || '/customers';
 
-  const handleSuccess = () => {
-    navigate('/customers');
+  const handleSuccess = (newCustomerId) => {
+    navigate(returnTo, { state: { newCustomerId } });
   };
 
   const handleCancel = () => {
-    navigate('/customers');
+    navigate(returnTo);
   };
 
   return (
