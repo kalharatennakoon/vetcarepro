@@ -32,18 +32,34 @@ const Appointments = () => {
   const [showDeleteApptModal, setShowDeleteApptModal] = useState(false);
   const [pendingDeleteApptId, setPendingDeleteApptId] = useState(null);
   const [cancelApptModal, setCancelApptModal] = useState({ open: false, appointmentId: null, closeDetailModal: false });
+  const [emailApptModal, setEmailApptModal] = useState(false);
+  const [emailApptNote, setEmailApptNote] = useState('');
+  const [emailApptSending, setEmailApptSending] = useState(false);
+  const [pendingEmailApptId, setPendingEmailApptId] = useState(null);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const { showSuccess, showError } = useNotification();
 
-  const handleSendConfirmation = async (appointmentId) => {
+  const openEmailApptModal = (appointmentId) => {
+    setPendingEmailApptId(appointmentId);
+    setEmailApptNote('');
+    setEmailApptModal(true);
+  };
+
+  const handleSendConfirmation = async () => {
+    setEmailApptSending(true);
     try {
-      const res = await sendAppointmentConfirmationEmail(appointmentId);
+      const res = await sendAppointmentConfirmationEmail(pendingEmailApptId, emailApptNote);
       showSuccess(res.message || 'Confirmation email sent successfully');
+      setEmailApptModal(false);
+      setEmailApptNote('');
+      setPendingEmailApptId(null);
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to send confirmation email');
+    } finally {
+      setEmailApptSending(false);
     }
   };
 
@@ -804,7 +820,7 @@ const Appointments = () => {
                           )}
                           {/* Send Email — only before appointment is completed/cancelled */}
                           {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
-                            <button onClick={() => handleSendConfirmation(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
+                            <button onClick={() => openEmailApptModal(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
                               <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>Send Email
                             </button>
                           )}
@@ -912,7 +928,7 @@ const Appointments = () => {
                     )}
                     {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
                       <button
-                        onClick={() => { handleSendConfirmation(apptDetailModal.appointment_id); setApptDetailModal(null); }}
+                        onClick={() => { setApptDetailModal(null); openEmailApptModal(apptDetailModal.appointment_id); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-envelope"></i> Send Email
@@ -1096,6 +1112,55 @@ const Appointments = () => {
                     >
                       <i className="fas fa-times" style={{ marginRight: '0.4rem' }}></i>
                       Cancel Appointment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {emailApptModal && (
+            <div style={styles.modalOverlay} onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}>
+              <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#059669' }}></i>
+                    Send Appointment Confirmation
+                  </h3>
+                  <button onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                  <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
+                    Send a confirmation email to the customer for this appointment.
+                  </p>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.4rem' }}>
+                      Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    <textarea
+                      value={emailApptNote}
+                      onChange={(e) => setEmailApptNote(e.target.value)}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.875rem', minHeight: '90px', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
+                      placeholder="Add a note or message to include in the email..."
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                      disabled={emailApptSending}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendConfirmation}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#059669', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                      disabled={emailApptSending}
+                    >
+                      <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
+                      {emailApptSending ? 'Sending...' : 'Send Email'}
                     </button>
                   </div>
                 </div>

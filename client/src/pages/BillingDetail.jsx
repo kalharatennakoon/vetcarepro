@@ -20,7 +20,10 @@ const BillingDetail = () => {
     notes: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  
+  const [emailModal, setEmailModal] = useState(false);
+  const [emailNote, setEmailNote] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,11 +31,16 @@ const BillingDetail = () => {
   const { showSuccess, showError } = useNotification();
 
   const handleEmailInvoice = async () => {
+    setEmailSending(true);
     try {
-      const res = await sendInvoiceEmail(id);
+      const res = await sendInvoiceEmail(id, emailNote);
       showSuccess(res.message || 'Invoice sent successfully');
+      setEmailModal(false);
+      setEmailNote('');
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to send invoice email');
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -289,7 +297,7 @@ const BillingDetail = () => {
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
               <button
-                onClick={handleEmailInvoice}
+                onClick={() => setEmailModal(true)}
                 style={{ ...styles.printButton, backgroundColor: '#059669', borderColor: '#059669' }}
               >
                 <i className="fas fa-envelope"></i> Email Invoice
@@ -587,6 +595,43 @@ const BillingDetail = () => {
           })}</small>
         </div>
       </div>
+
+      {/* Email Invoice Modal */}
+      {emailModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalBox}>
+            <h3 style={styles.modalTitle}>Email Invoice</h3>
+            <p style={styles.modalSubtitle}>Send invoice #{bill.bill_number} to the customer.</p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
+              <textarea
+                value={emailNote}
+                onChange={(e) => setEmailNote(e.target.value)}
+                style={{ ...styles.input, minHeight: '90px', resize: 'vertical' }}
+                placeholder="Add a note or message to include in the email..."
+              />
+            </div>
+            <div style={styles.formActions}>
+              <button
+                type="button"
+                onClick={() => { setEmailModal(false); setEmailNote(''); }}
+                style={styles.cancelButton}
+                disabled={emailSending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEmailInvoice}
+                style={{ ...styles.submitButton, backgroundColor: '#059669' }}
+                disabled={emailSending}
+              >
+                {emailSending ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
@@ -932,6 +977,34 @@ const styles = {
   errorText: {
     color: '#DC2626',
     marginBottom: '20px'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  },
+  modalBox: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '32px',
+    width: '100%',
+    maxWidth: '480px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+  },
+  modalTitle: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#1F2937',
+    margin: '0 0 6px 0'
+  },
+  modalSubtitle: {
+    fontSize: '14px',
+    color: '#6B7280',
+    margin: '0 0 20px 0'
   }
 };
 

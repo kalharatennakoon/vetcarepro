@@ -278,7 +278,7 @@ const BillingCreate = () => {
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Invoice Date<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
+                <label style={styles.label}>Purchase Date<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
                 <input
                   type="date"
                   value={formData.bill_date}

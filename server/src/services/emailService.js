@@ -62,7 +62,7 @@ const baseTemplate = (bodyContent) => `
 </html>
 `;
 
-export const sendAppointmentConfirmation = async ({ to, customerName, petName, appointmentDate, appointmentTime, vetName, reason }) => {
+export const sendAppointmentConfirmation = async ({ to, customerName, petName, appointmentDate, appointmentTime, vetName, reason, note }) => {
   const transporter = createTransporter();
 
   const html = baseTemplate(`
@@ -77,6 +77,7 @@ export const sendAppointmentConfirmation = async ({ to, customerName, petName, a
       ${reason ? `<tr><td>Reason</td><td>${reason}</td></tr>` : ''}
     </table>
     <p>Please arrive 10 minutes before your scheduled time. If you need to reschedule or cancel, contact us at least 24 hours in advance.</p>
+    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong><br>${note}</p></div>` : ''}
     <p style="color:#6b7280; font-size:13px;">If you have any questions, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
   `);
 
@@ -88,7 +89,7 @@ export const sendAppointmentConfirmation = async ({ to, customerName, petName, a
   });
 };
 
-export const sendBillEmail = async ({ to, customerName, billId, billDate, items, totalAmount, paidAmount, balanceAmount, paymentStatus }) => {
+export const sendBillEmail = async ({ to, customerName, billId, billDate, items, totalAmount, paidAmount, balanceAmount, paymentStatus, note }) => {
   const transporter = createTransporter();
 
   const itemRows = items.map(item =>
@@ -123,6 +124,7 @@ export const sendBillEmail = async ({ to, customerName, billId, billDate, items,
       <tr><td>Amount Paid</td><td>Rs. ${parseFloat(paidAmount || 0).toFixed(2)}</td></tr>
       <tr><td>Balance Due</td><td style="color:${parseFloat(balanceAmount) > 0 ? '#ef4444' : '#16a34a'}">Rs. ${parseFloat(balanceAmount || 0).toFixed(2)}</td></tr>
     </table>
+    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong><br>${note}</p></div>` : ''}
     <p style="color:#6b7280; font-size:13px;">For any billing queries, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
   `);
 
