@@ -316,7 +316,7 @@ const Billing = () => {
                               Pay
                             </button>
                           )}
-                          {user?.role === 'admin' && bill.payment_status !== 'cancelled' && (
+                          {user?.role === 'admin' && bill.payment_status === 'unpaid' && (
                             <button
                               onClick={() => handleDelete(bill.bill_id)}
                               style={styles.deleteButton}

@@ -500,7 +500,7 @@ export const deleteBill = async (billId, userId, reason) => {
   const query = `
     UPDATE billing SET
       payment_status = 'cancelled',
-      notes = CONCAT(COALESCE(notes, ''), ' [CANCELLED: ', $3::text, ']'),
+      cancellation_reason = $3,
       updated_by = $1
     WHERE bill_id = $2
     RETURNING *

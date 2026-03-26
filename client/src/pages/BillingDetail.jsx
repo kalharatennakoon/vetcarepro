@@ -435,6 +435,20 @@ const BillingDetail = () => {
           )}
         </div>
 
+        {/* Cancellation Reason (internal only — not printed) */}
+        {bill.payment_status === 'cancelled' && (
+          <div style={styles.cancelCard} className="no-print">
+            <h2 style={{ ...styles.cardTitle, color: '#991B1B' }}>
+              <i className="fas fa-ban" style={{ marginRight: '8px' }}></i>
+              Invoice Cancelled
+            </h2>
+            <div style={{ fontSize: '14px', color: '#374151', marginTop: '8px' }}>
+              <span style={{ fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>Reason: </span>
+              <span>{bill.cancellation_reason}</span>
+            </div>
+          </div>
+        )}
+
         {/* Linked Appointment (internal only — not printed) */}
         {bill.appointment_id && (
           <div style={styles.apptCard} className="no-print">
@@ -1067,6 +1081,13 @@ const styles = {
     fontSize: '14px',
     color: '#6B7280',
     margin: '0 0 20px 0'
+  },
+  cancelCard: {
+    backgroundColor: '#FEF2F2',
+    border: '1px solid #FECACA',
+    padding: '20px 32px',
+    borderRadius: '12px',
+    marginBottom: '24px'
   },
   apptCard: {
     backgroundColor: '#EFF6FF',
