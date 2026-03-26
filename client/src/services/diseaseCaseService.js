@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api/ml';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:3000/api/ml';
 
 /**
  * Get auth header with JWT token
@@ -148,7 +148,8 @@ export const getRecentDiseaseCases = async (days = 30, limit = 10) => {
 export const predictDiseaseCategory = async (data) => {
   const response = await axios.post(
     `${ML_API_URL}/disease/predict`,
-    data
+    data,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -159,7 +160,8 @@ export const predictDiseaseCategory = async (data) => {
 export const assessOutbreakRisk = async (filters = {}) => {
   const response = await axios.post(
     `${ML_API_URL}/disease/outbreak-risk`,
-    filters
+    filters,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -171,7 +173,7 @@ export const forecastDiseaseActivity = async ({ periods = 12, species = null, di
   const params = { periods };
   if (species) params.species = species;
   if (disease_category) params.disease_category = disease_category;
-  const response = await axios.get(`${ML_API_URL}/disease/forecast`, { params });
+  const response = await axios.get(`${ML_API_URL}/disease/forecast`, { params, ...getAuthHeader() });
   return response.data;
 };
 
@@ -180,7 +182,8 @@ export const forecastDiseaseActivity = async ({ periods = 12, species = null, di
  */
 export const analyzeDiseasePatterns = async () => {
   const response = await axios.get(
-    `${ML_API_URL}/disease/patterns`
+    `${ML_API_URL}/disease/patterns`,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -189,11 +192,10 @@ export const analyzeDiseasePatterns = async () => {
  * Get species trends
  */
 export const getSpeciesTrends = async (species = null) => {
-  const url = species 
+  const url = species
     ? `${ML_API_URL}/disease/trends?species=${species}`
     : `${ML_API_URL}/disease/trends`;
-  
-  const response = await axios.get(url);
+  const response = await axios.get(url, getAuthHeader());
   return response.data;
 };
 
@@ -202,7 +204,8 @@ export const getSpeciesTrends = async (species = null) => {
  */
 export const getGeographicDistribution = async () => {
   const response = await axios.get(
-    `${ML_API_URL}/disease/geographic`
+    `${ML_API_URL}/disease/geographic`,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -210,9 +213,10 @@ export const getGeographicDistribution = async () => {
 /**
  * Get ML model status
  */
-export const  getMLModelStatus = async () => {
+export const getMLModelStatus = async () => {
   const response = await axios.get(
-    `${ML_API_URL}/models/status`
+    `${ML_API_URL}/models/status`,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -282,7 +286,8 @@ export const trainMLModel = async () => {
  */
 export const getMLHealth = async () => {
   const response = await axios.get(
-    `${ML_API_URL}/health`
+    `${ML_API_URL}/health`,
+    getAuthHeader()
   );
   return response.data;
 };
@@ -292,7 +297,8 @@ export const getMLHealth = async () => {
  */
 export const testMLDatabase = async () => {
   const response = await axios.get(
-    `${ML_API_URL}/test/db-connection`
+    `${ML_API_URL}/test/db-connection`,
+    getAuthHeader()
   );
   return response.data;
 };

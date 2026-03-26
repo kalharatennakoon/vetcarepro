@@ -420,7 +420,7 @@ def assess_outbreak_risk():
         species = data.get('species')
         disease_category = data.get('disease_category')
         region = data.get('region')
-        days_lookback = int(data.get('days_lookback', 30))
+        days_lookback = max(1, min(365, int(data.get('days_lookback', 30))))
 
         # Assess risk
         risk_assessment = disease_model.predict_outbreak_risk(
