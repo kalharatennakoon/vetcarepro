@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const canManageInventory = user?.role === 'admin';
   const [inventory, setInventory] = useState([]);
@@ -16,7 +17,8 @@ const Inventory = () => {
     category: '',
     subCategory: '',
     search: '',
-    isActive: ''
+    isActive: '',
+    supplier: location.state?.filterSupplier || ''
   });
   const [lowStockCount, setLowStockCount] = useState(0);
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -95,6 +97,9 @@ const Inventory = () => {
     return [...new Set(source.map(i => i.sub_category).filter(Boolean))].sort();
   };
 
+  const getSupplierOptions = () =>
+    [...new Set(allItems.map(i => i.supplier).filter(Boolean))].sort();
+
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({
@@ -134,9 +139,8 @@ const Inventory = () => {
     else if (alertFilter === 'outOfStock') base = outOfStockItems;
     else base = inventory;
 
-    if (filters.subCategory) {
-      return base.filter(i => i.sub_category === filters.subCategory);
-    }
+    if (filters.subCategory) base = base.filter(i => i.sub_category === filters.subCategory);
+    if (filters.supplier) base = base.filter(i => i.supplier === filters.supplier);
     return base;
   };
 
@@ -378,6 +382,20 @@ const Inventory = () => {
           <option value={true}>Active</option>
           <option value={false}>Inactive</option>
         </select>
+        {canManageInventory && (
+          <select
+            name="supplier"
+            value={filters.supplier}
+            onChange={handleFilterChange}
+            style={styles.filterSelect}
+            disabled={getSupplierOptions().length === 0}
+          >
+            <option value="">All Suppliers</option>
+            {getSupplierOptions().map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Active Filter Indicator */}

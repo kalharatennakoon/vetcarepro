@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import '../styles/Welcome.css';
 
 const Welcome = () => {
@@ -12,6 +13,7 @@ const Welcome = () => {
 const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
+  const { showSuccess } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -22,6 +24,7 @@ const [showPassword, setShowPassword] = useState(false);
     const result = await login(email, password);
 
     if (result.success) {
+      showSuccess(`Welcome back, ${result.user.first_name}!`);
       navigate('/dashboard');
     } else {
       setError(result.message || 'Login failed. Please check your credentials.');

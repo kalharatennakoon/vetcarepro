@@ -57,6 +57,7 @@ import mlRoutes from './routes/mlRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import labReportRoutes from './routes/labReportRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 // API Routes
 app.get('/api', (req, res) => {
@@ -98,6 +99,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/lab-reports', labReportRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/search', searchRoutes);
 
 // 404 handler
 app.use((req, res) => {

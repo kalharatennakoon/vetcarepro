@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import UniversalSearch from '../components/UniversalSearch';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -311,6 +312,27 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
+            {/* Universal Search — all roles */}
+            <div style={{
+              background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
+              border: '1px solid #bfdbfe',
+              borderRadius: '14px',
+              padding: '20px 24px',
+              marginBottom: '24px',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.08)'
+            }}>
+              <div style={{ marginBottom: '10px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                  {user?.role === 'veterinarian'
+                    ? 'Search across customers, pets, appointments & medical records'
+                    : user?.role === 'admin'
+                    ? 'Search across customers, pets, appointments, billing, inventory, medical records, staff & suppliers'
+                    : 'Search across customers, pets, appointments, billing & inventory'}
+                </p>
+              </div>
+              <UniversalSearch />
+            </div>
+
             {/* Stats Cards */}
             <div style={styles.statsGrid}>
               {user?.role === 'admin' ? (
