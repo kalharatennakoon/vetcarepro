@@ -14,7 +14,7 @@ const getAuthHeaders = () => ({
 export const getSalesForecast = async (period = 30) => {
   const response = await axios.get(
     `${ML_API_URL}/sales/forecast`,
-    { params: { periods: period } }
+    { params: { periods: period }, ...getAuthHeaders() }
   );
   return response.data;
 };
@@ -24,7 +24,7 @@ export const getSalesForecast = async (period = 30) => {
  */
 export const getSalesTrends = async (months) => {
   const params = months ? `?months=${months}` : '';
-  const response = await axios.get(`${ML_API_URL}/sales/trends${params}`);
+  const response = await axios.get(`${ML_API_URL}/sales/trends${params}`, getAuthHeaders());
   return response.data;
 };
 
@@ -36,7 +36,8 @@ export const getSalesTrends = async (months) => {
 export const getInventoryForecast = async (days = 30, itemId = null) => {
   const response = await axios.post(
     `${ML_API_URL}/inventory/forecast`,
-    { days, item_id: itemId }
+    { days, item_id: itemId },
+    getAuthHeaders()
   );
   return response.data;
 };
@@ -46,7 +47,7 @@ export const getInventoryForecast = async (days = 30, itemId = null) => {
  */
 export const getReorderSuggestions = async (days) => {
   const params = days ? `?days=${days}` : '';
-  const response = await axios.get(`${ML_API_URL}/inventory/reorder-suggestions${params}`);
+  const response = await axios.get(`${ML_API_URL}/inventory/reorder-suggestions${params}`, getAuthHeaders());
   return response.data;
 };
 

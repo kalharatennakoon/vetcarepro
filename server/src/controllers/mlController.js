@@ -319,7 +319,7 @@ const forecastInventory = async (req, res) => {
  */
 const getReorderSuggestions = async (req, res) => {
   try {
-    const result = await mlService.getReorderSuggestions();
+    const result = await mlService.getReorderSuggestions(req.query);
     res.json(result);
   } catch (error) {
     console.error('Get reorder suggestions error:', error);

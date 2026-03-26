@@ -944,7 +944,7 @@ def get_reorder_suggestions():
             }), 503
 
         days = request.args.get('days', 30, type=int)
-        days = max(7, min(60, days))
+        days = max(7, min(365, days))
         result = inventory_model.get_reorder_recommendations(days=days)
 
         if 'error' in result:

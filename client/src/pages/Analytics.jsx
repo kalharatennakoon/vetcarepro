@@ -1326,6 +1326,7 @@ const Analytics = () => {
                         <option value={30}>30 days</option>
                         <option value={60}>60 days</option>
                         <option value={90}>90 days</option>
+                        <option value={365}>1 year</option>
                       </select>
                     </div>
                     <button onClick={fetchSalesData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1458,6 +1459,8 @@ const Analytics = () => {
                         <option value={14}>14 days</option>
                         <option value={30}>30 days</option>
                         <option value={60}>60 days</option>
+                        <option value={90}>90 days</option>
+                        <option value={365}>1 year</option>
                       </select>
                     </div>
                     <button onClick={fetchInventoryData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
