@@ -108,6 +108,42 @@ const getDiseaseTrends = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Assess disease activity risk
+ * @route   POST /api/ml/disease/outbreak-risk
+ * @access  Private
+ */
+const assessOutbreakRisk = async (req, res) => {
+  try {
+    const result = await mlService.assessOutbreakRisk(req.body);
+    res.json(result);
+  } catch (error) {
+    console.error('Assess outbreak risk error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+/**
+ * @desc    Get disease activity forecast
+ * @route   GET /api/ml/disease/forecast
+ * @access  Private
+ */
+const getDiseaseForecast = async (req, res) => {
+  try {
+    const result = await mlService.getDiseaseForecast(req.query);
+    res.json(result);
+  } catch (error) {
+    console.error('Get disease forecast error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 // ============================================
 // Sales Forecasting Controllers (Phase 3)
 // ============================================
@@ -283,7 +319,7 @@ const forecastInventory = async (req, res) => {
  */
 const getReorderSuggestions = async (req, res) => {
   try {
-    const result = await mlService.getReorderSuggestions();
+    const result = await mlService.getReorderSuggestions(req.query);
     res.json(result);
   } catch (error) {
     console.error('Get reorder suggestions error:', error);
@@ -463,6 +499,8 @@ export {
   trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  assessOutbreakRisk,
+  getDiseaseForecast,
   predictPetRisk,
   predictCancerRisk,
   getOutbreakTrend,

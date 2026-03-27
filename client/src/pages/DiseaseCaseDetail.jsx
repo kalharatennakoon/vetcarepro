@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getDiseaseCaseById, deleteDiseaseCase } from '../services/diseaseCaseService';
+import { getDiseaseCaseById, deleteDiseaseCase, updateDiseaseCase, getCaseFollowups, recordFollowup } from '../services/diseaseCaseService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport } from '../services/labReportService';
 import { getAppointmentById } from '../services/appointmentService';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,11 @@ const DiseaseCaseDetail = () => {
   const [diseaseCase, setDiseaseCase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -26,6 +31,15 @@ const DiseaseCaseDetail = () => {
   const [apptModal, setApptModal] = useState(null);
   const [apptModalLoading, setApptModalLoading] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [followups, setFollowups] = useState([]);
+  const [followupsLoading, setFollowupsLoading] = useState(false);
+  const [showFollowupForm, setShowFollowupForm] = useState(false);
+  const [followupForm, setFollowupForm] = useState({ visit_date: new Date().toISOString().split('T')[0], notes: '', next_followup_date: '' });
+  const [followupSubmitting, setFollowupSubmitting] = useState(false);
+  const [followupError, setFollowupError] = useState('');
+  const [followupSuccess, setFollowupSuccess] = useState('');
+  const [markingRecovered, setMarkingRecovered] = useState(false);
+  const [showRecoverModal, setShowRecoverModal] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -36,6 +50,7 @@ const DiseaseCaseDetail = () => {
 
   useEffect(() => {
     fetchDiseaseCase();
+    fetchFollowups();
   }, [id]);
 
   const fetchDiseaseCase = async () => {
@@ -84,6 +99,66 @@ const DiseaseCaseDetail = () => {
       console.error('Failed to load lab reports', err);
     } finally {
       setLabReportsLoading(false);
+    }
+  };
+
+  const fetchFollowups = async () => {
+    try {
+      setFollowupsLoading(true);
+      const response = await getCaseFollowups(id);
+      setFollowups(response.data.followups || []);
+    } catch (err) {
+      console.error('Failed to load followups:', err);
+    } finally {
+      setFollowupsLoading(false);
+    }
+  };
+
+  const handleRecordFollowup = async (e) => {
+    e.preventDefault();
+    if (!followupForm.notes.trim()) { setFollowupError('Please enter visit notes'); return; }
+    try {
+      setFollowupSubmitting(true);
+      setFollowupError('');
+      await recordFollowup(id, {
+        visit_date: followupForm.visit_date,
+        notes: followupForm.notes.trim(),
+        next_followup_date: followupForm.next_followup_date || null
+      });
+      setFollowupSuccess('Follow-up visit recorded successfully');
+      setShowFollowupForm(false);
+      setFollowupForm({ visit_date: new Date().toISOString().split('T')[0], notes: '', next_followup_date: '' });
+      fetchFollowups();
+      fetchDiseaseCase();
+      setTimeout(() => setFollowupSuccess(''), 4000);
+    } catch (err) {
+      setFollowupError(err.response?.data?.message || 'Failed to record follow-up visit');
+    } finally {
+      setFollowupSubmitting(false);
+    }
+  };
+
+  const handleMarkRecovered = () => {
+    setShowRecoverModal(true);
+  };
+
+  const confirmMarkRecovered = async () => {
+    setShowRecoverModal(false);
+    try {
+      setMarkingRecovered(true);
+      await updateDiseaseCase(id, {
+        ...diseaseCase,
+        outcome: 'recovered',
+        requires_followup: false,
+        next_followup_date: null,
+        followup_notes: null,
+        followup_type: null
+      });
+      fetchDiseaseCase();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update case status');
+    } finally {
+      setMarkingRecovered(false);
     }
   };
 
@@ -176,7 +251,7 @@ const DiseaseCaseDetail = () => {
   };
 
   const getApptStatusColor = (status) => {
-    const colors = { scheduled: '#3b82f6', confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
+    const colors = { confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
     return colors[status] || '#6b7280';
   };
 
@@ -214,7 +289,7 @@ const DiseaseCaseDetail = () => {
     return (
       <Layout>
         <div style={styles.container}>
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>
@@ -242,6 +317,12 @@ const DiseaseCaseDetail = () => {
             <p style={styles.subtitle}>
               <i className="fas fa-hashtag" style={{ marginRight: '0.3rem', fontSize: '0.85rem' }}></i>
               Case ID: CSE-{String(diseaseCase.case_id).padStart(4, '0')}
+              {diseaseCase.created_by_name && (
+                <span style={{ marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid #d1d5db' }}>
+                  <i className="fas fa-user-doctor" style={{ marginRight: '0.35rem' }}></i>
+                  Recorded by Dr. {diseaseCase.created_by_name}
+                </span>
+              )}
             </p>
           </div>
           <div style={styles.actions}>
@@ -274,8 +355,8 @@ const DiseaseCaseDetail = () => {
         )}
 
         {deleteSuccess && (
-          <div style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999, backgroundColor: '#166534', color: '#fff', padding: '0.85rem 1.25rem', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.18)', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.95rem', fontWeight: '500' }}>
-            <i className="fas fa-circle-check" style={{ fontSize: '1.1rem' }}></i>
+          <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #16a34a', borderLeft: '4px solid #16a34a', padding: '14px 16px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', fontWeight: '500', maxWidth: '380px' }}>
+            <i className="fas fa-circle-check" style={{ color: '#15803d', fontSize: '16px', flexShrink: 0 }}></i>
             Disease case deleted successfully.
           </div>
         )}
@@ -416,6 +497,18 @@ const DiseaseCaseDetail = () => {
                     >
                       <i className="fas fa-calendar-check" style={{ marginRight: '0.35rem', fontSize: '0.8rem' }}></i>
                       {diseaseCase.appointment_id}
+                    </span>
+                  </div>
+                )}
+                {diseaseCase.medical_record_id && (
+                  <div style={styles.infoItem}>
+                    <span style={styles.label}>Medical Record</span>
+                    <span
+                      onClick={() => navigate(`/medical-records/${diseaseCase.medical_record_id}`)}
+                      style={{ ...styles.value, color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}
+                    >
+                      <i className="fas fa-file-medical" style={{ marginRight: '0.35rem', fontSize: '0.8rem' }}></i>
+                      MRC-{String(diseaseCase.medical_record_id).padStart(4, '0')}
                     </span>
                   </div>
                 )}
@@ -608,7 +701,7 @@ const DiseaseCaseDetail = () => {
                     <div style={styles.timelineLine}></div>
                   </div>
                   <div style={styles.timelineContent}>
-                    <span style={styles.timelineLabel}>Record Created</span>
+                    <span style={styles.timelineLabel}>Medical Record Created</span>
                     <span style={styles.timelineValue}>{formatDate(diseaseCase.created_at)}</span>
                     {diseaseCase.created_by_name && (
                       <span style={styles.timelineMeta}>
@@ -658,63 +751,227 @@ const DiseaseCaseDetail = () => {
             )}
 
             {/* Follow-up Monitoring */}
-            {diseaseCase.requires_followup && (
+            {(diseaseCase.requires_followup || followups.length > 0 || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
               <div style={{ ...styles.card, borderTop: '4px solid #f59e0b' }}>
-                <h2 style={styles.cardTitle}>
-                  <i className="fas fa-calendar-check" style={{ ...styles.cardTitleIcon, color: '#f59e0b' }}></i>
-                  Follow-up Monitoring
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {diseaseCase.followup_type && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>
-                        <i className="fas fa-tag" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
-                        Type
-                      </span>
-                      <span style={{ ...styles.value, textTransform: 'capitalize' }}>
-                        {diseaseCase.followup_type.replace(/_/g, ' ')}
-                      </span>
-                    </div>
-                  )}
-                  {diseaseCase.next_followup_date && (
-                    <div style={styles.detailRow}>
-                      <span style={styles.detailLabel}>
-                        <i className="fas fa-calendar-alt" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
-                        Next Follow-up
-                      </span>
-                      <span style={{
-                        ...styles.value,
-                        color: new Date(diseaseCase.next_followup_date) < new Date() ? '#dc2626' : '#111827',
-                        fontWeight: '600'
-                      }}>
-                        {formatDate(diseaseCase.next_followup_date)}
-                        {new Date(diseaseCase.next_followup_date) < new Date() && (
-                          <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: '#dc2626' }}>
-                            <i className="fas fa-circle-exclamation" style={{ marginRight: '0.2rem' }}></i>
-                            Overdue
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {diseaseCase.followup_notes && (
-                    <div>
-                      <span style={{ ...styles.detailLabel, display: 'block', marginBottom: '0.35rem' }}>
-                        <i className="fas fa-notes-medical" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
-                        Instructions
-                      </span>
-                      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.6rem 0.75rem', fontSize: '0.85rem', color: '#374151', lineHeight: '1.5' }}>
-                        {diseaseCase.followup_notes}
-                      </div>
-                    </div>
+                {/* Card header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid #f3f4f6' }}>
+                  <h2 style={{ ...styles.cardTitle, margin: 0, paddingBottom: 0, borderBottom: 'none' }}>
+                    <i className="fas fa-calendar-check" style={{ ...styles.cardTitleIcon, color: '#f59e0b' }}></i>
+                    Follow-up Monitoring
+                  </h2>
+                  {isVetOrAdmin && (diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
+                    <button
+                      onClick={() => { setShowFollowupForm(v => !v); setFollowupError(''); }}
+                      style={{ padding: '0.35rem 0.8rem', backgroundColor: showFollowupForm ? '#f3f4f6' : '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    >
+                      <i className={`fas fa-${showFollowupForm ? 'minus' : 'plus'}`}></i>
+                      {showFollowupForm ? 'Cancel' : 'Record Visit'}
+                    </button>
                   )}
                 </div>
+
+                {/* Active follow-up status */}
+                {(diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
+                    {diseaseCase.followup_type && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>
+                          <i className="fas fa-tag" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                          Type
+                        </span>
+                        <span style={{ ...styles.value, textTransform: 'capitalize' }}>
+                          {diseaseCase.followup_type.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    )}
+                    {diseaseCase.next_followup_date && (
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailLabel}>
+                          <i className="fas fa-calendar-alt" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                          Next Follow-up
+                        </span>
+                        <span style={{ ...styles.value, color: new Date(diseaseCase.next_followup_date) < new Date() ? '#dc2626' : '#111827', fontWeight: '600' }}>
+                          {formatDate(diseaseCase.next_followup_date)}
+                          {new Date(diseaseCase.next_followup_date) < new Date() && (
+                            <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: '#dc2626' }}>
+                              <i className="fas fa-circle-exclamation" style={{ marginRight: '0.2rem' }}></i>
+                              Overdue
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {diseaseCase.followup_notes && (
+                      <div>
+                        <span style={{ ...styles.detailLabel, display: 'block', marginBottom: '0.35rem' }}>
+                          <i className="fas fa-notes-medical" style={{ marginRight: '0.35rem', color: '#6b7280' }}></i>
+                          Instructions
+                        </span>
+                        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.6rem 0.75rem', fontSize: '0.85rem', color: '#374151', lineHeight: '1.5' }}>
+                          {diseaseCase.followup_notes}
+                        </div>
+                      </div>
+                    )}
+                    {isVetOrAdmin && (
+                      <button
+                        onClick={handleMarkRecovered}
+                        disabled={markingRecovered}
+                        style={{ marginTop: '0.25rem', padding: '0.45rem 0.9rem', backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: markingRecovered ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: markingRecovered ? 0.6 : 1 }}
+                      >
+                        <i className={`fas fa-${markingRecovered ? 'circle-notch fa-spin' : 'circle-check'}`}></i>
+                        {markingRecovered ? 'Updating...' : 'Mark as Recovered'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Record visit form */}
+                {showFollowupForm && isVetOrAdmin && (diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
+                  <form onSubmit={handleRecordFollowup} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Record Follow-up Visit</p>
+                    {followupError && (
+                      <div style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.5rem 0.75rem', fontSize: '0.82rem' }}>
+                        {followupError}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: '600', color: '#374151' }}>Visit Date <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input
+                        type="date"
+                        value={followupForm.visit_date}
+                        onChange={e => setFollowupForm(prev => ({ ...prev, visit_date: e.target.value }))}
+                        style={{ padding: '0.5rem 0.65rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: '600', color: '#374151' }}>Visit Notes <span style={{ color: '#dc2626' }}>*</span></label>
+                      <textarea
+                        value={followupForm.notes}
+                        onChange={e => setFollowupForm(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Observations, treatment updates, patient condition..."
+                        rows={3}
+                        style={{ padding: '0.5rem 0.65rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                        required
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: '600', color: '#374151' }}>
+                        Next Follow-up Date
+                        <span style={{ fontWeight: '400', color: '#9ca3af', marginLeft: '0.35rem' }}>(leave blank to close follow-up)</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={followupForm.next_followup_date}
+                        onChange={e => setFollowupForm(prev => ({ ...prev, next_followup_date: e.target.value }))}
+                        min={new Date().toISOString().split('T')[0]}
+                        style={{ padding: '0.5rem 0.65rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={followupSubmitting}
+                      style={{ padding: '0.5rem 1rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.875rem', fontWeight: '600', cursor: followupSubmitting ? 'not-allowed' : 'pointer', opacity: followupSubmitting ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'center' }}
+                    >
+                      <i className={`fas fa-${followupSubmitting ? 'circle-notch fa-spin' : 'floppy-disk'}`}></i>
+                      {followupSubmitting ? 'Saving...' : 'Save Visit Record'}
+                    </button>
+                  </form>
+                )}
+
+                {/* Success message */}
+                {followupSuccess && (
+                  <div style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.5rem 0.75rem', fontSize: '0.85rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <i className="fas fa-circle-check"></i>
+                    {followupSuccess}
+                  </div>
+                )}
+
+                {/* Visit history */}
+                {followupsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af', fontSize: '0.85rem' }}>
+                    <i className="fas fa-circle-notch fa-spin" style={{ marginRight: '0.4rem' }}></i>Loading history...
+                  </div>
+                ) : followups.length > 0 && (
+                  <div>
+                    <p style={{ margin: '0 0 0.6rem', fontSize: '0.75rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Visit History ({followups.length})
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {followups.map((fu, idx) => (
+                        <div key={fu.followup_id} style={{ background: idx === 0 ? '#fffbeb' : '#f9fafb', border: `1px solid ${idx === 0 ? '#fde68a' : '#e5e7eb'}`, borderRadius: '8px', padding: '0.75rem 0.9rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#111827' }}>
+                              <i className="fas fa-calendar" style={{ marginRight: '0.35rem', color: '#f59e0b' }}></i>
+                              {formatDate(fu.visit_date)}
+                            </span>
+                            {idx === 0 && (
+                              <span style={{ fontSize: '0.68rem', background: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontWeight: '700' }}>LATEST</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '0.4rem' }}>
+                            <i className="fas fa-user-doctor" style={{ marginRight: '0.3rem' }}></i>
+                            Dr. {fu.recorded_by_name || 'Unknown'}
+                          </div>
+                          <p style={{ margin: '0 0 0.4rem', fontSize: '0.85rem', color: '#374151', lineHeight: '1.5' }}>{fu.notes}</p>
+                          {fu.next_followup_date ? (
+                            <div style={{ fontSize: '0.78rem', color: '#2563eb' }}>
+                              <i className="fas fa-arrow-right" style={{ marginRight: '0.3rem' }}></i>
+                              Next scheduled: {formatDate(fu.next_followup_date)}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.78rem', color: '#6b7280', fontStyle: 'italic' }}>
+                              <i className="fas fa-check-circle" style={{ marginRight: '0.3rem', color: '#16a34a' }}></i>
+                              No further follow-up scheduled
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
           </div>
         </div>
       </div>
+
+      {showRecoverModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowRecoverModal(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>
+                <i className="fas fa-circle-check" style={{ marginRight: '0.5rem', color: '#16a34a' }}></i>
+                Mark as Recovered
+              </h3>
+              <button onClick={() => setShowRecoverModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Mark this case as recovered? Follow-up monitoring will be stopped.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowRecoverModal(false)}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmMarkRecovered}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#16a34a', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-circle-check" style={{ marginRight: '0.4rem' }}></i>
+                  Mark as Recovered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteLabReportModal.open && (
         <div style={styles.modalOverlay} onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}>

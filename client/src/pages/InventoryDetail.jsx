@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
@@ -14,6 +14,11 @@ const InventoryDetail = () => {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityChange, setQuantityChange] = useState('');
   const [quantityOperation, setQuantityOperation] = useState('add'); // 'add' or 'subtract'
@@ -120,7 +125,7 @@ const InventoryDetail = () => {
     return (
       <Layout>
         <div style={styles.container}>
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <p style={styles.errorText}>{error || 'Item not found'}</p>
           </div>
           <div style={styles.backLinkContainer}>
@@ -157,7 +162,7 @@ const InventoryDetail = () => {
               >
                 Update Quantity
               </button>
-              {isAdmin ? (
+              {isAdmin && (
                 <Link
                   to={`/inventory/${id}/edit`}
                   style={styles.editButton}
@@ -166,13 +171,8 @@ const InventoryDetail = () => {
                 >
                   Edit
                 </Link>
-              ) : (
-                <div title="Only admins can edit inventory items" style={styles.disabledButton}>
-                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
-                  Edit
-                </div>
               )}
-              {isAdmin ? (
+              {isAdmin && (
                 <button
                   onClick={handleDelete}
                   style={styles.deleteButton}
@@ -181,20 +181,15 @@ const InventoryDetail = () => {
                 >
                   Delete
                 </button>
-              ) : (
-                <div title="Only admins can delete inventory items" style={styles.disabledButton}>
-                  <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
-                  Delete
-                </div>
               )}
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div style={styles.gridContainer}>
+        <div style={isAdmin ? styles.gridContainer : { ...styles.gridContainer, gridTemplateColumns: '1fr' }}>
           {/* Left Column - Main Details */}
-          <div style={styles.leftColumn}>
+          <div style={isAdmin ? styles.leftColumn : { ...styles.leftColumn, gridColumn: 'unset' }}>
             {/* Basic Information */}
             <div style={styles.card}>
               <h2 style={styles.cardTitle}>Basic Information</h2>
@@ -287,11 +282,11 @@ const InventoryDetail = () => {
                     {formatCurrency(item.selling_price)}
                   </dd>
                 </div>
-                {item.markup_percentage && (
+                {isAdmin && item.unit_cost && item.selling_price && (
                   <div>
                     <dt style={styles.detailLabel}>Markup</dt>
                     <dd style={styles.markupValue}>
-                      {parseFloat(item.markup_percentage).toFixed(2)}%
+                      {(((parseFloat(item.selling_price) - parseFloat(item.unit_cost)) / parseFloat(item.unit_cost)) * 100).toFixed(2)}%
                     </dd>
                   </div>
                 )}
@@ -336,60 +331,62 @@ const InventoryDetail = () => {
             </div>
           </div>
 
-          {/* Right Column - Supplier & Metadata */}
-          <div style={styles.rightColumn}>
-            {/* Supplier Information */}
-            {(item.supplier || item.supplier_contact) && (
+          {/* Right Column - Supplier & Metadata (admin only) */}
+          {isAdmin && (
+            <div style={styles.rightColumn}>
+              {/* Supplier Information */}
+              {(item.supplier || item.supplier_contact) && (
+                <div style={styles.card}>
+                  <h2 style={styles.sideCardTitle}>Supplier</h2>
+                  <dl style={styles.sideDetailList}>
+                    {item.supplier && (
+                      <div>
+                        <dt style={styles.detailLabel}>Name</dt>
+                        <dd style={styles.detailValue}>{item.supplier}</dd>
+                      </div>
+                    )}
+                    {item.supplier_contact && (
+                      <div>
+                        <dt style={styles.detailLabel}>Contact</dt>
+                        <dd style={styles.detailValue}>{item.supplier_contact}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              )}
+
+              {/* Record Information */}
               <div style={styles.card}>
-                <h2 style={styles.sideCardTitle}>Supplier</h2>
+                <h2 style={styles.sideCardTitle}>Record Information</h2>
                 <dl style={styles.sideDetailList}>
-                  {item.supplier && (
+                  {item.created_by_name && (
                     <div>
-                      <dt style={styles.detailLabel}>Name</dt>
-                      <dd style={styles.detailValue}>{item.supplier}</dd>
+                      <dt style={styles.detailLabel}>Created By</dt>
+                      <dd style={styles.detailValue}>{item.created_by_name}</dd>
                     </div>
                   )}
-                  {item.supplier_contact && (
+                  {item.created_at && (
                     <div>
-                      <dt style={styles.detailLabel}>Contact</dt>
-                      <dd style={styles.detailValue}>{item.supplier_contact}</dd>
+                      <dt style={styles.detailLabel}>Created At</dt>
+                      <dd style={styles.detailValue}>{formatDate(item.created_at)}</dd>
+                    </div>
+                  )}
+                  {item.updated_by_name && (
+                    <div>
+                      <dt style={styles.detailLabel}>Last Updated By</dt>
+                      <dd style={styles.detailValue}>{item.updated_by_name}</dd>
+                    </div>
+                  )}
+                  {item.updated_at && (
+                    <div>
+                      <dt style={styles.detailLabel}>Last Updated</dt>
+                      <dd style={styles.detailValue}>{formatDate(item.updated_at)}</dd>
                     </div>
                   )}
                 </dl>
               </div>
-            )}
-
-            {/* Record Information */}
-            <div style={styles.card}>
-              <h2 style={styles.sideCardTitle}>Record Information</h2>
-              <dl style={styles.sideDetailList}>
-                {item.created_by_name && (
-                  <div>
-                    <dt style={styles.detailLabel}>Created By</dt>
-                    <dd style={styles.detailValue}>{item.created_by_name}</dd>
-                  </div>
-                )}
-                {item.created_at && (
-                  <div>
-                    <dt style={styles.detailLabel}>Created At</dt>
-                    <dd style={styles.detailValue}>{formatDate(item.created_at)}</dd>
-                  </div>
-                )}
-                {item.updated_by_name && (
-                  <div>
-                    <dt style={styles.detailLabel}>Last Updated By</dt>
-                    <dd style={styles.detailValue}>{item.updated_by_name}</dd>
-                  </div>
-                )}
-                {item.updated_at && (
-                  <div>
-                    <dt style={styles.detailLabel}>Last Updated</dt>
-                    <dd style={styles.detailValue}>{formatDate(item.updated_at)}</dd>
-                  </div>
-                )}
-              </dl>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Quantity Update Modal */}

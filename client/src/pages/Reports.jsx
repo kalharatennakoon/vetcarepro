@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reportService from '../services/reportService';
 import Layout from '../components/Layout';
@@ -7,6 +7,7 @@ import {
   Line,
   BarChart,
   Bar,
+  ComposedChart,
   PieChart,
   Pie,
   AreaChart,
@@ -24,6 +25,11 @@ function Reports() {
   useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('financial');
   useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [reportType, setReportType] = useState('revenue-summary');
@@ -289,7 +295,7 @@ function Reports() {
 
     if (data.length === 0) return null;
 
-    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
+    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#f7971e', '#0ba360', '#3cba92', '#ee0979', '#ff6a00', '#a18cd1', '#fad0c4', '#ffecd2', '#a1c4fd', '#c2e9fb', '#d4fc79', '#96e6a1', '#84fab0', '#8fd3f4'];
 
     // Revenue Summary Chart
     if (reportType === 'revenue-summary') {
@@ -337,24 +343,33 @@ function Reports() {
       return (
         <div style={styles.chartContainer}>
           <h4 style={styles.chartTitle}>Payment Methods Distribution</h4>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={360}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={true}
-                label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-                outerRadius={80}
-                fill="#8884d8"
+                cx="50%" cy="45%"
+                outerRadius={110}
                 dataKey="value"
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  if (percent < 0.04) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                      {`${(percent * 100).toFixed(1)}%`}
+                    </text>
+                  );
+                }}
+                labelLine={false}
               >
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => formatCurrency(value)} />
-              <Legend />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -501,9 +516,10 @@ function Reports() {
       const chartData = data.map(item => ({
         date: formatDate(item.date),
         total: parseInt(item.total_appointments || 0),
+        confirmed: parseInt(item.confirmed || 0),
+        in_progress: parseInt(item.in_progress || 0),
         completed: parseInt(item.completed || 0),
-        cancelled: parseInt(item.cancelled || 0),
-        scheduled: parseInt(item.scheduled || 0)
+        cancelled: parseInt(item.cancelled || 0)
       }));
 
       return (
@@ -516,8 +532,9 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
+              <Bar dataKey="confirmed" stackId="a" fill="#667eea" name="Confirmed" />
+              <Bar dataKey="in_progress" stackId="a" fill="#f59e0b" name="In Progress" />
               <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
-              <Bar dataKey="scheduled" stackId="a" fill="#667eea" name="Scheduled" />
               <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
@@ -527,8 +544,16 @@ function Reports() {
 
     // Appointments by Type Chart
     if (reportType === 'appointments-by-type') {
+      const appointmentTypeLabels = {
+        checkup: 'Check-up',
+        vaccination: 'Vaccination',
+        surgery: 'Surgery',
+        emergency: 'Emergency',
+        follow_up: 'Follow-up',
+        consultation: 'Consultation'
+      };
       const chartData = data.map(item => ({
-        name: item.appointment_type || 'Unknown',
+        name: appointmentTypeLabels[item.appointment_type] || item.appointment_type || 'Unknown',
         value: parseInt(item.appointment_count || 0),
         percentage: parseFloat(item.percentage || 0)
       }));
@@ -536,24 +561,33 @@ function Reports() {
       return (
         <div style={styles.chartContainer}>
           <h4 style={styles.chartTitle}>Appointments by Type</h4>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={360}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={true}
-                label={(entry) => `${entry.name}: ${entry.value} (${entry.percent ? (entry.percent * 100).toFixed(1) : 0}%)`}
-                outerRadius={80}
-                fill="#8884d8"
+                cx="50%" cy="45%"
+                outerRadius={110}
                 dataKey="value"
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                  if (percent < 0.04) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                      {value}
+                    </text>
+                  );
+                }}
+                labelLine={false}
               >
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
-              <Legend />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -572,24 +606,40 @@ function Reports() {
       const topPatients = data.slice(0, 10).map(item => ({
         name: item.pet_name || 'Unknown',
         completed: parseInt(item.completed_visits || 0),
-        cancelled: parseInt(item.cancelled_visits || 0),
-        no_shows: parseInt(item.no_shows || 0)
+        cancelled: parseInt(item.cancelled_visits || 0)
       }));
 
       return (
         <>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Visits by Species</h4>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={speciesData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                  label={(entry) => `${entry.name}: ${entry.value}`}>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Pie
+                  data={speciesData}
+                  cx="50%" cy="45%"
+                  outerRadius={110}
+                  dataKey="value"
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                    if (percent < 0.04) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                        {value}
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
+                >
                   {speciesData.map((_e, i) => (
                     <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value, name) => [value, name]} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -604,7 +654,6 @@ function Reports() {
                 <Legend />
                 <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
                 <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
-                <Bar dataKey="no_shows" stackId="a" fill="#fee140" name="No Show" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -616,9 +665,10 @@ function Reports() {
     if (reportType === 'veterinarian-performance') {
       const chartData = data.slice(0, 10).map(item => ({
         name: item.veterinarian_name ? `Dr. ${item.veterinarian_name}` : 'Unknown',
-        appointments: parseInt(item.total_appointments || 0),
+        total: parseInt(item.total_appointments || 0),
+        in_progress: parseInt(item.in_progress_appointments || 0),
         completed: parseInt(item.completed_appointments || 0),
-        revenue: parseFloat(item.total_revenue_generated || 0)
+        cancelled: parseInt(item.cancelled_appointments || 0)
       }));
 
       return (
@@ -628,11 +678,13 @@ function Reports() {
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" style={{fontSize: '0.75rem'}} />
-              <YAxis style={{fontSize: '0.75rem'}} />
+              <YAxis allowDecimals={false} style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="appointments" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="total" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="in_progress" fill="#f59e0b" name="In Progress" />
               <Bar dataKey="completed" fill="#43e97b" name="Completed" />
+              <Bar dataKey="cancelled" fill="#fa709a" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -641,17 +693,28 @@ function Reports() {
 
     // Inventory Usage Chart — by category
     if (reportType === 'inventory-usage') {
-      const formatCategory = (cat) =>
-        (cat || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const shortCategoryLabels = {
+        pharmaceuticals:       'Pharma',
+        consumables:           'Consumables',
+        surgical_clinical:     'Surgical',
+        laboratory_diagnostic: 'Lab/Diagnostic',
+        pet_food_nutrition:    'Pet Food',
+        retail_otc:            'Retail/OTC',
+        equipment:             'Equipment',
+        accessories:           'Accessories',
+        supplements:           'Supplements',
+        cleaning_maintenance:  'Cleaning',
+      };
 
       const usageChartData = data.map(item => ({
-        category: formatCategory(item.category),
+        category: shortCategoryLabels[item.category] || item.category || 'Unknown',
         value_used: parseFloat(item.total_value_used || 0),
         stock_value: parseFloat(item.total_stock_value || 0),
+        item_count: parseInt(item.total_items || 0),
       }));
 
       const stockPieData = data.map(item => ({
-        name: formatCategory(item.category),
+        name: shortCategoryLabels[item.category] || item.category || 'Unknown',
         value: parseInt(item.total_items || 0),
       }));
 
@@ -659,30 +722,49 @@ function Reports() {
         <>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Usage Value vs Current Stock Value by Category</h4>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={usageChartData}>
+            <ResponsiveContainer width="100%" height={340}>
+              <ComposedChart data={usageChartData} margin={{ bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="category" style={{fontSize: '0.75rem'}} />
-                <YAxis style={{fontSize: '0.75rem'}} />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <XAxis dataKey="category" style={{fontSize: '0.75rem'}} interval={0} />
+                <YAxis yAxisId="value" style={{fontSize: '0.75rem'}} tickFormatter={(v) => `Rs.${(v/1000).toFixed(0)}k`} />
+                <YAxis yAxisId="count" orientation="right" style={{fontSize: '0.75rem'}} allowDecimals={false} label={{ value: 'Total Items', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '0.7rem' } }} />
+                <Tooltip formatter={(value, name) => name === 'Total Items in Category' ? value : formatCurrency(value)} />
                 <Legend />
-                <Bar dataKey="value_used" fill="#667eea" name="Value Used (period)" />
-                <Bar dataKey="stock_value" fill="#43e97b" name="Current Stock Value" />
-              </BarChart>
+                <Bar yAxisId="value" dataKey="value_used" fill="#667eea" name="Consumed Value" />
+                <Bar yAxisId="value" dataKey="stock_value" fill="#43e97b" name="Stock Value" />
+                <Line yAxisId="count" type="monotone" dataKey="item_count" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Total Items in Category" />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Item Count by Category</h4>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={stockPieData} cx="50%" cy="50%" outerRadius={90}
-                  dataKey="value" label={(entry) => `${entry.name}: ${entry.value}`}>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Pie
+                  data={stockPieData}
+                  cx="50%" cy="45%"
+                  outerRadius={110}
+                  dataKey="value"
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                    if (percent < 0.04) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                        {value}
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
+                >
                   {stockPieData.map((_e, i) => (
                     <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value, name) => [value, name]} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -747,13 +829,21 @@ function Reports() {
                 <tr key={index} style={index % 2 === 0 ? styles.reportTrEven : styles.reportTrOdd}>
                   {columns.map(col => (
                     <td key={col} style={styles.reportTd}>
-                      {col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding')
-                        ? formatCurrency(row[col])
-                        : (col.includes('date') || col.includes('visit')) && row[col]
+                      {(col.includes('date') || (col.includes('visit') && !col.includes('_visits'))) && row[col]
                         ? formatDate(row[col])
+                        : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding') || col.includes('invoiced'))
+                        ? formatCurrency(row[col])
                         : col.includes('rate') || col.includes('percentage')
                         ? `${row[col]}%`
+                        : col === 'payment_method' && row[col]
+                        ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
+                        : col === 'appointment_type' && row[col]
+                        ? ({ checkup: 'Check-up', vaccination: 'Vaccination', surgery: 'Surgery', emergency: 'Emergency', follow_up: 'Follow-up', consultation: 'Consultation' })[row[col]] || row[col]
+                        : col === 'service_type' && row[col]
+                        ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
                         : col === 'category' && row[col]
+                        ? ({ pharmaceuticals: 'Pharmaceuticals', consumables: 'Consumables', surgical_clinical: 'Surgical & Clinical Supplies', laboratory_diagnostic: 'Laboratory / Diagnostic Supplies', pet_food_nutrition: 'Pet Food & Nutrition', retail_otc: 'Retail / OTC Products', equipment: 'Equipment', accessories: 'Accessories', supplements: 'Supplements', cleaning_maintenance: 'Cleaning & Maintenance Supplies' })[row[col]] || row[col]
+                        : col.includes('status') && row[col]
                         ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                         : row[col] !== null && row[col] !== undefined
                         ? row[col]
@@ -820,7 +910,7 @@ function Reports() {
         </div>
 
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             {error}
           </div>
         )}
@@ -993,7 +1083,7 @@ const styles = {
   },
   summaryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gridTemplateColumns: 'repeat(2, 1fr)',
     gap: '1.25rem',
   },
   summaryCard: {

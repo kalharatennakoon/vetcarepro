@@ -420,7 +420,7 @@ def assess_outbreak_risk():
         species = data.get('species')
         disease_category = data.get('disease_category')
         region = data.get('region')
-        days_lookback = int(data.get('days_lookback', 30))
+        days_lookback = max(1, min(365, int(data.get('days_lookback', 30))))
 
         # Assess risk
         risk_assessment = disease_model.predict_outbreak_risk(
@@ -912,7 +912,7 @@ def forecast_inventory():
                 'error': 'item_id is required'
             }), 400
 
-        days = int(data.get('days', 30))
+        days = max(7, min(365, int(data.get('days', 30))))
         result = inventory_model.predict_item_demand(item_id=item_id, days=days)
 
         if 'error' in result:
@@ -944,7 +944,7 @@ def get_reorder_suggestions():
             }), 503
 
         days = request.args.get('days', 30, type=int)
-        days = max(7, min(60, days))
+        days = max(7, min(365, days))
         result = inventory_model.get_reorder_recommendations(days=days)
 
         if 'error' in result:

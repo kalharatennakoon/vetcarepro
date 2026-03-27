@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getCustomers } from '../services/customerService';
 import { createAppointment, updateAppointment, getAppointmentById } from '../services/appointmentService';
 import { getVeterinarians } from '../services/userService';
@@ -8,6 +8,7 @@ import axios from 'axios';
 const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
   const [customers, setCustomers] = useState([]);
   const [pets, setPets] = useState([]);
   const [veterinarians, setVeterinarians] = useState([]);
@@ -25,6 +26,10 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
   const isEditMode = !!appointmentId;
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
   const { showSuccess } = useNotification();
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
 
   useEffect(() => {
     fetchCustomers();
@@ -140,6 +145,11 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       return false;
     }
 
+    if (formData.appointment_type?.toLowerCase().includes('emergency') && !formData.veterinarian_id) {
+      setError('A veterinarian must be assigned for emergency appointments');
+      return false;
+    }
+
     // Validate date is not in the past
     const appointmentDateTime = new Date(`${formData.appointment_date}T${formData.appointment_time}`);
     const now = new Date();
@@ -218,7 +228,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       </div>
 
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

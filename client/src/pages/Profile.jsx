@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getUserById, updateUser, uploadProfileImage, deleteProfileImage, getUserStats } from '../services/userService';
 import Layout from '../components/Layout';
@@ -9,6 +9,11 @@ function Profile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [success, setSuccess] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState(null);
@@ -341,7 +346,7 @@ function Profile() {
         )}
 
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>

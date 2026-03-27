@@ -316,7 +316,7 @@ export const getPetCount = async () => {
 export const checkPetDeletability = async (petId) => {
   const query = `
     SELECT
-      (SELECT COUNT(*) FROM appointments WHERE pet_id = $1 AND status IN ('scheduled','confirmed','in_progress'))::int AS active_appointments,
+      (SELECT COUNT(*) FROM appointments WHERE pet_id = $1 AND status IN ('confirmed','in_progress'))::int AS active_appointments,
       (SELECT COUNT(*) FROM appointments WHERE pet_id = $1)::int AS total_appointments,
       (SELECT COUNT(*) FROM medical_records WHERE pet_id = $1)::int AS medical_records,
       (SELECT COUNT(*) FROM vaccinations WHERE pet_id = $1)::int AS vaccinations,

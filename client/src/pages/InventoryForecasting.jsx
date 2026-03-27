@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -16,17 +15,10 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const URGENCY_COLORS = {
-  urgent: '#ef4444',
-  soon: '#f59e0b',
-  sufficient: '#10b981',
-  default: '#6b7280',
-};
 
 const CATEGORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'];
 
 function InventoryForecasting() {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   // Data state
@@ -41,8 +33,14 @@ function InventoryForecasting() {
   const [trainSuccess, setTrainSuccess] = useState(false);
   const [itemLookupLoading, setItemLookupLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('reorder');
   const [reorderFilter, setReorderFilter] = useState('all');
+  const [forecastDays, setForecastDays] = useState(30);
 
   // Item lookup state
   const [lookupItemId, setLookupItemId] = useState('');
@@ -58,7 +56,7 @@ function InventoryForecasting() {
     setError(null);
     try {
       const [reorderRes, fastRes, categoryRes, statusRes] = await Promise.allSettled([
-        axios.get(`${API_URL}/ml/inventory/reorder-suggestions`, getHeaders()),
+        axios.get(`${API_URL}/ml/inventory/reorder-suggestions?days=${forecastDays}`, getHeaders()),
         axios.get(`${API_URL}/ml/inventory/fast-moving?limit=10`, getHeaders()),
         axios.get(`${API_URL}/ml/inventory/category-analysis`, getHeaders()),
         axios.get(`${API_URL}/ml/models/status`, getHeaders()),
@@ -78,7 +76,7 @@ function InventoryForecasting() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [forecastDays]);
 
   useEffect(() => {
     loadAllData();
@@ -107,7 +105,7 @@ function InventoryForecasting() {
     setRestockPred(null);
     try {
       const [forecastRes, restockRes] = await Promise.allSettled([
-        axios.post(`${API_URL}/ml/inventory/forecast`, { item_id: parseInt(lookupItemId), days: 30 }, getHeaders()),
+        axios.post(`${API_URL}/ml/inventory/forecast`, { item_id: parseInt(lookupItemId), days: forecastDays }, getHeaders()),
         axios.post(`${API_URL}/ml/inventory/predict-restock`, { item_id: parseInt(lookupItemId) }, getHeaders()),
       ]);
       if (forecastRes.status === 'fulfilled') setItemForecast(forecastRes.value.data);
@@ -203,7 +201,7 @@ function InventoryForecasting() {
 
         {/* Error Banner */}
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>
@@ -617,8 +615,23 @@ function InventoryForecasting() {
                   </div>
                   <div style={styles.cardBody}>
                     <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-                      Enter an inventory item ID to get its 30-day demand forecast and predicted restock date.
+                      Enter an inventory item ID to get its demand forecast and predicted restock date.
                     </p>
+                    <div style={styles.formGroup}>
+                      <label style={styles.formLabel}>Forecast Period</label>
+                      <select
+                        value={forecastDays}
+                        onChange={(e) => setForecastDays(Number(e.target.value))}
+                        style={styles.formControl}
+                      >
+                        <option value={7}>7 days</option>
+                        <option value={14}>14 days</option>
+                        <option value={30}>30 days</option>
+                        <option value={60}>60 days</option>
+                        <option value={90}>90 days</option>
+                        <option value={365}>1 year</option>
+                      </select>
+                    </div>
                     <div style={styles.formGroup}>
                       <label style={styles.formLabel}>Inventory Item ID</label>
                       <input
@@ -686,7 +699,7 @@ function InventoryForecasting() {
                                 </p>
                               </div>
                               <div style={styles.lookupMetric}>
-                                <p style={styles.lookupMetricLabel}>30-Day Demand</p>
+                                <p style={styles.lookupMetricLabel}>{forecastDays}-Day Demand</p>
                                 <p style={{ ...styles.lookupMetricValue, color: '#3b82f6' }}>
                                   {(itemForecast.predicted_demand || itemForecast.total_demand || itemForecast.data?.predicted_demand || 0).toFixed(1)} units
                                 </p>

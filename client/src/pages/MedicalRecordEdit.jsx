@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MedicalRecordForm from '../components/MedicalRecordForm';
 import Layout from '../components/Layout';
 
 const MedicalRecordEdit = () => {
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -27,7 +32,7 @@ const MedicalRecordEdit = () => {
         <p style={styles.subtitle}>Update medical visit information</p>
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div ref={errorRef} style={styles.error}>{error}</div>}
 
       <div style={styles.formContainer}>
         <MedicalRecordForm

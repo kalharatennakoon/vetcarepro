@@ -530,7 +530,7 @@ export const validateAppointmentUpdate = [
   
   body('status')
     .optional()
-    .isIn(['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'])
+    .isIn(['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'])
     .withMessage('Invalid status'),
   
   body('veterinarian_id')

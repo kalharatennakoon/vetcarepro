@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import '../styles/Welcome.css';
 
 const Welcome = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
 const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
+  const { showSuccess } = useNotification();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -22,6 +29,7 @@ const [showPassword, setShowPassword] = useState(false);
     const result = await login(email, password);
 
     if (result.success) {
+      showSuccess(`Welcome back, ${result.user.first_name}!`);
       navigate('/dashboard');
     } else {
       setError(result.message || 'Login failed. Please check your credentials.');
@@ -71,7 +79,7 @@ const [showPassword, setShowPassword] = useState(false);
             </div>
 
             {error && (
-              <div style={styles.errorBox}>
+              <div ref={errorRef} style={styles.errorBox}>
                 <i className="fas fa-exclamation-triangle" style={styles.errorIcon}></i>
                 {error}
               </div>

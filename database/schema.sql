@@ -120,6 +120,8 @@ CREATE TABLE appointments (
     status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show')),
     cancellation_reason TEXT,
     reminder_sent BOOLEAN DEFAULT false,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -30,7 +30,7 @@ export const getAppointments = async (req, res) => {
     if (date) filters.date = date;
     if (status) filters.status = status;
     if (veterinarian_id) filters.veterinarian_id = parseInt(veterinarian_id);
-    if (customer_id) filters.customer_id = parseInt(customer_id);
+    if (customer_id) filters.customer_id = customer_id;
     if (pet_id) filters.pet_id = pet_id;
     if (limit) filters.limit = parseInt(limit);
     if (offset) filters.offset = parseInt(offset);
@@ -273,7 +273,7 @@ export const deleteAppointmentById = async (req, res) => {
 export const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, cancellation_reason } = req.body;
 
     // Check if appointment exists
     const existingAppointment = await getAppointmentById(id);
@@ -285,7 +285,7 @@ export const updateStatus = async (req, res) => {
     }
 
     // Validate status
-    const validStatuses = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'];
+    const validStatuses = ['confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         status: 'error',
@@ -296,7 +296,8 @@ export const updateStatus = async (req, res) => {
     const updatedAppointment = await updateAppointmentStatus(
       id,
       status,
-      req.user.user_id
+      req.user.user_id,
+      cancellation_reason || null
     );
 
     res.status(200).json({

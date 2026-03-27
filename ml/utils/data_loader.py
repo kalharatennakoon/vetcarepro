@@ -34,7 +34,7 @@ class DataLoader:
                 AVG(b.total_amount) as avg_transaction,
                 STRING_AGG(DISTINCT b.payment_method, ',') as payment_methods
             FROM billing b
-            WHERE b.payment_status = 'paid'
+            WHERE b.payment_status IN ('fully_paid', 'partially_paid')
         """
         
         params = []
@@ -69,7 +69,7 @@ class DataLoader:
             FROM billing_items bi
             JOIN billing b ON bi.bill_id = b.bill_id
             JOIN inventory i ON bi.item_id = i.item_id
-            WHERE b.payment_status = 'paid'
+            WHERE b.payment_status IN ('fully_paid', 'partially_paid')
             GROUP BY bi.item_id, i.item_name, i.category, b.bill_date::date
             ORDER BY date, bi.item_id
         """

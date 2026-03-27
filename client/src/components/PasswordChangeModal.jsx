@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
@@ -9,6 +9,11 @@ const PasswordChangeModal = ({ onSuccess, onLogout }) => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -71,7 +76,7 @@ const PasswordChangeModal = ({ onSuccess, onLogout }) => {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           {error && (
-            <div style={styles.errorBox}>
+            <div ref={errorRef} style={styles.errorBox}>
               <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
               {error}
             </div>

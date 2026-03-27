@@ -26,7 +26,7 @@ export const getMedicalRecords = async (req, res) => {
     const { pet_id, veterinarian_id, visit_date_from, visit_date_to, diagnosis, follow_up_required, limit, offset } = req.query;
 
     const filters = {};
-    if (pet_id) filters.pet_id = parseInt(pet_id);
+    if (pet_id) filters.pet_id = pet_id;
     if (veterinarian_id) filters.veterinarian_id = parseInt(veterinarian_id);
     if (visit_date_from) filters.visit_date_from = visit_date_from;
     if (visit_date_to) filters.visit_date_to = visit_date_to;
@@ -220,7 +220,7 @@ export const getPetMedicalRecords = async (req, res) => {
   try {
     const { petId } = req.params;
 
-    const records = await getMedicalRecordsByPetId(parseInt(petId));
+    const records = await getMedicalRecordsByPetId(petId);
 
     res.status(200).json({
       status: 'success',

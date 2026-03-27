@@ -29,6 +29,7 @@ const formatTime = (timeStr) => {
 export const sendAppointmentEmail = async (req, res) => {
   try {
     const { id } = req.params;
+    const { note } = req.body;
 
     const appointment = await getAppointmentById(id);
     if (!appointment) {
@@ -47,7 +48,8 @@ export const sendAppointmentEmail = async (req, res) => {
       appointmentDate: formatDate(appointment.appointment_date),
       appointmentTime: formatTime(appointment.appointment_time),
       vetName: appointment.vet_name || null,
-      reason: appointment.reason || null
+      reason: appointment.reason || null,
+      note: note || null
     });
 
     res.status(200).json({
@@ -68,6 +70,7 @@ export const sendAppointmentEmail = async (req, res) => {
 export const sendInvoiceEmail = async (req, res) => {
   try {
     const { id } = req.params;
+    const { note } = req.body;
 
     const bill = await getBillById(id);
     if (!bill) {
@@ -88,7 +91,8 @@ export const sendInvoiceEmail = async (req, res) => {
       totalAmount: bill.total_amount,
       paidAmount: bill.paid_amount,
       balanceAmount: bill.balance_amount,
-      paymentStatus: bill.payment_status
+      paymentStatus: bill.payment_status,
+      note: note || null
     });
 
     res.status(200).json({

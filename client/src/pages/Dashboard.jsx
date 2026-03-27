@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import UniversalSearch from '../components/UniversalSearch';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -31,6 +32,19 @@ const Dashboard = () => {
     pendingInvoices: 0,
     lowStockItems: 0,
     followUpsCount: 0,
+    adminTotalRevenue: 0,
+    adminTodayRevenue: 0,
+    adminOutstanding: 0,
+    adminOutstandingMonth: 0,
+    adminOutstandingToday: 0,
+    adminWeekRevenue: 0,
+    adminMonthRevenue: 0,
+    adminTodayInProgress: 0,
+    adminUrgentCompleted: 0,
+    adminUrgentInProgress: 0,
+    adminPendingDueToday: 0,
+    adminStaffWorkload: [],
+    adminRecentBilling: [],
     recentAppointments: [],
     upcomingAppointments: [],
     followUpCases: [],
@@ -83,9 +97,14 @@ const Dashboard = () => {
       
       // Get today's date in local timezone (YYYY-MM-DD format)
       const today = new Date();
-      const todayString = today.getFullYear() + '-' + 
-        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+      const todayString = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
         String(today.getDate()).padStart(2, '0');
+      const sevenDaysLater = new Date(today);
+      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+      const sevenDaysString = sevenDaysLater.getFullYear() + '-' +
+        String(sevenDaysLater.getMonth() + 1).padStart(2, '0') + '-' +
+        String(sevenDaysLater.getDate()).padStart(2, '0');
       
       // Helper function to extract date from ISO string without timezone conversion
       const getLocalDateString = (dateString) => {
@@ -108,49 +127,47 @@ const Dashboard = () => {
       // Detailed breakdown of today's appointments
       const completedToday = todayAppointments.filter(a => a.status === 'completed');
       const cancelledToday = todayAppointments.filter(a => a.status === 'cancelled');
-      const scheduledToday = todayAppointments.filter(a => a.status === 'scheduled' || a.status === 'checked_in');
-      
-      // Appointments that are overdue (past their scheduled time but still scheduled)
+      const scheduledToday = todayAppointments.filter(a => a.status === 'confirmed');
+
+      // Appointments that are overdue (past their scheduled time but still confirmed)
       const overdueToday = todayAppointments.filter(a => {
-        if (a.status !== 'scheduled' && a.status !== 'checked_in') return false;
+        if (a.status !== 'confirmed') return false;
         if (!a.appointment_time) return false;
-        
+
         const [hours, minutes] = a.appointment_time.split(':').map(Number);
         const appointmentTimeMinutes = hours * 60 + minutes;
-        
+
         return appointmentTimeMinutes < currentTime;
       });
 
       // Appointments still upcoming today
       const upcomingToday = todayAppointments.filter(a => {
-        if (a.status !== 'scheduled') return false;
+        if (a.status !== 'confirmed') return false;
         if (!a.appointment_time) return false;
-        
+
         const [hours, minutes] = a.appointment_time.split(':').map(Number);
         const appointmentTimeMinutes = hours * 60 + minutes;
-        
+
         return appointmentTimeMinutes > currentTime;
       });
 
-      const waitingAppointments = todayAppointments.filter(a => 
-        a.status === 'scheduled' || a.status === 'checked_in'
-      );
+      const waitingAppointments = todayAppointments.filter(a => a.status === 'confirmed');
       const urgentCases = todayAppointments.filter(a => 
         a.appointment_type?.toLowerCase().includes('emergency') || 
         a.appointment_type?.toLowerCase().includes('urgent')
       );
       const pendingBills = bills.filter(b =>
-        b.payment_status === 'pending' || b.payment_status === 'partially_paid' || b.payment_status === 'unpaid'
+        b.payment_status === 'partially_paid' || b.payment_status === 'unpaid' || b.payment_status === 'overdue'
       );
 
       // Vet-specific appointment filtering
       const vetUserId = user?.user_id;
       const vetTodayAppts = todayAppointments.filter(a => a.veterinarian_id === vetUserId);
-      const unassignedTodayAppts = todayAppointments.filter(a => !a.veterinarian_id);
+      const unassignedTodayAppts = todayAppointments.filter(a => !a.veterinarian_id && a.status === 'confirmed');
       const vetUpcomingAppts = appointments.filter(a => {
         if (a.status === 'cancelled' || a.status === 'completed') return false;
         const apptDate = getLocalDateString(a.appointment_date);
-        if (apptDate < todayString) return false;
+        if (apptDate < todayString || apptDate > sevenDaysString) return false;
         if (apptDate === todayString) {
           const [h, m] = (a.appointment_time || '00:00').split(':').map(Number);
           return h * 60 + m > currentTime;
@@ -168,16 +185,43 @@ const Dashboard = () => {
         return true;
       }).filter(a => !a.veterinarian_id);
 
-      // Follow-up cases: disease cases with requires_followup=true and next_followup_date within next 14 days
-      const twoWeeksOut = new Date();
-      twoWeeksOut.setDate(twoWeeksOut.getDate() + 14);
-      const twoWeeksString = twoWeeksOut.getFullYear() + '-' +
-        String(twoWeeksOut.getMonth() + 1).padStart(2, '0') + '-' +
-        String(twoWeeksOut.getDate()).padStart(2, '0');
+      // Admin extra computations
+      const adminTodayInProgress = todayAppointments.filter(a => a.status === 'in_progress').length;
+      const adminUrgentCompleted = urgentCases.filter(a => a.status === 'completed').length;
+      const adminUrgentInProgress = urgentCases.filter(a => a.status === 'in_progress').length;
+      const adminPendingDueToday = pendingBills.filter(b => b.bill_date?.split('T')[0] === todayString).length;
+      const adminOutstandingToday = bills
+        .filter(b => b.bill_date?.split('T')[0] === todayString && ['unpaid', 'partially_paid'].includes(b.payment_status))
+        .reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
+
+      // Admin financial computations
+      const weekStart = (() => { const d = new Date(today); d.setDate(d.getDate() - d.getDay()); return d.toISOString().split('T')[0]; })();
+      const monthStart = `${todayString.slice(0, 7)}-01`;
+      const adminTotalRevenue = bills.reduce((s, b) => s + (parseFloat(b.paid_amount) || 0), 0);
+      const adminTodayRevenue = bills.filter(b => b.bill_date?.split('T')[0] === todayString).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+      const adminOutstanding = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status)).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
+      const adminOutstandingMonth = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status) && b.bill_date?.split('T')[0] >= monthStart).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
+      const adminWeekRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= weekStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+      const adminMonthRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= monthStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+      const adminStaffWorkload = (() => {
+        const map = {};
+        todayAppointments.forEach(a => {
+          const key = a.veterinarian_id || 'unassigned';
+          if (!map[key]) map[key] = { name: a.veterinarian_name ? `Dr. ${a.veterinarian_name}` : 'Unassigned', assigned: 0, completed: 0, inProgress: 0, waiting: 0 };
+          map[key].assigned++;
+          if (a.status === 'completed') map[key].completed++;
+          else if (a.status === 'in_progress') map[key].inProgress++;
+          else if (a.status === 'confirmed') map[key].waiting++;
+        });
+        return Object.values(map).sort((a, b) => b.assigned - a.assigned);
+      })();
+      const adminRecentBilling = [...bills].sort((a, b) => new Date(b.bill_date) - new Date(a.bill_date)).slice(0, 5);
+
+      // Follow-up cases: all disease cases with requires_followup=true
       const followUpCases = allDiseaseCases
-        .filter(c => c.requires_followup && c.next_followup_date && c.next_followup_date.split('T')[0] <= twoWeeksString)
+        .filter(c => c.requires_followup && c.next_followup_date)
         .sort((a, b) => a.next_followup_date.localeCompare(b.next_followup_date))
-        .slice(0, 5);
+        .slice(0, 10);
 
       setStats({
         totalPets: pets.length,
@@ -196,10 +240,23 @@ const Dashboard = () => {
         labResultsReady: 0, // Placeholder for future implementation
         pendingInvoices: pendingBills.length,
         lowStockItems: lowStockItems.length,
+        adminTotalRevenue,
+        adminTodayRevenue,
+        adminOutstanding,
+        adminOutstandingMonth,
+        adminOutstandingToday,
+        adminWeekRevenue,
+        adminMonthRevenue,
+        adminTodayInProgress,
+        adminUrgentCompleted,
+        adminUrgentInProgress,
+        adminPendingDueToday,
+        adminStaffWorkload,
+        adminRecentBilling,
         followUpsCount: followUpCases.length,
         totalMedicalRecords: medicalRecordsResponse.total || 0,
         followUpCases,
-        vetWaiting: vetTodayAppts.filter(a => a.status === 'scheduled' || a.status === 'confirmed').length,
+        vetWaiting: vetTodayAppts.filter(a => a.status === 'confirmed').length,
         vetCompleted: vetTodayAppts.filter(a => a.status === 'completed').length,
         vetUrgent: vetTodayAppts.filter(a => a.appointment_type?.toLowerCase().includes('emergency')).length,
         vetScheduleToday: [...vetTodayAppts].sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || '')),
@@ -207,7 +264,7 @@ const Dashboard = () => {
         vetUpcoming: vetUpcomingAppts.sort((a, b) => {
           const da = getLocalDateString(a.appointment_date), db = getLocalDateString(b.appointment_date);
           return da !== db ? da.localeCompare(db) : (a.appointment_time || '').localeCompare(b.appointment_time || '');
-        }).slice(0, 5),
+        }),
         vetUnassignedUpcoming: unassignedUpcomingAppts.sort((a, b) => {
           const da = getLocalDateString(a.appointment_date), db = getLocalDateString(b.appointment_date);
           return da !== db ? da.localeCompare(db) : (a.appointment_time || '').localeCompare(b.appointment_time || '');
@@ -216,18 +273,18 @@ const Dashboard = () => {
         upcomingAppointments: appointments.filter(a => {
           if (a.status === 'cancelled' || a.status === 'completed') return false;
           const appointmentDate = getLocalDateString(a.appointment_date);
-          if (appointmentDate > todayString) return true;
+          if (appointmentDate < todayString || appointmentDate > sevenDaysString) return false;
           if (appointmentDate === todayString) {
             const [h, m] = (a.appointment_time || '00:00').split(':').map(Number);
             return h * 60 + m > currentTime;
           }
-          return false;
+          return true;
         }).sort((a, b) => {
           const dateA = getLocalDateString(a.appointment_date);
           const dateB = getLocalDateString(b.appointment_date);
           if (dateA !== dateB) return dateA.localeCompare(dateB);
           return (a.appointment_time || '').localeCompare(b.appointment_time || '');
-        }).slice(0, 5)
+        })
       });
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -247,13 +304,12 @@ const Dashboard = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      'scheduled': { bg: '#e0e7ff', color: '#3730a3', text: 'Scheduled' },
-      'checked_in': { bg: '#d1fae5', color: '#065f46', text: 'Checked In' },
+      'confirmed': { bg: '#d1fae5', color: '#065f46', text: 'Confirmed' },
       'in_progress': { bg: '#dbeafe', color: '#1e3a8a', text: 'In Progress' },
       'completed': { bg: '#f3f4f6', color: '#374151', text: 'Completed' },
       'cancelled': { bg: '#fee2e2', color: '#991b1b', text: 'Cancelled' }
     };
-    return badges[status] || badges.scheduled;
+    return badges[status] || badges['confirmed'];
   };
 
   const handlePasswordChangeSuccess = async () => {
@@ -311,218 +367,91 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
+            {/* Universal Search — all roles */}
+            <div style={{
+              background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
+              border: '1px solid #bfdbfe',
+              borderRadius: '14px',
+              padding: '20px 24px',
+              marginBottom: '24px',
+              boxShadow: '0 2px 8px rgba(59,130,246,0.08)'
+            }}>
+              <div style={{ marginBottom: '10px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                  {user?.role === 'veterinarian'
+                    ? 'Search across customers, pets, appointments, medical records & disease cases'
+                    : user?.role === 'admin'
+                    ? 'Search across customers, pets, appointments, billing, inventory, medical records, staff & suppliers'
+                    : 'Search across customers, pets, appointments, billing & inventory'}
+                </p>
+              </div>
+              <UniversalSearch />
+            </div>
+
             {/* Stats Cards */}
-            <div style={styles.statsGrid}>
+            <div style={user?.role === 'admin' ? {...styles.statsGrid, gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)'} : styles.statsGrid}>
               {user?.role === 'admin' ? (
-                // Admin Stats
+                // Admin Stats — 6 cards, 3 per row
                 <>
-                  <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
+                  {[
+                    { label: 'TOTAL COLLECTED', value: `Rs. ${parseFloat(stats.adminTotalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: `Today: Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
+                    { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${parseFloat(stats.adminOutstandingToday).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
+                    { label: "TODAY'S APPOINTMENTS", value: stats.todayAppointments, sub: [stats.todayCompleted > 0 && `${stats.todayCompleted} completed`, stats.adminTodayInProgress > 0 && `${stats.adminTodayInProgress} in progress`, stats.waitingPatients > 0 && `${stats.waitingPatients} waiting`, stats.todayCancelled > 0 && `${stats.todayCancelled} cancelled`].filter(Boolean).join(' · '), border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
+                    { label: 'PENDING INVOICES', value: stats.pendingInvoices, sub: stats.adminPendingDueToday > 0 ? `${stats.adminPendingDueToday} due today` : 'None due today', border: stats.pendingInvoices > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice', bg: 'white' },
+                    { label: "TODAY'S EMERGENCIES", value: stats.urgentCases, sub: [stats.adminUrgentCompleted > 0 && `${stats.adminUrgentCompleted} completed`, stats.adminUrgentInProgress > 0 && `${stats.adminUrgentInProgress} in progress`].filter(Boolean).join(' · ') || 'No completions yet', border: stats.urgentCases > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.urgentCases > 0 ? '#fff7ed' : 'white', labelColor: stats.urgentCases > 0 ? '#dc2626' : '#6b7280' },
+                    { label: 'LOW STOCK ALERTS', value: stats.lowStockItems, border: stats.lowStockItems > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#ede9fe', iconColor: '#7c3aed', icon: 'fa-boxes', bg: 'white' },
+                  ].map(card => (
+                    <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                       <div>
-                        <p style={styles.statLabel}>TODAY'S APPOINTMENTS</p>
-                        <p style={styles.statValue}>{stats.todayAppointments}</p>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '700', color: card.labelColor || '#6b7280', margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                        <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
+                        {card.sub && <p style={{ fontSize: '0.68rem', color: '#6b7280', margin: '0.25rem 0 0' }}>{card.sub}</p>}
                       </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
-                        <i className="fas fa-calendar-check" style={{...styles.statIconText, color: '#1e40af'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#3b82f6'}}>
-                        {stats.completedToday} completed · {stats.waitingPatients} waiting →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.pendingInvoices > 0 ? '4px solid #f59e0b' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/billing')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>PENDING INVOICES</p>
-                        <p style={styles.statValue}>{stats.pendingInvoices}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#fef3c7'}}>
-                        <i className="fas fa-file-invoice-dollar" style={{...styles.statIconText, color: '#d97706'}}></i>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
                       </div>
                     </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#d97706'}}>
-                        {stats.pendingInvoices > 0 ? 'Awaiting payment →' : 'All invoices settled'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.urgentCases > 0 ? '4px solid #ef4444' : '4px solid #e5e7eb', backgroundColor: stats.urgentCases > 0 ? '#fff7ed' : 'white', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={{...styles.statLabel, color: stats.urgentCases > 0 ? '#c2410c' : '#6b7280'}}>URGENT CASES</p>
-                        <p style={styles.statValue}>{stats.urgentCases}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#fee2e2'}}>
-                        <i className="fas fa-exclamation-triangle" style={{...styles.statIconText, color: '#dc2626'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.urgentCases > 0 ? '#dc2626' : '#6b7280'}}>
-                        {stats.urgentCases > 0 ? 'Needs immediate attention →' : 'No urgent cases today'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.lowStockItems > 0 ? '4px solid #8b5cf6' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/inventory')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>LOW STOCK ALERTS</p>
-                        <p style={styles.statValue}>{stats.lowStockItems}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#ede9fe'}}>
-                        <i className="fas fa-boxes" style={{...styles.statIconText, color: '#7c3aed'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.lowStockItems > 0 ? '#7c3aed' : '#6b7280'}}>
-                        {stats.lowStockItems > 0 ? 'Review inventory →' : 'Stock levels OK'}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </>
               ) : user?.role === 'veterinarian' ? (
                 // Veterinarian Stats
                 <>
-                  <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
+                  {[
+                    { label: 'MY PATIENTS WAITING', value: stats.vetWaiting, border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-user-clock', bg: 'white' },
+                    { label: 'MY COMPLETED TODAY', value: stats.vetCompleted, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-check-circle', bg: 'white' },
+                    { label: 'MY EMERGENCY CASES', value: stats.vetUrgent, border: stats.vetUrgent > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.vetUrgent > 0 ? '#fff7ed' : 'white', labelColor: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280' },
+                    { label: 'FOLLOW-UPS DUE', value: stats.followUpsCount, border: stats.followUpsCount > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#ede9fe', iconColor: '#7c3aed', icon: 'fa-notes-medical', bg: 'white' },
+                  ].map(card => (
+                    <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                       <div>
-                        <p style={styles.statLabel}>MY PATIENTS WAITING</p>
-                        <p style={styles.statValue}>{stats.vetWaiting}</p>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '700', color: card.labelColor || '#6b7280', margin: '0 0 0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                        <p style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
                       </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
-                        <i className="fas fa-user-clock" style={{...styles.statIconText, color: '#1e40af'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#3b82f6'}}>
-                        {stats.vetScheduleToday.length} assigned to me today →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: '4px solid #10b981', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>MY COMPLETED TODAY</p>
-                        <p style={styles.statValue}>{stats.vetCompleted}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#d1fae5'}}>
-                        <i className="fas fa-check-circle" style={{...styles.statIconText, color: '#065f46'}}></i>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
                       </div>
                     </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#10b981'}}>
-                        {stats.vetUnassignedToday.length} unassigned today →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.vetUrgent > 0 ? '4px solid #ef4444' : '4px solid #e5e7eb', backgroundColor: stats.vetUrgent > 0 ? '#fff7ed' : 'white', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={{...styles.statLabel, color: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280'}}>MY URGENT / EMERGENCY</p>
-                        <p style={styles.statValue}>{stats.vetUrgent}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#fee2e2'}}>
-                        <i className="fas fa-exclamation-triangle" style={{...styles.statIconText, color: '#dc2626'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280'}}>
-                        {stats.vetUrgent > 0 ? 'Needs immediate attention →' : 'No urgent cases today'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.followUpsCount > 0 ? '4px solid #8b5cf6' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/analytics')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>FOLLOW-UPS DUE</p>
-                        <p style={styles.statValue}>{stats.followUpsCount}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#ede9fe'}}>
-                        <i className="fas fa-notes-medical" style={{...styles.statIconText, color: '#7c3aed'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.followUpsCount > 0 ? '#7c3aed' : '#6b7280'}}>
-                        {stats.followUpsCount > 0 ? 'Within next 14 days →' : 'No pending follow-ups'}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </>
               ) : (
                 // Receptionist Stats
                 <>
-                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
+                  {[
+                    { label: 'Appointments Today', value: stats.todayAppointments, border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
+                    { label: 'Total Customers', value: stats.totalCustomers, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-users', bg: 'white' },
+                    { label: 'Active Patients', value: stats.activePets, border: '#f59e0b', iconBg: '#fed7aa', iconColor: '#c2410c', icon: 'fa-paw', bg: 'white' },
+                    { label: 'Pending Invoices', value: stats.pendingInvoices, border: stats.pendingInvoices > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#e9d5ff', iconColor: '#7c3aed', icon: 'fa-file-invoice-dollar', bg: 'white' },
+                  ].map(card => (
+                    <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                       <div>
-                        <p style={styles.statLabel}>Appointments Today</p>
-                        <p style={styles.statValue}>{stats.todayAppointments}</p>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', margin: '0 0 0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                        <p style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
                       </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
-                        <i className="fas fa-calendar-check" style={{...styles.statIconText, color: '#1e40af'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{fontSize: '0.75rem', color: '#10b981'}}>
-                        {stats.todayUpcoming + stats.todayOverdue} waiting · View schedule →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/customers')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>Total Clients</p>
-                        <p style={styles.statValue}>{stats.totalCustomers}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#d1fae5'}}>
-                        <i className="fas fa-users" style={{...styles.statIconText, color: '#065f46'}}></i>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
                       </div>
                     </div>
-                    <div style={styles.statFooter}>
-                      <span style={styles.statChange}>Registered clients →</span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/pets')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>Active Patients</p>
-                        <p style={styles.statValue}>{stats.activePets}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#fed7aa'}}>
-                        <i className="fas fa-paw" style={{...styles.statIconText, color: '#c2410c'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={styles.statChange}>
-                        {stats.totalPets} total registered →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, cursor: 'pointer'}} onClick={() => navigate('/billing')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>Pending Invoices</p>
-                        <p style={styles.statValue}>{stats.pendingInvoices}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#e9d5ff'}}>
-                        <i className="fas fa-file-invoice-dollar" style={{...styles.statIconText, color: '#7c3aed'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.pendingInvoices > 0 ? '#7c3aed' : '#6b7280'}}>
-                        {stats.pendingInvoices > 0 ? 'Awaiting payment →' : 'All invoices cleared'}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </>
               )}
             </div>
@@ -531,17 +460,6 @@ const Dashboard = () => {
             {user?.role === 'admin' ? (
               // Admin Quick Actions
               <div style={styles.vetQuickActionsContainer}>
-                <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
-                  <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
-                    <i className="fas fa-calendar-plus"></i>
-                    <span>New Appointment</span>
-                  </button>
-                  <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
-                    <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
-                    <span>Add Customer</span>
-                  </button>
-                </div>
-
                 <div style={styles.quickActionsGrid}>
                   <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
                     <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
@@ -604,7 +522,7 @@ const Dashboard = () => {
                   </button>
                   <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
                     <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
-                    <span>New Client</span>
+                    <span>New Customer</span>
                   </button>
                   <button onClick={() => navigate('/billing/new')} style={styles.secondaryButton}>
                     <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
@@ -619,7 +537,7 @@ const Dashboard = () => {
                   </div>
                   <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
                     <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#10b981'}}></i>
-                    <span style={styles.quickActionLabel}>Clients</span>
+                    <span style={styles.quickActionLabel}>Customers</span>
                   </div>
                   <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
                     <i className="fas fa-paw" style={{...styles.quickActionIcon, color: '#f59e0b'}}></i>
@@ -645,7 +563,7 @@ const Dashboard = () => {
                     {/* My appointments today */}
                     <div style={styles.sectionHeader}>
                       <h3 style={styles.sectionTitle}>My Schedule Today</h3>
-                      <a onClick={() => navigate('/appointments')} style={styles.viewAllLink}>View all / past →</a>
+                      <a onClick={() => navigate('/appointments', { state: { viewDate: new Date().toISOString().split('T')[0], openDayModal: true } })} style={styles.viewAllLink}>View today's full schedule →</a>
                     </div>
                     <div style={{...styles.tableCard, marginBottom: '1.25rem'}}>
                       {stats.vetScheduleToday.length === 0 ? (
@@ -661,26 +579,39 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Type</th>
                                 <th style={styles.th}>Status</th>
+                                <th style={styles.th}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {stats.vetScheduleToday.map((appt) => {
                                 const badge = getStatusBadge(appt.status);
+                                const isEmergency = appt.appointment_type?.toLowerCase().includes('emergency') || appt.appointment_type?.toLowerCase().includes('urgent');
                                 return (
-                                  <tr key={appt.appointment_id} style={styles.tr}>
+                                  <tr key={appt.appointment_id} style={{...styles.tr, backgroundColor: isEmergency ? '#fff1f2' : undefined, borderLeft: isEmergency ? '3px solid #ef4444' : undefined}}>
                                     <td style={styles.td}><span style={styles.timeText}>{formatTime(appt.appointment_time)}</span></td>
                                     <td style={styles.td}>
                                       <div style={styles.patientCell}>
-                                        <div style={styles.petAvatar}><i className="fas fa-paw"></i></div>
+                                        <div style={{...styles.petAvatar, backgroundColor: isEmergency ? '#fee2e2' : undefined, color: isEmergency ? '#dc2626' : undefined}}><i className="fas fa-paw"></i></div>
                                         <div>
                                           <div style={styles.petName}>{appt.pet_name}</div>
                                           <div style={styles.petDetail}>{appt.species}</div>
                                         </div>
                                       </div>
                                     </td>
-                                    <td style={styles.td}>{appt.appointment_type}</td>
+                                    <td style={styles.td}>
+                                      <span style={{color: isEmergency ? '#dc2626' : undefined, fontWeight: isEmergency ? '600' : undefined}}>
+                                        {isEmergency && <i className="fas fa-exclamation-circle" style={{marginRight: '0.3rem', fontSize: '0.75rem'}}></i>}
+                                        {appt.appointment_type}
+                                      </span>
+                                    </td>
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
+                                    </td>
+                                    <td style={styles.td}>
+                                      <button
+                                        onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appt.appointment_id, appointmentDate: appt.appointment_date, appointmentStatus: appt.status } })}
+                                        style={styles.viewButton}
+                                      >View</button>
                                     </td>
                                   </tr>
                                 );
@@ -716,7 +647,7 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Type</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={styles.th}></th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -738,12 +669,161 @@ const Dashboard = () => {
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
                                     </td>
+                                    <td style={{...styles.td, textAlign: 'center'}}>
+                                      <div style={{display: 'flex', gap: '0.4rem', justifyContent: 'center'}}>
+                                        <button
+                                          onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appt.appointment_id, appointmentDate: appt.appointment_date, appointmentStatus: appt.status } })}
+                                          style={styles.viewButton}
+                                        >View</button>
+                                        <button
+                                          onClick={() => handleAssignToMe(appt)}
+                                          style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
+                                          title="Add this appointment to your schedule"
+                                        >Assign to Me</button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : user?.role === 'admin' ? (
+                  <>
+                    {/* Staff Workload Today */}
+                    <div style={{...styles.sidebarCard, marginBottom: '1.25rem'}}>
+                      <div style={styles.sidebarHeader}>
+                        <h4 style={styles.sidebarTitle}>Today's Appointment Distribution</h4>
+                        <span style={styles.badge2}>{stats.todayAppointments} total</span>
+                      </div>
+                      {stats.adminStaffWorkload.length === 0 ? (
+                        <div style={{...styles.emptyState, padding: '1.25rem 0 0'}}>
+                          <p style={{...styles.emptyText, margin: 0}}>No appointments scheduled for today</p>
+                        </div>
+                      ) : (
+                        <div style={styles.tableWrapper}>
+                          <table style={styles.table}>
+                            <thead style={styles.thead}>
+                              <tr>
+                                <th style={styles.th}>Veterinarian</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Total</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Completed</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>In Progress</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Waiting</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stats.adminStaffWorkload.map((vet, i) => (
+                                <tr key={i} style={styles.tr}>
+                                  <td style={{...styles.td, fontWeight: '600'}}>{vet.name}</td>
+                                  <td style={{...styles.td, textAlign: 'center'}}><span style={{fontWeight: '700', color: '#1f2937'}}>{vet.assigned}</span></td>
+                                  <td style={{...styles.td, textAlign: 'center'}}><span style={{color: '#10b981', fontWeight: '600'}}>{vet.completed}</span></td>
+                                  <td style={{...styles.td, textAlign: 'center'}}><span style={{color: '#f59e0b', fontWeight: '600'}}>{vet.inProgress}</span></td>
+                                  <td style={{...styles.td, textAlign: 'center'}}><span style={{color: '#3b82f6', fontWeight: '600'}}>{vet.waiting}</span></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recent Billing Activity */}
+                    <div style={{...styles.sidebarCard, marginBottom: '1.25rem'}}>
+                      <div style={styles.sidebarHeader}>
+                        <h4 style={styles.sidebarTitle}>Recent Billing Activity</h4>
+                        <a onClick={() => navigate('/billing')} style={styles.viewAllLink}>View all →</a>
+                      </div>
+                      {stats.adminRecentBilling.length === 0 ? (
+                        <div style={{...styles.emptyState, padding: '1.25rem 0 0'}}>
+                          <p style={{...styles.emptyText, margin: 0}}>No billing records yet</p>
+                        </div>
+                      ) : (
+                        <div style={styles.tableWrapper}>
+                          <table style={styles.table}>
+                            <thead style={styles.thead}>
+                              <tr>
+                                <th style={styles.th}>Invoice</th>
+                                <th style={styles.th}>Customer</th>
+                                <th style={{...styles.th, textAlign: 'right'}}>Amount</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stats.adminRecentBilling.map((bill) => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const isOverdue = ['unpaid', 'partially_paid'].includes(bill.payment_status) && bill.due_date && bill.due_date.split('T')[0] < today;
+                                const statusStyle = bill.payment_status === 'fully_paid'
+                                  ? { bg: '#d1fae5', color: '#065f46', text: 'Paid' }
+                                  : bill.payment_status === 'partially_paid' && !isOverdue
+                                  ? { bg: '#fef3c7', color: '#92400e', text: 'Partial' }
+                                  : bill.payment_status === 'cancelled'
+                                  ? { bg: '#f3f4f6', color: '#6b7280', text: 'Cancelled' }
+                                  : isOverdue
+                                  ? { bg: '#fee2e2', color: '#991b1b', text: 'Overdue' }
+                                  : { bg: '#fef9c3', color: '#92400e', text: 'Unpaid' };
+                                return (
+                                  <tr key={bill.bill_id} style={{...styles.tr, cursor: 'pointer'}} onClick={() => navigate(`/billing/${bill.bill_id}`)}>
+                                    <td style={{...styles.td, fontWeight: '600', color: '#3b82f6'}}>{bill.bill_number}</td>
+                                    <td style={styles.td}>{bill.customer_name}</td>
+                                    <td style={{...styles.td, textAlign: 'right', fontWeight: '600'}}>Rs. {parseFloat(bill.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td style={{...styles.td, textAlign: 'center'}}>
+                                      <span style={{ backgroundColor: statusStyle.bg, color: statusStyle.color, padding: '0.15rem 0.5rem', borderRadius: '20px', fontSize: '0.72rem', fontWeight: '700' }}>{statusStyle.text}</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Today's Schedule */}
+                    <div style={styles.sidebarCard}>
+                      <div style={styles.sidebarHeader}>
+                        <h4 style={styles.sidebarTitle}>Today's Schedule</h4>
+                        <a onClick={() => navigate('/appointments', { state: { viewDate: new Date().toISOString().split('T')[0], openDayModal: true } })} style={styles.viewAllLink}>View today's full schedule →</a>
+                      </div>
+                      {stats.recentAppointments.length === 0 ? (
+                        <div style={{...styles.emptyState, padding: '1.25rem 0 0'}}>
+                          <p style={{...styles.emptyText, margin: 0}}>No appointments today</p>
+                        </div>
+                      ) : (
+                        <div style={styles.tableWrapper}>
+                          <table style={styles.table}>
+                            <thead style={styles.thead}>
+                              <tr>
+                                <th style={styles.th}>Time</th>
+                                <th style={styles.th}>Patient</th>
+                                <th style={styles.th}>Vet</th>
+                                <th style={styles.th}>Status</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stats.recentAppointments.map((appointment) => {
+                                const badge = getStatusBadge(appointment.status);
+                                const isEmergency = appointment.appointment_type?.toLowerCase().includes('emergency') || appointment.appointment_type?.toLowerCase().includes('urgent');
+                                return (
+                                  <tr key={appointment.appointment_id} style={{...styles.tr, backgroundColor: isEmergency ? '#fff1f2' : undefined, borderLeft: isEmergency ? '3px solid #ef4444' : undefined}}>
+                                    <td style={styles.td}><span style={styles.timeText}>{formatTime(appointment.appointment_time)}</span></td>
                                     <td style={styles.td}>
-                                      <button
-                                        onClick={() => handleAssignToMe(appt)}
-                                        style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
-                                        title="Add this appointment to your schedule"
-                                      >Assign to Me</button>
+                                      <div style={styles.patientCell}>
+                                        <div style={{...styles.petAvatar, backgroundColor: isEmergency ? '#fee2e2' : undefined, color: isEmergency ? '#dc2626' : undefined}}><i className="fas fa-paw"></i></div>
+                                        <div>
+                                          <div style={styles.petName}>{appointment.pet_name}</div>
+                                          <div style={styles.petDetail}>{appointment.species}</div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td style={styles.td}>{appointment.veterinarian_name ? `Dr. ${appointment.veterinarian_name}` : <span style={{color: '#9ca3af', fontSize: '0.78rem'}}>Unassigned</span>}</td>
+                                    <td style={styles.td}><span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span></td>
+                                    <td style={{...styles.td, textAlign: 'center'}}>
+                                      <button onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appointment.appointment_id, appointmentDate: appointment.appointment_date, appointmentStatus: appointment.status } })} style={styles.viewButton}>View</button>
                                     </td>
                                   </tr>
                                 );
@@ -755,74 +835,115 @@ const Dashboard = () => {
                     </div>
                   </>
                 ) : (
-                  <>
-                    <div style={styles.sectionHeader}>
-                      <h3 style={styles.sectionTitle}>Today's Schedule</h3>
-                      <a onClick={() => navigate('/appointments')} style={styles.viewAllLink}>View Full Schedule</a>
+                  <div style={styles.sidebarCard}>
+                    <div style={styles.sidebarHeader}>
+                      <h4 style={styles.sidebarTitle}>Today's Schedule</h4>
+                      <a onClick={() => navigate('/appointments', { state: { viewDate: new Date().toISOString().split('T')[0], openDayModal: true } })} style={styles.viewAllLink}>View today's full schedule →</a>
                     </div>
-                    <div style={styles.tableCard}>
-                      {stats.recentAppointments.length === 0 ? (
-                        <div style={styles.emptyState}>
-                          <i className="fas fa-calendar-day" style={styles.emptyIcon}></i>
-                          <p style={styles.emptyText}>No appointments scheduled for today</p>
-                          <button onClick={() => navigate('/appointments/new')} style={styles.emptyButton}>Schedule First Appointment</button>
-                        </div>
-                      ) : (
-                        <div style={styles.tableWrapper}>
-                          <table style={styles.table}>
-                            <thead style={styles.thead}>
-                              <tr>
-                                <th style={styles.th}>Time</th>
-                                <th style={styles.th}>Patient</th>
-                                <th style={styles.th}>Vet</th>
-                                <th style={styles.th}>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {stats.recentAppointments.map((appointment) => {
-                                const badge = getStatusBadge(appointment.status);
-                                return (
-                                  <tr key={appointment.appointment_id} style={styles.tr}>
-                                    <td style={styles.td}><span style={styles.timeText}>{formatTime(appointment.appointment_time)}</span></td>
-                                    <td style={styles.td}>
-                                      <div style={styles.patientCell}>
-                                        <div style={styles.petAvatar}><i className="fas fa-paw"></i></div>
-                                        <div>
-                                          <div style={styles.petName}>{appointment.pet_name}</div>
-                                          <div style={styles.petDetail}>{appointment.species} • {appointment.appointment_type}</div>
-                                        </div>
+                    {stats.recentAppointments.length === 0 ? (
+                      <div style={{...styles.emptyState, padding: '1.5rem 0 0'}}>
+                        <i className="fas fa-calendar-day" style={styles.emptyIcon}></i>
+                        <p style={styles.emptyText}>No appointments scheduled for today</p>
+                        <button onClick={() => navigate('/appointments/new')} style={styles.emptyButton}>Schedule First Appointment</button>
+                      </div>
+                    ) : (
+                      <div style={styles.tableWrapper}>
+                        <table style={styles.table}>
+                          <thead style={styles.thead}>
+                            <tr>
+                              <th style={styles.th}>Time</th>
+                              <th style={styles.th}>Patient</th>
+                              <th style={styles.th}>Vet</th>
+                              <th style={styles.th}>Status</th>
+                              <th style={{...styles.th, textAlign: 'center'}}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stats.recentAppointments.map((appointment) => {
+                              const badge = getStatusBadge(appointment.status);
+                              const isEmergency = appointment.appointment_type?.toLowerCase().includes('emergency') || appointment.appointment_type?.toLowerCase().includes('urgent');
+                              return (
+                                <tr key={appointment.appointment_id} style={{...styles.tr, backgroundColor: isEmergency ? '#fff1f2' : undefined, borderLeft: isEmergency ? '3px solid #ef4444' : undefined}}>
+                                  <td style={styles.td}><span style={styles.timeText}>{formatTime(appointment.appointment_time)}</span></td>
+                                  <td style={styles.td}>
+                                    <div style={styles.patientCell}>
+                                      <div style={{...styles.petAvatar, backgroundColor: isEmergency ? '#fee2e2' : undefined, color: isEmergency ? '#dc2626' : undefined}}><i className="fas fa-paw"></i></div>
+                                      <div>
+                                        <div style={styles.petName}>{appointment.pet_name}</div>
+                                        <div style={styles.petDetail}>{appointment.species} • {appointment.appointment_type}</div>
                                       </div>
-                                    </td>
-                                    <td style={styles.td}>{appointment.veterinarian_name ? `Dr. ${appointment.veterinarian_name}` : 'Not assigned'}</td>
-                                    <td style={styles.td}>
-                                      <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </>
+                                    </div>
+                                  </td>
+                                  <td style={styles.td}>{appointment.veterinarian_name ? `Dr. ${appointment.veterinarian_name}` : 'Not assigned'}</td>
+                                  <td style={styles.td}>
+                                    <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
+                                  </td>
+                                  <td style={{...styles.td, textAlign: 'center'}}>
+                                    <button
+                                      onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appointment.appointment_id, appointmentDate: appointment.appointment_date, appointmentStatus: appointment.status } })}
+                                      style={styles.viewButton}
+                                    >View</button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* Sidebar - Role-specific */}
               <div style={styles.sidebar}>
-                {user?.role === 'veterinarian' ? (
-                  /* Vet: Follow-up Cases */
+                {/* Admin: Financial Snapshot */}
+                {user?.role === 'admin' && (
+                  <div style={styles.sidebarCard}>
+                    <div style={styles.sidebarHeader}>
+                      <h4 style={styles.sidebarTitle}>Financial Snapshot</h4>
+                      <a onClick={() => navigate('/billing')} style={styles.viewAllLink}>View billing →</a>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {[
+                        { label: 'This Week', value: stats.adminWeekRevenue, icon: 'fa-calendar-week', color: '#3b82f6', bg: '#eff6ff' },
+                        { label: 'This Month', value: stats.adminMonthRevenue, icon: 'fa-calendar-alt', color: '#10b981', bg: '#f0fdf4' },
+                      ].map(item => (
+                        <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: item.bg, borderRadius: '8px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '7px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <i className={`fas ${item.icon}`} style={{ color: item.color, fontSize: '0.85rem' }}></i>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Revenue — {item.label}</p>
+                            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#111827' }}>Rs. {parseFloat(item.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          </div>
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: stats.adminOutstandingMonth > 0 ? '#fff7ed' : '#f9fafb', borderRadius: '8px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '7px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <i className="fas fa-clock" style={{ color: stats.adminOutstandingMonth > 0 ? '#f59e0b' : '#9ca3af', fontSize: '0.85rem' }}></i>
+                        </div>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Outstanding — This Month</p>
+                          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: stats.adminOutstandingMonth > 0 ? '#d97706' : '#111827' }}>Rs. {parseFloat(stats.adminOutstandingMonth).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(user?.role === 'veterinarian' || user?.role === 'admin') && (
+                  /* Vet + Admin: Follow-up Cases */
                   <div style={styles.sidebarCard}>
                     <div style={styles.sidebarHeader}>
                       <h4 style={styles.sidebarTitle}>Pending Follow-ups</h4>
                       <span style={{...styles.badge2, backgroundColor: stats.followUpsCount > 0 ? '#ede9fe' : '#f3f4f6', color: stats.followUpsCount > 0 ? '#6d28d9' : '#6b7280'}}>
-                        {stats.followUpsCount} due
+                        {stats.followUpsCount} pending
                       </span>
                     </div>
                     <div style={styles.upcomingList}>
                       {stats.followUpCases.length === 0 ? (
-                        <p style={styles.emptyTextSmall}>No follow-ups in the next 14 days</p>
+                        <p style={styles.emptyTextSmall}>No pending follow-ups</p>
                       ) : (
                         stats.followUpCases.map((c) => (
                           <div key={c.case_id} style={{...styles.upcomingItem, cursor: 'pointer'}} onClick={() => navigate(`/disease-cases/${c.case_id}`)}>
@@ -832,8 +953,19 @@ const Dashboard = () => {
                             <div style={{flex: 1, minWidth: 0}}>
                               <div style={styles.upcomingPet}>{c.pet_name} — {c.disease_name}</div>
                               <div style={styles.upcomingDate}>
-                                {c.followup_type && <span style={{marginRight: '0.4rem'}}>{c.followup_type} ·</span>}
-                                {new Date(c.next_followup_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {c.followup_type && <span style={{marginRight: '0.4rem'}}>{c.followup_type.replace(/_/g, ' ')} ·</span>}
+                                {(() => {
+                                  const d = c.next_followup_date.split('T')[0];
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const isOverdue = d < today;
+                                  return (
+                                    <span style={{color: isOverdue ? '#dc2626' : 'inherit', fontWeight: isOverdue ? '600' : 'normal'}}>
+                                      {isOverdue && <i className="fas fa-circle-exclamation" style={{marginRight: '0.25rem'}}></i>}
+                                      {new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      {isOverdue && ' (overdue)'}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
@@ -848,83 +980,21 @@ const Dashboard = () => {
                       </div>
                     )}
                   </div>
-                ) : user?.role === 'admin' ? (
-                  /* Admin: Quick Overview */
-                  <div style={styles.sidebarCard}>
-                    <h4 style={styles.sidebarTitle}>Quick Overview</h4>
-                    <div style={styles.quickStatsList}>
-                      <div style={styles.quickStat} onClick={() => navigate('/customers')}>
-                        <div style={styles.quickStatIcon}><i className="fas fa-users"></i></div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.totalCustomers}</div>
-                          <div style={styles.quickStatLabel}>Total Clients</div>
-                        </div>
-                      </div>
-                      <div style={styles.quickStat} onClick={() => navigate('/medical-records')}>
-                        <div style={styles.quickStatIcon}><i className="fas fa-file-medical"></i></div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.totalMedicalRecords}</div>
-                          <div style={styles.quickStatLabel}>Medical Records</div>
-                        </div>
-                      </div>
-                      <div style={styles.quickStat} onClick={() => navigate('/inventory')}>
-                        <div style={styles.quickStatIcon}><i className="fas fa-boxes"></i></div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.lowStockItems}</div>
-                          <div style={styles.quickStatLabel}>Low Stock Alerts</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Receptionist: Today's Summary */
-                  <div style={styles.sidebarCard}>
-                    <h4 style={styles.sidebarTitle}>Today's Summary</h4>
-                    <div style={styles.quickStatsList}>
-                      <div style={styles.quickStat} onClick={() => navigate('/appointments')}>
-                        <div style={{...styles.quickStatIcon, backgroundColor: '#dbeafe', color: '#1e40af'}}>
-                          <i className="fas fa-calendar-check"></i>
-                        </div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.todayAppointments}</div>
-                          <div style={styles.quickStatLabel}>Today's Appointments</div>
-                        </div>
-                      </div>
-                      <div style={styles.quickStat} onClick={() => navigate('/billing')}>
-                        <div style={{...styles.quickStatIcon, backgroundColor: '#ede9fe', color: '#6d28d9'}}>
-                          <i className="fas fa-file-invoice-dollar"></i>
-                        </div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.pendingInvoices}</div>
-                          <div style={styles.quickStatLabel}>Pending Payments</div>
-                        </div>
-                      </div>
-                      <div style={styles.quickStat} onClick={() => navigate('/customers')}>
-                        <div style={{...styles.quickStatIcon, backgroundColor: '#d1fae5', color: '#065f46'}}>
-                          <i className="fas fa-users"></i>
-                        </div>
-                        <div>
-                          <div style={styles.quickStatValue}>{stats.totalCustomers}</div>
-                          <div style={styles.quickStatLabel}>Total Clients</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 )}
 
                 {/* Upcoming Appointments */}
                 <div style={styles.sidebarCard}>
                   <div style={styles.sidebarHeader}>
-                    <h4 style={styles.sidebarTitle}>{user?.role === 'veterinarian' ? 'My Upcoming' : 'Upcoming'}</h4>
+                    <h4 style={styles.sidebarTitle}>{user?.role === 'veterinarian' ? 'My Next 7 Days' : 'Next 7 Days'}</h4>
                     <span style={styles.badge2}>
-                      {user?.role === 'veterinarian' ? stats.vetUpcoming.length : stats.upcomingAppointments.length} scheduled
+                      {user?.role === 'veterinarian' ? stats.vetUpcoming.length : stats.upcomingAppointments.length} upcoming
                     </span>
                   </div>
                   <div style={styles.upcomingList}>
                     {(user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).length === 0 ? (
-                      <p style={styles.emptyTextSmall}>No upcoming appointments</p>
+                      <p style={styles.emptyTextSmall}>No appointments in the next 7 days</p>
                     ) : (
-                      (user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).slice(0, 4).map((apt) => (
+                      (user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).slice(0, 5).map((apt) => (
                         <div key={apt.appointment_id} style={{...styles.upcomingItem, cursor: 'pointer', backgroundColor: upcomingPreview?.appointment_id === apt.appointment_id ? '#eff6ff' : undefined}} onClick={() => setUpcomingPreview(upcomingPreview?.appointment_id === apt.appointment_id ? null : apt)}>
                           <div style={styles.upcomingIcon}><i className="fas fa-calendar"></i></div>
                           <div style={{flex: 1}}>
@@ -935,6 +1005,11 @@ const Dashboard = () => {
                           </div>
                         </div>
                       ))
+                    )}
+                    {(user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).length > 5 && (
+                      <a onClick={() => navigate('/appointments', { state: { openListTab: 'upcoming' } })} style={{...styles.viewAllLink, display: 'block', textAlign: 'center', marginTop: '0.5rem', fontSize: '0.8rem'}}>
+                        +{(user?.role === 'veterinarian' ? stats.vetUpcoming : stats.upcomingAppointments).length - 5} more · View all →
+                      </a>
                     )}
                   </div>
 
@@ -962,36 +1037,6 @@ const Dashboard = () => {
                     </div>
                   )}
 
-                  {user?.role === 'veterinarian' && stats.vetUnassignedUpcoming.length > 0 && (
-                    <div style={{borderTop: '1px solid #f3f4f6', marginTop: '0.75rem', paddingTop: '0.75rem'}}>
-                      <p style={{fontSize: '0.75rem', fontWeight: '600', color: '#92400e', margin: '0 0 0.5rem'}}>
-                        <i className="fas fa-circle-exclamation" style={{marginRight: '0.3rem'}}></i>
-                        {stats.vetUnassignedUpcoming.length} unassigned upcoming
-                      </p>
-                      {stats.vetUnassignedUpcoming.map((apt) => (
-                        <div key={apt.appointment_id} style={{...styles.upcomingItem, backgroundColor: upcomingPreview?.appointment_id === apt.appointment_id ? '#fffbeb' : '#fffbeb', marginBottom: '0.4rem', cursor: 'pointer'}} onClick={() => setUpcomingPreview(upcomingPreview?.appointment_id === apt.appointment_id ? null : apt)}>
-                          <div style={{...styles.upcomingIcon, backgroundColor: '#fde68a', color: '#92400e'}}><i className="fas fa-calendar"></i></div>
-                          <div style={{flex: 1}}>
-                            <div style={styles.upcomingPet}>{apt.pet_name}</div>
-                            <div style={styles.upcomingDate}>
-                              {new Date(apt.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {formatTime(apt.appointment_time)}
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleAssignToMe(apt); }}
-                            style={{fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap'}}
-                          >Assign to Me</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {user?.role === 'veterinarian' && (
-                    <div style={{paddingTop: '0.75rem', borderTop: '1px solid #f3f4f6', marginTop: '0.5rem'}}>
-                      <span onClick={() => navigate('/appointments')} style={{fontSize: '0.8rem', color: '#3b82f6', cursor: 'pointer', fontWeight: '500'}}>
-                        View all appointments & past history →
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

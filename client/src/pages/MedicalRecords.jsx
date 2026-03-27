@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMedicalRecords } from '../services/medicalRecordService';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,11 @@ const MedicalRecords = () => {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     visit_date_from: '',
@@ -143,7 +148,7 @@ const MedicalRecords = () => {
         )}
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div ref={errorRef} style={styles.error}>{error}</div>}
 
       {/* Search and Filters */}
       <div style={styles.filtersContainer}>

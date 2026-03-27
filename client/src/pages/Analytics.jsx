@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getDiseaseCases,
@@ -26,6 +26,11 @@ const Analytics = () => {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     species: '',
@@ -348,9 +353,11 @@ const Analytics = () => {
 
   const getOutcomeBadge = (outcome) => {
     const badges = {
-      recovered: { backgroundColor: '#dcfce7', color: '#166534' },
-      ongoing: { backgroundColor: '#dbeafe', color: '#1e40af' },
-      deceased: { backgroundColor: '#f3f4f6', color: '#1f2937' }
+      recovered:         { backgroundColor: '#dcfce7', color: '#166534' },
+      ongoing_treatment: { backgroundColor: '#dbeafe', color: '#1e40af' },
+      chronic:           { backgroundColor: '#fef9c3', color: '#854d0e' },
+      deceased:          { backgroundColor: '#f3f4f6', color: '#1f2937' },
+      transferred:       { backgroundColor: '#f3e8ff', color: '#6b21a8' },
     };
     return badges[outcome] || { backgroundColor: '#f3f4f6', color: '#1f2937' };
   };
@@ -500,7 +507,7 @@ const Analytics = () => {
         </div>
 
         {error && (
-          <div style={styles.error}>{error}</div>
+          <div ref={errorRef} style={styles.error}>{error}</div>
         )}
         {trainSuccess && (
           <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
@@ -634,8 +641,10 @@ const Analytics = () => {
               >
                 <option value="">All Outcomes</option>
                 <option value="recovered">Recovered</option>
-                <option value="ongoing">Ongoing</option>
+                <option value="ongoing_treatment">Ongoing Treatment</option>
+                <option value="chronic">Chronic</option>
                 <option value="deceased">Deceased</option>
+                <option value="transferred">Transferred</option>
               </select>
             </div>
 
@@ -1326,6 +1335,7 @@ const Analytics = () => {
                         <option value={30}>30 days</option>
                         <option value={60}>60 days</option>
                         <option value={90}>90 days</option>
+                        <option value={365}>1 year</option>
                       </select>
                     </div>
                     <button onClick={fetchSalesData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1458,6 +1468,8 @@ const Analytics = () => {
                         <option value={14}>14 days</option>
                         <option value={30}>30 days</option>
                         <option value={60}>60 days</option>
+                        <option value={90}>90 days</option>
+                        <option value={365}>1 year</option>
                       </select>
                     </div>
                     <button onClick={fetchInventoryData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

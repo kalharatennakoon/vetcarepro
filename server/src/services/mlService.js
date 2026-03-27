@@ -228,9 +228,9 @@ const forecastInventory = async (params) => {
 /**
  * Get intelligent reorder suggestions for all inventory items
  */
-const getReorderSuggestions = async () => {
+const getReorderSuggestions = async (params = {}) => {
   try {
-    const response = await mlClient.get('/api/ml/inventory/reorder-suggestions');
+    const response = await mlClient.get('/api/ml/inventory/reorder-suggestions', { params });
     return response.data;
   } catch (error) {
     console.error('Failed to get reorder suggestions:', error.message);
@@ -302,6 +302,26 @@ const predictCancerRisk = async (params) => {
   } catch (error) {
     console.error('Cancer risk prediction failed:', error.message);
     throw new Error('Failed to predict cancer risk');
+  }
+};
+
+const assessOutbreakRisk = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/disease/outbreak-risk', params);
+    return response.data;
+  } catch (error) {
+    console.error('Outbreak risk assessment failed:', error.message);
+    throw new Error('Failed to assess outbreak risk');
+  }
+};
+
+const getDiseaseForecast = async (params = {}) => {
+  try {
+    const response = await mlClient.get('/api/ml/disease/forecast', { params });
+    return response.data;
+  } catch (error) {
+    console.error('Disease forecast failed:', error.message);
+    throw new Error('Failed to get disease forecast');
   }
 };
 
@@ -380,6 +400,8 @@ export {
   trainDiseaseModel,
   predictDisease,
   getDiseaseTrends,
+  assessOutbreakRisk,
+  getDiseaseForecast,
   predictPetRisk,
   predictCancerRisk,
   getOutbreakTrend,

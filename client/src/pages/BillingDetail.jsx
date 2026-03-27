@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getBillById, recordPayment } from '../services/billingService';
 import { sendInvoiceEmail } from '../services/emailService';
@@ -10,6 +10,11 @@ const BillingDetail = () => {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -20,7 +25,10 @@ const BillingDetail = () => {
     notes: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  
+  const [emailModal, setEmailModal] = useState(false);
+  const [emailNote, setEmailNote] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,11 +36,16 @@ const BillingDetail = () => {
   const { showSuccess, showError } = useNotification();
 
   const handleEmailInvoice = async () => {
+    setEmailSending(true);
     try {
-      const res = await sendInvoiceEmail(id);
+      const res = await sendInvoiceEmail(id, emailNote);
       showSuccess(res.message || 'Invoice sent successfully');
+      setEmailModal(false);
+      setEmailNote('');
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to send invoice email');
+    } finally {
+      setEmailSending(false);
     }
   };
 
@@ -165,7 +178,7 @@ const BillingDetail = () => {
   if (error || !bill) {
     return (
       <Layout>
-        <div style={styles.errorContainer}>
+        <div ref={errorRef} style={styles.errorContainer}>
           <h2>Error</h2>
           <p style={styles.errorText}>{error || 'Bill not found'}</p>
           <button onClick={() => navigate('/billing')} style={styles.backButton}>
@@ -289,7 +302,7 @@ const BillingDetail = () => {
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
               <button
-                onClick={handleEmailInvoice}
+                onClick={() => setEmailModal(true)}
                 style={{ ...styles.printButton, backgroundColor: '#059669', borderColor: '#059669' }}
               >
                 <i className="fas fa-envelope"></i> Email Invoice
@@ -370,7 +383,7 @@ const BillingDetail = () => {
                     <td style={styles.td}>{item.item_name}</td>
                     <td style={styles.td}>
                       <span style={styles.itemTypeBadge}>
-                        {item.item_type ? ({ consultation: 'Consultation', service: 'Service / Procedure', inventory_item: 'Inventory Item', vaccination: 'Inventory Item' }[item.item_type] || item.item_type) : '-'}
+                        {item.item_type === 'inventory_item' ? 'Inventory Item' : item.item_type === 'service' ? 'Service' : item.item_type || '-'}
                       </span>
                     </td>
                     <td style={styles.tdRight}>{item.quantity}</td>
@@ -426,6 +439,82 @@ const BillingDetail = () => {
             </div>
           )}
         </div>
+
+        {/* Cancellation Reason (internal only — not printed) */}
+        {bill.payment_status === 'cancelled' && (
+          <div style={styles.cancelCard} className="no-print">
+            <h2 style={{ ...styles.cardTitle, color: '#991B1B' }}>
+              <i className="fas fa-ban" style={{ marginRight: '8px' }}></i>
+              Invoice Cancelled
+            </h2>
+            <div style={{ fontSize: '14px', color: '#374151', marginTop: '8px' }}>
+              <span style={{ fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>Reason: </span>
+              <span>{bill.cancellation_reason}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Linked Appointment (internal only — not printed) */}
+        {bill.appointment_id && (
+          <div style={styles.apptCard} className="no-print">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={styles.cardTitle}>
+                <i className="fas fa-calendar-check" style={{ marginRight: '8px', color: '#3B82F6' }}></i>
+                Linked Appointment
+              </h2>
+              <button
+                onClick={() => navigate('/appointments', { state: { highlightAppointmentId: bill.appointment_id, appointmentDate: bill.appointment_date, appointmentStatus: 'completed' } })}
+                style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+              >
+                View in Appointments
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+              <div>
+                <p style={styles.apptLabel}>Appointment ID</p>
+                <p style={styles.apptValue}>{bill.appointment_id}</p>
+              </div>
+              {bill.pet_name && (
+                <div>
+                  <p style={styles.apptLabel}>Pet</p>
+                  <p style={styles.apptValue}>{bill.pet_name}</p>
+                </div>
+              )}
+              {bill.appointment_type && (
+                <div>
+                  <p style={styles.apptLabel}>Type</p>
+                  <p style={{ ...styles.apptValue, textTransform: 'capitalize' }}>{bill.appointment_type.replace('_', ' ')}</p>
+                </div>
+              )}
+              {bill.appointment_date && (
+                <div>
+                  <p style={styles.apptLabel}>Date</p>
+                  <p style={styles.apptValue}>{new Date(bill.appointment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                </div>
+              )}
+              {bill.appointment_time && (
+                <div>
+                  <p style={styles.apptLabel}>Time</p>
+                  <p style={styles.apptValue}>
+                    {(() => {
+                      const [h, m] = bill.appointment_time.split(':');
+                      const hour = parseInt(h);
+                      const ampm = hour >= 12 ? 'PM' : 'AM';
+                      const hour12 = hour % 12 || 12;
+                      return `${hour12}:${m} ${ampm}`;
+                    })()}
+                  </p>
+                </div>
+              )}
+              {bill.veterinarian_name && (
+                <div>
+                  <p style={styles.apptLabel}>Veterinarian</p>
+                  <p style={styles.apptValue}>Dr. {bill.veterinarian_name}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Payment Form */}
         {showPaymentForm && (
@@ -587,6 +676,43 @@ const BillingDetail = () => {
           })}</small>
         </div>
       </div>
+
+      {/* Email Invoice Modal */}
+      {emailModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalBox}>
+            <h3 style={styles.modalTitle}>Email Invoice</h3>
+            <p style={styles.modalSubtitle}>Send invoice #{bill.bill_number} to the customer.</p>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
+              <textarea
+                value={emailNote}
+                onChange={(e) => setEmailNote(e.target.value)}
+                style={{ ...styles.input, minHeight: '90px', resize: 'vertical' }}
+                placeholder="Add a note or message to include in the email..."
+              />
+            </div>
+            <div style={styles.formActions}>
+              <button
+                type="button"
+                onClick={() => { setEmailModal(false); setEmailNote(''); }}
+                style={styles.cancelButton}
+                disabled={emailSending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEmailInvoice}
+                style={{ ...styles.submitButton, backgroundColor: '#059669' }}
+                disabled={emailSending}
+              >
+                {emailSending ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
@@ -932,6 +1058,62 @@ const styles = {
   errorText: {
     color: '#DC2626',
     marginBottom: '20px'
+  },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  },
+  modalBox: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '32px',
+    width: '100%',
+    maxWidth: '480px',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+  },
+  modalTitle: {
+    fontSize: '18px',
+    fontWeight: '600',
+    color: '#1F2937',
+    margin: '0 0 6px 0'
+  },
+  modalSubtitle: {
+    fontSize: '14px',
+    color: '#6B7280',
+    margin: '0 0 20px 0'
+  },
+  cancelCard: {
+    backgroundColor: '#FEF2F2',
+    border: '1px solid #FECACA',
+    padding: '20px 32px',
+    borderRadius: '12px',
+    marginBottom: '24px'
+  },
+  apptCard: {
+    backgroundColor: '#EFF6FF',
+    border: '1px solid #BFDBFE',
+    padding: '24px 32px',
+    borderRadius: '12px',
+    marginBottom: '24px'
+  },
+  apptLabel: {
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    margin: '0 0 4px 0'
+  },
+  apptValue: {
+    fontSize: '14px',
+    fontWeight: '500',
+    color: '#1E3A8A',
+    margin: 0
   }
 };
 

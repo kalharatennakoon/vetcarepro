@@ -676,9 +676,9 @@ class SalesForecastingModel(BaseMLModel):
             dow = recent.groupby('day_of_week').agg(
                 avg_revenue=('daily_revenue', 'mean'),
                 total_transactions=('transaction_count', 'sum')
-            ).reset_index()
-            dow['day_order'] = pd.Categorical(dow['day_of_week'], categories=day_order, ordered=True)
-            dow = dow.sort_values('day_order').drop(columns='day_order').reset_index(drop=True)
+            ).reset_index().set_index('day_of_week')
+            dow = dow.reindex(day_order, fill_value=0).reset_index()
+            dow.rename(columns={'index': 'day_of_week'}, inplace=True)
 
             # Service type breakdown
             service_revenue = []

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMedicalRecordById, deleteMedicalRecord } from '../services/medicalRecordService';
 import { getAppointmentById } from '../services/appointmentService';
@@ -9,6 +9,11 @@ const MedicalRecordDetail = () => {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [apptModal, setApptModal] = useState(null);
   const [apptModalLoading, setApptModalLoading] = useState(false);
@@ -60,7 +65,7 @@ const MedicalRecordDetail = () => {
   };
 
   const getStatusColor = (status) => {
-    const colors = { scheduled: '#3b82f6', confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
+    const colors = { confirmed: '#10b981', in_progress: '#f59e0b', completed: '#6b7280', cancelled: '#ef4444', no_show: '#8b5cf6' };
     return colors[status] || '#6b7280';
   };
 
@@ -99,7 +104,7 @@ const MedicalRecordDetail = () => {
     return (
       <Layout>
       <div style={styles.container}>
-        <div style={styles.error}>{error || 'Medical record not found'}</div>
+        <div ref={errorRef} style={styles.error}>{error || 'Medical record not found'}</div>
         <button onClick={() => navigate('/medical-records')} style={styles.backButton}>
           ← Back to Medical Records
         </button>

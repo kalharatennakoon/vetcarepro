@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { sendAppointmentConfirmationEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,11 @@ const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filterDate, setFilterDate] = useState('');
@@ -18,7 +23,7 @@ const Appointments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedVet, setSelectedVet] = useState('');
+  const [selectedVet] = useState('');
   const [lastSearchQuery, setLastSearchQuery] = useState('');
   const [lastFilterStatus, setLastFilterStatus] = useState('');
   const [lastSelectedVet, setLastSelectedVet] = useState('');
@@ -29,25 +34,56 @@ const Appointments = () => {
   const [apptDetailModal, setApptDetailModal] = useState(null);
   const [pendingViewDate, setPendingViewDate] = useState(null);
   const [pendingViewApptId, setPendingViewApptId] = useState(null);
+  const [pendingOpenDayModal, setPendingOpenDayModal] = useState(null);
   const [showDeleteApptModal, setShowDeleteApptModal] = useState(false);
   const [pendingDeleteApptId, setPendingDeleteApptId] = useState(null);
-  const [cancelApptModal, setCancelApptModal] = useState({ open: false, appointmentId: null, closeDetailModal: false });
+  const [cancelApptModal, setCancelApptModal] = useState({ open: false, appointmentId: null, closeDetailModal: false, reason: '' });
+  const [emailApptModal, setEmailApptModal] = useState(false);
+  const [emailApptNote, setEmailApptNote] = useState('');
+  const [emailApptSending, setEmailApptSending] = useState(false);
+  const [pendingEmailApptId, setPendingEmailApptId] = useState(null);
+  const [highlightedApptId, setHighlightedApptId] = useState(null);
   
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
 
-  const handleSendConfirmation = async (appointmentId) => {
+  const openEmailApptModal = (appointmentId) => {
+    setPendingEmailApptId(appointmentId);
+    setEmailApptNote('');
+    setEmailApptModal(true);
+  };
+
+  const handleSendConfirmation = async () => {
+    setEmailApptSending(true);
     try {
-      const res = await sendAppointmentConfirmationEmail(appointmentId);
+      const res = await sendAppointmentConfirmationEmail(pendingEmailApptId, emailApptNote);
       showSuccess(res.message || 'Confirmation email sent successfully');
+      setEmailApptModal(false);
+      setEmailApptNote('');
+      setPendingEmailApptId(null);
     } catch (err) {
       showError(err.response?.data?.message || 'Failed to send confirmation email');
+    } finally {
+      setEmailApptSending(false);
     }
   };
 
   // Helper functions - defined early to avoid hoisting issues
+
+  const formatActualDuration = (startedAt, completedAt) => {
+    if (!startedAt || !completedAt) return null;
+    const diffMs = new Date(completedAt) - new Date(startedAt);
+    if (diffMs <= 0) return null;
+    const totalMinutes = Math.round(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${minutes}m`;
+  };
+
   // Helper function to format date as YYYY-MM-DD without timezone conversion
   const formatDateLocal = (date) => {
     const year = date.getFullYear();
@@ -82,6 +118,19 @@ const Appointments = () => {
       setEditingId(location.state.editAppointmentId);
       setShowForm(true);
       window.history.replaceState({}, document.title);
+    } else if (location.state?.highlightAppointmentId) {
+      const apptId = location.state.highlightAppointmentId;
+      const apptDate = location.state.appointmentDate ? location.state.appointmentDate.split('T')[0] : '';
+      const apptStatus = location.state.appointmentStatus || '';
+      const todayStr = formatDateLocal(new Date());
+      setViewMode('list');
+      setListTab(apptDate && apptDate < todayStr || apptStatus === 'completed' || apptStatus === 'cancelled' ? 'past' : 'upcoming');
+      setHighlightedApptId(apptId);
+      window.history.replaceState({}, document.title);
+    } else if (location.state?.openListTab) {
+      setViewMode('list');
+      setListTab(location.state.openListTab);
+      window.history.replaceState({}, document.title);
     } else if (location.state?.viewDate) {
       const dateStr = location.state.viewDate.split('T')[0];
       const aptDate = new Date(dateStr + 'T00:00:00');
@@ -89,6 +138,9 @@ const Appointments = () => {
       setPendingViewDate(dateStr);
       if (location.state?.viewAppointmentId) {
         setPendingViewApptId(location.state.viewAppointmentId);
+      }
+      if (location.state?.openDayModal) {
+        setPendingOpenDayModal(dateStr);
       }
       window.history.replaceState({}, document.title);
     }
@@ -104,6 +156,30 @@ const Appointments = () => {
     setPendingViewDate(null);
     setPendingViewApptId(null);
   }, [appointments, pendingViewDate]);
+
+  // Once appointments load, open the day modal for the pending date
+  useEffect(() => {
+    if (!pendingOpenDayModal || appointments.length === 0) return;
+    const dateStr = pendingOpenDayModal;
+    const dayAppts = appointments.filter(a => a.appointment_date?.split('T')[0] === dateStr);
+    setSelectedDate(dateStr);
+    setSelectedDayAppointments(dayAppts);
+    setShowDayModal(true);
+    setPendingOpenDayModal(null);
+  }, [appointments, pendingOpenDayModal]);
+
+  // Scroll to and briefly highlight the appointment when switching to list view
+  useEffect(() => {
+    if (!highlightedApptId || viewMode !== 'list') return;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`appt-card-${highlightedApptId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    const clearTimer = setTimeout(() => setHighlightedApptId(null), 3500);
+    return () => { clearTimeout(timer); clearTimeout(clearTimer); };
+  }, [highlightedApptId, viewMode, appointments]);
 
   const fetchAppointments = async () => {
     try {
@@ -142,16 +218,22 @@ const Appointments = () => {
   };
 
   const confirmCancelAppointment = async () => {
-    await handleStatusUpdate(cancelApptModal.appointmentId, 'cancelled');
+    if (!cancelApptModal.reason) return;
+    await handleStatusUpdate(cancelApptModal.appointmentId, 'cancelled', cancelApptModal.reason);
     if (cancelApptModal.closeDetailModal) setApptDetailModal(null);
-    setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false });
+    setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' });
   };
 
-  const handleStatusUpdate = async (id, newStatus) => {
+  const handleStatusUpdate = async (id, newStatus, cancellationReason = null, appointmentData = null) => {
     try {
-      await updateAppointmentStatus(id, newStatus);
-      showSuccess(`Appointment ${newStatus.replace('_', ' ')}`);
+      await updateAppointmentStatus(id, newStatus, cancellationReason);
       fetchAppointments();
+      if (newStatus === 'completed' && appointmentData) {
+        showSuccess('Appointment completed successfully');
+        navigate('/billing/new', { state: { appointmentData } });
+      } else {
+        showSuccess(`Appointment ${newStatus.replace('_', ' ')}`);
+      }
     } catch (err) {
       showError('Failed to update appointment status');
       console.error(err);
@@ -309,7 +391,6 @@ const Appointments = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      scheduled: '#3b82f6',
       confirmed: '#10b981',
       in_progress: '#f59e0b',
       completed: '#6b7280',
@@ -322,7 +403,6 @@ const Appointments = () => {
 
   const getStatusBorderColor = (status) => {
     const colors = {
-      scheduled: '#3b82f6',
       confirmed: '#10b981',
       in_progress: '#f59e0b',
       completed: '#6b7280',
@@ -371,10 +451,6 @@ const Appointments = () => {
     });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
 
   if (showForm) {
     return (
@@ -390,13 +466,13 @@ const Appointments = () => {
 
   const today = formatDateLocal(new Date());
   const upcomingAppointments = filteredAppointments
-    .filter(a => getISTDate(a.appointment_date) >= today)
+    .filter(a => getISTDate(a.appointment_date) >= today && a.status !== 'completed' && a.status !== 'cancelled')
     .sort((a, b) => {
       const d = new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime();
       return d !== 0 ? d : a.appointment_time.localeCompare(b.appointment_time);
     });
   const pastAppointments = filteredAppointments
-    .filter(a => getISTDate(a.appointment_date) < today)
+    .filter(a => getISTDate(a.appointment_date) < today || a.status === 'completed' || a.status === 'cancelled')
     .sort((a, b) => {
       const d = new Date(b.appointment_date).getTime() - new Date(a.appointment_date).getTime();
       return d !== 0 ? d : b.appointment_time.localeCompare(a.appointment_time);
@@ -442,13 +518,10 @@ const Appointments = () => {
                 style={styles.filterSelect}
               >
                 <option value="">All Status</option>
-                <option value="scheduled">Scheduled</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="no_show">No Show</option>
-                <option value="rescheduled">Rescheduled</option>
               </select>
             </div>
 
@@ -553,7 +626,7 @@ const Appointments = () => {
 
           {/* Error Message */}
           {error && (
-            <div style={styles.errorBox}>
+            <div ref={errorRef} style={styles.errorBox}>
               <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
               {error}
             </div>
@@ -722,13 +795,13 @@ const Appointments = () => {
                     ) : (
                       <div style={styles.cardsGrid}>
                         {tabAppointments.map((appointment) => (
-                        <div key={appointment.appointment_id} style={styles.card}>
+                        <div key={appointment.appointment_id} id={`appt-card-${appointment.appointment_id}`} style={{ ...styles.card, ...(highlightedApptId === appointment.appointment_id ? { outline: '2px solid #2563eb', boxShadow: '0 0 0 4px #dbeafe' } : {}) }}>
                         <div style={styles.cardHeader}>
                           <div style={styles.cardHeaderLeft}>
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
                             <div>
                               <h3 style={styles.cardTitle}>
-                                {appointment.pet_name}
+                                {appointment.pet_name}{appointment.species && <span style={{ fontWeight: '400', color: '#6b7280', fontSize: '0.85em' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
                               </h3>
                               <p style={styles.cardSubtitle}>
                                 {appointment.customer_first_name} {appointment.customer_last_name}
@@ -756,9 +829,15 @@ const Appointments = () => {
                             <span style={styles.infoValue}>{formatTime(appointment.appointment_time)}</span>
                           </div>
                           <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> Duration:</span>
+                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> {appointment.status === 'completed' ? 'Scheduled:' : 'Duration:'}</span>
                             <span style={styles.infoValue}>{appointment.duration_minutes} min</span>
                           </div>
+                          {appointment.status === 'completed' && appointment.started_at && appointment.completed_at && (
+                            <div style={styles.infoRow}>
+                              <span style={styles.infoLabel}><i className="fas fa-stopwatch"></i> Actual:</span>
+                              <span style={{ ...styles.infoValue, color: '#059669', fontWeight: 600 }}>{formatActualDuration(appointment.started_at, appointment.completed_at)}</span>
+                            </div>
+                          )}
                           <div style={styles.infoRow}>
                             <span style={styles.infoLabel}><i className="fas fa-clipboard"></i> Type:</span>
                             <span style={styles.infoValue}>{appointment.appointment_type}</span>
@@ -775,26 +854,35 @@ const Appointments = () => {
                         </div>
 
                         <div style={styles.cardFooter}>
-                          {/* Confirm — scheduled or rescheduled */}
-                          {(appointment.status === 'scheduled' || appointment.status === 'rescheduled') && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'confirmed')} style={styles.confirmButton}>
-                              <i className="fas fa-check" style={{ marginRight: '0.25rem' }}></i>Confirm
-                            </button>
-                          )}
                           {/* Start — confirmed only */}
                           {appointment.status === 'confirmed' && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')} style={styles.startButton}>
+                            <button onClick={() => {
+                              if (!appointment.veterinarian_id) {
+                                showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                                return;
+                              }
+                              handleStatusUpdate(appointment.appointment_id, 'in_progress');
+                            }} style={styles.startButton}>
                               <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
                             </button>
                           )}
-                          {/* Complete — confirmed or in_progress */}
-                          {(appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed')} style={styles.completeButton}>
+                          {/* Complete — in_progress only */}
+                          {appointment.status === 'in_progress' && (
+                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
+                              appointment_id: appointment.appointment_id,
+                              customer_id: appointment.customer_id,
+                              customer_first_name: appointment.customer_first_name,
+                              customer_last_name: appointment.customer_last_name,
+                              pet_name: appointment.pet_name,
+                              appointment_type: appointment.appointment_type,
+                              appointment_date: appointment.appointment_date,
+                              veterinarian_name: appointment.veterinarian_name
+                            })} style={styles.completeButton}>
                               <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
                             </button>
                           )}
-                          {/* Cancel — scheduled, confirmed, rescheduled only (not in_progress, not completed) */}
-                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
+                          {/* Cancel — confirmed only */}
+                          {appointment.status === 'confirmed' && (
                             <button
                               onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
                               style={styles.cancelButton}
@@ -802,14 +890,14 @@ const Appointments = () => {
                               <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
                             </button>
                           )}
-                          {/* Send Email — only before appointment is completed/cancelled */}
-                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
-                            <button onClick={() => handleSendConfirmation(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
+                          {/* Send Email — confirmed only */}
+                          {appointment.status === 'confirmed' && (
+                            <button onClick={() => openEmailApptModal(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
                               <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>Send Email
                             </button>
                           )}
-                          {/* Edit/Reschedule — not for completed, cancelled, no_show, in_progress */}
-                          {(appointment.status === 'scheduled' || appointment.status === 'confirmed' || appointment.status === 'rescheduled') && (
+                          {/* Edit/Reschedule — confirmed only */}
+                          {appointment.status === 'confirmed' && (
                             <button onClick={() => handleEdit(appointment.appointment_id)} style={styles.editButton}>
                               <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit/Reschedule
                             </button>
@@ -851,22 +939,30 @@ const Appointments = () => {
                     <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{apptDetailModal.appointment_type}</span>
                   </div>
                   {[
-                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.pet_name },
+                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.species ? `${apptDetailModal.pet_name} (${apptDetailModal.species.charAt(0).toUpperCase() + apptDetailModal.species.slice(1)})` : apptDetailModal.pet_name },
                     { icon: 'fa-user', label: 'Owner', value: `${apptDetailModal.customer_first_name} ${apptDetailModal.customer_last_name}` },
                     apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
                     { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
                     { icon: 'fa-clock', label: 'Time', value: formatTime(apptDetailModal.appointment_time) },
-                    { icon: 'fa-hourglass-half', label: 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                    { icon: 'fa-hourglass-half', label: apptDetailModal.status === 'completed' ? 'Scheduled' : 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                    apptDetailModal.status === 'completed' && apptDetailModal.started_at && apptDetailModal.completed_at
+                      ? { icon: 'fa-stopwatch', label: 'Actual', value: formatActualDuration(apptDetailModal.started_at, apptDetailModal.completed_at), highlight: true }
+                      : null,
                   ].filter(Boolean).map((row, i) => (
                     <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
                       <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#9ca3af', fontSize: '0.8rem' }}></i>
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', minWidth: '80px' }}>{row.label}</span>
-                      <span style={{ fontSize: '0.875rem', color: '#111827', fontWeight: '500' }}>{row.value}</span>
+                      <span style={{ fontSize: '0.875rem', color: row.highlight ? '#059669' : '#111827', fontWeight: row.highlight ? 600 : 500 }}>{row.value}</span>
                     </div>
                   ))}
                   <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
                     <strong>Reason:</strong> {apptDetailModal.reason}
                   </div>
+                  {apptDetailModal.status === 'cancelled' && apptDetailModal.cancellation_reason && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '0.875rem', color: '#991b1b' }}>
+                      <strong>Cancellation Reason:</strong> {apptDetailModal.cancellation_reason}
+                    </div>
+                  )}
                   {(apptDetailModal.created_at || apptDetailModal.updated_at) && (
                     <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
                       {apptDetailModal.created_at && (
@@ -878,31 +974,39 @@ const Appointments = () => {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'rescheduled') && (
-                      <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'confirmed'); setApptDetailModal(null); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-check"></i> Confirm
-                      </button>
-                    )}
                     {apptDetailModal.status === 'confirmed' && (
                       <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress'); setApptDetailModal(null); }}
+                        onClick={() => {
+                          if (!apptDetailModal.veterinarian_id) {
+                            showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                            return;
+                          }
+                          handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
+                          setApptDetailModal(null);
+                        }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-play"></i> Start
                       </button>
                     )}
-                    {(apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'in_progress') && (
+                    {apptDetailModal.status === 'in_progress' && (
                       <button
-                        onClick={async () => { await handleStatusUpdate(apptDetailModal.appointment_id, 'completed'); setApptDetailModal(null); }}
+                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
+                          appointment_id: apptDetailModal.appointment_id,
+                          customer_id: apptDetailModal.customer_id,
+                          customer_first_name: apptDetailModal.customer_first_name,
+                          customer_last_name: apptDetailModal.customer_last_name,
+                          pet_name: apptDetailModal.pet_name,
+                          appointment_type: apptDetailModal.appointment_type,
+                          appointment_date: apptDetailModal.appointment_date,
+                          veterinarian_name: apptDetailModal.veterinarian_name
+                        }); setApptDetailModal(null); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-check-double"></i> Complete
                       </button>
                     )}
-                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                    {apptDetailModal.status === 'confirmed' && (
                       <button
                         onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
@@ -910,24 +1014,32 @@ const Appointments = () => {
                         <i className="fas fa-times"></i> Cancel
                       </button>
                     )}
-                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                    {apptDetailModal.status === 'confirmed' && (
                       <button
-                        onClick={() => { handleSendConfirmation(apptDetailModal.appointment_id); setApptDetailModal(null); }}
+                        onClick={() => { setApptDetailModal(null); openEmailApptModal(apptDetailModal.appointment_id); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-envelope"></i> Send Email
                       </button>
                     )}
-                    {(apptDetailModal.status === 'scheduled' || apptDetailModal.status === 'confirmed' || apptDetailModal.status === 'rescheduled') && (
+                    {apptDetailModal.status === 'confirmed' && (
                       <button
                         onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
-                        <i className="fas fa-edit"></i> Edit
+                        <i className="fas fa-edit"></i> Edit/Reschedule
                       </button>
                     )}
                     <button
-                      onClick={() => { setApptDetailModal(null); setShowDayModal(false); setViewMode('list'); }}
+                      onClick={() => {
+                        const apptDate = getISTDate(apptDetailModal.appointment_date);
+                        const todayStr = formatDateLocal(new Date());
+                        setListTab(apptDate >= todayStr && apptDetailModal.status !== 'completed' && apptDetailModal.status !== 'cancelled' ? 'upcoming' : 'past');
+                        setHighlightedApptId(apptDetailModal.appointment_id);
+                        setApptDetailModal(null);
+                        setShowDayModal(false);
+                        setViewMode('list');
+                      }}
                       style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                     >
                       <i className="fas fa-list"></i> View in List
@@ -999,7 +1111,7 @@ const Appointments = () => {
                           <div style={styles.modalAppointmentPet}>
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} 
                                style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                            <strong>{appointment.pet_name}</strong>
+                            <strong>{appointment.pet_name}</strong>{appointment.species && <span style={{ color: '#6b7280', fontWeight: '400' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
                           </div>
                           <div style={styles.modalAppointmentOwner}>
                             <i className="fas fa-user" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
@@ -1068,34 +1180,97 @@ const Appointments = () => {
           )}
 
           {cancelApptModal.open && (
-            <div style={styles.modalOverlay} onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })}>
+            <div style={styles.modalOverlay} onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}>
               <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
                 <div style={styles.modalHeader}>
                   <h3 style={styles.modalTitle}>
                     <i className="fas fa-times-circle" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
                     Cancel Appointment
                   </h3>
-                  <button onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })} style={styles.modalCloseButton}>
+                  <button onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })} style={styles.modalCloseButton}>
                     <i className="fas fa-times"></i>
                   </button>
                 </div>
                 <div style={{ padding: '1.5rem' }}>
-                  <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
-                    Are you sure you want to cancel this appointment?
+                  <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
+                    Are you sure you want to cancel this appointment? Please select a reason.
                   </p>
+                  <select
+                    value={cancelApptModal.reason}
+                    onChange={e => setCancelApptModal(prev => ({ ...prev, reason: e.target.value }))}
+                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '7px', border: '1px solid #d1d5db', fontSize: '0.875rem', color: '#374151', marginBottom: '1.25rem', outline: 'none' }}
+                  >
+                    <option value="">— Select a reason —</option>
+                    <option value="Customer request">Customer request</option>
+                    <option value="Veterinarian unavailable">Veterinarian unavailable</option>
+                    <option value="Pet health improvement">Pet health improvement (no longer needed)</option>
+                    <option value="Financial constraints">Financial constraints</option>
+                    <option value="No show">No show</option>
+                    <option value="Other">Other</option>
+                  </select>
                   <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                     <button
-                      onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false })}
+                      onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}
                       style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
                     >
                       Keep
                     </button>
                     <button
                       onClick={confirmCancelAppointment}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                      disabled={!cancelApptModal.reason}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: cancelApptModal.reason ? '#dc2626' : '#fca5a5', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: cancelApptModal.reason ? 'pointer' : 'not-allowed' }}
                     >
                       <i className="fas fa-times" style={{ marginRight: '0.4rem' }}></i>
                       Cancel Appointment
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {emailApptModal && (
+            <div style={styles.modalOverlay} onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}>
+              <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <h3 style={styles.modalTitle}>
+                    <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#059669' }}></i>
+                    Send Appointment Confirmation
+                  </h3>
+                  <button onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }} style={styles.modalCloseButton}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <div style={{ padding: '1.5rem' }}>
+                  <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
+                    Send a confirmation email to the customer for this appointment.
+                  </p>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.4rem' }}>
+                      Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    <textarea
+                      value={emailApptNote}
+                      onChange={(e) => setEmailApptNote(e.target.value)}
+                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.875rem', minHeight: '90px', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
+                      placeholder="Add a note or message to include in the email..."
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                      disabled={emailApptSending}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSendConfirmation}
+                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#059669', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                      disabled={emailApptSending}
+                    >
+                      <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
+                      {emailApptSending ? 'Sending...' : 'Send Email'}
                     </button>
                   </div>
                 </div>

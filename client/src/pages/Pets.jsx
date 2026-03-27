@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPets } from '../services/petService';
 
@@ -19,6 +19,11 @@ const Pets = () => {
   const [search, setSearch] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState('');
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [statusFilter, setStatusFilter] = useState('active');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -204,7 +209,7 @@ const Pets = () => {
 
       {/* Error Message */}
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

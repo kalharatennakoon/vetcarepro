@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCustomers } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,11 @@ const Customers = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [statusFilter, setStatusFilter] = useState('all');
@@ -188,7 +193,7 @@ const Customers = () => {
 
       {/* Error Message */}
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

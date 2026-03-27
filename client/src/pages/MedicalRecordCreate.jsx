@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MedicalRecordForm from '../components/MedicalRecordForm';
 import Layout from '../components/Layout';
 
 const MedicalRecordCreate = () => {
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const petId = searchParams.get('petId');
@@ -28,7 +33,7 @@ const MedicalRecordCreate = () => {
         <p style={styles.subtitle}>Record detailed medical visit information</p>
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div ref={errorRef} style={styles.error}>{error}</div>}
 
       <div style={styles.formContainer}>
         <MedicalRecordForm

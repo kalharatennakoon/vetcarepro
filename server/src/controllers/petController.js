@@ -33,7 +33,7 @@ export const getPets = async (req, res) => {
     const filters = {};
     if (search) filters.search = search;
     if (species) filters.species = species;
-    if (customer_id) filters.customer_id = parseInt(customer_id);
+    if (customer_id) filters.customer_id = customer_id;
     if (is_active !== undefined) filters.is_active = is_active === 'true';
     if (limit) filters.limit = parseInt(limit);
     if (offset) filters.offset = parseInt(offset);

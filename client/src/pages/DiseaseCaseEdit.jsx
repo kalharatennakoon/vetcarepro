@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getDiseaseCaseById, updateDiseaseCase } from '../services/diseaseCaseService';
+import { getDiseaseCaseById, updateDiseaseCase, getCaseFollowups } from '../services/diseaseCaseService';
 import { getPets } from '../services/petService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -10,7 +10,13 @@ const DiseaseCaseEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [petLabel, setPetLabel] = useState('');
+  const [followups, setFollowups] = useState([]);
   const [formData, setFormData] = useState({
     pet_id: '',
     disease_name: '',
@@ -47,10 +53,12 @@ const DiseaseCaseEdit = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [casesResponse, petsResponse] = await Promise.all([
+      const [casesResponse, petsResponse, followupsResponse] = await Promise.all([
         getDiseaseCaseById(id),
-        getPets()
+        getPets(),
+        getCaseFollowups(id)
       ]);
+      setFollowups(followupsResponse.data.followups || []);
 
       const caseData = casesResponse.data.case;
       const petsList = petsResponse.data.pets || [];
@@ -160,7 +168,7 @@ const DiseaseCaseEdit = () => {
         </div>
 
         {error && (
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>
@@ -431,6 +439,45 @@ const DiseaseCaseEdit = () => {
                       />
                     </div>
                   </>
+                )}
+
+                {followups.length > 0 && (
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
+                    <p style={{ margin: '0 0 0.65rem', fontSize: '0.75rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Visit History ({followups.length})
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {followups.map((fu, idx) => (
+                        <div key={fu.followup_id} style={{ background: idx === 0 ? '#fffbeb' : '#f9fafb', border: `1px solid ${idx === 0 ? '#fde68a' : '#e5e7eb'}`, borderRadius: '8px', padding: '0.65rem 0.8rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#111827' }}>
+                              <i className="fas fa-calendar" style={{ marginRight: '0.35rem', color: '#f59e0b' }}></i>
+                              {new Date(fu.visit_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </span>
+                            {idx === 0 && (
+                              <span style={{ fontSize: '0.68rem', background: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontWeight: '700' }}>LATEST</span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '0.3rem' }}>
+                            <i className="fas fa-user-doctor" style={{ marginRight: '0.3rem' }}></i>
+                            Dr. {fu.recorded_by_name || 'Unknown'}
+                          </div>
+                          <p style={{ margin: '0 0 0.3rem', fontSize: '0.85rem', color: '#374151', lineHeight: '1.5' }}>{fu.notes}</p>
+                          {fu.next_followup_date ? (
+                            <div style={{ fontSize: '0.78rem', color: '#2563eb' }}>
+                              <i className="fas fa-arrow-right" style={{ marginRight: '0.3rem' }}></i>
+                              Next scheduled: {new Date(fu.next_followup_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.78rem', color: '#6b7280', fontStyle: 'italic' }}>
+                              <i className="fas fa-check-circle" style={{ marginRight: '0.3rem', color: '#16a34a' }}></i>
+                              No further follow-up scheduled
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 

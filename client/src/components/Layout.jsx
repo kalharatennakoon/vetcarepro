@@ -489,6 +489,7 @@ const styles = {
     boxSizing: 'border-box',
   },
   footer: {
+    marginTop: '2.5rem',
     padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 2rem)',
     backgroundColor: '#ffffff',
     borderTop: '1px solid #e5e7eb',

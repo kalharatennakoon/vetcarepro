@@ -17,12 +17,12 @@ class ReportModel {
         COUNT(CASE WHEN b.payment_status = 'fully_paid' THEN 1 END) as paid_invoices,
         COUNT(CASE WHEN b.payment_status = 'partially_paid' THEN 1 END) as partial_invoices,
         COUNT(CASE WHEN b.payment_status = 'unpaid' THEN 1 END) as unpaid_invoices,
-        COUNT(CASE WHEN b.payment_status = 'overdue' THEN 1 END) as overdue_invoices,
+        COUNT(CASE WHEN b.payment_status IN ('unpaid', 'partially_paid') AND b.due_date < CURRENT_DATE THEN 1 END) as overdue_invoices,
         COUNT(CASE WHEN b.payment_status = 'refunded' THEN 1 END) as refunded_invoices
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
       GROUP BY DATE(b.bill_date)
-      ORDER BY date DESC
+      ORDER BY date ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
@@ -34,13 +34,14 @@ class ReportModel {
   static async getPaymentsByMethod(startDate, endDate) {
     const query = `
       SELECT
-        COALESCE(b.payment_method, 'not_specified') as payment_method,
+        b.payment_method,
         COUNT(*) as transaction_count,
         SUM(b.paid_amount) as total_amount,
         ROUND(SUM(b.paid_amount) / NULLIF(SUM(SUM(b.paid_amount)) OVER (), 0) * 100, 2) as percentage
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
         AND b.paid_amount > 0
+        AND b.payment_method IS NOT NULL
       GROUP BY b.payment_method
       ORDER BY total_amount DESC
     `;
@@ -65,9 +66,9 @@ class ReportModel {
         b.balance_amount as outstanding_amount,
         b.payment_status,
         CASE
-          WHEN b.due_date < CURRENT_DATE THEN 'OVERDUE'
-          WHEN b.due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'DUE_SOON'
-          ELSE 'CURRENT'
+          WHEN b.due_date < CURRENT_DATE THEN 'Overdue'
+          WHEN b.due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'Due Soon'
+          ELSE 'On Time'
         END as urgency
       FROM billing b
       JOIN customers c ON b.customer_id = c.customer_id
@@ -110,10 +111,10 @@ class ReportModel {
       SELECT 
         DATE(a.appointment_date) as date,
         COUNT(*) as total_appointments,
-        COUNT(CASE WHEN a.status = 'scheduled' THEN 1 END) as scheduled,
+        COUNT(CASE WHEN a.status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN a.status = 'in_progress' THEN 1 END) as in_progress,
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled,
-        COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
         ROUND(
           COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric / 
           NULLIF(COUNT(*), 0) * 100, 2
@@ -121,7 +122,7 @@ class ReportModel {
       FROM appointments a
       WHERE a.appointment_date BETWEEN $1 AND $2
       GROUP BY DATE(a.appointment_date)
-      ORDER BY date DESC
+      ORDER BY date ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
@@ -160,7 +161,6 @@ class ReportModel {
         COUNT(a.appointment_id) as total_visits,
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_visits,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_visits,
-        COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
         MIN(a.appointment_date) as first_visit,
         MAX(a.appointment_date) as last_visit
       FROM appointments a
@@ -211,24 +211,34 @@ class ReportModel {
    */
   static async getTopCustomers(startDate, endDate, limit = 10) {
     const query = `
-      SELECT 
+      WITH customer_billing AS (
+        SELECT
+          customer_id,
+          COUNT(bill_id) as total_invoices,
+          SUM(total_amount) as total_invoiced,
+          SUM(paid_amount) as total_paid,
+          ROUND(AVG(total_amount), 2) as avg_invoice_amount
+        FROM billing
+        WHERE bill_date BETWEEN $1 AND $2
+        GROUP BY customer_id
+      )
+      SELECT
         c.customer_id,
         c.first_name || ' ' || c.last_name as customer_name,
         c.phone,
         c.email,
-        COUNT(DISTINCT b.bill_id) as total_invoices,
+        cb.total_invoices,
         COUNT(DISTINCT a.appointment_id) as total_appointments,
-        SUM(b.total_amount) as total_spent,
-        SUM(b.paid_amount) as total_paid,
-        ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
+        cb.total_invoiced,
+        cb.total_paid,
+        cb.avg_invoice_amount
       FROM customers c
-      LEFT JOIN billing b ON c.customer_id = b.customer_id 
-        AND b.bill_date BETWEEN $1 AND $2
-      LEFT JOIN appointments a ON c.customer_id = a.customer_id 
+      JOIN customer_billing cb ON c.customer_id = cb.customer_id
+      LEFT JOIN appointments a ON c.customer_id = a.customer_id
         AND a.appointment_date BETWEEN $1 AND $2
-      WHERE b.bill_id IS NOT NULL
-      GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email
-      ORDER BY total_spent DESC
+      GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email,
+               cb.total_invoices, cb.total_invoiced, cb.total_paid, cb.avg_invoice_amount
+      ORDER BY total_invoiced DESC
       LIMIT $3
     `;
     const result = await pool.query(query, [startDate, endDate, limit]);
@@ -349,29 +359,48 @@ class ReportModel {
    */
   static async getVeterinarianPerformance(startDate, endDate) {
     const query = `
-      SELECT 
+      WITH vet_bills AS (
+        SELECT DISTINCT ON (b.bill_id)
+          b.bill_id,
+          b.paid_amount,
+          a.veterinarian_id
+        FROM billing b
+        JOIN appointments a ON (
+          (b.appointment_id IS NOT NULL AND b.appointment_id = a.appointment_id)
+          OR (b.appointment_id IS NULL AND b.customer_id = a.customer_id AND b.bill_date = a.appointment_date)
+        )
+        WHERE b.bill_date BETWEEN $1 AND $2
+          AND a.appointment_date BETWEEN $1 AND $2
+          AND a.veterinarian_id IS NOT NULL
+        ORDER BY b.bill_id, a.appointment_id
+      ),
+      vet_revenue AS (
+        SELECT veterinarian_id, SUM(paid_amount) as total_revenue
+        FROM vet_bills
+        GROUP BY veterinarian_id
+      )
+      SELECT
         u.user_id,
         u.first_name || ' ' || u.last_name as veterinarian_name,
-        u.role,
         COUNT(DISTINCT a.appointment_id) as total_appointments,
-        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_appointments,
-        COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_appointments,
+        COUNT(DISTINCT CASE WHEN a.status IN ('confirmed', 'in_progress') THEN a.appointment_id END) as in_progress_appointments,
+        COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.appointment_id END) as completed_appointments,
+        COUNT(DISTINCT CASE WHEN a.status = 'cancelled' THEN a.appointment_id END) as cancelled_appointments,
         ROUND(
-          COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric / 
-          NULLIF(COUNT(*), 0) * 100, 2
+          COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.appointment_id END)::numeric /
+          NULLIF(COUNT(DISTINCT a.appointment_id), 0) * 100, 2
         ) as completion_rate,
         COUNT(DISTINCT a.pet_id) as unique_patients,
         COUNT(DISTINCT mr.record_id) as medical_records_created,
-        COALESCE(SUM(b.total_amount), 0) as total_revenue_generated
+        COALESCE(vr.total_revenue, 0) as total_revenue_generated
       FROM users u
-      LEFT JOIN appointments a ON u.user_id = a.veterinarian_id 
+      LEFT JOIN appointments a ON u.user_id = a.veterinarian_id
         AND a.appointment_date BETWEEN $1 AND $2
-      LEFT JOIN medical_records mr ON u.user_id = mr.created_by 
+      LEFT JOIN medical_records mr ON u.user_id = mr.veterinarian_id
         AND mr.visit_date BETWEEN $1 AND $2
-      LEFT JOIN billing b ON a.appointment_id = b.appointment_id
-        AND b.bill_date BETWEEN $1 AND $2
+      LEFT JOIN vet_revenue vr ON vr.veterinarian_id = u.user_id
       WHERE u.role = 'veterinarian'
-      GROUP BY u.user_id, u.first_name, u.last_name, u.role
+      GROUP BY u.user_id, u.first_name, u.last_name, vr.total_revenue
       ORDER BY total_appointments DESC
     `;
     const result = await pool.query(query, [startDate, endDate]);
@@ -384,7 +413,7 @@ class ReportModel {
   static async getMonthlyIncomeReport(startDate, endDate) {
     const query = `
       SELECT
-        TO_CHAR(MIN(b.bill_date), 'Month YYYY') as month,
+        TO_CHAR(MIN(b.bill_date), 'FMMonth YYYY') as month,
         COUNT(*) as invoice_count,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_collected,

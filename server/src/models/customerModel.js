@@ -236,12 +236,40 @@ export const deleteCustomer = async (customerId) => {
 export const phoneExists = async (phone, excludeCustomerId = null) => {
   let query = 'SELECT 1 FROM customers WHERE phone = $1';
   const params = [phone];
-
   if (excludeCustomerId) {
     query += ' AND customer_id <> $2';
     params.push(excludeCustomerId);
   }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
 
+/**
+ * Check if email exists (only when a value is provided)
+ */
+export const emailExists = async (email, excludeCustomerId = null) => {
+  if (!email) return false;
+  let query = 'SELECT 1 FROM customers WHERE email = $1';
+  const params = [email];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
+ * Check if NIC exists (only when a value is provided)
+ */
+export const nicExists = async (nic, excludeCustomerId = null) => {
+  if (!nic) return false;
+  let query = 'SELECT 1 FROM customers WHERE nic = $1';
+  const params = [nic];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
   const result = await pool.query(query, params);
   return result.rows.length > 0;
 };
@@ -261,7 +289,7 @@ export const getCustomerCount = async () => {
 export const checkCustomerDeletability = async (customerId) => {
   const query = `
     SELECT
-      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1 AND a.status IN ('scheduled','confirmed','in_progress'))::int AS active_appointments,
+      (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1 AND a.status IN ('confirmed','in_progress'))::int AS active_appointments,
       (SELECT COUNT(*) FROM appointments a JOIN pets p ON a.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS total_appointments,
       (SELECT COUNT(*) FROM medical_records mr JOIN pets p ON mr.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS medical_records,
       (SELECT COUNT(*) FROM vaccinations v JOIN pets p ON v.pet_id = p.pet_id WHERE p.customer_id = $1)::int AS vaccinations,

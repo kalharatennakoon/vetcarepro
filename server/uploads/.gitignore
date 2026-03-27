@@ -1,12 +1,14 @@
 # Ignore all uploaded files
 *
 
-# But keep directory structure
+# Keep this file and the root .gitkeep
 !.gitignore
 !.gitkeep
+
+# Keep subdirectories (but ignore their contents)
 !profile-images/
 !pet-images/
+!lab-reports/
 profile-images/*
 pet-images/*
-!profile-images/.gitkeep
-!pet-images/.gitkeep
+lab-reports/*
