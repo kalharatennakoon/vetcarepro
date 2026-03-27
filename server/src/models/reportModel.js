@@ -112,9 +112,9 @@ class ReportModel {
         DATE(a.appointment_date) as date,
         COUNT(*) as total_appointments,
         COUNT(CASE WHEN a.status = 'confirmed' THEN 1 END) as confirmed,
+        COUNT(CASE WHEN a.status = 'in_progress' THEN 1 END) as in_progress,
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled,
-        COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
         ROUND(
           COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric / 
           NULLIF(COUNT(*), 0) * 100, 2

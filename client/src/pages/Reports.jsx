@@ -506,9 +506,10 @@ function Reports() {
       const chartData = data.map(item => ({
         date: formatDate(item.date),
         total: parseInt(item.total_appointments || 0),
+        confirmed: parseInt(item.confirmed || 0),
+        in_progress: parseInt(item.in_progress || 0),
         completed: parseInt(item.completed || 0),
-        cancelled: parseInt(item.cancelled || 0),
-        confirmed: parseInt(item.confirmed || 0)
+        cancelled: parseInt(item.cancelled || 0)
       }));
 
       return (
@@ -521,8 +522,9 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
               <Bar dataKey="confirmed" stackId="a" fill="#667eea" name="Confirmed" />
+              <Bar dataKey="in_progress" stackId="a" fill="#f59e0b" name="In Progress" />
+              <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
               <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>

@@ -522,8 +522,6 @@ const Appointments = () => {
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="no_show">No Show</option>
-                <option value="rescheduled">Rescheduled</option>
               </select>
             </div>
 
