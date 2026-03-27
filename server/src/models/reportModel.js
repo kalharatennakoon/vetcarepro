@@ -219,7 +219,7 @@ class ReportModel {
         c.email,
         COUNT(DISTINCT b.bill_id) as total_invoices,
         COUNT(DISTINCT a.appointment_id) as total_appointments,
-        SUM(b.total_amount) as total_spent,
+        SUM(b.total_amount) as total_invoiced,
         SUM(b.paid_amount) as total_paid,
         ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
       FROM customers c
@@ -229,7 +229,7 @@ class ReportModel {
         AND a.appointment_date BETWEEN $1 AND $2
       WHERE b.bill_id IS NOT NULL
       GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email
-      ORDER BY total_spent DESC
+      ORDER BY total_invoiced DESC
       LIMIT $3
     `;
     const result = await pool.query(query, [startDate, endDate, limit]);
