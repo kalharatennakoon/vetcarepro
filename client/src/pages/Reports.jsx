@@ -294,7 +294,7 @@ function Reports() {
 
     if (data.length === 0) return null;
 
-    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
+    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#f7971e', '#0ba360', '#3cba92', '#ee0979', '#ff6a00', '#a18cd1', '#fad0c4', '#ffecd2', '#a1c4fd', '#c2e9fb', '#d4fc79', '#96e6a1', '#84fab0', '#8fd3f4'];
 
     // Revenue Summary Chart
     if (reportType === 'revenue-summary') {
@@ -534,8 +534,16 @@ function Reports() {
 
     // Appointments by Type Chart
     if (reportType === 'appointments-by-type') {
+      const appointmentTypeLabels = {
+        checkup: 'Check-up',
+        vaccination: 'Vaccination',
+        surgery: 'Surgery',
+        emergency: 'Emergency',
+        follow_up: 'Follow-up',
+        consultation: 'Consultation'
+      };
       const chartData = data.map(item => ({
-        name: item.appointment_type || 'Unknown',
+        name: appointmentTypeLabels[item.appointment_type] || item.appointment_type || 'Unknown',
         value: parseInt(item.appointment_count || 0),
         percentage: parseFloat(item.percentage || 0)
       }));
@@ -579,8 +587,7 @@ function Reports() {
       const topPatients = data.slice(0, 10).map(item => ({
         name: item.pet_name || 'Unknown',
         completed: parseInt(item.completed_visits || 0),
-        cancelled: parseInt(item.cancelled_visits || 0),
-        no_shows: parseInt(item.no_shows || 0)
+        cancelled: parseInt(item.cancelled_visits || 0)
       }));
 
       return (
@@ -611,7 +618,6 @@ function Reports() {
                 <Legend />
                 <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
                 <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
-                <Bar dataKey="no_shows" stackId="a" fill="#fee140" name="No Show" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -754,7 +760,7 @@ function Reports() {
                 <tr key={index} style={index % 2 === 0 ? styles.reportTrEven : styles.reportTrOdd}>
                   {columns.map(col => (
                     <td key={col} style={styles.reportTd}>
-                      {(col.includes('date') || col.includes('visit')) && row[col]
+                      {(col.includes('date') || (col.includes('visit') && !col.includes('_visits'))) && row[col]
                         ? formatDate(row[col])
                         : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding') || col.includes('invoiced'))
                         ? formatCurrency(row[col])
@@ -762,6 +768,8 @@ function Reports() {
                         ? `${row[col]}%`
                         : col === 'payment_method' && row[col]
                         ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
+                        : col === 'appointment_type' && row[col]
+                        ? ({ checkup: 'Check-up', vaccination: 'Vaccination', surgery: 'Surgery', emergency: 'Emergency', follow_up: 'Follow-up', consultation: 'Consultation' })[row[col]] || row[col]
                         : col === 'service_type' && row[col]
                         ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
                         : (col === 'category' || col.includes('status')) && row[col]

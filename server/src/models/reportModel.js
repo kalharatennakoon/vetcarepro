@@ -161,7 +161,6 @@ class ReportModel {
         COUNT(a.appointment_id) as total_visits,
         COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_visits,
         COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_visits,
-        COUNT(CASE WHEN a.status = 'no_show' THEN 1 END) as no_shows,
         MIN(a.appointment_date) as first_visit,
         MAX(a.appointment_date) as last_visit
       FROM appointments a
