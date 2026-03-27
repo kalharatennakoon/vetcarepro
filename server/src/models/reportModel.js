@@ -352,7 +352,7 @@ class ReportModel {
       WITH vet_bills AS (
         SELECT DISTINCT ON (b.bill_id)
           b.bill_id,
-          b.total_amount,
+          b.paid_amount,
           a.veterinarian_id
         FROM billing b
         JOIN appointments a ON (
@@ -377,7 +377,7 @@ class ReportModel {
         ) as completion_rate,
         COUNT(DISTINCT a.pet_id) as unique_patients,
         COUNT(DISTINCT mr.record_id) as medical_records_created,
-        COALESCE(SUM(vb.total_amount), 0) as total_revenue_generated
+        COALESCE(SUM(vb.paid_amount), 0) as total_revenue_generated
       FROM users u
       LEFT JOIN appointments a ON u.user_id = a.veterinarian_id
         AND a.appointment_date BETWEEN $1 AND $2
