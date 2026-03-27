@@ -751,11 +751,17 @@ const Dashboard = () => {
                             </thead>
                             <tbody>
                               {stats.adminRecentBilling.map((bill) => {
+                                const today = new Date().toISOString().split('T')[0];
+                                const isOverdue = ['unpaid', 'partially_paid'].includes(bill.payment_status) && bill.due_date && bill.due_date.split('T')[0] < today;
                                 const statusStyle = bill.payment_status === 'fully_paid'
                                   ? { bg: '#d1fae5', color: '#065f46', text: 'Paid' }
-                                  : bill.payment_status === 'partially_paid'
+                                  : bill.payment_status === 'partially_paid' && !isOverdue
                                   ? { bg: '#fef3c7', color: '#92400e', text: 'Partial' }
-                                  : { bg: '#fee2e2', color: '#991b1b', text: 'Unpaid' };
+                                  : bill.payment_status === 'cancelled'
+                                  ? { bg: '#f3f4f6', color: '#6b7280', text: 'Cancelled' }
+                                  : isOverdue
+                                  ? { bg: '#fee2e2', color: '#991b1b', text: 'Overdue' }
+                                  : { bg: '#fef9c3', color: '#92400e', text: 'Unpaid' };
                                 return (
                                   <tr key={bill.bill_id} style={{...styles.tr, cursor: 'pointer'}} onClick={() => navigate(`/billing/${bill.bill_id}`)}>
                                     <td style={{...styles.td, fontWeight: '600', color: '#3b82f6'}}>{bill.bill_number}</td>
