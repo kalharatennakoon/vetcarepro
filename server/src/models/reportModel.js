@@ -381,7 +381,7 @@ class ReportModel {
       FROM users u
       LEFT JOIN appointments a ON u.user_id = a.veterinarian_id
         AND a.appointment_date BETWEEN $1 AND $2
-      LEFT JOIN medical_records mr ON u.user_id = mr.created_by
+      LEFT JOIN medical_records mr ON u.user_id = mr.veterinarian_id
         AND mr.visit_date BETWEEN $1 AND $2
       LEFT JOIN vet_bills vb ON vb.veterinarian_id = u.user_id
       WHERE u.role = 'veterinarian'
