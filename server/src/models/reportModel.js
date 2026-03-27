@@ -22,7 +22,7 @@ class ReportModel {
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
       GROUP BY DATE(b.bill_date)
-      ORDER BY date DESC
+      ORDER BY date ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
@@ -122,7 +122,7 @@ class ReportModel {
       FROM appointments a
       WHERE a.appointment_date BETWEEN $1 AND $2
       GROUP BY DATE(a.appointment_date)
-      ORDER BY date DESC
+      ORDER BY date ASC
     `;
     const result = await pool.query(query, [startDate, endDate]);
     return result.rows;
@@ -211,23 +211,33 @@ class ReportModel {
    */
   static async getTopCustomers(startDate, endDate, limit = 10) {
     const query = `
-      SELECT 
+      WITH customer_billing AS (
+        SELECT
+          customer_id,
+          COUNT(bill_id) as total_invoices,
+          SUM(total_amount) as total_invoiced,
+          SUM(paid_amount) as total_paid,
+          ROUND(AVG(total_amount), 2) as avg_invoice_amount
+        FROM billing
+        WHERE bill_date BETWEEN $1 AND $2
+        GROUP BY customer_id
+      )
+      SELECT
         c.customer_id,
         c.first_name || ' ' || c.last_name as customer_name,
         c.phone,
         c.email,
-        COUNT(DISTINCT b.bill_id) as total_invoices,
+        cb.total_invoices,
         COUNT(DISTINCT a.appointment_id) as total_appointments,
-        SUM(b.total_amount) as total_invoiced,
-        SUM(b.paid_amount) as total_paid,
-        ROUND(AVG(b.total_amount), 2) as avg_invoice_amount
+        cb.total_invoiced,
+        cb.total_paid,
+        cb.avg_invoice_amount
       FROM customers c
-      LEFT JOIN billing b ON c.customer_id = b.customer_id 
-        AND b.bill_date BETWEEN $1 AND $2
-      LEFT JOIN appointments a ON c.customer_id = a.customer_id 
+      JOIN customer_billing cb ON c.customer_id = cb.customer_id
+      LEFT JOIN appointments a ON c.customer_id = a.customer_id
         AND a.appointment_date BETWEEN $1 AND $2
-      WHERE b.bill_id IS NOT NULL
-      GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email
+      GROUP BY c.customer_id, c.first_name, c.last_name, c.phone, c.email,
+               cb.total_invoices, cb.total_invoiced, cb.total_paid, cb.avg_invoice_amount
       ORDER BY total_invoiced DESC
       LIMIT $3
     `;
@@ -403,7 +413,7 @@ class ReportModel {
   static async getMonthlyIncomeReport(startDate, endDate) {
     const query = `
       SELECT
-        TO_CHAR(MIN(b.bill_date), 'Month YYYY') as month,
+        TO_CHAR(MIN(b.bill_date), 'FMMonth YYYY') as month,
         COUNT(*) as invoice_count,
         SUM(b.total_amount) as total_revenue,
         SUM(b.paid_amount) as total_collected,
