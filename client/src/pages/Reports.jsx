@@ -7,6 +7,7 @@ import {
   Line,
   BarChart,
   Bar,
+  ComposedChart,
   PieChart,
   Pie,
   AreaChart,
@@ -342,24 +343,33 @@ function Reports() {
       return (
         <div style={styles.chartContainer}>
           <h4 style={styles.chartTitle}>Payment Methods Distribution</h4>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={360}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={true}
-                label={(entry) => `${entry.name}: ${formatCurrency(entry.value)}`}
-                outerRadius={80}
-                fill="#8884d8"
+                cx="50%" cy="45%"
+                outerRadius={110}
                 dataKey="value"
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  if (percent < 0.04) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                      {`${(percent * 100).toFixed(1)}%`}
+                    </text>
+                  );
+                }}
+                labelLine={false}
               >
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip formatter={(value) => formatCurrency(value)} />
-              <Legend />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -551,24 +561,33 @@ function Reports() {
       return (
         <div style={styles.chartContainer}>
           <h4 style={styles.chartTitle}>Appointments by Type</h4>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={360}>
+            <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={true}
-                label={(entry) => `${entry.name}: ${entry.value} (${entry.percent ? (entry.percent * 100).toFixed(1) : 0}%)`}
-                outerRadius={80}
-                fill="#8884d8"
+                cx="50%" cy="45%"
+                outerRadius={110}
                 dataKey="value"
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                  if (percent < 0.04) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return (
+                    <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                      {value}
+                    </text>
+                  );
+                }}
+                labelLine={false}
               >
                 {chartData.map((_entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
-              <Legend />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -594,16 +613,33 @@ function Reports() {
         <>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Visits by Species</h4>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={speciesData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                  label={(entry) => `${entry.name}: ${entry.value}`}>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Pie
+                  data={speciesData}
+                  cx="50%" cy="45%"
+                  outerRadius={110}
+                  dataKey="value"
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                    if (percent < 0.04) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                        {value}
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
+                >
                   {speciesData.map((_e, i) => (
                     <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value, name) => [value, name]} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -654,17 +690,28 @@ function Reports() {
 
     // Inventory Usage Chart — by category
     if (reportType === 'inventory-usage') {
-      const formatCategory = (cat) =>
-        (cat || 'Unknown').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const shortCategoryLabels = {
+        pharmaceuticals:       'Pharma',
+        consumables:           'Consumables',
+        surgical_clinical:     'Surgical',
+        laboratory_diagnostic: 'Lab/Diagnostic',
+        pet_food_nutrition:    'Pet Food',
+        retail_otc:            'Retail/OTC',
+        equipment:             'Equipment',
+        accessories:           'Accessories',
+        supplements:           'Supplements',
+        cleaning_maintenance:  'Cleaning',
+      };
 
       const usageChartData = data.map(item => ({
-        category: formatCategory(item.category),
+        category: shortCategoryLabels[item.category] || item.category || 'Unknown',
         value_used: parseFloat(item.total_value_used || 0),
         stock_value: parseFloat(item.total_stock_value || 0),
+        item_count: parseInt(item.total_items || 0),
       }));
 
       const stockPieData = data.map(item => ({
-        name: formatCategory(item.category),
+        name: shortCategoryLabels[item.category] || item.category || 'Unknown',
         value: parseInt(item.total_items || 0),
       }));
 
@@ -672,30 +719,49 @@ function Reports() {
         <>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Usage Value vs Current Stock Value by Category</h4>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={usageChartData}>
+            <ResponsiveContainer width="100%" height={340}>
+              <ComposedChart data={usageChartData} margin={{ bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="category" style={{fontSize: '0.75rem'}} />
-                <YAxis style={{fontSize: '0.75rem'}} />
-                <Tooltip formatter={(value) => formatCurrency(value)} />
+                <XAxis dataKey="category" style={{fontSize: '0.75rem'}} interval={0} />
+                <YAxis yAxisId="value" style={{fontSize: '0.75rem'}} tickFormatter={(v) => `Rs.${(v/1000).toFixed(0)}k`} />
+                <YAxis yAxisId="count" orientation="right" style={{fontSize: '0.75rem'}} allowDecimals={false} label={{ value: 'Item Count', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '0.7rem' } }} />
+                <Tooltip formatter={(value, name) => name === 'Item Count' ? value : formatCurrency(value)} />
                 <Legend />
-                <Bar dataKey="value_used" fill="#667eea" name="Value Used (period)" />
-                <Bar dataKey="stock_value" fill="#43e97b" name="Current Stock Value" />
-              </BarChart>
+                <Bar yAxisId="value" dataKey="value_used" fill="#667eea" name="Consumed Value" />
+                <Bar yAxisId="value" dataKey="stock_value" fill="#43e97b" name="Stock Value" />
+                <Line yAxisId="count" type="monotone" dataKey="item_count" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Item Count" />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
           <div style={styles.chartContainer}>
             <h4 style={styles.chartTitle}>Item Count by Category</h4>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={stockPieData} cx="50%" cy="50%" outerRadius={90}
-                  dataKey="value" label={(entry) => `${entry.name}: ${entry.value}`}>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Pie
+                  data={stockPieData}
+                  cx="50%" cy="45%"
+                  outerRadius={110}
+                  dataKey="value"
+                  label={({ cx, cy, midAngle, innerRadius, outerRadius, value, percent }) => {
+                    if (percent < 0.04) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={12} fontWeight={600}>
+                        {value}
+                      </text>
+                    );
+                  }}
+                  labelLine={false}
+                >
                   {stockPieData.map((_e, i) => (
                     <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
-                <Legend />
+                <Tooltip formatter={(value, name) => [value, name]} />
+                <Legend verticalAlign="bottom" align="center" wrapperStyle={{ paddingTop: '20px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -772,7 +838,9 @@ function Reports() {
                         ? ({ checkup: 'Check-up', vaccination: 'Vaccination', surgery: 'Surgery', emergency: 'Emergency', follow_up: 'Follow-up', consultation: 'Consultation' })[row[col]] || row[col]
                         : col === 'service_type' && row[col]
                         ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
-                        : (col === 'category' || col.includes('status')) && row[col]
+                        : col === 'category' && row[col]
+                        ? ({ pharmaceuticals: 'Pharmaceuticals', consumables: 'Consumables', surgical_clinical: 'Surgical & Clinical Supplies', laboratory_diagnostic: 'Laboratory / Diagnostic Supplies', pet_food_nutrition: 'Pet Food & Nutrition', retail_otc: 'Retail / OTC Products', equipment: 'Equipment', accessories: 'Accessories', supplements: 'Supplements', cleaning_maintenance: 'Cleaning & Maintenance Supplies' })[row[col]] || row[col]
+                        : col.includes('status') && row[col]
                         ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                         : row[col] !== null && row[col] !== undefined
                         ? row[col]
