@@ -156,7 +156,6 @@ const DiseaseCaseCreate = () => {
     if (!formData.diagnosis_method)  { setError('Diagnosis Method is required'); return false; }
     if (!formData.symptoms.trim())   { setError('Symptoms are required'); return false; }
     if (!formData.outcome)           { setError('Outcome is required'); return false; }
-    if (!formData.treatment_duration_days) { setError('Treatment Duration is required'); return false; }
     if (!formData.region.trim())     { setError('Region / Location is required'); return false; }
     if (formData.requires_followup) {
       if (!formData.followup_type.trim())    { setError('Follow-up Type is required when Follow-up is checked'); return false; }
@@ -362,7 +361,7 @@ const DiseaseCaseCreate = () => {
               </select>
             </div>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Treatment Duration (days) <span style={styles.required}>*</span></label>
+              <label style={styles.label}>Treatment Duration (days)</label>
               <input
                 type="number"
                 name="treatment_duration_days"

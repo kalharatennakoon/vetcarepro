@@ -10,8 +10,10 @@ import pool from '../config/database.js';
  */
 export const getAllDiseaseCases = async (filters = {}) => {
   let query = `
-    SELECT 
+    SELECT
       dc.*,
+      COALESCE(dc.species, p.species) as species,
+      COALESCE(dc.breed, p.breed) as breed,
       p.pet_name,
       p.gender as pet_gender,
       p.date_of_birth,

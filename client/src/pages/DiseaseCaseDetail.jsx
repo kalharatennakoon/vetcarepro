@@ -34,6 +34,7 @@ const DiseaseCaseDetail = () => {
   const [followupError, setFollowupError] = useState('');
   const [followupSuccess, setFollowupSuccess] = useState('');
   const [markingRecovered, setMarkingRecovered] = useState(false);
+  const [showRecoverModal, setShowRecoverModal] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -132,8 +133,12 @@ const DiseaseCaseDetail = () => {
     }
   };
 
-  const handleMarkRecovered = async () => {
-    if (!window.confirm('Mark this case as recovered? Follow-up monitoring will be stopped.')) return;
+  const handleMarkRecovered = () => {
+    setShowRecoverModal(true);
+  };
+
+  const confirmMarkRecovered = async () => {
+    setShowRecoverModal(false);
     try {
       setMarkingRecovered(true);
       await updateDiseaseCase(id, {
@@ -741,7 +746,7 @@ const DiseaseCaseDetail = () => {
             )}
 
             {/* Follow-up Monitoring */}
-            {(diseaseCase.requires_followup || followups.length > 0) && (
+            {(diseaseCase.requires_followup || followups.length > 0 || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
               <div style={{ ...styles.card, borderTop: '4px solid #f59e0b' }}>
                 {/* Card header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '2px solid #f3f4f6' }}>
@@ -749,7 +754,7 @@ const DiseaseCaseDetail = () => {
                     <i className="fas fa-calendar-check" style={{ ...styles.cardTitleIcon, color: '#f59e0b' }}></i>
                     Follow-up Monitoring
                   </h2>
-                  {isVetOrAdmin && diseaseCase.requires_followup && (
+                  {isVetOrAdmin && (diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
                     <button
                       onClick={() => { setShowFollowupForm(v => !v); setFollowupError(''); }}
                       style={{ padding: '0.35rem 0.8rem', backgroundColor: showFollowupForm ? '#f3f4f6' : '#fffbeb', color: '#92400e', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
@@ -761,7 +766,7 @@ const DiseaseCaseDetail = () => {
                 </div>
 
                 {/* Active follow-up status */}
-                {diseaseCase.requires_followup && (
+                {(diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
                     {diseaseCase.followup_type && (
                       <div style={styles.detailRow}>
@@ -816,7 +821,7 @@ const DiseaseCaseDetail = () => {
                 )}
 
                 {/* Record visit form */}
-                {showFollowupForm && isVetOrAdmin && diseaseCase.requires_followup && (
+                {showFollowupForm && isVetOrAdmin && (diseaseCase.requires_followup || ['ongoing_treatment', 'chronic'].includes(diseaseCase.outcome)) && (
                   <form onSubmit={handleRecordFollowup} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '1rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Record Follow-up Visit</p>
                     {followupError && (
@@ -926,6 +931,42 @@ const DiseaseCaseDetail = () => {
           </div>
         </div>
       </div>
+
+      {showRecoverModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowRecoverModal(false)}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' }}>
+                <i className="fas fa-circle-check" style={{ marginRight: '0.5rem', color: '#16a34a' }}></i>
+                Mark as Recovered
+              </h3>
+              <button onClick={() => setShowRecoverModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
+                Mark this case as recovered? Follow-up monitoring will be stopped.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowRecoverModal(false)}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmMarkRecovered}
+                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#16a34a', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                >
+                  <i className="fas fa-circle-check" style={{ marginRight: '0.4rem' }}></i>
+                  Mark as Recovered
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteLabReportModal.open && (
         <div style={styles.modalOverlay} onClick={() => setDeleteLabReportModal({ open: false, reportId: null, reportName: '' })}>

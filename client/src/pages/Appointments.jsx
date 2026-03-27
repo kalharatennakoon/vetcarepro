@@ -205,6 +205,7 @@ const Appointments = () => {
       await updateAppointmentStatus(id, newStatus, cancellationReason);
       fetchAppointments();
       if (newStatus === 'completed' && appointmentData) {
+        showSuccess('Appointment completed successfully');
         navigate('/billing/new', { state: { appointmentData } });
       } else {
         showSuccess(`Appointment ${newStatus.replace('_', ' ')}`);

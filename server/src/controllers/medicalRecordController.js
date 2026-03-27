@@ -220,7 +220,7 @@ export const getPetMedicalRecords = async (req, res) => {
   try {
     const { petId } = req.params;
 
-    const records = await getMedicalRecordsByPetId(parseInt(petId));
+    const records = await getMedicalRecordsByPetId(petId);
 
     res.status(200).json({
       status: 'success',
