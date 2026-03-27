@@ -388,8 +388,8 @@ const Dashboard = () => {
                 // Admin Stats — 6 cards, 3 per row
                 <>
                   {[
-                    { label: "TODAY'S REVENUE", value: `Rs. ${Math.round(stats.adminTodayRevenue).toLocaleString('en-US')}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
-                    { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${Math.round(stats.adminOutstanding).toLocaleString('en-US')}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${Math.round(stats.adminOutstandingToday).toLocaleString('en-US')}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
+                    { label: "TODAY'S REVENUE", value: `Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
+                    { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${parseFloat(stats.adminOutstandingToday).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
                     { label: "TODAY'S APPOINTMENTS", value: stats.todayAppointments, sub: [stats.todayCompleted > 0 && `${stats.todayCompleted} completed`, stats.adminTodayInProgress > 0 && `${stats.adminTodayInProgress} in progress`, stats.waitingPatients > 0 && `${stats.waitingPatients} waiting`, stats.todayCancelled > 0 && `${stats.todayCancelled} cancelled`].filter(Boolean).join(' · '), border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
                     { label: 'PENDING INVOICES', value: stats.pendingInvoices, sub: stats.adminPendingDueToday > 0 ? `${stats.adminPendingDueToday} due today` : 'None due today', border: stats.pendingInvoices > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice', bg: 'white' },
                     { label: "TODAY'S EMERGENCIES", value: stats.urgentCases, sub: [stats.adminUrgentCompleted > 0 && `${stats.adminUrgentCompleted} completed`, stats.adminUrgentInProgress > 0 && `${stats.adminUrgentInProgress} in progress`].filter(Boolean).join(' · ') || 'No completions yet', border: stats.urgentCases > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.urgentCases > 0 ? '#fff7ed' : 'white', labelColor: stats.urgentCases > 0 ? '#dc2626' : '#6b7280' },
@@ -903,7 +903,7 @@ const Dashboard = () => {
                           </div>
                           <div>
                             <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Revenue — {item.label}</p>
-                            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#111827' }}>Rs. {Math.round(item.value).toLocaleString('en-US')}</p>
+                            <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#111827' }}>Rs. {parseFloat(item.value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           </div>
                         </div>
                       ))}
@@ -913,7 +913,7 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Outstanding</p>
-                          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: stats.adminOutstanding > 0 ? '#d97706' : '#111827' }}>Rs. {Math.round(stats.adminOutstanding).toLocaleString('en-US')}</p>
+                          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: stats.adminOutstanding > 0 ? '#d97706' : '#111827' }}>Rs. {parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                       </div>
                     </div>
