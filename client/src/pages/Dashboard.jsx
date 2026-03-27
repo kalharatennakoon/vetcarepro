@@ -690,7 +690,7 @@ const Dashboard = () => {
                     {/* Staff Workload Today */}
                     <div style={{...styles.sidebarCard, marginBottom: '1.25rem'}}>
                       <div style={styles.sidebarHeader}>
-                        <h4 style={styles.sidebarTitle}>Staff Workload Today</h4>
+                        <h4 style={styles.sidebarTitle}>Today's Appointment Distribution</h4>
                         <span style={styles.badge2}>{stats.todayAppointments} total</span>
                       </div>
                       {stats.adminStaffWorkload.length === 0 ? (
@@ -703,7 +703,7 @@ const Dashboard = () => {
                             <thead style={styles.thead}>
                               <tr>
                                 <th style={styles.th}>Veterinarian</th>
-                                <th style={{...styles.th, textAlign: 'center'}}>Assigned</th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Total</th>
                                 <th style={{...styles.th, textAlign: 'center'}}>Completed</th>
                                 <th style={{...styles.th, textAlign: 'center'}}>In Progress</th>
                                 <th style={{...styles.th, textAlign: 'center'}}>Waiting</th>
