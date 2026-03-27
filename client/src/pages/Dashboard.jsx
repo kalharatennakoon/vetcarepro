@@ -155,7 +155,7 @@ const Dashboard = () => {
         a.appointment_type?.toLowerCase().includes('urgent')
       );
       const pendingBills = bills.filter(b =>
-        b.payment_status === 'pending' || b.payment_status === 'partially_paid' || b.payment_status === 'unpaid'
+        b.payment_status === 'partially_paid' || b.payment_status === 'unpaid' || b.payment_status === 'overdue'
       );
 
       // Vet-specific appointment filtering

@@ -35,7 +35,7 @@ export const getBills = async (req, res) => {
     const filters = {};
     if (search) filters.search = search;
     if (payment_status) filters.payment_status = payment_status;
-    if (customer_id) filters.customer_id = parseInt(customer_id);
+    if (customer_id) filters.customer_id = customer_id;
     if (from_date) filters.from_date = from_date;
     if (to_date) filters.to_date = to_date;
     if (limit) filters.limit = parseInt(limit);
