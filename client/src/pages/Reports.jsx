@@ -727,12 +727,12 @@ function Reports() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="category" style={{fontSize: '0.75rem'}} interval={0} />
                 <YAxis yAxisId="value" style={{fontSize: '0.75rem'}} tickFormatter={(v) => `Rs.${(v/1000).toFixed(0)}k`} />
-                <YAxis yAxisId="count" orientation="right" style={{fontSize: '0.75rem'}} allowDecimals={false} label={{ value: 'Item Count', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '0.7rem' } }} />
-                <Tooltip formatter={(value, name) => name === 'Item Count' ? value : formatCurrency(value)} />
+                <YAxis yAxisId="count" orientation="right" style={{fontSize: '0.75rem'}} allowDecimals={false} label={{ value: 'Total Items', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '0.7rem' } }} />
+                <Tooltip formatter={(value, name) => name === 'Total Items in Category' ? value : formatCurrency(value)} />
                 <Legend />
                 <Bar yAxisId="value" dataKey="value_used" fill="#667eea" name="Consumed Value" />
                 <Bar yAxisId="value" dataKey="stock_value" fill="#43e97b" name="Stock Value" />
-                <Line yAxisId="count" type="monotone" dataKey="item_count" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Item Count" />
+                <Line yAxisId="count" type="monotone" dataKey="item_count" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Total Items in Category" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
