@@ -754,10 +754,12 @@ function Reports() {
                     <td key={col} style={styles.reportTd}>
                       {(col.includes('date') || col.includes('visit')) && row[col]
                         ? formatDate(row[col])
-                        : col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding')
+                        : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding'))
                         ? formatCurrency(row[col])
                         : col.includes('rate') || col.includes('percentage')
                         ? `${row[col]}%`
+                        : col === 'payment_method' && row[col]
+                        ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
                         : (col === 'category' || col.includes('status')) && row[col]
                         ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                         : row[col] !== null && row[col] !== undefined

@@ -17,7 +17,7 @@ class ReportModel {
         COUNT(CASE WHEN b.payment_status = 'fully_paid' THEN 1 END) as paid_invoices,
         COUNT(CASE WHEN b.payment_status = 'partially_paid' THEN 1 END) as partial_invoices,
         COUNT(CASE WHEN b.payment_status = 'unpaid' THEN 1 END) as unpaid_invoices,
-        COUNT(CASE WHEN b.payment_status = 'overdue' THEN 1 END) as overdue_invoices,
+        COUNT(CASE WHEN b.payment_status IN ('unpaid', 'partially_paid') AND b.due_date < CURRENT_DATE THEN 1 END) as overdue_invoices,
         COUNT(CASE WHEN b.payment_status = 'refunded' THEN 1 END) as refunded_invoices
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
@@ -34,13 +34,14 @@ class ReportModel {
   static async getPaymentsByMethod(startDate, endDate) {
     const query = `
       SELECT
-        COALESCE(b.payment_method, 'not_specified') as payment_method,
+        b.payment_method,
         COUNT(*) as transaction_count,
         SUM(b.paid_amount) as total_amount,
         ROUND(SUM(b.paid_amount) / NULLIF(SUM(SUM(b.paid_amount)) OVER (), 0) * 100, 2) as percentage
       FROM billing b
       WHERE b.bill_date BETWEEN $1 AND $2
         AND b.paid_amount > 0
+        AND b.payment_method IS NOT NULL
       GROUP BY b.payment_method
       ORDER BY total_amount DESC
     `;
