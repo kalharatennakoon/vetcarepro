@@ -32,6 +32,7 @@ const Dashboard = () => {
     pendingInvoices: 0,
     lowStockItems: 0,
     followUpsCount: 0,
+    adminTotalRevenue: 0,
     adminTodayRevenue: 0,
     adminOutstanding: 0,
     adminOutstandingToday: 0,
@@ -195,6 +196,7 @@ const Dashboard = () => {
       // Admin financial computations
       const weekStart = (() => { const d = new Date(today); d.setDate(d.getDate() - d.getDay()); return d.toISOString().split('T')[0]; })();
       const monthStart = `${todayString.slice(0, 7)}-01`;
+      const adminTotalRevenue = bills.reduce((s, b) => s + (parseFloat(b.paid_amount) || 0), 0);
       const adminTodayRevenue = bills.filter(b => b.bill_date?.split('T')[0] === todayString).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
       const adminOutstanding = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status)).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
       const adminWeekRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= weekStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
@@ -236,6 +238,7 @@ const Dashboard = () => {
         labResultsReady: 0, // Placeholder for future implementation
         pendingInvoices: pendingBills.length,
         lowStockItems: lowStockItems.length,
+        adminTotalRevenue,
         adminTodayRevenue,
         adminOutstanding,
         adminOutstandingToday,
@@ -388,7 +391,7 @@ const Dashboard = () => {
                 // Admin Stats — 6 cards, 3 per row
                 <>
                   {[
-                    { label: "TODAY'S REVENUE", value: `Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
+                    { label: 'TOTAL COLLECTED', value: `Rs. ${parseFloat(stats.adminTotalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: `Today: Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
                     { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${parseFloat(stats.adminOutstandingToday).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
                     { label: "TODAY'S APPOINTMENTS", value: stats.todayAppointments, sub: [stats.todayCompleted > 0 && `${stats.todayCompleted} completed`, stats.adminTodayInProgress > 0 && `${stats.adminTodayInProgress} in progress`, stats.waitingPatients > 0 && `${stats.waitingPatients} waiting`, stats.todayCancelled > 0 && `${stats.todayCancelled} cancelled`].filter(Boolean).join(' · '), border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
                     { label: 'PENDING INVOICES', value: stats.pendingInvoices, sub: stats.adminPendingDueToday > 0 ? `${stats.adminPendingDueToday} due today` : 'None due today', border: stats.pendingInvoices > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice', bg: 'white' },
