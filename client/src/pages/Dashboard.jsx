@@ -35,6 +35,7 @@ const Dashboard = () => {
     adminTotalRevenue: 0,
     adminTodayRevenue: 0,
     adminOutstanding: 0,
+    adminOutstandingMonth: 0,
     adminOutstandingToday: 0,
     adminWeekRevenue: 0,
     adminMonthRevenue: 0,
@@ -199,6 +200,7 @@ const Dashboard = () => {
       const adminTotalRevenue = bills.reduce((s, b) => s + (parseFloat(b.paid_amount) || 0), 0);
       const adminTodayRevenue = bills.filter(b => b.bill_date?.split('T')[0] === todayString).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
       const adminOutstanding = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status)).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
+      const adminOutstandingMonth = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status) && b.bill_date?.split('T')[0] >= monthStart).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
       const adminWeekRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= weekStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
       const adminMonthRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= monthStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
       const adminStaffWorkload = (() => {
@@ -241,6 +243,7 @@ const Dashboard = () => {
         adminTotalRevenue,
         adminTodayRevenue,
         adminOutstanding,
+        adminOutstandingMonth,
         adminOutstandingToday,
         adminWeekRevenue,
         adminMonthRevenue,
@@ -916,13 +919,13 @@ const Dashboard = () => {
                           </div>
                         </div>
                       ))}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: stats.adminOutstanding > 0 ? '#fff7ed' : '#f9fafb', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', backgroundColor: stats.adminOutstandingMonth > 0 ? '#fff7ed' : '#f9fafb', borderRadius: '8px' }}>
                         <div style={{ width: '32px', height: '32px', borderRadius: '7px', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <i className="fas fa-clock" style={{ color: stats.adminOutstanding > 0 ? '#f59e0b' : '#9ca3af', fontSize: '0.85rem' }}></i>
+                          <i className="fas fa-clock" style={{ color: stats.adminOutstandingMonth > 0 ? '#f59e0b' : '#9ca3af', fontSize: '0.85rem' }}></i>
                         </div>
                         <div>
-                          <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Outstanding</p>
-                          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: stats.adminOutstanding > 0 ? '#d97706' : '#111827' }}>Rs. {parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                          <p style={{ margin: 0, fontSize: '0.68rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.04em' }}>Outstanding — This Month</p>
+                          <p style={{ margin: 0, fontSize: '1.05rem', fontWeight: '700', color: stats.adminOutstandingMonth > 0 ? '#d97706' : '#111827' }}>Rs. {parseFloat(stats.adminOutstandingMonth).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                         </div>
                       </div>
                     </div>

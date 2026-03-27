@@ -801,7 +801,7 @@ const Appointments = () => {
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
                             <div>
                               <h3 style={styles.cardTitle}>
-                                {appointment.pet_name}
+                                {appointment.pet_name}{appointment.species && <span style={{ fontWeight: '400', color: '#6b7280', fontSize: '0.85em' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
                               </h3>
                               <p style={styles.cardSubtitle}>
                                 {appointment.customer_first_name} {appointment.customer_last_name}
@@ -939,7 +939,7 @@ const Appointments = () => {
                     <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{apptDetailModal.appointment_type}</span>
                   </div>
                   {[
-                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.pet_name },
+                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.species ? `${apptDetailModal.pet_name} (${apptDetailModal.species.charAt(0).toUpperCase() + apptDetailModal.species.slice(1)})` : apptDetailModal.pet_name },
                     { icon: 'fa-user', label: 'Owner', value: `${apptDetailModal.customer_first_name} ${apptDetailModal.customer_last_name}` },
                     apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
                     { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
@@ -1111,7 +1111,7 @@ const Appointments = () => {
                           <div style={styles.modalAppointmentPet}>
                             <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} 
                                style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                            <strong>{appointment.pet_name}</strong>
+                            <strong>{appointment.pet_name}</strong>{appointment.species && <span style={{ color: '#6b7280', fontWeight: '400' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
                           </div>
                           <div style={styles.modalAppointmentOwner}>
                             <i className="fas fa-user" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
