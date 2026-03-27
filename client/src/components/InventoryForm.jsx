@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import inventoryService from '../services/inventoryService';
 
 const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [formData, setFormData] = useState({
     itemCode: '',
     itemName: '',
@@ -203,7 +208,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
       </h2>
 
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           <p style={styles.errorTitle}>Error</p>
           <p>{error}</p>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -39,6 +39,11 @@ function SalesForecasting() {
   const [trainSuccess, setTrainSuccess] = useState(false);
   const [monthPredLoading, setMonthPredLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('forecast');
 
   // Controls
@@ -190,7 +195,7 @@ function SalesForecasting() {
 
         {/* Error Banner */}
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>

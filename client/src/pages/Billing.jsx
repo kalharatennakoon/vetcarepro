@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBills, deleteBill, getOverdueBills } from '../services/billingService';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +11,11 @@ const Billing = () => {
   const [paymentStatus, setPaymentStatus] = useState('');
   const [showOverdue, setShowOverdue] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [stats, setStats] = useState({ total: 0, totalRevenue: 0, totalPaid: 0, totalPending: 0 });
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [pendingCancelId, setPendingCancelId] = useState(null);
@@ -234,7 +239,7 @@ const Billing = () => {
 
       {/* Error Message */}
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

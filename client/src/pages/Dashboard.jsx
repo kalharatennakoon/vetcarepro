@@ -401,73 +401,22 @@ const Dashboard = () => {
               ) : user?.role === 'veterinarian' ? (
                 // Veterinarian Stats
                 <>
-                  <div style={{...styles.statCard, borderLeft: '4px solid #3b82f6', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
+                  {[
+                    { label: 'MY PATIENTS WAITING', value: stats.vetWaiting, border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-user-clock', bg: 'white' },
+                    { label: 'MY COMPLETED TODAY', value: stats.vetCompleted, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-check-circle', bg: 'white' },
+                    { label: 'MY URGENT / EMERGENCY', value: stats.vetUrgent, border: stats.vetUrgent > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.vetUrgent > 0 ? '#fff7ed' : 'white', labelColor: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280' },
+                    { label: 'FOLLOW-UPS DUE', value: stats.followUpsCount, border: stats.followUpsCount > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#ede9fe', iconColor: '#7c3aed', icon: 'fa-notes-medical', bg: 'white' },
+                  ].map(card => (
+                    <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
                       <div>
-                        <p style={styles.statLabel}>MY PATIENTS WAITING</p>
-                        <p style={styles.statValue}>{stats.vetWaiting}</p>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '700', color: card.labelColor || '#6b7280', margin: '0 0 0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                        <p style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
                       </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#dbeafe'}}>
-                        <i className="fas fa-user-clock" style={{...styles.statIconText, color: '#1e40af'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#3b82f6'}}>
-                        {stats.vetScheduleToday.length} assigned to me today →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: '4px solid #10b981', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>MY COMPLETED TODAY</p>
-                        <p style={styles.statValue}>{stats.vetCompleted}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#d1fae5'}}>
-                        <i className="fas fa-check-circle" style={{...styles.statIconText, color: '#065f46'}}></i>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
                       </div>
                     </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: '#10b981'}}>
-                        {stats.vetUnassignedToday.length} unassigned today →
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.vetUrgent > 0 ? '4px solid #ef4444' : '4px solid #e5e7eb', backgroundColor: stats.vetUrgent > 0 ? '#fff7ed' : 'white', cursor: 'pointer'}} onClick={() => navigate('/appointments')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={{...styles.statLabel, color: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280'}}>MY URGENT / EMERGENCY</p>
-                        <p style={styles.statValue}>{stats.vetUrgent}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#fee2e2'}}>
-                        <i className="fas fa-exclamation-triangle" style={{...styles.statIconText, color: '#dc2626'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.vetUrgent > 0 ? '#dc2626' : '#6b7280'}}>
-                        {stats.vetUrgent > 0 ? 'Needs immediate attention →' : 'No urgent cases today'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{...styles.statCard, borderLeft: stats.followUpsCount > 0 ? '4px solid #8b5cf6' : '4px solid #e5e7eb', cursor: 'pointer'}} onClick={() => navigate('/analytics')}>
-                    <div style={styles.statContent}>
-                      <div>
-                        <p style={styles.statLabel}>FOLLOW-UPS DUE</p>
-                        <p style={styles.statValue}>{stats.followUpsCount}</p>
-                      </div>
-                      <div style={{...styles.statIconWrapper, backgroundColor: '#ede9fe'}}>
-                        <i className="fas fa-notes-medical" style={{...styles.statIconText, color: '#7c3aed'}}></i>
-                      </div>
-                    </div>
-                    <div style={styles.statFooter}>
-                      <span style={{...styles.statChange, color: stats.followUpsCount > 0 ? '#7c3aed' : '#6b7280'}}>
-                        {stats.followUpsCount > 0 ? 'Within next 14 days →' : 'No pending follow-ups'}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </>
               ) : (
                 // Receptionist Stats
@@ -659,7 +608,7 @@ const Dashboard = () => {
                     {/* My appointments today */}
                     <div style={styles.sectionHeader}>
                       <h3 style={styles.sectionTitle}>My Schedule Today</h3>
-                      <a onClick={() => navigate('/appointments')} style={styles.viewAllLink}>View all / past →</a>
+                      <a onClick={() => navigate('/appointments', { state: { viewDate: new Date().toISOString().split('T')[0], openDayModal: true } })} style={styles.viewAllLink}>View today's full schedule →</a>
                     </div>
                     <div style={{...styles.tableCard, marginBottom: '1.25rem'}}>
                       {stats.vetScheduleToday.length === 0 ? (
@@ -675,26 +624,39 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Type</th>
                                 <th style={styles.th}>Status</th>
+                                <th style={styles.th}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {stats.vetScheduleToday.map((appt) => {
                                 const badge = getStatusBadge(appt.status);
+                                const isEmergency = appt.appointment_type?.toLowerCase().includes('emergency') || appt.appointment_type?.toLowerCase().includes('urgent');
                                 return (
-                                  <tr key={appt.appointment_id} style={styles.tr}>
+                                  <tr key={appt.appointment_id} style={{...styles.tr, backgroundColor: isEmergency ? '#fff1f2' : undefined, borderLeft: isEmergency ? '3px solid #ef4444' : undefined}}>
                                     <td style={styles.td}><span style={styles.timeText}>{formatTime(appt.appointment_time)}</span></td>
                                     <td style={styles.td}>
                                       <div style={styles.patientCell}>
-                                        <div style={styles.petAvatar}><i className="fas fa-paw"></i></div>
+                                        <div style={{...styles.petAvatar, backgroundColor: isEmergency ? '#fee2e2' : undefined, color: isEmergency ? '#dc2626' : undefined}}><i className="fas fa-paw"></i></div>
                                         <div>
                                           <div style={styles.petName}>{appt.pet_name}</div>
                                           <div style={styles.petDetail}>{appt.species}</div>
                                         </div>
                                       </div>
                                     </td>
-                                    <td style={styles.td}>{appt.appointment_type}</td>
+                                    <td style={styles.td}>
+                                      <span style={{color: isEmergency ? '#dc2626' : undefined, fontWeight: isEmergency ? '600' : undefined}}>
+                                        {isEmergency && <i className="fas fa-exclamation-circle" style={{marginRight: '0.3rem', fontSize: '0.75rem'}}></i>}
+                                        {appt.appointment_type}
+                                      </span>
+                                    </td>
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
+                                    </td>
+                                    <td style={styles.td}>
+                                      <button
+                                        onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appt.appointment_id, appointmentDate: appt.appointment_date, appointmentStatus: appt.status } })}
+                                        style={styles.viewButton}
+                                      >View</button>
                                     </td>
                                   </tr>
                                 );
@@ -730,7 +692,7 @@ const Dashboard = () => {
                                 <th style={styles.th}>Patient</th>
                                 <th style={styles.th}>Type</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={styles.th}></th>
+                                <th style={{...styles.th, textAlign: 'center'}}>Actions</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -752,12 +714,18 @@ const Dashboard = () => {
                                     <td style={styles.td}>
                                       <span style={{...styles.badge, backgroundColor: badge.bg, color: badge.color}}>{badge.text}</span>
                                     </td>
-                                    <td style={styles.td}>
-                                      <button
-                                        onClick={() => handleAssignToMe(appt)}
-                                        style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
-                                        title="Add this appointment to your schedule"
-                                      >Assign to Me</button>
+                                    <td style={{...styles.td, textAlign: 'center'}}>
+                                      <div style={{display: 'flex', gap: '0.4rem', justifyContent: 'center'}}>
+                                        <button
+                                          onClick={() => navigate('/appointments', { state: { highlightAppointmentId: appt.appointment_id, appointmentDate: appt.appointment_date, appointmentStatus: appt.status } })}
+                                          style={styles.viewButton}
+                                        >View</button>
+                                        <button
+                                          onClick={() => handleAssignToMe(appt)}
+                                          style={{...styles.viewButton, backgroundColor: '#f59e0b'}}
+                                          title="Add this appointment to your schedule"
+                                        >Assign to Me</button>
+                                      </div>
                                     </td>
                                   </tr>
                                 );
@@ -987,36 +955,6 @@ const Dashboard = () => {
                     </div>
                   )}
 
-                  {user?.role === 'veterinarian' && stats.vetUnassignedUpcoming.length > 0 && (
-                    <div style={{borderTop: '1px solid #f3f4f6', marginTop: '0.75rem', paddingTop: '0.75rem'}}>
-                      <p style={{fontSize: '0.75rem', fontWeight: '600', color: '#92400e', margin: '0 0 0.5rem'}}>
-                        <i className="fas fa-circle-exclamation" style={{marginRight: '0.3rem'}}></i>
-                        {stats.vetUnassignedUpcoming.length} unassigned upcoming
-                      </p>
-                      {stats.vetUnassignedUpcoming.map((apt) => (
-                        <div key={apt.appointment_id} style={{...styles.upcomingItem, backgroundColor: upcomingPreview?.appointment_id === apt.appointment_id ? '#fffbeb' : '#fffbeb', marginBottom: '0.4rem', cursor: 'pointer'}} onClick={() => setUpcomingPreview(upcomingPreview?.appointment_id === apt.appointment_id ? null : apt)}>
-                          <div style={{...styles.upcomingIcon, backgroundColor: '#fde68a', color: '#92400e'}}><i className="fas fa-calendar"></i></div>
-                          <div style={{flex: 1}}>
-                            <div style={styles.upcomingPet}>{apt.pet_name}</div>
-                            <div style={styles.upcomingDate}>
-                              {new Date(apt.appointment_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {formatTime(apt.appointment_time)}
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleAssignToMe(apt); }}
-                            style={{fontSize: '0.7rem', padding: '0.2rem 0.5rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap'}}
-                          >Assign to Me</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {user?.role === 'veterinarian' && (
-                    <div style={{paddingTop: '0.75rem', borderTop: '1px solid #f3f4f6', marginTop: '0.5rem'}}>
-                      <span onClick={() => navigate('/appointments')} style={{fontSize: '0.8rem', color: '#3b82f6', cursor: 'pointer', fontWeight: '500'}}>
-                        View all appointments & past history →
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

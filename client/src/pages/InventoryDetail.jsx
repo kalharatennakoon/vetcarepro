@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
@@ -14,6 +14,11 @@ const InventoryDetail = () => {
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [quantityChange, setQuantityChange] = useState('');
   const [quantityOperation, setQuantityOperation] = useState('add'); // 'add' or 'subtract'
@@ -120,7 +125,7 @@ const InventoryDetail = () => {
     return (
       <Layout>
         <div style={styles.container}>
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <p style={styles.errorText}>{error || 'Item not found'}</p>
           </div>
           <div style={styles.backLinkContainer}>

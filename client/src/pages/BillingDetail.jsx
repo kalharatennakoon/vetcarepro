@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getBillById, recordPayment } from '../services/billingService';
 import { sendInvoiceEmail } from '../services/emailService';
@@ -10,6 +10,11 @@ const BillingDetail = () => {
   const [bill, setBill] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -173,7 +178,7 @@ const BillingDetail = () => {
   if (error || !bill) {
     return (
       <Layout>
-        <div style={styles.errorContainer}>
+        <div ref={errorRef} style={styles.errorContainer}>
           <h2>Error</h2>
           <p style={styles.errorText}>{error || 'Bill not found'}</p>
           <button onClick={() => navigate('/billing')} style={styles.backButton}>

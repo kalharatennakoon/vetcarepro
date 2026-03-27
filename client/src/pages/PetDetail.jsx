@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPetById, updatePet, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport, emailLabReport } from '../services/labReportService';
@@ -16,6 +16,11 @@ const PetDetail = () => {
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('info');
   useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [labReports, setLabReports] = useState([]);
@@ -408,7 +413,7 @@ const PetDetail = () => {
   if (error) {
     return (
       <Layout>
-      <div style={styles.errorContainer}>
+      <div ref={errorRef} style={styles.errorContainer}>
         <h2>Error</h2>
         <p style={styles.errorText}>{error}</p>
         <button onClick={() => navigate('/pets')} style={styles.backButton}>

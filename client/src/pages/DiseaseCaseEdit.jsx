@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getDiseaseCaseById, updateDiseaseCase, getCaseFollowups } from '../services/diseaseCaseService';
 import { getPets } from '../services/petService';
@@ -10,6 +10,11 @@ const DiseaseCaseEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [petLabel, setPetLabel] = useState('');
   const [followups, setFollowups] = useState([]);
   const [formData, setFormData] = useState({
@@ -163,7 +168,7 @@ const DiseaseCaseEdit = () => {
         </div>
 
         {error && (
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>

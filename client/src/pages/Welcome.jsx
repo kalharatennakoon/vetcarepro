@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -8,6 +8,11 @@ const Welcome = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
 const [showPassword, setShowPassword] = useState(false);
@@ -74,7 +79,7 @@ const [showPassword, setShowPassword] = useState(false);
             </div>
 
             {error && (
-              <div style={styles.errorBox}>
+              <div ref={errorRef} style={styles.errorBox}>
                 <i className="fas fa-exclamation-triangle" style={styles.errorIcon}></i>
                 {error}
               </div>

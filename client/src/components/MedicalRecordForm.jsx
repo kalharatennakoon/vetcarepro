@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 
@@ -10,6 +10,11 @@ const localToday = () => {
 const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const { showSuccess } = useNotification();
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -286,7 +291,7 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
 
       <form onSubmit={handleSubmit} style={styles.form}>
         {error && (
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             {error}
           </div>
         )}

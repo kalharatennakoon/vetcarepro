@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getDiseaseCases,
@@ -26,6 +26,11 @@ const Analytics = () => {
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     species: '',
@@ -502,7 +507,7 @@ const Analytics = () => {
         </div>
 
         {error && (
-          <div style={styles.error}>{error}</div>
+          <div ref={errorRef} style={styles.error}>{error}</div>
         )}
         {trainSuccess && (
           <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>

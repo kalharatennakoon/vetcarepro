@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect} from 'react';
 import { predictPetRisk, predictCancerRisk, getDiseaseCasesByPet } from '../services/diseaseCaseService';
 
 const RISK_COLOR = {
@@ -16,6 +16,11 @@ const PetHealthPredictions = ({ pet }) => {
   const [diseaseRisk, setDiseaseRisk] = useState(null);
   const [cancerRisk, setCancerRisk] = useState(null);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [ran, setRan] = useState(false);
   const [noRecords, setNoRecords] = useState(false);
 
@@ -117,7 +122,9 @@ const PetHealthPredictions = ({ pet }) => {
         </div>
       )}
 
-      {error && <div style={s.error}><i className="fas fa-exclamation-circle" style={{ marginRight: '0.4rem' }}></i>{error}</div>}
+      {error && (
+        <div ref={errorRef} style={s.error}><i className="fas fa-exclamation-circle" style={{ marginRight: '0.4rem' }}></i>{error}</div>
+      )}
 
       {ran && !loading && (
         <>

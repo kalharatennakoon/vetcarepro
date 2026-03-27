@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import auditLogService from '../services/auditLogService';
 
@@ -97,6 +97,11 @@ function SystemLogs() {
   const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [filters, setFilters] = useState({
     search: '',
     action: '',
@@ -360,7 +365,7 @@ function SystemLogs() {
         </div>
 
         {error && (
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <i className="fas fa-exclamation-triangle"></i>
             <div>
               <strong>Error loading logs</strong>

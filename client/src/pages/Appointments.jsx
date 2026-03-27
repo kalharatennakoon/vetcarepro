@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { sendAppointmentConfirmationEmail } from '../services/emailService';
@@ -11,6 +11,11 @@ const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filterDate, setFilterDate] = useState('');
@@ -29,6 +34,7 @@ const Appointments = () => {
   const [apptDetailModal, setApptDetailModal] = useState(null);
   const [pendingViewDate, setPendingViewDate] = useState(null);
   const [pendingViewApptId, setPendingViewApptId] = useState(null);
+  const [pendingOpenDayModal, setPendingOpenDayModal] = useState(null);
   const [showDeleteApptModal, setShowDeleteApptModal] = useState(false);
   const [pendingDeleteApptId, setPendingDeleteApptId] = useState(null);
   const [cancelApptModal, setCancelApptModal] = useState({ open: false, appointmentId: null, closeDetailModal: false, reason: '' });
@@ -129,6 +135,9 @@ const Appointments = () => {
       if (location.state?.viewAppointmentId) {
         setPendingViewApptId(location.state.viewAppointmentId);
       }
+      if (location.state?.openDayModal) {
+        setPendingOpenDayModal(dateStr);
+      }
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -143,6 +152,17 @@ const Appointments = () => {
     setPendingViewDate(null);
     setPendingViewApptId(null);
   }, [appointments, pendingViewDate]);
+
+  // Once appointments load, open the day modal for the pending date
+  useEffect(() => {
+    if (!pendingOpenDayModal || appointments.length === 0) return;
+    const dateStr = pendingOpenDayModal;
+    const dayAppts = appointments.filter(a => a.appointment_date?.split('T')[0] === dateStr);
+    setSelectedDate(dateStr);
+    setSelectedDayAppointments(dayAppts);
+    setShowDayModal(true);
+    setPendingOpenDayModal(null);
+  }, [appointments, pendingOpenDayModal]);
 
   // Scroll to and briefly highlight the appointment when switching to list view
   useEffect(() => {
@@ -604,7 +624,7 @@ const Appointments = () => {
 
           {/* Error Message */}
           {error && (
-            <div style={styles.errorBox}>
+            <div ref={errorRef} style={styles.errorBox}>
               <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
               {error}
             </div>

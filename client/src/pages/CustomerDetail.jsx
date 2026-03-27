@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +12,11 @@ const CustomerDetail = () => {
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showEditForm, setShowEditForm] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -143,7 +148,7 @@ const CustomerDetail = () => {
   if (error) {
     return (
       <Layout>
-      <div style={styles.errorContainer}>
+      <div ref={errorRef} style={styles.errorContainer}>
         <h2>Error</h2>
         <p style={styles.errorText}>{error}</p>
         <button onClick={() => navigate('/customers')} style={styles.backButton}>

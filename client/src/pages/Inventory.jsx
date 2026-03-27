@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import inventoryService from '../services/inventoryService';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,11 @@ const Inventory = () => {
   const [allItems, setAllItems] = useState([]); // unfiltered, used for subcategory dropdown options
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [filters, setFilters] = useState({
     category: '',
     subCategory: '',
@@ -335,7 +340,7 @@ const Inventory = () => {
 
       {/* Error Message */}
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

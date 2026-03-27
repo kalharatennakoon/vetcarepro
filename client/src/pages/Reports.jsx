@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reportService from '../services/reportService';
 import Layout from '../components/Layout';
@@ -24,6 +24,11 @@ function Reports() {
   useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('financial');
   useEffect(() => { window.scrollTo(0, 0); document.documentElement.scrollTo(0, 0); document.getElementById('main-content')?.scrollTo(0, 0); }, [activeTab]);
   const [reportType, setReportType] = useState('revenue-summary');
@@ -820,7 +825,7 @@ function Reports() {
         </div>
 
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             {error}
           </div>
         )}

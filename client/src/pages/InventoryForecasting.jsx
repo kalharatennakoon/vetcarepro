@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -33,6 +33,11 @@ function InventoryForecasting() {
   const [trainSuccess, setTrainSuccess] = useState(false);
   const [itemLookupLoading, setItemLookupLoading] = useState(false);
   const [error, setError] = useState(null);
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [activeTab, setActiveTab] = useState('reorder');
   const [reorderFilter, setReorderFilter] = useState('all');
   const [forecastDays, setForecastDays] = useState(30);
@@ -196,7 +201,7 @@ function InventoryForecasting() {
 
         {/* Error Banner */}
         {error && (
-          <div style={styles.errorAlert}>
+          <div ref={errorRef} style={styles.errorAlert}>
             <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>

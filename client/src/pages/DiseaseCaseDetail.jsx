@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getDiseaseCaseById, deleteDiseaseCase, updateDiseaseCase, getCaseFollowups, recordFollowup } from '../services/diseaseCaseService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport } from '../services/labReportService';
@@ -10,6 +10,11 @@ const DiseaseCaseDetail = () => {
   const [diseaseCase, setDiseaseCase] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
@@ -284,7 +289,7 @@ const DiseaseCaseDetail = () => {
     return (
       <Layout>
         <div style={styles.container}>
-          <div style={styles.errorBox}>
+          <div ref={errorRef} style={styles.errorBox}>
             <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
             {error}
           </div>

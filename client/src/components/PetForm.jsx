@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getPetById, createPet, updatePet } from '../services/petService';
 
 const SPECIES_LIST = [
@@ -16,6 +16,11 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
   const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [customers, setCustomers] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: customerId || '',
@@ -191,7 +196,7 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
       </div>
 
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           {error}
         </div>
       )}

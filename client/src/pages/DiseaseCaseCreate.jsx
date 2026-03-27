@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { getPets } from '../services/petService';
@@ -33,6 +33,11 @@ const localToday = () => {
 const DiseaseCaseCreate = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const errorRef = useRef(null);
+
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [petMedicalRecords, setPetMedicalRecords] = useState([]);
@@ -201,7 +206,7 @@ const DiseaseCaseCreate = () => {
       </div>
 
       {error && (
-        <div style={styles.errorBox}>
+        <div ref={errorRef} style={styles.errorBox}>
           <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
           {error}
         </div>
