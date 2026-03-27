@@ -754,7 +754,7 @@ function Reports() {
                     <td key={col} style={styles.reportTd}>
                       {(col.includes('date') || col.includes('visit')) && row[col]
                         ? formatDate(row[col])
-                        : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding'))
+                        : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding') || col.includes('invoiced'))
                         ? formatCurrency(row[col])
                         : col.includes('rate') || col.includes('percentage')
                         ? `${row[col]}%`
