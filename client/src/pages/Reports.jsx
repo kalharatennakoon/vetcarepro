@@ -760,6 +760,8 @@ function Reports() {
                         ? `${row[col]}%`
                         : col === 'payment_method' && row[col]
                         ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
+                        : col === 'service_type' && row[col]
+                        ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
                         : (col === 'category' || col.includes('status')) && row[col]
                         ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                         : row[col] !== null && row[col] !== undefined
