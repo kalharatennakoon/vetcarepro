@@ -8,7 +8,9 @@ import {
   getDiseaseCasesByPet,
   getStatistics,
   getCasesByCategory,
-  getRecentCases
+  getRecentCases,
+  getCaseFollowups,
+  addCaseFollowup
 } from '../controllers/diseaseCaseController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly, vetOrAdmin } from '../middleware/roleCheck.js';
@@ -53,6 +55,16 @@ router.get('/', vetOrAdmin, getDiseaseCases);
 // @desc    Get disease case by ID
 // @access  Private (Veterinarian, Admin)
 router.get('/:id', vetOrAdmin, getDiseaseCase);
+
+// @route   GET /api/disease-cases/:id/followups
+// @desc    Get all follow-up visit records for a disease case
+// @access  Private (Veterinarian, Admin)
+router.get('/:id/followups', vetOrAdmin, getCaseFollowups);
+
+// @route   POST /api/disease-cases/:id/followups
+// @desc    Record a follow-up visit for a disease case
+// @access  Private (Veterinarian, Admin)
+router.post('/:id/followups', vetOrAdmin, addCaseFollowup);
 
 // @route   POST /api/disease-cases
 // @desc    Create new disease case

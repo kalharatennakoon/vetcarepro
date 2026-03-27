@@ -19,7 +19,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
     duration_minutes: 30,
     appointment_type: 'checkup',
     reason: '',
-    veterinarian_id: '1'
+    veterinarian_id: ''
   });
 
   const isEditMode = !!appointmentId;

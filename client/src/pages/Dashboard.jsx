@@ -145,7 +145,7 @@ const Dashboard = () => {
       // Vet-specific appointment filtering
       const vetUserId = user?.user_id;
       const vetTodayAppts = todayAppointments.filter(a => a.veterinarian_id === vetUserId);
-      const unassignedTodayAppts = todayAppointments.filter(a => !a.veterinarian_id);
+      const unassignedTodayAppts = todayAppointments.filter(a => !a.veterinarian_id && a.status === 'confirmed');
       const vetUpcomingAppts = appointments.filter(a => {
         if (a.status === 'cancelled' || a.status === 'completed') return false;
         const apptDate = getLocalDateString(a.appointment_date);
@@ -167,16 +167,11 @@ const Dashboard = () => {
         return true;
       }).filter(a => !a.veterinarian_id);
 
-      // Follow-up cases: disease cases with requires_followup=true and next_followup_date within next 14 days
-      const twoWeeksOut = new Date();
-      twoWeeksOut.setDate(twoWeeksOut.getDate() + 14);
-      const twoWeeksString = twoWeeksOut.getFullYear() + '-' +
-        String(twoWeeksOut.getMonth() + 1).padStart(2, '0') + '-' +
-        String(twoWeeksOut.getDate()).padStart(2, '0');
+      // Follow-up cases: all disease cases with requires_followup=true
       const followUpCases = allDiseaseCases
-        .filter(c => c.requires_followup && c.next_followup_date && c.next_followup_date.split('T')[0] <= twoWeeksString)
+        .filter(c => c.requires_followup && c.next_followup_date)
         .sort((a, b) => a.next_followup_date.localeCompare(b.next_followup_date))
-        .slice(0, 5);
+        .slice(0, 10);
 
       setStats({
         totalPets: pets.length,
@@ -830,18 +825,18 @@ const Dashboard = () => {
 
               {/* Sidebar - Role-specific */}
               <div style={styles.sidebar}>
-                {user?.role === 'veterinarian' ? (
-                  /* Vet: Follow-up Cases */
+                {(user?.role === 'veterinarian' || user?.role === 'admin') ? (
+                  /* Vet + Admin: Follow-up Cases */
                   <div style={styles.sidebarCard}>
                     <div style={styles.sidebarHeader}>
                       <h4 style={styles.sidebarTitle}>Pending Follow-ups</h4>
                       <span style={{...styles.badge2, backgroundColor: stats.followUpsCount > 0 ? '#ede9fe' : '#f3f4f6', color: stats.followUpsCount > 0 ? '#6d28d9' : '#6b7280'}}>
-                        {stats.followUpsCount} due
+                        {stats.followUpsCount} pending
                       </span>
                     </div>
                     <div style={styles.upcomingList}>
                       {stats.followUpCases.length === 0 ? (
-                        <p style={styles.emptyTextSmall}>No follow-ups in the next 14 days</p>
+                        <p style={styles.emptyTextSmall}>No pending follow-ups</p>
                       ) : (
                         stats.followUpCases.map((c) => (
                           <div key={c.case_id} style={{...styles.upcomingItem, cursor: 'pointer'}} onClick={() => navigate(`/disease-cases/${c.case_id}`)}>
@@ -851,8 +846,19 @@ const Dashboard = () => {
                             <div style={{flex: 1, minWidth: 0}}>
                               <div style={styles.upcomingPet}>{c.pet_name} — {c.disease_name}</div>
                               <div style={styles.upcomingDate}>
-                                {c.followup_type && <span style={{marginRight: '0.4rem'}}>{c.followup_type} ·</span>}
-                                {new Date(c.next_followup_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                {c.followup_type && <span style={{marginRight: '0.4rem'}}>{c.followup_type.replace(/_/g, ' ')} ·</span>}
+                                {(() => {
+                                  const d = c.next_followup_date.split('T')[0];
+                                  const today = new Date().toISOString().split('T')[0];
+                                  const isOverdue = d < today;
+                                  return (
+                                    <span style={{color: isOverdue ? '#dc2626' : 'inherit', fontWeight: isOverdue ? '600' : 'normal'}}>
+                                      {isOverdue && <i className="fas fa-circle-exclamation" style={{marginRight: '0.25rem'}}></i>}
+                                      {new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      {isOverdue && ' (overdue)'}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>

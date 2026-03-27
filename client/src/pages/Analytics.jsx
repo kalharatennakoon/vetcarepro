@@ -348,9 +348,11 @@ const Analytics = () => {
 
   const getOutcomeBadge = (outcome) => {
     const badges = {
-      recovered: { backgroundColor: '#dcfce7', color: '#166534' },
-      ongoing: { backgroundColor: '#dbeafe', color: '#1e40af' },
-      deceased: { backgroundColor: '#f3f4f6', color: '#1f2937' }
+      recovered:         { backgroundColor: '#dcfce7', color: '#166534' },
+      ongoing_treatment: { backgroundColor: '#dbeafe', color: '#1e40af' },
+      chronic:           { backgroundColor: '#fef9c3', color: '#854d0e' },
+      deceased:          { backgroundColor: '#f3f4f6', color: '#1f2937' },
+      transferred:       { backgroundColor: '#f3e8ff', color: '#6b21a8' },
     };
     return badges[outcome] || { backgroundColor: '#f3f4f6', color: '#1f2937' };
   };
@@ -634,8 +636,10 @@ const Analytics = () => {
               >
                 <option value="">All Outcomes</option>
                 <option value="recovered">Recovered</option>
-                <option value="ongoing">Ongoing</option>
+                <option value="ongoing_treatment">Ongoing Treatment</option>
+                <option value="chronic">Chronic</option>
                 <option value="deceased">Deceased</option>
+                <option value="transferred">Transferred</option>
               </select>
             </div>
 

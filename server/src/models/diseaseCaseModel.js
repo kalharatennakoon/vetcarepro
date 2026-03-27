@@ -223,6 +223,7 @@ export const createDiseaseCase = async (caseData, userId) => {
     INSERT INTO disease_cases (
       pet_id,
       appointment_id,
+      medical_record_id,
       disease_name,
       disease_category,
       diagnosis_date,
@@ -244,13 +245,14 @@ export const createDiseaseCase = async (caseData, userId) => {
       followup_notes,
       created_by,
       updated_by
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $22)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $23)
     RETURNING *
   `;
 
   const values = [
     caseData.pet_id,
     caseData.appointment_id || null,
+    caseData.medical_record_id || null,
     caseData.disease_name,
     caseData.disease_category || null,
     caseData.diagnosis_date,
@@ -285,33 +287,35 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
     UPDATE disease_cases
     SET
       appointment_id = $1,
-      disease_name = $2,
-      disease_category = $3,
-      diagnosis_date = $4,
-      diagnosis_method = $5,
-      species = $6,
-      breed = $7,
-      age_at_diagnosis = $8,
-      severity = $9,
-      outcome = $10,
-      treatment_duration_days = $11,
-      symptoms = $12,
-      region = $13,
-      is_contagious = $14,
-      transmission_method = $15,
-      notes = $16,
-      requires_followup = $17,
-      followup_type = $18,
-      next_followup_date = $19,
-      followup_notes = $20,
-      updated_by = $21,
+      medical_record_id = $2,
+      disease_name = $3,
+      disease_category = $4,
+      diagnosis_date = $5,
+      diagnosis_method = $6,
+      species = $7,
+      breed = $8,
+      age_at_diagnosis = $9,
+      severity = $10,
+      outcome = $11,
+      treatment_duration_days = $12,
+      symptoms = $13,
+      region = $14,
+      is_contagious = $15,
+      transmission_method = $16,
+      notes = $17,
+      requires_followup = $18,
+      followup_type = $19,
+      next_followup_date = $20,
+      followup_notes = $21,
+      updated_by = $22,
       updated_at = CURRENT_TIMESTAMP
-    WHERE case_id = $22
+    WHERE case_id = $23
     RETURNING *
   `;
 
   const values = [
     caseData.appointment_id || null,
+    caseData.medical_record_id || null,
     caseData.disease_name,
     caseData.disease_category || null,
     caseData.diagnosis_date,
@@ -337,6 +341,63 @@ export const updateDiseaseCase = async (caseId, caseData, userId) => {
 
   const result = await pool.query(query, values);
   return result.rows[0];
+};
+
+/**
+ * Get all follow-up visit records for a disease case
+ */
+export const getFollowupsByCaseId = async (caseId) => {
+  const query = `
+    SELECT
+      f.*,
+      CONCAT(u.first_name, ' ', u.last_name) as recorded_by_name
+    FROM disease_case_followups f
+    LEFT JOIN users u ON f.recorded_by = u.user_id
+    WHERE f.case_id = $1
+    ORDER BY f.visit_date DESC, f.created_at DESC
+  `;
+  const result = await pool.query(query, [caseId]);
+  return result.rows;
+};
+
+/**
+ * Record a follow-up visit and update the disease case's next follow-up date
+ */
+export const addFollowupRecord = async (caseId, data, userId) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const insertResult = await client.query(
+      `INSERT INTO disease_case_followups (case_id, visit_date, notes, next_followup_date, recorded_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [caseId, data.visit_date, data.notes, data.next_followup_date || null, userId]
+    );
+
+    if (data.next_followup_date) {
+      await client.query(
+        `UPDATE disease_cases
+         SET next_followup_date = $1, updated_by = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE case_id = $3`,
+        [data.next_followup_date, userId, caseId]
+      );
+    } else {
+      await client.query(
+        `UPDATE disease_cases
+         SET requires_followup = false, next_followup_date = null, updated_by = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE case_id = $2`,
+        [userId, caseId]
+      );
+    }
+
+    await client.query('COMMIT');
+    return insertResult.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 /**

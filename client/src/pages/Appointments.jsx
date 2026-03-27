@@ -833,7 +833,13 @@ const Appointments = () => {
                         <div style={styles.cardFooter}>
                           {/* Start — confirmed only */}
                           {appointment.status === 'confirmed' && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'in_progress')} style={styles.startButton}>
+                            <button onClick={() => {
+                              if (!appointment.veterinarian_id) {
+                                showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                                return;
+                              }
+                              handleStatusUpdate(appointment.appointment_id, 'in_progress');
+                            }} style={styles.startButton}>
                               <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
                             </button>
                           )}
@@ -947,7 +953,14 @@ const Appointments = () => {
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                     {apptDetailModal.status === 'confirmed' && (
                       <button
-                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress'); setApptDetailModal(null); }}
+                        onClick={() => {
+                          if (!apptDetailModal.veterinarian_id) {
+                            showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                            return;
+                          }
+                          handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
+                          setApptDetailModal(null);
+                        }}
                         style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <i className="fas fa-play"></i> Start

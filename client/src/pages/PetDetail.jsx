@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getPetById, updatePet, deletePet, checkPetDeletability, inactivatePet, getPetMedicalHistory, getPetVaccinations, uploadPetImage, deletePetImage } from '../services/petService';
 import { getLabReports, uploadLabReport, openLabReport, deleteLabReport, emailLabReport } from '../services/labReportService';
+import { getDiseaseCasesByPet } from '../services/diseaseCaseService';
 import { sendCustomerEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
@@ -48,6 +49,8 @@ const PetDetail = () => {
   const [deceasedDate, setDeceasedDate] = useState('');
   const [deactivateNote, setDeactivateNote] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [diseaseCases, setDiseaseCases] = useState([]);
+  const [diseaseCasesLoading, setDiseaseCasesLoading] = useState(false);
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -59,6 +62,7 @@ const PetDetail = () => {
     fetchMedicalHistory();
     fetchVaccinations();
     fetchLabReports();
+    fetchDiseaseCases();
   }, [id]);
 
   const fetchPetDetails = async () => {
@@ -276,6 +280,18 @@ const PetDetail = () => {
       console.error('Failed to fetch lab reports:', err);
     } finally {
       setLabReportsLoading(false);
+    }
+  };
+
+  const fetchDiseaseCases = async () => {
+    try {
+      setDiseaseCasesLoading(true);
+      const res = await getDiseaseCasesByPet(id);
+      setDiseaseCases(res.data.cases || []);
+    } catch (err) {
+      console.error('Failed to fetch disease cases:', err);
+    } finally {
+      setDiseaseCasesLoading(false);
     }
   };
 
@@ -525,6 +541,28 @@ const PetDetail = () => {
               onClick={() => setActiveTab('predictions')}
             >
               <i className="fas fa-brain"></i> Health Predictions
+            </button>
+          )}
+          {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+            <button
+              style={activeTab === 'diseaseCases' ? styles.activeTab : styles.tab}
+              onClick={() => setActiveTab('diseaseCases')}
+            >
+              <i className="fas fa-virus"></i> Disease Cases
+              {diseaseCases.length > 0 && (
+                <span style={{
+                  marginLeft: '0.4rem',
+                  backgroundColor: diseaseCases.some(c => c.requires_followup || c.outcome === 'ongoing_treatment') ? '#fef2f2' : '#f3f4f6',
+                  color: diseaseCases.some(c => c.requires_followup || c.outcome === 'ongoing_treatment') ? '#dc2626' : '#6b7280',
+                  fontSize: '0.72rem',
+                  fontWeight: '700',
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: '9999px',
+                  border: `1px solid ${diseaseCases.some(c => c.requires_followup || c.outcome === 'ongoing_treatment') ? '#fecaca' : '#e5e7eb'}`,
+                }}>
+                  {diseaseCases.length}
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -992,6 +1030,124 @@ const PetDetail = () => {
           {activeTab === 'predictions' && (
             <div style={styles.section}>
               <PetHealthPredictions pet={pet} />
+            </div>
+          )}
+
+          {activeTab === 'diseaseCases' && (
+            <div style={styles.section}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h2 style={styles.sectionTitle}><i className="fas fa-virus"></i> Disease Cases</h2>
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <button
+                    onClick={() => navigate(`/disease-cases/create?pet_id=${id}`)}
+                    style={{ padding: '0.5rem 1rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '7px', fontSize: '0.875rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <i className="fas fa-plus"></i> New Disease Case
+                  </button>
+                )}
+              </div>
+
+              {diseaseCasesLoading ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
+                  <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}></i>
+                  Loading disease cases...
+                </div>
+              ) : diseaseCases.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+                  <i className="fas fa-virus-slash" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.75rem' }}></i>
+                  <p style={{ margin: 0, fontSize: '0.95rem' }}>No disease cases recorded for {pet.pet_name}</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {[...diseaseCases]
+                    .sort((a, b) => {
+                      const aActive = a.requires_followup || a.outcome === 'ongoing_treatment' || a.outcome === 'chronic';
+                      const bActive = b.requires_followup || b.outcome === 'ongoing_treatment' || b.outcome === 'chronic';
+                      if (aActive && !bActive) return -1;
+                      if (!aActive && bActive) return 1;
+                      return new Date(b.diagnosis_date) - new Date(a.diagnosis_date);
+                    })
+                    .map(dc => {
+                      const isActive = dc.requires_followup || dc.outcome === 'ongoing_treatment' || dc.outcome === 'chronic';
+                      const today = new Date().toISOString().split('T')[0];
+                      const isOverdue = dc.requires_followup && dc.next_followup_date && dc.next_followup_date.split('T')[0] < today;
+                      const outcomeColors = {
+                        recovered:         { bg: '#dcfce7', color: '#166534' },
+                        ongoing_treatment: { bg: '#dbeafe', color: '#1e40af' },
+                        chronic:           { bg: '#fef9c3', color: '#854d0e' },
+                        deceased:          { bg: '#f3f4f6', color: '#374151' },
+                        transferred:       { bg: '#f3e8ff', color: '#6b21a8' },
+                      };
+                      const severityColors = {
+                        mild:     { bg: '#dcfce7', color: '#166534' },
+                        moderate: { bg: '#fef9c3', color: '#854d0e' },
+                        severe:   { bg: '#ffedd5', color: '#9a3412' },
+                        critical: { bg: '#fee2e2', color: '#991b1b' },
+                      };
+                      const oc = outcomeColors[dc.outcome] || { bg: '#f3f4f6', color: '#374151' };
+                      const sc = severityColors[dc.severity] || { bg: '#f3f4f6', color: '#374151' };
+
+                      return (
+                        <div
+                          key={dc.case_id}
+                          style={{
+                            backgroundColor: '#fff',
+                            border: `1px solid ${isActive ? '#bfdbfe' : '#e5e7eb'}`,
+                            borderLeft: `4px solid ${isOverdue ? '#dc2626' : isActive ? '#2563eb' : '#e5e7eb'}`,
+                            borderRadius: '10px',
+                            padding: '1rem 1.25rem',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'flex-start',
+                            gap: '1rem',
+                          }}
+                        >
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+                              <span style={{ fontWeight: '700', fontSize: '0.95rem', color: '#111827' }}>{dc.disease_name}</span>
+                              <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '9999px', backgroundColor: sc.bg, color: sc.color }}>
+                                {dc.severity?.toUpperCase()}
+                              </span>
+                              {dc.outcome && (
+                                <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '9999px', backgroundColor: oc.bg, color: oc.color }}>
+                                  {dc.outcome.replace(/_/g, ' ').toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: dc.requires_followup ? '0.5rem' : 0 }}>
+                              <i className="fas fa-calendar-alt" style={{ marginRight: '0.3rem' }}></i>
+                              {new Date(dc.diagnosis_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                              {dc.created_by_name && (
+                                <span style={{ marginLeft: '0.75rem' }}>
+                                  <i className="fas fa-user-doctor" style={{ marginRight: '0.3rem' }}></i>
+                                  Dr. {dc.created_by_name}
+                                </span>
+                              )}
+                              <span style={{ marginLeft: '0.75rem' }}>
+                                <i className="fas fa-hashtag" style={{ marginRight: '0.2rem' }}></i>
+                                CSE-{String(dc.case_id).padStart(4, '0')}
+                              </span>
+                            </div>
+                            {dc.requires_followup && dc.next_followup_date && (
+                              <div style={{ fontSize: '0.8rem', color: isOverdue ? '#dc2626' : '#2563eb', fontWeight: '600' }}>
+                                <i className={`fas fa-${isOverdue ? 'circle-exclamation' : 'calendar-check'}`} style={{ marginRight: '0.3rem' }}></i>
+                                {isOverdue ? 'Follow-up overdue · ' : 'Next follow-up · '}
+                                {new Date(dc.next_followup_date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => navigate(`/disease-cases/${dc.case_id}`)}
+                            style={{ padding: '0.45rem 0.9rem', backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '7px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                          >
+                            <i className="fas fa-arrow-right" style={{ marginRight: '0.3rem' }}></i>
+                            View Case
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           )}
         </div>

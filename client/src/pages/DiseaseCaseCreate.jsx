@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { getPets } from '../services/petService';
 import { createDiseaseCase } from '../services/diseaseCaseService';
+import { getMedicalRecordsByPet } from '../services/medicalRecordService';
 import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
 
@@ -34,9 +35,12 @@ const DiseaseCaseCreate = () => {
   const [error, setError] = useState('');
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
+  const [petMedicalRecords, setPetMedicalRecords] = useState([]);
+  const [linkedRecord, setLinkedRecord] = useState(null);
   const [formData, setFormData] = useState({
     pet_id: '',
     appointment_id: '',
+    medical_record_id: '',
     disease_name: '',
     disease_category: '',
     diagnosis_date: localToday(),
@@ -56,6 +60,7 @@ const DiseaseCaseCreate = () => {
   });
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showSuccess } = useNotification();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
@@ -64,11 +69,22 @@ const DiseaseCaseCreate = () => {
   }, []);
 
   useEffect(() => {
+    const petIdFromUrl = searchParams.get('pet_id');
+    if (petIdFromUrl && pets.length > 0) {
+      setFormData(prev => ({ ...prev, pet_id: petIdFromUrl }));
+    }
+  }, [pets]);
+
+  useEffect(() => {
     if (formData.pet_id) {
       fetchPetAppointments(formData.pet_id);
-      setFormData(prev => ({ ...prev, appointment_id: '' }));
+      fetchPetMedicalRecords(formData.pet_id);
+      setFormData(prev => ({ ...prev, appointment_id: '', medical_record_id: '' }));
+      setLinkedRecord(null);
     } else {
       setAppointments([]);
+      setPetMedicalRecords([]);
+      setLinkedRecord(null);
     }
   }, [formData.pet_id]);
 
@@ -79,6 +95,15 @@ const DiseaseCaseCreate = () => {
     } catch (err) {
       setError('Failed to load pets');
       console.error(err);
+    }
+  };
+
+  const fetchPetMedicalRecords = async (petId) => {
+    try {
+      const response = await getMedicalRecordsByPet(petId);
+      setPetMedicalRecords(response.data.records || []);
+    } catch (err) {
+      console.error('Failed to fetch medical records:', err);
     }
   };
 
@@ -103,9 +128,15 @@ const DiseaseCaseCreate = () => {
     const { name, value, type, checked } = e.target;
     if (name === 'appointment_id') {
       const selected = appointments.find(a => String(a.appointment_id) === String(value));
+      // Auto-link medical record if one exists for this appointment
+      const matchedRecord = value
+        ? petMedicalRecords.find(r => r.appointment_id === value) || null
+        : null;
+      setLinkedRecord(matchedRecord);
       setFormData(prev => ({
         ...prev,
         appointment_id: value,
+        medical_record_id: matchedRecord ? matchedRecord.record_id : '',
         diagnosis_date: selected ? selected.appointment_date.split('T')[0] : prev.diagnosis_date
       }));
       setError('');
@@ -216,6 +247,17 @@ const DiseaseCaseCreate = () => {
               )}
             </div>
           </div>
+
+          {/* Medical record auto-link */}
+          {formData.appointment_id && (
+            <div style={{ marginTop: '0.5rem', padding: '0.65rem 0.9rem', borderRadius: '8px', background: linkedRecord ? '#f0fdf4' : '#fffbeb', border: `1px solid ${linkedRecord ? '#bbf7d0' : '#fde68a'}`, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className={`fas fa-${linkedRecord ? 'file-medical' : 'circle-info'}`} style={{ color: linkedRecord ? '#16a34a' : '#d97706', flexShrink: 0 }}></i>
+              {linkedRecord
+                ? <span style={{ color: '#166534' }}>Medical record <strong>MRC-{String(linkedRecord.record_id).padStart(4, '0')}</strong> auto-linked — {linkedRecord.chief_complaint || linkedRecord.diagnosis || 'visit record'}</span>
+                : <span style={{ color: '#92400e' }}>No medical record found for this appointment. The vet can create one from the Medical Records section.</span>
+              }
+            </div>
+          )}
         </div>
 
         {/* Disease Information */}

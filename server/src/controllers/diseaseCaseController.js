@@ -9,7 +9,9 @@ import {
   getDiseaseStatistics,
   getDiseaseCasesByCategory,
   getRecentDiseaseCases,
-  getDiseaseCaseCount
+  getDiseaseCaseCount,
+  getFollowupsByCaseId,
+  addFollowupRecord
 } from '../models/diseaseCaseModel.js';
 
 /**
@@ -158,6 +160,7 @@ export const addDiseaseCase = async (req, res) => {
       symptoms: raw.symptoms || null,
       region: raw.region || null,
       notes: raw.notes || null,
+      medical_record_id: raw.medical_record_id ? parseInt(raw.medical_record_id) : null,
     };
 
     // Validate required fields
@@ -212,6 +215,7 @@ export const modifyDiseaseCase = async (req, res) => {
       symptoms: raw.symptoms || null,
       region: raw.region || null,
       notes: raw.notes || null,
+      medical_record_id: raw.medical_record_id ? parseInt(raw.medical_record_id) : null,
     };
 
     // Check if disease case exists
@@ -336,6 +340,62 @@ export const getCasesByCategory = async (req, res) => {
       status: 'error',
       message: 'An error occurred while fetching disease cases by category'
     });
+  }
+};
+
+/**
+ * @route   GET /api/disease-cases/:id/followups
+ * @desc    Get all follow-up visit records for a disease case
+ * @access  Private (Vet, Admin)
+ */
+export const getCaseFollowups = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const followups = await getFollowupsByCaseId(id);
+    res.status(200).json({
+      status: 'success',
+      data: { followups }
+    });
+  } catch (error) {
+    console.error('Get case followups error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch follow-up records' });
+  }
+};
+
+/**
+ * @route   POST /api/disease-cases/:id/followups
+ * @desc    Record a follow-up visit for a disease case
+ * @access  Private (Vet, Admin)
+ */
+export const addCaseFollowup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id;
+    const { visit_date, notes, next_followup_date } = req.body;
+
+    if (!visit_date || !notes?.trim()) {
+      return res.status(400).json({ status: 'error', message: 'visit_date and notes are required' });
+    }
+
+    const existingCase = await getDiseaseCaseById(id);
+    if (!existingCase) {
+      return res.status(404).json({ status: 'error', message: 'Disease case not found' });
+    }
+
+    const followup = await addFollowupRecord(
+      id,
+      { visit_date, notes: notes.trim(), next_followup_date: next_followup_date || null },
+      userId
+    );
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Follow-up visit recorded successfully',
+      data: { followup }
+    });
+  } catch (error) {
+    console.error('Add case followup error:', error);
+    res.status(500).json({ status: 'error', message: 'Failed to record follow-up visit' });
   }
 };
 

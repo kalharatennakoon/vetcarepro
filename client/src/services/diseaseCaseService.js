@@ -88,6 +88,29 @@ export const updateDiseaseCase = async (id, caseData) => {
 };
 
 /**
+ * Get all follow-up visit records for a disease case
+ */
+export const getCaseFollowups = async (caseId) => {
+  const response = await axios.get(
+    `${API_URL}/disease-cases/${caseId}/followups`,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
+ * Record a follow-up visit for a disease case
+ */
+export const recordFollowup = async (caseId, data) => {
+  const response = await axios.post(
+    `${API_URL}/disease-cases/${caseId}/followups`,
+    data,
+    getAuthHeader()
+  );
+  return response.data;
+};
+
+/**
  * Delete disease case (requires reason for audit trail)
  */
 export const deleteDiseaseCase = async (id, reason, additionalNotes = '') => {
