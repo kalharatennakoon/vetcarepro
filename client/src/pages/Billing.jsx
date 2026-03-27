@@ -121,7 +121,13 @@ const Billing = () => {
     }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, dueDate) => {
+    const isOverdue =
+      (status === 'unpaid' || status === 'partially_paid') &&
+      dueDate &&
+      new Date(dueDate) < new Date(new Date().toDateString());
+    const effectiveStatus = isOverdue ? 'overdue' : status;
+
     const statusStyles = {
       unpaid: { backgroundColor: '#FEE2E2', color: '#991B1B' },
       partially_paid: { backgroundColor: '#FEF3C7', color: '#92400E' },
@@ -133,9 +139,9 @@ const Billing = () => {
     return (
       <span style={{
         ...styles.badge,
-        ...statusStyles[status]
+        ...statusStyles[effectiveStatus]
       }}>
-        {status.replace('_', ' ').toUpperCase()}
+        {effectiveStatus.replace('_', ' ').toUpperCase()}
       </span>
     );
   };
@@ -264,7 +270,7 @@ const Billing = () => {
           {bills.length === 0 ? (
             <div style={styles.emptyState}>
               <p>No bills found</p>
-              {(user?.role === 'admin' || user?.role === 'receptionist') && (
+              {!showOverdue && (user?.role === 'admin' || user?.role === 'receptionist') && (
                 <button
                   onClick={() => navigate('/billing/new')}
                   style={styles.emptyStateButton}
@@ -299,9 +305,21 @@ const Billing = () => {
                           <div style={styles.customerPhone}>{bill.customer_phone}</div>
                         </div>
                       </td>
-                      <td style={styles.td}>{formatCurrency(bill.total_amount)}</td>
                       <td style={styles.td}>
-                        {getStatusBadge(bill.payment_status)}
+                        {(() => {
+                          const isOverdue =
+                            (bill.payment_status === 'unpaid' || bill.payment_status === 'partially_paid') &&
+                            bill.due_date &&
+                            new Date(bill.due_date) < new Date(new Date().toDateString());
+                          return formatCurrency(
+                            isOverdue && parseFloat(bill.paid_amount) > 0
+                              ? bill.balance_amount
+                              : bill.total_amount
+                          );
+                        })()}
+                      </td>
+                      <td style={styles.td}>
+                        {getStatusBadge(bill.payment_status, bill.due_date)}
                       </td>
                       <td style={{...styles.td, textAlign: 'right'}}>
                         <div style={styles.actionButtons}>

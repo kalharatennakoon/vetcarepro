@@ -752,13 +752,13 @@ function Reports() {
                 <tr key={index} style={index % 2 === 0 ? styles.reportTrEven : styles.reportTrOdd}>
                   {columns.map(col => (
                     <td key={col} style={styles.reportTd}>
-                      {col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding')
-                        ? formatCurrency(row[col])
-                        : (col.includes('date') || col.includes('visit')) && row[col]
+                      {(col.includes('date') || col.includes('visit')) && row[col]
                         ? formatDate(row[col])
+                        : col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding')
+                        ? formatCurrency(row[col])
                         : col.includes('rate') || col.includes('percentage')
                         ? `${row[col]}%`
-                        : col === 'category' && row[col]
+                        : (col === 'category' || col.includes('status')) && row[col]
                         ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
                         : row[col] !== null && row[col] !== undefined
                         ? row[col]

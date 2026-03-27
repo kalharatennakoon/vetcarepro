@@ -65,9 +65,9 @@ class ReportModel {
         b.balance_amount as outstanding_amount,
         b.payment_status,
         CASE
-          WHEN b.due_date < CURRENT_DATE THEN 'OVERDUE'
-          WHEN b.due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'DUE_SOON'
-          ELSE 'CURRENT'
+          WHEN b.due_date < CURRENT_DATE THEN 'Overdue'
+          WHEN b.due_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'Due Soon'
+          ELSE 'On Time'
         END as urgency
       FROM billing b
       JOIN customers c ON b.customer_id = c.customer_id
