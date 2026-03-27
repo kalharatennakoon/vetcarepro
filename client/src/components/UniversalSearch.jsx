@@ -9,6 +9,7 @@ const CATEGORIES = [
   { key: 'billing',   label: 'Billing',    icon: 'fa-file-invoice-dollar', color: '#8b5cf6' },
   { key: 'inventory', label: 'Inventory',  icon: 'fa-boxes', color: '#ef4444' },
   { key: 'medicalRecords', label: 'Medical Records', icon: 'fa-file-medical', color: '#6366f1' },
+  { key: 'diseaseCases', label: 'Disease Cases', icon: 'fa-virus', color: '#dc2626' },
   { key: 'staff', label: 'Staff', icon: 'fa-user-md', color: '#0891b2' },
   { key: 'suppliers', label: 'Suppliers', icon: 'fa-truck', color: '#d97706' },
 ];
@@ -93,6 +94,9 @@ const UniversalSearch = () => {
       case 'medicalRecords':
         navigate(`/medical-records/${item.record_id}`);
         break;
+      case 'diseaseCases':
+        navigate(`/disease-cases/${item.case_id}`);
+        break;
       case 'staff':
         navigate(`/staff/${item.user_id}`);
         break;
@@ -144,6 +148,13 @@ const UniversalSearch = () => {
           <div style={s.itemMain}>
             <span style={s.itemTitle}>{item.pet_name} — {item.diagnosis || 'No diagnosis'}</span>
             <span style={s.itemSub}>{formatDate(item.visit_date)}{item.chief_complaint ? ` · ${item.chief_complaint}` : ''} · Owner: {item.owner_name}</span>
+          </div>
+        );
+      case 'diseaseCases':
+        return (
+          <div style={s.itemMain}>
+            <span style={s.itemTitle}>{item.disease_name} — {item.pet_name}</span>
+            <span style={s.itemSub}>{item.case_id} · {capitalize(item.disease_category)}{item.outcome ? ` · ${capitalize(item.outcome)}` : ''} · {item.owner_name}</span>
           </div>
         );
       case 'staff':

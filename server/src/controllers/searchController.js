@@ -14,7 +14,7 @@ export const universalSearch = async (req, res) => {
     if (!q || q.length < 2) {
       return res.status(200).json({
         status: 'success',
-        data: { customers: [], pets: [], appointments: [], billing: [], inventory: [], medicalRecords: [], staff: [], suppliers: [] }
+        data: { customers: [], pets: [], appointments: [], billing: [], inventory: [], medicalRecords: [], diseaseCases: [], staff: [], suppliers: [] }
       });
     }
 
@@ -22,9 +22,10 @@ export const universalSearch = async (req, res) => {
     const role = req.user.role;
     const canAccessBillingInventory = role === 'admin' || role === 'receptionist';
     const canAccessMedicalRecords   = role === 'admin' || role === 'veterinarian';
+    const canAccessDiseaseCases     = role === 'admin' || role === 'veterinarian';
     const canAccessStaff            = role === 'admin';
 
-    const [customers, pets, appointments, billing, inventory, medicalRecords, staff, suppliers] = await Promise.all([
+    const [customers, pets, appointments, billing, inventory, medicalRecords, diseaseCases, staff, suppliers] = await Promise.all([
       // Customers — all roles
       pool.query(`
         SELECT customer_id, first_name, last_name, phone, email
@@ -116,6 +117,27 @@ export const universalSearch = async (req, res) => {
           `, [pattern])
         : { rows: [] },
 
+      // Disease Cases — admin/vet only
+      canAccessDiseaseCases
+        ? pool.query(`
+            SELECT dc.case_id, dc.disease_name, dc.disease_category, dc.outcome, dc.diagnosis_date,
+                   p.pet_name,
+                   c.first_name || ' ' || c.last_name AS owner_name
+            FROM disease_cases dc
+            LEFT JOIN pets p ON dc.pet_id = p.pet_id
+            LEFT JOIN customers c ON p.customer_id = c.customer_id
+            WHERE (
+              dc.disease_name ILIKE $1 OR
+              dc.disease_category ILIKE $1 OR
+              p.pet_name ILIKE $1 OR
+              c.first_name ILIKE $1 OR c.last_name ILIKE $1 OR
+              CONCAT(c.first_name, ' ', c.last_name) ILIKE $1
+            )
+            ORDER BY dc.diagnosis_date DESC
+            LIMIT 5
+          `, [pattern])
+        : { rows: [] },
+
       // Staff — admin only
       canAccessStaff
         ? pool.query(`
@@ -156,6 +178,7 @@ export const universalSearch = async (req, res) => {
         billing: billing.rows,
         inventory: inventory.rows,
         medicalRecords: medicalRecords.rows,
+        diseaseCases: diseaseCases.rows,
         staff: staff.rows,
         suppliers: suppliers.rows
       }

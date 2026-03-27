@@ -321,7 +321,7 @@ const Dashboard = () => {
               <div style={{ marginBottom: '10px' }}>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
                   {user?.role === 'veterinarian'
-                    ? 'Search across customers, pets, appointments & medical records'
+                    ? 'Search across customers, pets, appointments, medical records & disease cases'
                     : user?.role === 'admin'
                     ? 'Search across customers, pets, appointments, billing, inventory, medical records, staff & suppliers'
                     : 'Search across customers, pets, appointments, billing & inventory'}
