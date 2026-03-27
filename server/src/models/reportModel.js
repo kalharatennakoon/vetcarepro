@@ -367,13 +367,13 @@ class ReportModel {
       SELECT
         u.user_id,
         u.first_name || ' ' || u.last_name as veterinarian_name,
-        u.role,
         COUNT(DISTINCT a.appointment_id) as total_appointments,
-        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_appointments,
-        COUNT(CASE WHEN a.status = 'cancelled' THEN 1 END) as cancelled_appointments,
+        COUNT(DISTINCT CASE WHEN a.status IN ('confirmed', 'in_progress') THEN a.appointment_id END) as in_progress_appointments,
+        COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.appointment_id END) as completed_appointments,
+        COUNT(DISTINCT CASE WHEN a.status = 'cancelled' THEN a.appointment_id END) as cancelled_appointments,
         ROUND(
-          COUNT(CASE WHEN a.status = 'completed' THEN 1 END)::numeric /
-          NULLIF(COUNT(*), 0) * 100, 2
+          COUNT(DISTINCT CASE WHEN a.status = 'completed' THEN a.appointment_id END)::numeric /
+          NULLIF(COUNT(DISTINCT a.appointment_id), 0) * 100, 2
         ) as completion_rate,
         COUNT(DISTINCT a.pet_id) as unique_patients,
         COUNT(DISTINCT mr.record_id) as medical_records_created,
@@ -385,7 +385,7 @@ class ReportModel {
         AND mr.visit_date BETWEEN $1 AND $2
       LEFT JOIN vet_bills vb ON vb.veterinarian_id = u.user_id
       WHERE u.role = 'veterinarian'
-      GROUP BY u.user_id, u.first_name, u.last_name, u.role
+      GROUP BY u.user_id, u.first_name, u.last_name
       ORDER BY total_appointments DESC
     `;
     const result = await pool.query(query, [startDate, endDate]);

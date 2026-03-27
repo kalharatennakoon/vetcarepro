@@ -665,9 +665,10 @@ function Reports() {
     if (reportType === 'veterinarian-performance') {
       const chartData = data.slice(0, 10).map(item => ({
         name: item.veterinarian_name ? `Dr. ${item.veterinarian_name}` : 'Unknown',
-        appointments: parseInt(item.total_appointments || 0),
+        total: parseInt(item.total_appointments || 0),
+        in_progress: parseInt(item.in_progress_appointments || 0),
         completed: parseInt(item.completed_appointments || 0),
-        revenue: parseFloat(item.total_revenue_generated || 0)
+        cancelled: parseInt(item.cancelled_appointments || 0)
       }));
 
       return (
@@ -677,11 +678,13 @@ function Reports() {
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" style={{fontSize: '0.75rem'}} />
-              <YAxis style={{fontSize: '0.75rem'}} />
+              <YAxis allowDecimals={false} style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="appointments" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="total" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="in_progress" fill="#f59e0b" name="In Progress" />
               <Bar dataKey="completed" fill="#43e97b" name="Completed" />
+              <Bar dataKey="cancelled" fill="#fa709a" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
         </div>
