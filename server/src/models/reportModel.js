@@ -363,6 +363,11 @@ class ReportModel {
           AND a.appointment_date BETWEEN $1 AND $2
           AND a.veterinarian_id IS NOT NULL
         ORDER BY b.bill_id, a.appointment_id
+      ),
+      vet_revenue AS (
+        SELECT veterinarian_id, SUM(paid_amount) as total_revenue
+        FROM vet_bills
+        GROUP BY veterinarian_id
       )
       SELECT
         u.user_id,
@@ -377,15 +382,15 @@ class ReportModel {
         ) as completion_rate,
         COUNT(DISTINCT a.pet_id) as unique_patients,
         COUNT(DISTINCT mr.record_id) as medical_records_created,
-        COALESCE(SUM(vb.paid_amount), 0) as total_revenue_generated
+        COALESCE(vr.total_revenue, 0) as total_revenue_generated
       FROM users u
       LEFT JOIN appointments a ON u.user_id = a.veterinarian_id
         AND a.appointment_date BETWEEN $1 AND $2
       LEFT JOIN medical_records mr ON u.user_id = mr.veterinarian_id
         AND mr.visit_date BETWEEN $1 AND $2
-      LEFT JOIN vet_bills vb ON vb.veterinarian_id = u.user_id
+      LEFT JOIN vet_revenue vr ON vr.veterinarian_id = u.user_id
       WHERE u.role = 'veterinarian'
-      GROUP BY u.user_id, u.first_name, u.last_name
+      GROUP BY u.user_id, u.first_name, u.last_name, vr.total_revenue
       ORDER BY total_appointments DESC
     `;
     const result = await pool.query(query, [startDate, endDate]);
