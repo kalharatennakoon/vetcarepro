@@ -127,6 +127,10 @@ const Appointments = () => {
       setListTab(apptDate && apptDate < todayStr || apptStatus === 'completed' || apptStatus === 'cancelled' ? 'past' : 'upcoming');
       setHighlightedApptId(apptId);
       window.history.replaceState({}, document.title);
+    } else if (location.state?.openListTab) {
+      setViewMode('list');
+      setListTab(location.state.openListTab);
+      window.history.replaceState({}, document.title);
     } else if (location.state?.viewDate) {
       const dateStr = location.state.viewDate.split('T')[0];
       const aptDate = new Date(dateStr + 'T00:00:00');
