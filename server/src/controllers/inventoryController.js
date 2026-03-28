@@ -74,17 +74,6 @@ const inventoryController = {
   async createItem(req, res) {
     try {
       const userId = req.user.userId;
-      
-      // Check if item code already exists
-      if (req.body.itemCode) {
-        const exists = await inventoryModel.itemCodeExists(req.body.itemCode);
-        if (exists) {
-          return res.status(400).json({
-            success: false,
-            message: 'Item code already exists'
-          });
-        }
-      }
 
       const itemData = {
         ...req.body,

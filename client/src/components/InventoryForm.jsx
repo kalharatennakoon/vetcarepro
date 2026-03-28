@@ -164,7 +164,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
         reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : null,
         reorderQuantity: formData.reorderQuantity ? parseInt(formData.reorderQuantity) : null,
         // Remove empty strings for optional fields
-        itemCode: formData.itemCode || undefined,
+        itemCode: itemId ? (formData.itemCode || undefined) : undefined,
         subCategory: formData.subCategory || undefined,
         supplier: formData.supplier,
         supplierContact: formData.supplierContact,
@@ -220,19 +220,17 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}>Basic Information</h3>
           <div style={styles.grid2}>
-            <div>
-              <label style={styles.label}>
-                Item Code
-              </label>
-              <input
-                type="text"
-                name="itemCode"
-                value={formData.itemCode}
-                onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., MED-001"
-              />
-            </div>
+            {itemId && (
+              <div>
+                <label style={styles.label}>Item Code</label>
+                <input
+                  type="text"
+                  value={formData.itemCode}
+                  style={{ ...styles.input, backgroundColor: '#f3f4f6', color: '#6b7280', cursor: 'not-allowed' }}
+                  readOnly
+                />
+              </div>
+            )}
 
             <div>
               <label style={styles.label}>

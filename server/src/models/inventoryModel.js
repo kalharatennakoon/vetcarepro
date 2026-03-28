@@ -98,15 +98,49 @@ const inventoryModel = {
     }
   },
 
+  async generateItemCode(category, client) {
+    const prefixMap = {
+      pharmaceuticals:       'PHARM',
+      consumables:           'CONS',
+      surgical_clinical:     'SURG',
+      laboratory_diagnostic: 'LAB',
+      pet_food_nutrition:    'FOOD',
+      retail_otc:            'RETAIL',
+      equipment:             'EQUIP',
+      accessories:           'PETACC',
+      supplements:           'VITSUP',
+      cleaning_maintenance:  'CLEAN',
+    };
+    const prefix = prefixMap[category] || 'ITEM';
+
+    // Lock all rows with this prefix to prevent concurrent duplicates
+    const existing = await client.query(
+      `SELECT item_code FROM inventory WHERE item_code LIKE $1 FOR UPDATE`,
+      [`${prefix}-%`]
+    );
+
+    let nextNum = 1;
+    if (existing.rows.length > 0) {
+      const nums = existing.rows
+        .map(r => { const m = r.item_code.match(/-(\d+)$/); return m ? parseInt(m[1]) : 0; })
+        .filter(n => n > 0);
+      if (nums.length > 0) nextNum = Math.max(...nums) + 1;
+    }
+
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  },
+
   /**
-   * Create a new inventory item
+   * Create a new inventory item with auto-generated item code
    * @param {Object} itemData - Inventory item data
    * @returns {Promise<Object>} Created inventory item
    */
   async create(itemData) {
+    const client = await pool.connect();
     try {
+      await client.query('BEGIN');
+
       const {
-        itemCode,
         itemName,
         category,
         subCategory,
@@ -127,6 +161,8 @@ const inventoryModel = {
         description,
         createdBy
       } = itemData;
+
+      const itemCode = await this.generateItemCode(category, client);
 
       const query = `
         INSERT INTO inventory (
@@ -164,11 +200,15 @@ const inventoryModel = {
         createdBy
       ];
 
-      const result = await pool.query(query, values);
+      const result = await client.query(query, values);
+      await client.query('COMMIT');
       return result.rows[0];
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error('Error in inventoryModel.create:', error);
       throw error;
+    } finally {
+      client.release();
     }
   },
 
@@ -181,7 +221,6 @@ const inventoryModel = {
   async update(itemId, itemData) {
     try {
       const {
-        itemCode,
         itemName,
         category,
         subCategory,
@@ -206,35 +245,33 @@ const inventoryModel = {
 
       const query = `
         UPDATE inventory
-        SET 
-          item_code = $1,
-          item_name = $2,
-          category = $3,
-          sub_category = $4,
-          quantity = $5,
-          unit = $6,
-          unit_cost = $7,
-          selling_price = $8,
-          markup_percentage = $9,
-          supplier = $10,
-          supplier_contact = $11,
-          reorder_level = $12,
-          reorder_quantity = $13,
-          expiry_date = $14,
-          manufacturing_date = $15,
-          batch_number = $16,
-          storage_location = $17,
-          requires_prescription = $18,
-          description = $19,
-          is_active = $20,
+        SET
+          item_name = $1,
+          category = $2,
+          sub_category = $3,
+          quantity = $4,
+          unit = $5,
+          unit_cost = $6,
+          selling_price = $7,
+          markup_percentage = $8,
+          supplier = $9,
+          supplier_contact = $10,
+          reorder_level = $11,
+          reorder_quantity = $12,
+          expiry_date = $13,
+          manufacturing_date = $14,
+          batch_number = $15,
+          storage_location = $16,
+          requires_prescription = $17,
+          description = $18,
+          is_active = $19,
           updated_at = CURRENT_TIMESTAMP,
-          updated_by = $21
-        WHERE item_id = $22
+          updated_by = $20
+        WHERE item_id = $21
         RETURNING *
       `;
 
       const values = [
-        itemCode,
         itemName,
         category,
         subCategory,
@@ -326,18 +363,14 @@ const inventoryModel = {
   async getLowStockItems() {
     try {
       const query = `
-        SELECT 
+        SELECT
           i.*,
           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
-          CASE 
-            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
-            WHEN i.quantity <= i.reorder_level THEN 'LOW'
-            WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
-            ELSE 'NORMAL'
-          END as stock_status
+          'LOW' as stock_status
         FROM inventory i
         LEFT JOIN users u ON i.created_by = u.user_id
-        WHERE i.quantity <= i.reorder_level
+        WHERE i.quantity > 0
+          AND i.quantity <= i.reorder_level
           AND i.is_active = true
         ORDER BY i.quantity ASC
       `;
@@ -350,27 +383,23 @@ const inventoryModel = {
   },
 
   /**
-   * Get expiring items (within 90 days)
+   * Get expiring items (within 90 days) — excludes out-of-stock and low-stock items
    * @returns {Promise<Array>} Array of expiring items
    */
   async getExpiringItems() {
     try {
       const query = `
-        SELECT 
+        SELECT
           i.*,
           CONCAT(u.first_name, ' ', u.last_name) as created_by_name,
           (i.expiry_date - CURRENT_DATE) as days_until_expiry,
-          CASE 
-            WHEN i.quantity = 0 THEN 'OUT_OF_STOCK'
-            WHEN i.quantity <= i.reorder_level THEN 'LOW'
-            WHEN i.expiry_date IS NOT NULL AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days' THEN 'EXPIRING'
-            ELSE 'NORMAL'
-          END as stock_status
+          'EXPIRING' as stock_status
         FROM inventory i
         LEFT JOIN users u ON i.created_by = u.user_id
         WHERE i.expiry_date IS NOT NULL
           AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days'
           AND i.expiry_date >= CURRENT_DATE
+          AND i.quantity > i.reorder_level
           AND i.is_active = true
         ORDER BY i.expiry_date ASC
       `;

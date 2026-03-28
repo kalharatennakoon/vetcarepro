@@ -105,7 +105,7 @@ const Inventory = () => {
     }
   };
 
-  const outOfStockItems = allItems.filter(i => i.quantity === 0 && i.is_active !== false);
+  const outOfStockItems = allItems.filter(i => i.quantity === 0);
   const outOfStockCount = outOfStockItems.length;
 
   const getSupplierOptions = () =>
@@ -120,7 +120,6 @@ const Inventory = () => {
     ...(name === 'subCategory' ? { item: '' } : {}),
     }));
     setCurrentPage(1);
-    setAlertFilter(null);
   };
 
   const handleClearFilters = () => {
@@ -148,13 +147,9 @@ const Inventory = () => {
 
   const getFilteredInventory = () => {
     let base;
-    if (alertFilter === 'lowStock') base = lowStockItems.filter(i => i.quantity > 0);
+    if (alertFilter === 'lowStock') base = lowStockItems;
     else if (alertFilter === 'expiring') {
-      const excludeIds = new Set([
-        ...outOfStockItems.map(i => i.item_id),
-        ...lowStockItems.filter(i => i.quantity > 0).map(i => i.item_id),
-      ]);
-      base = expiringItems.filter(i => !excludeIds.has(i.item_id));
+      base = expiringItems;
     }
     else if (alertFilter === 'outOfStock') base = outOfStockItems;
     else base = inventory;
