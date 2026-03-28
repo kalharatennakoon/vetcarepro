@@ -235,7 +235,7 @@ CREATE INDEX idx_lab_reports_created ON lab_reports(created_at);
 -- Supports: Stock management, Reorder alerts, Expiry tracking, Sales forecasting data
 CREATE TABLE inventory (
     item_id SERIAL PRIMARY KEY,
-    item_code VARCHAR(50) UNIQUE,
+    item_code VARCHAR(50) NOT NULL UNIQUE,
     item_name VARCHAR(100) NOT NULL,
     category VARCHAR(50) NOT NULL CHECK (category IN (
         'pharmaceuticals', 'consumables', 'surgical_clinical', 'laboratory_diagnostic',

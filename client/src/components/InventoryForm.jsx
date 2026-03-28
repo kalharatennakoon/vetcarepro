@@ -164,7 +164,7 @@ const InventoryForm = ({ itemId, onSuccess, onCancel }) => {
         reorderLevel: formData.reorderLevel ? parseInt(formData.reorderLevel) : null,
         reorderQuantity: formData.reorderQuantity ? parseInt(formData.reorderQuantity) : null,
         // Remove empty strings for optional fields
-        itemCode: itemId ? (formData.itemCode || undefined) : undefined,
+        itemCode: undefined,
         subCategory: formData.subCategory || undefined,
         supplier: formData.supplier,
         supplierContact: formData.supplierContact,

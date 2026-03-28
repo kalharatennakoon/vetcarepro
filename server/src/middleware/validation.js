@@ -545,12 +545,6 @@ export const validateAppointmentUpdate = [
  * Inventory item validation rules
  */
 export const validateInventoryItem = [
-  body('itemCode')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 50 })
-    .withMessage('Item code must be between 1 and 50 characters'),
-  
   body('itemName')
     .trim()
     .notEmpty()

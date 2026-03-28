@@ -115,17 +115,6 @@ const inventoryController = {
         });
       }
 
-      // Check if item code is being changed and if new code already exists
-      if (req.body.itemCode && req.body.itemCode !== existingItem.item_code) {
-        const exists = await inventoryModel.itemCodeExists(req.body.itemCode, id);
-        if (exists) {
-          return res.status(400).json({
-            success: false,
-            message: 'Item code already exists'
-          });
-        }
-      }
-
       const itemData = {
         ...req.body,
         updatedBy: userId
