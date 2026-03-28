@@ -854,54 +854,62 @@ const Appointments = () => {
                         </div>
 
                         <div style={styles.cardFooter}>
-                          {/* Start — confirmed only */}
-                          {appointment.status === 'confirmed' && (
-                            <button onClick={() => {
-                              if (!appointment.veterinarian_id) {
-                                showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
-                                return;
-                              }
-                              handleStatusUpdate(appointment.appointment_id, 'in_progress');
-                            }} style={styles.startButton}>
-                              <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
-                            </button>
+                          {user?.role !== 'veterinarian' && (
+                            <>
+                              {/* Start — confirmed only */}
+                              {appointment.status === 'confirmed' && (
+                                <button onClick={() => {
+                                  if (!appointment.veterinarian_id) {
+                                    showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                                    return;
+                                  }
+                                  handleStatusUpdate(appointment.appointment_id, 'in_progress');
+                                }} style={styles.startButton}>
+                                  <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
+                                </button>
+                              )}
+                              {/* Complete — in_progress only */}
+                              {appointment.status === 'in_progress' && (
+                                <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
+                                  appointment_id: appointment.appointment_id,
+                                  customer_id: appointment.customer_id,
+                                  customer_first_name: appointment.customer_first_name,
+                                  customer_last_name: appointment.customer_last_name,
+                                  pet_name: appointment.pet_name,
+                                  species: appointment.species,
+                                  appointment_type: appointment.appointment_type,
+                                  appointment_date: appointment.appointment_date,
+                                  veterinarian_name: appointment.veterinarian_name
+                                })} style={styles.completeButton}>
+                                  <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
+                                </button>
+                              )}
+                              {/* Cancel — confirmed only */}
+                              {appointment.status === 'confirmed' && (
+                                <button
+                                  onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
+                                  style={styles.cancelButton}
+                                >
+                                  <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
+                                </button>
+                              )}
+                            </>
                           )}
-                          {/* Complete — in_progress only */}
-                          {appointment.status === 'in_progress' && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
-                              appointment_id: appointment.appointment_id,
-                              customer_id: appointment.customer_id,
-                              customer_first_name: appointment.customer_first_name,
-                              customer_last_name: appointment.customer_last_name,
-                              pet_name: appointment.pet_name,
-                              species: appointment.species,
-                              appointment_type: appointment.appointment_type,
-                              appointment_date: appointment.appointment_date,
-                              veterinarian_name: appointment.veterinarian_name
-                            })} style={styles.completeButton}>
-                              <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
-                            </button>
-                          )}
-                          {/* Cancel — confirmed only */}
-                          {appointment.status === 'confirmed' && (
-                            <button
-                              onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
-                              style={styles.cancelButton}
-                            >
-                              <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
-                            </button>
-                          )}
-                          {/* Send Email — confirmed only */}
+                          {/* Send Email — confirmed only (all roles) */}
                           {appointment.status === 'confirmed' && (
                             <button onClick={() => openEmailApptModal(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
                               <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>Send Email
                             </button>
                           )}
-                          {/* Edit/Reschedule — confirmed only */}
-                          {appointment.status === 'confirmed' && (
-                            <button onClick={() => handleEdit(appointment.appointment_id)} style={styles.editButton}>
-                              <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit/Reschedule
-                            </button>
+                          {user?.role !== 'veterinarian' && (
+                            <>
+                              {/* Edit/Reschedule — confirmed only */}
+                              {appointment.status === 'confirmed' && (
+                                <button onClick={() => handleEdit(appointment.appointment_id)} style={styles.editButton}>
+                                  <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit/Reschedule
+                                </button>
+                              )}
+                            </>
                           )}
                           {user?.role === 'admin' && (
                             <button onClick={() => handleDelete(appointment.appointment_id)} style={styles.deleteButton}>
@@ -975,47 +983,60 @@ const Appointments = () => {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                    {apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => {
-                          if (!apptDetailModal.veterinarian_id) {
-                            showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
-                            return;
-                          }
-                          handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
-                          setApptDetailModal(null);
-                        }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-play"></i> Start
-                      </button>
+                    {user?.role !== 'veterinarian' && (
+                      <>
+                        {apptDetailModal.status === 'confirmed' && (
+                          <button
+                            onClick={() => {
+                              if (!apptDetailModal.veterinarian_id) {
+                                showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                                return;
+                              }
+                              handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
+                              setApptDetailModal(null);
+                            }}
+                            style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                          >
+                            <i className="fas fa-play"></i> Start
+                          </button>
+                        )}
+                        {apptDetailModal.status === 'in_progress' && (
+                          <button
+                            onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
+                              appointment_id: apptDetailModal.appointment_id,
+                              customer_id: apptDetailModal.customer_id,
+                              customer_first_name: apptDetailModal.customer_first_name,
+                              customer_last_name: apptDetailModal.customer_last_name,
+                              pet_name: apptDetailModal.pet_name,
+                              species: apptDetailModal.species,
+                              appointment_type: apptDetailModal.appointment_type,
+                              appointment_date: apptDetailModal.appointment_date,
+                              veterinarian_name: apptDetailModal.veterinarian_name
+                            }); setApptDetailModal(null); }}
+                            style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                          >
+                            <i className="fas fa-check-double"></i> Complete
+                          </button>
+                        )}
+                        {apptDetailModal.status === 'confirmed' && (
+                          <button
+                            onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
+                            style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                          >
+                            <i className="fas fa-times"></i> Cancel
+                          </button>
+                        )}
+                        {apptDetailModal.status === 'confirmed' && (
+                          <button
+                            onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
+                            style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                          >
+                            <i className="fas fa-edit"></i> Edit/Reschedule
+                          </button>
+                        )}
+                      </>
                     )}
-                    {apptDetailModal.status === 'in_progress' && (
-                      <button
-                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
-                          appointment_id: apptDetailModal.appointment_id,
-                          customer_id: apptDetailModal.customer_id,
-                          customer_first_name: apptDetailModal.customer_first_name,
-                          customer_last_name: apptDetailModal.customer_last_name,
-                          pet_name: apptDetailModal.pet_name,
-                          species: apptDetailModal.species,
-                          appointment_type: apptDetailModal.appointment_type,
-                          appointment_date: apptDetailModal.appointment_date,
-                          veterinarian_name: apptDetailModal.veterinarian_name
-                        }); setApptDetailModal(null); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-check-double"></i> Complete
-                      </button>
-                    )}
-                    {apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-times"></i> Cancel
-                      </button>
-                    )}
+                    {/* Send Email — confirmed only (all roles) */}
                     {apptDetailModal.status === 'confirmed' && (
                       <button
                         onClick={() => { setApptDetailModal(null); openEmailApptModal(apptDetailModal.appointment_id); }}
@@ -1024,14 +1045,7 @@ const Appointments = () => {
                         <i className="fas fa-envelope"></i> Send Email
                       </button>
                     )}
-                    {apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-edit"></i> Edit/Reschedule
-                      </button>
-                    )}
+                    {/* View in List — all roles */}
                     <button
                       onClick={() => {
                         const apptDate = getISTDate(apptDetailModal.appointment_date);
