@@ -446,8 +446,35 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Users-specific trigger: last_login updates do not bump updated_at
+CREATE OR REPLACE FUNCTION update_users_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (
+    NEW.last_login IS DISTINCT FROM OLD.last_login AND
+    NEW.first_name IS NOT DISTINCT FROM OLD.first_name AND
+    NEW.last_name IS NOT DISTINCT FROM OLD.last_name AND
+    NEW.email IS NOT DISTINCT FROM OLD.email AND
+    NEW.phone IS NOT DISTINCT FROM OLD.phone AND
+    NEW.gender IS NOT DISTINCT FROM OLD.gender AND
+    NEW.role IS NOT DISTINCT FROM OLD.role AND
+    NEW.is_active IS NOT DISTINCT FROM OLD.is_active AND
+    NEW.password_hash IS NOT DISTINCT FROM OLD.password_hash AND
+    NEW.specialization IS NOT DISTINCT FROM OLD.specialization AND
+    NEW.license_number IS NOT DISTINCT FROM OLD.license_number AND
+    NEW.profile_image IS NOT DISTINCT FROM OLD.profile_image AND
+    NEW.password_must_change IS NOT DISTINCT FROM OLD.password_must_change
+  ) THEN
+    NEW.updated_at = OLD.updated_at;
+  ELSE
+    NEW.updated_at = CURRENT_TIMESTAMP;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Apply trigger to all tables with updated_at
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_users_updated_at_column();
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_pets_updated_at BEFORE UPDATE ON pets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_appointments_updated_at BEFORE UPDATE ON appointments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
