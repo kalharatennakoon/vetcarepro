@@ -495,42 +495,42 @@
 
 | TC ID | Test Case Name | Status |
 |---|---|---|
-| TC001 | Valid Admin Login | |
-| TC002 | Valid Vet Login | |
-| TC003 | Valid Receptionist Login | |
-| TC004 | Invalid Login Credentials | |
-| TC005 | Create New Pet | |
-| TC006 | View Pet Profile | |
-| TC007 | Upload & Delete Pet Image | |
-| TC008 | Edit Pet Details | |
-| TC009 | Create Appointment | |
-| TC010 | Update Appointment Status | |
-| TC011 | Delete Appointment | |
-| TC012 | Create Bill | |
-| TC013 | Update Payment Status | |
-| TC014 | Delete Bill | |
-| TC015 | Upload Lab Report to Pet Profile | |
-| TC016 | Delete Lab Report | |
-| TC017 | Create Medical Record | |
-| TC018 | View Medical Record Detail | |
-| TC019 | Create Disease Case | |
-| TC020 | Filter Disease Cases | |
-| TC021 | Delete Disease Case | |
-| TC022 | Disease Analytics — Statistics & Assessment | |
-| TC023 | Disease Activity Forecast — Generate | |
-| TC024 | Train Disease Prediction Model | |
-| TC025 | Sales Forecast — Generate | |
-| TC026 | Train Sales Forecasting Model | |
-| TC027 | Inventory Stock Alerts | |
-| TC028 | Train Inventory Forecasting Model | |
-| TC029 | Receptionist Cannot Access Analytics | |
-| TC030 | Vet Cannot Access User Management | |
-| TC031 | Add New User | |
-| TC032 | Edit User Details | |
-| TC033 | Deactivate User | |
-| TC034 | Send Appointment Confirmation Email | |
-| TC035 | Generate and Export Report | |
-| TC036 | View System Activity Logs | |
-| TC037 | User Logout | |
+| TC001 | Valid Admin Login | Pass |
+| TC002 | Valid Vet Login | Pass |
+| TC003 | Valid Receptionist Login | Pass |
+| TC004 | Invalid Login Credentials | Pass |
+| TC005 | Create New Pet | Pass |
+| TC006 | View Pet Profile | Pass |
+| TC007 | Upload & Delete Pet Image | Pass |
+| TC008 | Edit Pet Details | Pass |
+| TC009 | Create Appointment | Pass |
+| TC010 | Update Appointment Status | Pass |
+| TC011 | Delete Appointment | Pass |
+| TC012 | Create Bill | Pass |
+| TC013 | Update Payment Status | Pass |
+| TC014 | Delete Bill | Pass |
+| TC015 | Upload Lab Report to Pet Profile | Pass |
+| TC016 | Delete Lab Report | Pass |
+| TC017 | Create Medical Record | Pass |
+| TC018 | View Medical Record Detail | Pass |
+| TC019 | Create Disease Case | Pass |
+| TC020 | Filter Disease Cases | Pass |
+| TC021 | Delete Disease Case | Pass |
+| TC022 | Disease Analytics — Statistics & Assessment | Pass |
+| TC023 | Disease Activity Forecast — Generate | Pass |
+| TC024 | Train Disease Prediction Model | Pass |
+| TC025 | Sales Forecast — Generate | Pass |
+| TC026 | Train Sales Forecasting Model | Pass |
+| TC027 | Inventory Stock Alerts | Pass |
+| TC028 | Train Inventory Forecasting Model | Pass |
+| TC029 | Receptionist Cannot Access Analytics | Pass |
+| TC030 | Vet Cannot Access User Management | Pass |
+| TC031 | Add New User | Pass |
+| TC032 | Edit User Details | Pass |
+| TC033 | Deactivate User | Pass |
+| TC034 | Send Appointment Confirmation Email | Pass |
+| TC035 | Generate and Export Report | Pass |
+| TC036 | View System Activity Logs | Pass |
+| TC037 | User Logout | Pass |
 
 **Total: 37 | Passed: 37 | Failed: 0**
