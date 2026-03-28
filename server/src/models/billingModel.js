@@ -248,13 +248,43 @@ export const createBill = async (billData, userId) => {
     const billResult = await client.query(billQuery, billValues);
     const newBill = billResult.rows[0];
 
+    // Check inventory availability before inserting anything
+    const stockErrors = [];
+    for (let i = 0; i < billData.items.length; i++) {
+      const item = billData.items[i];
+      if (item.item_type === 'inventory_item' && item.item_id) {
+        const stockResult = await client.query(
+          'SELECT quantity FROM inventory WHERE item_id = $1 FOR UPDATE',
+          [item.item_id]
+        );
+        if (stockResult.rows.length === 0) {
+          stockErrors.push({ index: i, message: `Item not found in inventory` });
+        } else {
+          const available = stockResult.rows[0].quantity;
+          if (item.quantity > available) {
+            stockErrors.push({
+              index: i,
+              message: available === 0
+                ? `"${item.item_name}" is out of stock`
+                : `Only ${available} unit${available !== 1 ? 's' : ''} available (requested ${item.quantity})`
+            });
+          }
+        }
+      }
+    }
+    if (stockErrors.length > 0) {
+      const err = new Error('Insufficient stock for one or more items');
+      err.stockErrors = stockErrors;
+      throw err;
+    }
+
     // Insert bill items
     for (const item of billData.items) {
       const itemTotal = item.quantity * item.unit_price - (item.discount || 0);
-      
+
       const itemQuery = `
         INSERT INTO billing_items (
-          bill_id, item_type, item_id, item_name, quantity, 
+          bill_id, item_type, item_id, item_name, quantity,
           unit_price, discount, total_price
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       `;

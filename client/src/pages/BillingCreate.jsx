@@ -23,6 +23,7 @@ const BillingCreate = () => {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
+  const [itemErrors, setItemErrors] = useState({});
 
   const appointmentData = location.state?.appointmentData || null;
   const returnedCustomerId = location.state?.newCustomerId || null;
@@ -166,6 +167,14 @@ const BillingCreate = () => {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const clearItemError = (index) => {
+    setItemErrors(prev => {
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
+  };
+
   const updateItem = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
@@ -176,6 +185,7 @@ const BillingCreate = () => {
       newItems[index].unit_price = 0;
       newItems[index].inv_category = '';
       newItems[index].inv_subcategory = '';
+      clearItemError(index);
     }
 
     if (field === 'inv_category') {
@@ -183,19 +193,40 @@ const BillingCreate = () => {
       newItems[index].item_id = null;
       newItems[index].item_name = '';
       newItems[index].unit_price = 0;
+      clearItemError(index);
     }
 
     if (field === 'inv_subcategory') {
       newItems[index].item_id = null;
       newItems[index].item_name = '';
       newItems[index].unit_price = 0;
+      clearItemError(index);
     }
 
-    if (field === 'item_id' && value) {
-      const inventoryItem = inventoryItems.find(i => i.item_id === parseInt(value));
-      if (inventoryItem) {
-        newItems[index].item_name = inventoryItem.item_name;
-        newItems[index].unit_price = inventoryItem.selling_price;
+    if (field === 'item_id') {
+      clearItemError(index);
+      if (value) {
+        const inventoryItem = inventoryItems.find(i => i.item_id === parseInt(value));
+        if (inventoryItem) {
+          newItems[index].item_name = inventoryItem.item_name;
+          newItems[index].unit_price = inventoryItem.selling_price;
+        }
+      }
+    }
+
+    if (field === 'quantity') {
+      clearItemError(index);
+      const item = newItems[index];
+      if (item.item_type === 'inventory_item' && item.item_id) {
+        const invItem = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
+        if (invItem && parseInt(value) > invItem.quantity) {
+          setItemErrors(prev => ({
+            ...prev,
+            [index]: invItem.quantity === 0
+              ? `"${invItem.item_name}" is out of stock`
+              : `Only ${invItem.quantity} unit${invItem.quantity !== 1 ? 's' : ''} available`
+          }));
+        }
       }
     }
 
@@ -233,18 +264,27 @@ const BillingCreate = () => {
     }
 
     // Validate items
-    for (const item of items) {
+    const newItemErrors = {};
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       if (!item.item_name || item.quantity <= 0 || item.unit_price < 0) {
         alert('All items must have a name, positive quantity, and valid price');
         return;
       }
       if (item.item_type === 'inventory_item' && item.item_id) {
-        const invItem = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
-        if (invItem && invItem.quantity <= 0) {
-          alert(`"${item.item_name}" is out of stock and cannot be added to an invoice.`);
-          return;
+        const invItem = inventoryItems.find(inv => inv.item_id === parseInt(item.item_id));
+        if (invItem) {
+          if (invItem.quantity <= 0) {
+            newItemErrors[i] = `"${item.item_name}" is out of stock`;
+          } else if (parseInt(item.quantity) > invItem.quantity) {
+            newItemErrors[i] = `Only ${invItem.quantity} unit${invItem.quantity !== 1 ? 's' : ''} available`;
+          }
         }
       }
+    }
+    if (Object.keys(newItemErrors).length > 0) {
+      setItemErrors(newItemErrors);
+      return;
     }
     
     // Validate payment method if paid amount is provided
@@ -274,7 +314,14 @@ const BillingCreate = () => {
       showSuccess('Invoice created successfully');
       navigate(`/billing/${response.data.bill.bill_id}`);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create invoice');
+      const serverStockErrors = err.response?.data?.stockErrors;
+      if (serverStockErrors?.length > 0) {
+        const errMap = {};
+        serverStockErrors.forEach(e => { errMap[e.index] = e.message; });
+        setItemErrors(errMap);
+      } else {
+        alert(err.response?.data?.message || 'Failed to create invoice');
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -497,15 +544,26 @@ const BillingCreate = () => {
                     </div>
 
                     <div style={styles.itemFieldSmall}>
-                      <label style={styles.label}>Qty<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
+                      <label style={styles.label}>
+                        Qty<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>
+                        {item.item_type === 'inventory_item' && item.item_id && (() => {
+                          const inv = inventoryItems.find(i => i.item_id === parseInt(item.item_id));
+                          return inv ? <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: '0.4rem' }}>({inv.quantity} available)</span> : null;
+                        })()}
+                      </label>
                       <input
                         type="number"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                        style={styles.input}
+                        style={{ ...styles.input, ...(itemErrors[index] ? { borderColor: '#ef4444' } : {}) }}
                         min="1"
                         required
                       />
+                      {itemErrors[index] && (
+                        <span style={{ color: '#ef4444', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                          {itemErrors[index]}
+                        </span>
+                      )}
                     </div>
 
                     <div style={styles.itemField}>

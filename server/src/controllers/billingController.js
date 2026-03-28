@@ -145,6 +145,13 @@ export const createNewBill = async (req, res) => {
     });
   } catch (error) {
     console.error('Create bill error:', error);
+    if (error.stockErrors) {
+      return res.status(422).json({
+        status: 'error',
+        message: error.message,
+        stockErrors: error.stockErrors
+      });
+    }
     res.status(500).json({
       status: 'error',
       message: error.message || 'An error occurred while creating the bill'
