@@ -9,6 +9,7 @@ import {
 } from '../models/labReportModel.js';
 import { getPetById } from '../models/petModel.js';
 import { sendLabReportEmail } from '../services/emailService.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,17 @@ export const uploadReport = async (req, res) => {
       notes,
       relatedCaseId: related_case_id || null,
       uploadedBy: req.user.user_id
+    });
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'CREATE',
+      tableName: 'lab_reports',
+      recordId: String(report.report_id),
+      oldValues: null,
+      newValues: { report_name: report.report_name, report_type: report.report_type, pet_id: petId },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
     });
 
     res.status(201).json({ status: 'success', report });
@@ -143,6 +155,17 @@ export const removeLabReport = async (req, res) => {
     if (fs.existsSync(filePath)) {
       try { fs.unlinkSync(filePath); } catch (_) {}
     }
+
+    await logAuditEntry({
+      userId: req.user.user_id,
+      action: 'DELETE',
+      tableName: 'lab_reports',
+      recordId: String(reportId),
+      oldValues: { report_name: deleted.report_name, report_type: deleted.report_type, pet_id: deleted.pet_id },
+      newValues: null,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent')
+    });
 
     res.status(200).json({ status: 'success', message: 'Lab report deleted successfully' });
   } catch (err) {

@@ -73,7 +73,7 @@ const inventoryController = {
    */
   async createItem(req, res) {
     try {
-      const userId = req.user.userId;
+      const userId = req.user.user_id;
 
       const itemData = {
         ...req.body,
@@ -81,6 +81,17 @@ const inventoryController = {
       };
 
       const newItem = await inventoryModel.create(itemData);
+
+      await logAuditEntry({
+        userId,
+        action: 'CREATE',
+        tableName: 'inventory',
+        recordId: String(newItem.item_id),
+        oldValues: null,
+        newValues: { item_name: newItem.item_name, item_code: newItem.item_code, category: newItem.category },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
 
       res.status(201).json({
         success: true,
@@ -104,9 +115,8 @@ const inventoryController = {
   async updateItem(req, res) {
     try {
       const { id } = req.params;
-      const userId = req.user.userId;
+      const userId = req.user.user_id;
 
-      // Check if item exists
       const existingItem = await inventoryModel.getById(id);
       if (!existingItem) {
         return res.status(404).json({
@@ -121,6 +131,17 @@ const inventoryController = {
       };
 
       const updatedItem = await inventoryModel.update(id, itemData);
+
+      await logAuditEntry({
+        userId,
+        action: 'UPDATE',
+        tableName: 'inventory',
+        recordId: String(id),
+        oldValues: { item_name: existingItem.item_name, quantity: existingItem.quantity },
+        newValues: { item_name: updatedItem.item_name, quantity: updatedItem.quantity },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
 
       res.status(200).json({
         success: true,
@@ -144,7 +165,7 @@ const inventoryController = {
   async deleteItem(req, res) {
     try {
       const { id } = req.params;
-      const userId = req.user.userId;
+      const userId = req.user.user_id;
 
       const existingItem = await inventoryModel.getById(id);
       if (!existingItem) {
@@ -157,10 +178,10 @@ const inventoryController = {
       const deletedItem = await inventoryModel.delete(id, userId);
 
       await logAuditEntry({
-        userId: req.user.user_id,
+        userId,
         action: 'DEACTIVATE',
         tableName: 'inventory',
-        recordId: parseInt(id),
+        recordId: String(id),
         oldValues: { is_active: true, item_name: existingItem.item_name, item_code: existingItem.item_code },
         newValues: { is_active: false },
         ipAddress: req.ip,

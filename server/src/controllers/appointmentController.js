@@ -243,7 +243,7 @@ export const deleteAppointmentById = async (req, res) => {
       userId: req.user.user_id,
       action: 'DELETE',
       tableName: 'appointments',
-      recordId: parseInt(id),
+      recordId: id,
       oldValues: { pet_id: existingAppointment.pet_id, appointment_date: existingAppointment.appointment_date, appointment_type: existingAppointment.appointment_type, status: existingAppointment.status },
       newValues: null,
       ipAddress: req.ip,

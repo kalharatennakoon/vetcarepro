@@ -220,6 +220,19 @@ export const updateUserById = async (req, res) => {
 
     const updatedUser = await updateUser(userId, userData, req.user.user_id);
 
+    if (userData.is_active === false || userData.is_active === true) {
+      await logAuditEntry({
+        userId: req.user.user_id,
+        action: userData.is_active === false ? 'DEACTIVATE' : 'UPDATE',
+        tableName: 'users',
+        recordId: String(userId),
+        oldValues: { is_active: existingUser.is_active },
+        newValues: { is_active: userData.is_active },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent')
+      });
+    }
+
     res.status(200).json({
       status: 'success',
       message: 'User updated successfully',
