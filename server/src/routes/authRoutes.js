@@ -4,6 +4,7 @@ import {
   register,
   getCurrentUser,
   logout,
+  changePassword,
   changePasswordFirstLogin
 } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
@@ -39,6 +40,11 @@ router.get('/me', authenticate, getCurrentUser);
 // @desc    Logout user
 // @access  Private
 router.post('/logout', authenticate, logout);
+
+// @route   POST /api/auth/change-password
+// @desc    Change own password (requires current password)
+// @access  Private
+router.post('/change-password', authenticate, changePassword);
 
 // @route   POST /api/auth/change-password-first-login
 // @desc    Change password for first-time login

@@ -44,6 +44,11 @@ const inventoryController = {
   async getItemById(req, res) {
     try {
       const { id } = req.params;
+
+      if (isNaN(parseInt(id))) {
+        return res.status(404).json({ success: false, message: 'Inventory item not found' });
+      }
+
       const item = await inventoryModel.getById(id);
 
       if (!item) {

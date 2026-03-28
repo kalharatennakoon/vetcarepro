@@ -192,6 +192,45 @@ export const logout = async (req, res) => {
  * @desc    Change password for first-time login
  * @access  Private
  */
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.user_id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'currentPassword and newPassword are required'
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'New password must be at least 6 characters long'
+      });
+    }
+
+    const user = await findByEmail(req.user.email);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    const isMatch = await comparePassword(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ status: 'error', message: 'Current password is incorrect' });
+    }
+
+    const password_hash = await hashPassword(newPassword);
+    await updateUser(userId, { password_hash }, userId);
+
+    res.status(200).json({ status: 'success', message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while changing password' });
+  }
+};
+
 export const changePasswordFirstLogin = async (req, res) => {
   try {
     const { newPassword } = req.body;

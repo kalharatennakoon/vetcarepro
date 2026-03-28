@@ -316,3 +316,30 @@ export const inactivateCustomerById = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'An error occurred while inactivating customer' });
   }
 };
+/**
+ * @route   GET /api/customers/:id/pets
+ * @desc    Get all pets belonging to a customer
+ * @access  Private
+ */
+export const getCustomerPets = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const customer = await getCustomerById(id);
+    if (!customer) {
+      return res.status(404).json({ status: 'error', message: 'Customer not found' });
+    }
+
+    const { getAllPets } = await import('../models/petModel.js');
+    const pets = await getAllPets({ customer_id: id });
+
+    res.status(200).json({
+      status: 'success',
+      results: pets.length,
+      data: { pets }
+    });
+  } catch (error) {
+    console.error('Get customer pets error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while fetching customer pets' });
+  }
+};

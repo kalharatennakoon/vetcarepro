@@ -6,7 +6,8 @@ import {
   updateCustomerById,
   deleteCustomerById,
   getCustomerDeletabilityById,
-  inactivateCustomerById
+  inactivateCustomerById,
+  getCustomerPets
 } from '../controllers/customerController.js';
 import { authenticate } from '../middleware/auth.js';
 import { adminOnly } from '../middleware/roleCheck.js';
@@ -45,6 +46,11 @@ router.post('/', validateCustomerCreate, createNewCustomer);
 // @desc    Update customer
 // @access  Private
 router.put('/:id', validateCustomerUpdate, updateCustomerById);
+
+// @route   GET /api/customers/:id/pets
+// @desc    Get all pets belonging to a customer
+// @access  Private
+router.get('/:id/pets', getCustomerPets);
 
 // @route   GET /api/customers/:id/deletability
 // @desc    Check if customer can be deleted or must be inactivated

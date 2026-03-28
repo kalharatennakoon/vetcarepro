@@ -62,6 +62,11 @@ router.get('/:id', getUserById);
 // @access  Private (Admin or own profile)
 router.put('/:id', validateUserUpdate, updateUserById);
 
+// @route   PATCH /api/users/:id/deactivate
+// @desc    Deactivate user (soft deactivation)
+// @access  Private (Admin only)
+router.patch('/:id/deactivate', adminOnly, deleteUserById);
+
 // @route   DELETE /api/users/:id
 // @desc    Delete user (soft delete)
 // @access  Private (Admin only)
