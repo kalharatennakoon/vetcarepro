@@ -615,12 +615,14 @@ export const validateInventoryItem = [
     .withMessage('Reorder quantity must be a positive number'),
   
   body('expiryDate')
-    .optional({ nullable: true })
+    .notEmpty()
+    .withMessage('Expiry date is required')
     .isISO8601()
     .withMessage('Expiry date must be a valid date'),
-  
+
   body('manufacturingDate')
-    .optional({ nullable: true })
+    .notEmpty()
+    .withMessage('Manufacturing date is required')
     .isISO8601()
     .withMessage('Manufacturing date must be a valid date'),
   
