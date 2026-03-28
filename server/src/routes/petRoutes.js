@@ -9,6 +9,9 @@ import {
   inactivatePetById,
   getPetMedicalHistoryById,
   getPetVaccinationsById,
+  createPetVaccination,
+  updatePetVaccination,
+  deletePetVaccination,
   getSpecies,
   uploadPetImageHandler,
   deletePetImageHandler,
@@ -87,6 +90,21 @@ router.get('/:id/medical-history', getPetMedicalHistoryById);
 // @desc    Get pet's vaccination history
 // @access  Private
 router.get('/:id/vaccinations', getPetVaccinationsById);
+
+// @route   POST /api/pets/:id/vaccinations
+// @desc    Add vaccination record
+// @access  Private (Vet/Admin)
+router.post('/:id/vaccinations', createPetVaccination);
+
+// @route   PUT /api/pets/:id/vaccinations/:vaccinationId
+// @desc    Update vaccination record
+// @access  Private (Vet/Admin)
+router.put('/:id/vaccinations/:vaccinationId', updatePetVaccination);
+
+// @route   DELETE /api/pets/:id/vaccinations/:vaccinationId
+// @desc    Delete vaccination record
+// @access  Private (Admin only)
+router.delete('/:id/vaccinations/:vaccinationId', adminOnly, deletePetVaccination);
 
 // @route   POST /api/pets/:id/upload-image
 // @desc    Upload pet image

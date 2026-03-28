@@ -301,6 +301,73 @@ export const getPetVaccinations = async (petId) => {
   return result.rows;
 };
 
+export const createVaccination = async (petId, data, userId) => {
+  const query = `
+    INSERT INTO vaccinations (
+      pet_id, vaccine_name, vaccine_type, vaccination_date, next_due_date,
+      batch_number, manufacturer, expiry_date, site_of_injection,
+      adverse_reaction, reaction_details, administered_by, notes, created_by
+    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+    RETURNING *
+  `;
+  const result = await pool.query(query, [
+    petId,
+    data.vaccine_name,
+    data.vaccine_type || null,
+    data.vaccination_date,
+    data.next_due_date || null,
+    data.batch_number || null,
+    data.manufacturer || null,
+    data.expiry_date || null,
+    data.site_of_injection || null,
+    data.adverse_reaction || false,
+    data.reaction_details || null,
+    data.administered_by || userId,
+    data.notes || null,
+    userId
+  ]);
+  return result.rows[0];
+};
+
+export const updateVaccination = async (vaccinationId, petId, data, userId) => {
+  const query = `
+    UPDATE vaccinations SET
+      vaccine_name = $1, vaccine_type = $2, vaccination_date = $3,
+      next_due_date = $4, batch_number = $5, manufacturer = $6,
+      expiry_date = $7, site_of_injection = $8, adverse_reaction = $9,
+      reaction_details = $10, administered_by = $11, notes = $12,
+      updated_by = $13
+    WHERE vaccination_id = $14 AND pet_id = $15
+    RETURNING *
+  `;
+  const result = await pool.query(query, [
+    data.vaccine_name,
+    data.vaccine_type || null,
+    data.vaccination_date,
+    data.next_due_date || null,
+    data.batch_number || null,
+    data.manufacturer || null,
+    data.expiry_date || null,
+    data.site_of_injection || null,
+    data.adverse_reaction || false,
+    data.reaction_details || null,
+    data.administered_by || userId,
+    data.notes || null,
+    userId,
+    vaccinationId,
+    petId
+  ]);
+  return result.rows[0];
+};
+
+export const deleteVaccination = async (vaccinationId, petId) => {
+  const result = await pool.query(
+    'DELETE FROM vaccinations WHERE vaccination_id = $1 AND pet_id = $2 RETURNING *',
+    [vaccinationId, petId]
+  );
+  return result.rows[0];
+};
+
 /**
  * Get pet count
  */

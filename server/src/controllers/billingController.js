@@ -323,7 +323,13 @@ export const removeBill = async (req, res) => {
       });
     }
 
-    const reason = req.body?.reason || 'No reason provided';
+    const { reason } = req.body || {};
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'A cancellation reason is required'
+      });
+    }
     const deletedBill = await deleteBill(id, userId, reason);
 
     if (!deletedBill) {
@@ -404,6 +410,10 @@ export const getPayments = async (req, res) => {
 export const getPayment = async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (isNaN(parseInt(id))) {
+      return res.status(404).json({ status: 'error', message: 'Payment not found' });
+    }
 
     const payment = await getPaymentById(id);
 

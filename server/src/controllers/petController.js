@@ -8,6 +8,9 @@ import {
   hardDeletePet,
   getPetMedicalHistory,
   getPetVaccinations,
+  createVaccination,
+  updateVaccination,
+  deleteVaccination,
   getPetCount,
   getSpeciesList,
   getBreedingPets
@@ -376,6 +379,94 @@ export const getPetVaccinationsById = async (req, res) => {
       status: 'error',
       message: 'An error occurred while fetching vaccinations'
     });
+  }
+};
+
+/**
+ * @route   POST /api/pets/:id/vaccinations
+ * @desc    Add vaccination record for a pet
+ * @access  Private (Vet/Admin)
+ */
+export const createPetVaccination = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id;
+
+    const pet = await getPetById(id);
+    if (!pet) {
+      return res.status(404).json({ status: 'error', message: 'Pet not found' });
+    }
+
+    const { vaccine_name, vaccination_date } = req.body;
+    if (!vaccine_name || !vaccination_date) {
+      return res.status(400).json({ status: 'error', message: 'vaccine_name and vaccination_date are required' });
+    }
+
+    const vaccination = await createVaccination(id, req.body, userId);
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Vaccination record added',
+      data: { vaccination }
+    });
+  } catch (error) {
+    console.error('Create vaccination error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while adding vaccination' });
+  }
+};
+
+/**
+ * @route   PUT /api/pets/:id/vaccinations/:vaccinationId
+ * @desc    Update vaccination record
+ * @access  Private (Vet/Admin)
+ */
+export const updatePetVaccination = async (req, res) => {
+  try {
+    const { id, vaccinationId } = req.params;
+    const userId = req.user.user_id;
+
+    const { vaccine_name, vaccination_date } = req.body;
+    if (!vaccine_name || !vaccination_date) {
+      return res.status(400).json({ status: 'error', message: 'vaccine_name and vaccination_date are required' });
+    }
+
+    const vaccination = await updateVaccination(vaccinationId, id, req.body, userId);
+    if (!vaccination) {
+      return res.status(404).json({ status: 'error', message: 'Vaccination record not found' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Vaccination record updated',
+      data: { vaccination }
+    });
+  } catch (error) {
+    console.error('Update vaccination error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while updating vaccination' });
+  }
+};
+
+/**
+ * @route   DELETE /api/pets/:id/vaccinations/:vaccinationId
+ * @desc    Delete vaccination record
+ * @access  Private (Admin only)
+ */
+export const deletePetVaccination = async (req, res) => {
+  try {
+    const { id, vaccinationId } = req.params;
+
+    const vaccination = await deleteVaccination(vaccinationId, id);
+    if (!vaccination) {
+      return res.status(404).json({ status: 'error', message: 'Vaccination record not found' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Vaccination record deleted'
+    });
+  } catch (error) {
+    console.error('Delete vaccination error:', error);
+    res.status(500).json({ status: 'error', message: 'An error occurred while deleting vaccination' });
   }
 };
 
