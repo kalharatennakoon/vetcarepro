@@ -11,7 +11,7 @@ const Inventory = () => {
   const canManageInventory = user?.role === 'admin';
   const [inventory, setInventory] = useState([]);
   const [allItems, setAllItems] = useState([]); // unfiltered, used for subcategory dropdown options
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
 
@@ -79,7 +79,6 @@ const Inventory = () => {
 
   const loadInventory = async () => {
     try {
-      setLoading(true);
       setError('');
       const response = await inventoryService.getAll(filters);
       setInventory(response.data || []);
@@ -87,7 +86,7 @@ const Inventory = () => {
       setError(err.message || 'Failed to load inventory');
       console.error('Error loading inventory:', err);
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -260,7 +259,7 @@ const Inventory = () => {
       </div>
 
       {/* Summary at Top */}
-      {!loading && inventory.length > 0 && (
+      {!initialLoading && inventory.length > 0 && (
         <div style={styles.summaryContainer}>
           <h3 style={styles.summaryTitle}>Inventory Summary</h3>
           <div style={styles.summaryGrid}>
@@ -471,7 +470,7 @@ const Inventory = () => {
       )}
 
       {/* Loading State */}
-      {loading ? (
+      {initialLoading ? (
         <div style={styles.loadingContainer}>
           <div style={styles.spinner}></div>
           <p>Loading inventory...</p>
