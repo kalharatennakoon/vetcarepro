@@ -124,6 +124,14 @@ const Inventory = () => {
     setAlertFilter(null);
   };
 
+  const handleClearFilters = () => {
+    setFilters({ category: '', subCategory: '', item: '', search: '', isActive: '', supplier: '' });
+    setCurrentPage(1);
+    setAlertFilter(null);
+  };
+
+  const hasActiveFilters = filters.category || filters.subCategory || filters.item || filters.search || filters.isActive || filters.supplier;
+
   const handleViewLowStock = () => {
     setAlertFilter(alertFilter === 'lowStock' ? null : 'lowStock');
     setCurrentPage(1);
@@ -364,70 +372,75 @@ const Inventory = () => {
           placeholder="Search by name or code..."
           style={styles.searchInput}
         />
-        <select
-          name="category"
-          value={filters.category}
-          onChange={handleFilterChange}
-          style={styles.filterSelect}
-        >
-          {categories.map(cat => (
-            <option key={cat.value} value={cat.value}>{cat.label}</option>
-          ))}
-        </select>
-        <select
-          name="subCategory"
-          value={filters.subCategory}
-          onChange={handleFilterChange}
-          style={styles.filterSelect}
-          disabled={!filters.category}
-        >
-          <option value="">All Sub-Categories</option>
-          {(subCategoryMap[filters.category] || []).map(sub => (
-            <option key={sub} value={sub}>{sub}</option>
-          ))}
-        </select>
-        <select
-          name="item"
-          value={filters.item}
-          onChange={handleFilterChange}
-          style={styles.filterSelect}
-          disabled={!filters.category && !filters.subCategory}
-        >
-          <option value="">All Items</option>
-          {allItems
-            .filter(i =>
-              (!filters.category || i.category === filters.category) &&
-              (!filters.subCategory || i.sub_category === filters.subCategory)
-            )
-            .sort((a, b) => a.item_name.localeCompare(b.item_name))
-            .map(i => (
-              <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
-            ))}
-        </select>
-        <select
-          name="isActive"
-          value={filters.isActive}
-          onChange={handleFilterChange}
-          style={styles.filterSelect}
-        >
-          <option value="">All</option>
-          <option value={true}>Active</option>
-          <option value={false}>Inactive</option>
-        </select>
-        {canManageInventory && (
+        <div style={styles.filterRow}>
           <select
-            name="supplier"
-            value={filters.supplier}
+            name="category"
+            value={filters.category}
             onChange={handleFilterChange}
-            style={styles.filterSelect}
-            disabled={getSupplierOptions().length === 0}
+            style={{ ...styles.filterSelect, ...styles.filterRowSelect }}
           >
-            <option value="">All Suppliers</option>
-            {getSupplierOptions().map(s => (
-              <option key={s} value={s}>{s}</option>
+            {categories.map(cat => (
+              <option key={cat.value} value={cat.value}>{cat.label}</option>
             ))}
           </select>
-        )}
+          <select
+            name="subCategory"
+            value={filters.subCategory}
+            onChange={handleFilterChange}
+            style={{ ...styles.filterSelect, ...styles.filterRowSelect }}
+            disabled={!filters.category}
+          >
+            <option value="">All Sub-Categories</option>
+            {(subCategoryMap[filters.category] || []).map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+          <select
+            name="item"
+            value={filters.item}
+            onChange={handleFilterChange}
+            style={{ ...styles.filterSelect, ...styles.filterRowSelect }}
+            disabled={!filters.category && !filters.subCategory}
+          >
+            <option value="">All Items</option>
+            {allItems
+              .filter(i =>
+                (!filters.category || i.category === filters.category) &&
+                (!filters.subCategory || i.sub_category === filters.subCategory)
+              )
+              .sort((a, b) => a.item_name.localeCompare(b.item_name))
+              .map(i => (
+                <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
+              ))}
+          </select>
+          <select
+            name="isActive"
+            value={filters.isActive}
+            onChange={handleFilterChange}
+            style={{ ...styles.filterSelect, ...styles.filterRowSelect }}
+          >
+            <option value="">All Status</option>
+            <option value={true}>Active</option>
+            <option value={false}>Inactive</option>
+          </select>
+          {canManageInventory && (
+            <select
+              name="supplier"
+              value={filters.supplier}
+              onChange={handleFilterChange}
+              style={{ ...styles.filterSelect, ...styles.filterRowSelect }}
+              disabled={getSupplierOptions().length === 0}
+            >
+              <option value="">All Suppliers</option>
+              {getSupplierOptions().map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
+          {hasActiveFilters && (
+            <button onClick={handleClearFilters} style={styles.clearFilterLink}>Clear</button>
+          )}
+        </div>
       </div>
 
       {/* Active Filter Indicator */}
@@ -758,10 +771,19 @@ const styles = {
     fontSize: '0.875rem',
   },
   filterContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
     marginBottom: '2rem',
+  },
+  filterRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
+  },
+  filterRowSelect: {
+    flex: '1 1 160px',
   },
   searchInput: {
     padding: '0.75rem 1rem',
@@ -792,6 +814,17 @@ const styles = {
     fontSize: '0.875rem',
     fontWeight: '600',
     color: '#475569',
+  },
+  clearFilterLink: {
+    backgroundColor: 'transparent',
+    color: '#3B82F6',
+    border: 'none',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    padding: '0.25rem 0.5rem',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   clearFilterButton: {
     padding: '0.5rem 1rem',
