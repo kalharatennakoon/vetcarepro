@@ -874,6 +874,7 @@ const Appointments = () => {
                               customer_first_name: appointment.customer_first_name,
                               customer_last_name: appointment.customer_last_name,
                               pet_name: appointment.pet_name,
+                              species: appointment.species,
                               appointment_type: appointment.appointment_type,
                               appointment_date: appointment.appointment_date,
                               veterinarian_name: appointment.veterinarian_name
@@ -997,6 +998,7 @@ const Appointments = () => {
                           customer_first_name: apptDetailModal.customer_first_name,
                           customer_last_name: apptDetailModal.customer_last_name,
                           pet_name: apptDetailModal.pet_name,
+                          species: apptDetailModal.species,
                           appointment_type: apptDetailModal.appointment_type,
                           appointment_date: apptDetailModal.appointment_date,
                           veterinarian_name: apptDetailModal.veterinarian_name

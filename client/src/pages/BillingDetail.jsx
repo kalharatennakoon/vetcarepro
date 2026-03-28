@@ -477,7 +477,7 @@ const BillingDetail = () => {
               {bill.pet_name && (
                 <div>
                   <p style={styles.apptLabel}>Pet</p>
-                  <p style={styles.apptValue}>{bill.pet_name}</p>
+                  <p style={styles.apptValue}>{bill.pet_name}{bill.species && ` (${bill.species.charAt(0).toUpperCase() + bill.species.slice(1)})`}</p>
                 </div>
               )}
               {bill.appointment_type && (

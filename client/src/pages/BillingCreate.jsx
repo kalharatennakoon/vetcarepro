@@ -364,7 +364,7 @@ const BillingCreate = () => {
               Appointment #{appointmentData.appointment_id}
             </span>
             {appointmentData.pet_name && (
-              <span><i className="fas fa-paw" style={{ marginRight: '0.3rem' }}></i>{appointmentData.pet_name}</span>
+              <span><i className="fas fa-paw" style={{ marginRight: '0.3rem' }}></i>{appointmentData.pet_name}{appointmentData.species && ` (${appointmentData.species.charAt(0).toUpperCase() + appointmentData.species.slice(1)})`}</span>
             )}
             {appointmentData.appointment_type && (
               <span><i className="fas fa-stethoscope" style={{ marginRight: '0.3rem' }}></i>{SERVICE_TYPE_LABELS[appointmentData.appointment_type] || appointmentData.appointment_type}</span>

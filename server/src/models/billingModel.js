@@ -125,6 +125,7 @@ export const getBillById = async (billId) => {
            a.appointment_date,
            a.appointment_time,
            p.pet_name,
+           p.species,
            v.first_name || ' ' || v.last_name as veterinarian_name
     FROM billing b
     JOIN customers c ON b.customer_id = c.customer_id
