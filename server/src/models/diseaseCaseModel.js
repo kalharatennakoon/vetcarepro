@@ -425,7 +425,7 @@ export const logAuditEntry = async ({ userId, action, tableName, recordId, oldVa
       userId,
       action,
       tableName,
-      recordId ? parseInt(recordId) : null,
+      recordId || null,
       oldValues ? JSON.stringify(oldValues) : null,
       newValues ? JSON.stringify(newValues) : null,
       ipAddress || null,

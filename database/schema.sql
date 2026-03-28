@@ -378,7 +378,7 @@ CREATE TABLE audit_logs (
     user_id INTEGER REFERENCES users(user_id),
     action VARCHAR(50) NOT NULL, -- CREATE, UPDATE, DELETE, LOGIN, LOGOUT
     table_name VARCHAR(50) NOT NULL,
-    record_id INTEGER,
+    record_id VARCHAR(50),
     old_values JSONB,
     new_values JSONB,
     ip_address VARCHAR(50),

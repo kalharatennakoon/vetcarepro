@@ -286,7 +286,13 @@ function SystemLogs() {
                 </label>
                 <select
                   value={filters.action}
-                  onChange={e => setFilters(p => ({ ...p, action: e.target.value }))}
+                  onChange={e => {
+                    const updated = { ...filters, action: e.target.value };
+                    setFilters(updated);
+                    setCurrentPage(1);
+                    setExpandedRow(null);
+                    doFetch(updated, 1);
+                  }}
                   style={styles.filterInput}
                 >
                   <option value="">All action types</option>
@@ -303,7 +309,13 @@ function SystemLogs() {
                 </label>
                 <select
                   value={filters.table_name}
-                  onChange={e => setFilters(p => ({ ...p, table_name: e.target.value }))}
+                  onChange={e => {
+                    const updated = { ...filters, table_name: e.target.value };
+                    setFilters(updated);
+                    setCurrentPage(1);
+                    setExpandedRow(null);
+                    doFetch(updated, 1);
+                  }}
                   style={styles.filterInput}
                 >
                   <option value="">All record types</option>
