@@ -117,35 +117,34 @@ class DiseasePredictionModel(BaseMLModel):
         # Create feature columns
         features = []
         feature_names = []
-        
-        # Encode categorical variables
-        for col in ['species', 'disease_category', 'severity', 'breed']:
-            if col in df.columns:
-                if col not in self.label_encoders:
-                    self.label_encoders[col] = LabelEncoder()
-                    self.label_encoders[col].fit(df[col].fillna('unknown'))
-                
-                encoded = self.label_encoders[col].transform(df[col].fillna('unknown'))
-                features.append(encoded.reshape(-1, 1))
-                feature_names.append(col)
-        
-        # Numerical features
-        if 'age_at_diagnosis' in df.columns:
-            features.append(df['age_at_diagnosis'].fillna(0).values.reshape(-1, 1))
-            feature_names.append('age_at_diagnosis')
-        
-        if 'treatment_duration_days' in df.columns:
-            features.append(df['treatment_duration_days'].fillna(0).values.reshape(-1, 1))
-            feature_names.append('treatment_duration_days')
-        
+
+        # Encode categorical variables (disease_category is the target, not a feature)
+        for col in ['species', 'severity', 'breed']:
+            if col not in self.label_encoders:
+                self.label_encoders[col] = LabelEncoder()
+                self.label_encoders[col].fit(df[col].fillna('unknown') if col in df.columns else pd.Series(['unknown']))
+
+            val = df[col].fillna('unknown') if col in df.columns else pd.Series(['unknown'] * len(df))
+            known = set(self.label_encoders[col].classes_)
+            val = val.map(lambda v: v if v in known else 'unknown')
+            encoded = self.label_encoders[col].transform(val)
+            features.append(encoded.reshape(-1, 1))
+            feature_names.append(col)
+
+        # Numerical features — always included with default 0 for consistency
+        for col in ['age_at_diagnosis', 'treatment_duration_days']:
+            val = df[col].fillna(0) if col in df.columns else pd.Series([0] * len(df))
+            features.append(val.values.reshape(-1, 1))
+            feature_names.append(col)
+
         # Binary features
-        if 'is_contagious' in df.columns:
-            features.append(df['is_contagious'].astype(int).values.reshape(-1, 1))
-            feature_names.append('is_contagious')
-        
+        val = df['is_contagious'].astype(int) if 'is_contagious' in df.columns else pd.Series([0] * len(df))
+        features.append(val.values.reshape(-1, 1))
+        feature_names.append('is_contagious')
+
         # Combine all features
         X = np.hstack(features) if features else np.array([])
-        
+
         # Target variable (for classification - disease category)
         y = None
         if 'disease_category' in df.columns:
@@ -153,7 +152,7 @@ class DiseasePredictionModel(BaseMLModel):
                 self.label_encoders['disease_category'] = LabelEncoder()
                 self.label_encoders['disease_category'].fit(df['disease_category'])
             y = self.label_encoders['disease_category'].transform(df['disease_category'])
-        
+
         return X, y, feature_names
     
     def train(self, data=None):

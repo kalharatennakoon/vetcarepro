@@ -275,7 +275,7 @@ export const removeDiseaseCase = async (req, res) => {
       userId,
       action: 'DELETE',
       tableName: 'disease_cases',
-      recordId: parseInt(id),
+      recordId: String(id),
       oldValues: existingCase,
       newValues: { reason, additional_notes: additional_notes || null },
       ipAddress: req.ip,
