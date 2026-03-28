@@ -21,6 +21,7 @@ const Inventory = () => {
   const [filters, setFilters] = useState({
     category: '',
     subCategory: '',
+    item: '',
     search: '',
     isActive: '',
     supplier: location.state?.filterSupplier || ''
@@ -47,6 +48,19 @@ const Inventory = () => {
     { value: 'supplements',           label: 'Supplements' },
     { value: 'cleaning_maintenance',  label: 'Cleaning & Maintenance Supplies' },
   ];
+
+  const subCategoryMap = {
+    pharmaceuticals:       ['Medicines', 'Vaccines', 'Dewormers & Flea/Tick Treatments', 'Ointments & Injections'],
+    consumables:           ['Syringes & Needles', 'Gloves, Cotton & Gauze', 'Bandages & Tapes', 'IV Fluids & Catheters'],
+    surgical_clinical:     ['Surgical Instruments/Kits', 'Sutures', 'Antiseptics & Disinfectants', 'E-Collars (Cones)'],
+    laboratory_diagnostic: ['Test Kits', 'Slides & Reagents', 'Sample Collection Tubes'],
+    pet_food_nutrition:    ['Prescription Diets', 'Therapeutic Foods', 'Nutritional Supplements'],
+    retail_otc:            ['Shampoos & Grooming Items', 'Collars & Leashes', 'Toys & Treats'],
+    equipment:             ['Thermometers', 'Weighing Scales', 'Microscopes', 'Surgical Machines'],
+    accessories:           ['Pet Carriers', 'Bowls & Cages', 'General Accessories'],
+    supplements:           ['Vitamins', 'Skin/Coat Supplements', 'Joint Care Products'],
+    cleaning_maintenance:  ['Disinfectants', 'Cleaning Liquids', 'Waste Disposal Items'],
+  };
 
   useEffect(() => {
     // Load all items once for subcategory dropdown population
@@ -95,13 +109,6 @@ const Inventory = () => {
   const outOfStockItems = allItems.filter(i => i.quantity === 0 && i.is_active !== false);
   const outOfStockCount = outOfStockItems.length;
 
-  const getSubcategoryOptions = () => {
-    const source = filters.category
-      ? allItems.filter(i => i.category === filters.category)
-      : allItems;
-    return [...new Set(source.map(i => i.sub_category).filter(Boolean))].sort();
-  };
-
   const getSupplierOptions = () =>
     [...new Set(allItems.map(i => i.supplier).filter(Boolean))].sort();
 
@@ -110,7 +117,8 @@ const Inventory = () => {
     setFilters(prev => ({
       ...prev,
       [name]: value,
-      ...(name === 'category' ? { subCategory: '' } : {}),
+      ...(name === 'category' ? { subCategory: '', item: '' } : {}),
+    ...(name === 'subCategory' ? { item: '' } : {}),
     }));
     setCurrentPage(1);
     setAlertFilter(null);
@@ -145,6 +153,7 @@ const Inventory = () => {
     else base = inventory;
 
     if (filters.subCategory) base = base.filter(i => i.sub_category === filters.subCategory);
+    if (filters.item) base = base.filter(i => i.item_id === Number(filters.item));
     if (filters.supplier) base = base.filter(i => i.supplier === filters.supplier);
     return base;
   };
@@ -370,12 +379,30 @@ const Inventory = () => {
           value={filters.subCategory}
           onChange={handleFilterChange}
           style={styles.filterSelect}
-          disabled={getSubcategoryOptions().length === 0}
+          disabled={!filters.category}
         >
           <option value="">All Sub-Categories</option>
-          {getSubcategoryOptions().map(sub => (
+          {(subCategoryMap[filters.category] || []).map(sub => (
             <option key={sub} value={sub}>{sub}</option>
           ))}
+        </select>
+        <select
+          name="item"
+          value={filters.item}
+          onChange={handleFilterChange}
+          style={styles.filterSelect}
+          disabled={!filters.category && !filters.subCategory}
+        >
+          <option value="">All Items</option>
+          {allItems
+            .filter(i =>
+              (!filters.category || i.category === filters.category) &&
+              (!filters.subCategory || i.sub_category === filters.subCategory)
+            )
+            .sort((a, b) => a.item_name.localeCompare(b.item_name))
+            .map(i => (
+              <option key={i.item_id} value={i.item_id}>{i.item_name}</option>
+            ))}
         </select>
         <select
           name="isActive"
