@@ -17,6 +17,11 @@ const Users = () => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
   const [success, setSuccess] = useState('');
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(''), 3000);
+    return () => clearTimeout(t);
+  }, [success]);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [filterRole, setFilterRole] = useState('');
