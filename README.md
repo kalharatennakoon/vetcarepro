@@ -2,7 +2,8 @@
 
 ![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red)
 
-![VetCare Pro Overview](docs/images/overview.jpeg)
+![VetCare Pro Overview](docs/images/overview.png)
+*Overview generated using [NotebookLM](https://notebooklm.google.com) — for illustrative purposes only.*
 
 A full-stack veterinary clinic management system that handles everything from appointment scheduling and electronic medical records to AI-powered sales forecasting, disease outbreak analytics, and inventory demand forecasting.
 
