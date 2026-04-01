@@ -114,4 +114,4 @@ All rights are reserved by the author. You may clone and run this project on you
 
 **Any other use — including deployment, modification, distribution, or commercial use — requires explicit written permission from the author.**
 
-&copy; 2025 Kalhara Tennakoon. All Rights Reserved.
+&copy; 2026 Kalhara Tennakoon. All Rights Reserved.
