@@ -1,5 +1,7 @@
 # VetCare Pro: Smart Web-Based Veterinary Clinic Management System
 
+![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red)
+
 ![VetCare Pro Overview](docs/images/overview.jpeg)
 
 A full-stack veterinary clinic management system that handles everything from appointment scheduling and electronic medical records to AI-powered sales forecasting, disease outbreak analytics, and inventory demand forecasting.
@@ -101,3 +103,15 @@ python app.py      # runs on http://localhost:5001
 - The ML service is optional - the core app works without it, but analytics features will be unavailable.
 - Email features require a valid SMTP configuration (e.g. a Gmail app password).
 - Uploaded files (pet images, lab reports) are stored in `server/uploads/` and are not included in this repository.
+
+---
+
+## License
+
+This project is proprietary software. See the [LICENSE](LICENSE) file for full terms.
+
+All rights are reserved by the author. You may clone and run this project on your local machine for viewing and testing purposes only.
+
+**Any other use — including deployment, modification, distribution, or commercial use — requires explicit written permission from the author.**
+
+&copy; 2025 Kalhara Tennakoon. All Rights Reserved.
