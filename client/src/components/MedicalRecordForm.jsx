@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
+import { removeDeferredMedicalReport } from '../services/medicalReportQueue';
 
 const localToday = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
+const MedicalRecordForm = ({ recordId, petId, appointmentData, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
@@ -20,10 +21,10 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const [appointments, setAppointments] = useState([]);
   const [veterinarians, setVeterinarians] = useState([]);
   const [formData, setFormData] = useState({
-    pet_id: petId || '',
-    appointment_id: '',
-    veterinarian_id: '',
-    visit_date: localToday(),
+    pet_id: String(petId || appointmentData?.pet_id || ''),
+    appointment_id: String(appointmentData?.appointment_id || ''),
+    veterinarian_id: appointmentData?.veterinarian_id ? String(appointmentData.veterinarian_id) : '',
+    visit_date: appointmentData?.appointment_date ? appointmentData.appointment_date.split('T')[0] : localToday(),
     chief_complaint: '',
     symptoms: '',
     diagnosis: '',
@@ -44,14 +45,12 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
   const isEditMode = !!recordId;
 
   useEffect(() => {
-    if (!petId) {
-      fetchPets();
-    }
+    fetchPets();
     fetchVeterinarians();
     if (recordId) {
       loadRecord();
     }
-  }, [recordId, petId]);
+  }, [recordId, petId, appointmentData]);
 
   useEffect(() => {
     if (formData.pet_id) {
@@ -262,6 +261,9 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
       } else {
         const res = await axios.post(`${API_URL}/medical-records`, recordData, config);
         showSuccess('Medical record created successfully');
+        if (recordData.appointment_id) {
+          removeDeferredMedicalReport(recordData.appointment_id);
+        }
         onSuccess?.(res.data.data.record);
       }
     } catch (err) {
@@ -303,27 +305,26 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
           <h3 style={styles.sectionTitle}>Visit Information</h3>
           
           <div style={styles.row}>
-            {!petId && (
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Pet <span style={styles.required}>*</span>
-                </label>
-                <select
-                  name="pet_id"
-                  value={formData.pet_id}
-                  onChange={handleChange}
-                  style={styles.input}
-                  required
-                >
-                  <option value="">Select Pet</option>
-                  {[...pets].sort((a, b) => a.pet_name.localeCompare(b.pet_name)).map(pet => (
-                    <option key={pet.pet_id} value={pet.pet_id}>
-                      {pet.pet_name} - {pet.owner_first_name} {pet.owner_last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                Pet <span style={styles.required}>*</span>
+              </label>
+              <select
+                name="pet_id"
+                value={formData.pet_id}
+                onChange={handleChange}
+                style={{ ...styles.input, backgroundColor: appointmentData ? '#f3f4f6' : styles.input.backgroundColor, color: appointmentData ? '#6b7280' : '#111827' }}
+                disabled={Boolean(appointmentData)}
+                required
+              >
+                <option value="">Select Pet</option>
+                {[...pets].sort((a, b) => a.pet_name.localeCompare(b.pet_name)).map(pet => (
+                  <option key={pet.pet_id} value={pet.pet_id}>
+                    {pet.pet_name} - {pet.owner_first_name} {pet.owner_last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div style={styles.inputGroup}>
               <label style={styles.label}>
@@ -371,7 +372,8 @@ const MedicalRecordForm = ({ recordId, petId, onSuccess, onCancel }) => {
               name="appointment_id"
               value={formData.appointment_id}
               onChange={handleChange}
-              style={styles.input}
+                style={{ ...styles.input, backgroundColor: appointmentData ? '#f3f4f6' : styles.input.backgroundColor, color: appointmentData ? '#6b7280' : '#111827' }}
+                disabled={Boolean(appointmentData)}
             >
               <option value="">{formData.pet_id ? (appointments.length === 0 ? 'No past appointments found' : 'Select an appointment...') : 'Select a pet first'}</option>
               {appointments.map(appt => (

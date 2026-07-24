@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import UniversalSearch from '../components/UniversalSearch';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { getPets } from '../services/petService';
 import { getCustomers } from '../services/customerService';
 import { getMedicalRecords } from '../services/medicalRecordService';
+import { getDeferredMedicalReportIds } from '../services/medicalReportQueue';
 import inventoryService from '../services/inventoryService';
 import { getDiseaseCases } from '../services/diseaseCaseService';
 import { updateAppointment } from '../services/appointmentService';
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const { user, logout, refreshUser } = useAuth();
   const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation();
   const [stats, setStats] = useState({
     totalPets: 0,
     activePets: 0,
@@ -30,6 +32,7 @@ const Dashboard = () => {
     todayUpcoming: 0,
     waitingPatients: 0,
     pendingInvoices: 0,
+    pendingInvoiceAppointments: [],
     lowStockItems: 0,
     followUpsCount: 0,
     adminTotalRevenue: 0,
@@ -54,7 +57,8 @@ const Dashboard = () => {
     vetScheduleToday: [],
     vetUpcoming: [],
     vetUnassignedToday: [],
-    vetUnassignedUpcoming: []
+    vetUnassignedUpcoming: [],
+    vetDeferredMedicalReports: []
   });
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -69,6 +73,19 @@ const Dashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (user?.role !== 'veterinarian') return;
+    const pendingAppointment = location.state?.openMedicalReportNow && location.state?.appointmentData;
+    if (!pendingAppointment) return;
+
+    navigate('/medical-records/new', {
+      state: {
+        appointmentData: location.state.appointmentData
+      },
+      replace: true
+    });
+  }, [location.state, navigate, user?.role]);
 
   const fetchDashboardData = async () => {
     try {
@@ -159,6 +176,17 @@ const Dashboard = () => {
       const pendingBills = bills.filter(b =>
         b.payment_status === 'partially_paid' || b.payment_status === 'unpaid' || b.payment_status === 'overdue'
       );
+      const billedAppointmentIds = new Set(
+        bills.map(b => b.appointment_id).filter(Boolean)
+      );
+      const pendingInvoiceAppointments = appointments
+        .filter(a => a.status === 'completed' && a.appointment_id && !billedAppointmentIds.has(a.appointment_id))
+        .sort((a, b) => {
+          const dateA = getLocalDateString(a.completed_at || a.appointment_date || '');
+          const dateB = getLocalDateString(b.completed_at || b.appointment_date || '');
+          if (dateA !== dateB) return dateB.localeCompare(dateA);
+          return (b.completed_at || b.appointment_date || '').localeCompare(a.completed_at || a.appointment_date || '');
+        });
 
       // Vet-specific appointment filtering
       const vetUserId = user?.user_id;
@@ -184,6 +212,15 @@ const Dashboard = () => {
         }
         return true;
       }).filter(a => !a.veterinarian_id);
+      const deferredMedicalReportIds = new Set(getDeferredMedicalReportIds().map(id => String(id)));
+      const vetDeferredMedicalReports = appointments
+        .filter(a => a.status === 'completed' && deferredMedicalReportIds.has(String(a.appointment_id)))
+        .sort((a, b) => {
+          const dateA = getLocalDateString(a.completed_at || a.appointment_date || '');
+          const dateB = getLocalDateString(b.completed_at || b.appointment_date || '');
+          if (dateA !== dateB) return dateB.localeCompare(dateA);
+          return (b.completed_at || b.appointment_date || '').localeCompare(a.completed_at || a.appointment_date || '');
+        });
 
       // Admin extra computations
       const adminTodayInProgress = todayAppointments.filter(a => a.status === 'in_progress').length;
@@ -239,6 +276,7 @@ const Dashboard = () => {
         urgentCases: urgentCases.length,
         labResultsReady: 0, // Placeholder for future implementation
         pendingInvoices: pendingBills.length,
+        pendingInvoiceAppointments,
         lowStockItems: lowStockItems.length,
         adminTotalRevenue,
         adminTodayRevenue,
@@ -269,6 +307,7 @@ const Dashboard = () => {
           const da = getLocalDateString(a.appointment_date), db = getLocalDateString(b.appointment_date);
           return da !== db ? da.localeCompare(db) : (a.appointment_time || '').localeCompare(b.appointment_time || '');
         }).slice(0, 3),
+        vetDeferredMedicalReports,
         recentAppointments: [...todayAppointments].sort((a, b) => (a.appointment_time || '').localeCompare(b.appointment_time || '')),
         upcomingAppointments: appointments.filter(a => {
           if (a.status === 'cancelled' || a.status === 'completed') return false;
@@ -897,6 +936,64 @@ const Dashboard = () => {
 
               {/* Sidebar - Role-specific */}
               <div style={styles.sidebar}>
+                {user?.role === 'veterinarian' && (
+                  <div style={styles.sidebarCard}>
+                    <div style={styles.sidebarHeader}>
+                      <h4 style={styles.sidebarTitle}>Medical Reports to Create Later</h4>
+                      <span style={{...styles.badge2, backgroundColor: stats.vetDeferredMedicalReports.length > 0 ? '#dbeafe' : '#f3f4f6', color: stats.vetDeferredMedicalReports.length > 0 ? '#1d4ed8' : '#6b7280'}}>
+                        {stats.vetDeferredMedicalReports.length} pending
+                      </span>
+                    </div>
+                    <div style={styles.upcomingList}>
+                      {stats.vetDeferredMedicalReports.length === 0 ? (
+                        <p style={styles.emptyTextSmall}>No completed appointments are waiting for a medical report</p>
+                      ) : (
+                        stats.vetDeferredMedicalReports.map((appointment) => (
+                          <div key={appointment.appointment_id} style={styles.upcomingItem}>
+                            <div style={{...styles.upcomingIcon, backgroundColor: '#dbeafe', color: '#1d4ed8'}}>
+                              <i className="fas fa-notes-medical"></i>
+                            </div>
+                            <div style={{flex: 1, minWidth: 0}}>
+                              <div style={styles.upcomingPet}>{appointment.pet_name}</div>
+                              <div style={styles.upcomingDate}>
+                                {new Date((appointment.completed_at || appointment.appointment_date).split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                                {appointment.customer_first_name && ` • ${appointment.customer_first_name} ${appointment.customer_last_name}`}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => navigate('/medical-records/new', {
+                                state: {
+                                  appointmentData: {
+                                    appointment_id: appointment.appointment_id,
+                                    pet_id: appointment.pet_id,
+                                    veterinarian_id: appointment.veterinarian_id,
+                                    appointment_date: appointment.appointment_date,
+                                    appointment_time: appointment.appointment_time,
+                                    customer_id: appointment.customer_id,
+                                    customer_first_name: appointment.customer_first_name,
+                                    customer_last_name: appointment.customer_last_name,
+                                    pet_name: appointment.pet_name,
+                                    species: appointment.species,
+                                    veterinarian_name: appointment.veterinarian_name,
+                                    reason: appointment.reason
+                                  }
+                                }
+                              })}
+                              style={{...styles.viewButton, marginLeft: '0.5rem', whiteSpace: 'nowrap'}}
+                            >
+                              Create Medical Report
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Admin: Financial Snapshot */}
                 {user?.role === 'admin' && (
                   <div style={styles.sidebarCard}>
@@ -979,6 +1076,63 @@ const Dashboard = () => {
                         </span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {(user?.role === 'admin' || user?.role === 'receptionist') && (
+                  <div style={styles.sidebarCard}>
+                    <div style={styles.sidebarHeader}>
+                      <h4 style={styles.sidebarTitle}>Invoices to Generate</h4>
+                      <span style={{...styles.badge2, backgroundColor: stats.pendingInvoiceAppointments.length > 0 ? '#fef3c7' : '#f3f4f6', color: stats.pendingInvoiceAppointments.length > 0 ? '#92400e' : '#6b7280'}}>
+                        {stats.pendingInvoiceAppointments.length} completed
+                      </span>
+                    </div>
+                    <div style={styles.upcomingList}>
+                      {stats.pendingInvoiceAppointments.length === 0 ? (
+                        <p style={styles.emptyTextSmall}>No completed appointments are waiting for an invoice</p>
+                      ) : (
+                        stats.pendingInvoiceAppointments.map((appointment) => (
+                          <div key={appointment.appointment_id} style={{...styles.upcomingItem, alignItems: 'flex-start'}}>
+                            <div style={{...styles.upcomingIcon, backgroundColor: '#fef3c7', color: '#92400e'}}>
+                              <i className="fas fa-file-invoice"></i>
+                            </div>
+                            <div style={{flex: 1, minWidth: 0}}>
+                              <div style={styles.upcomingPet}>{appointment.pet_name}</div>
+                              <div style={styles.upcomingDate}>
+                                {new Date((appointment.completed_at || appointment.appointment_date).split('T')[0] + 'T00:00:00').toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                                {appointment.customer_first_name && ` • ${appointment.customer_first_name} ${appointment.customer_last_name}`}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => navigate('/billing/new', {
+                                state: {
+                                  appointmentData: {
+                                    appointment_id: appointment.appointment_id,
+                                    customer_id: appointment.customer_id,
+                                    customer_first_name: appointment.customer_first_name,
+                                    customer_last_name: appointment.customer_last_name,
+                                    pet_name: appointment.pet_name,
+                                    species: appointment.species,
+                                    appointment_type: appointment.appointment_type,
+                                    appointment_date: appointment.appointment_date,
+                                    appointment_time: appointment.appointment_time,
+                                    veterinarian_name: appointment.veterinarian_name,
+                                    reason: appointment.reason
+                                  }
+                                }
+                              })}
+                              style={{...styles.viewButton, marginLeft: '0.5rem', whiteSpace: 'nowrap'}}
+                            >
+                              Create Invoice
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
 
