@@ -399,7 +399,7 @@ const inventoryModel = {
         WHERE i.expiry_date IS NOT NULL
           AND i.expiry_date <= CURRENT_DATE + INTERVAL '90 days'
           AND i.expiry_date >= CURRENT_DATE
-          AND i.quantity > i.reorder_level
+          AND i.quantity > 0
           AND i.is_active = true
         ORDER BY i.expiry_date ASC
       `;

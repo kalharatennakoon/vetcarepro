@@ -29,6 +29,12 @@ COUNT_PETS_BY_NAME = re.compile(
     re.IGNORECASE
 )
 
+# Matches: "how many doctors", "how many admins are there", "how many receptionists"
+COUNT_STAFF_BY_ROLE = re.compile(
+    r'how many (admins?|receptionists?|doctors?|vets?|veterinarians?)\b',
+    re.IGNORECASE
+)
+
 # Matches pet-specific vaccination count questions such as:
 # "how many vaccines are taken by pet Max so far"
 # "how many vaccinations has pet Max had"
@@ -47,9 +53,25 @@ LIST_VACCINATIONS = re.compile(
     re.IGNORECASE
 )
 
+# Matches: "list medical records for pet Max", "show me the history of pet Fido"
+LIST_RECORDS_BY_PET = re.compile(
+    r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of)\s+pet\b',
+    re.IGNORECASE
+)
 
-PET_MENTION = re.compile(r'\bpet\s+([A-Za-z]+)\b', re.IGNORECASE)
-PET_BY_MENTION = re.compile(r'\b(?:by|for|of|to)\s+([A-Za-z]+)\b', re.IGNORECASE)
+
+# Matches: "list all medical records for customer John Doe", "show history for pets of Jane Doe"
+LIST_RECORDS_BY_CUSTOMER = re.compile(
+    r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of|owned\s+by)\b\s+(?:customer\s+)?([A-Za-z]+(?:\s+[A-Za-z]+)?)',
+    re.IGNORECASE
+)
+
+
+# Matches "pet Max" or "of Max" or "for Max" - a standalone name following a preposition.
+# This is less strict and helps resolve pet names even if the word "pet" isn't used.
+PET_MENTION = re.compile(r'\b(?:pet|of|for|about)\s+([A-Za-z]+)\b', re.IGNORECASE)
+
+
 OWNER_MENTION = re.compile(
     r'owner\s+(?:is|named|called)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)', re.IGNORECASE
 )
@@ -71,8 +93,6 @@ def resolve_pet_id(question: str, role: str, customer_id: str = None):
         (caller should fall back to normal unscoped retrieval).
     """
     pet_match = PET_MENTION.search(question)
-    if not pet_match:
-        pet_match = PET_BY_MENTION.search(question)
     if not pet_match:
         return None
     pet_name = pet_match.group(1)
@@ -124,23 +144,40 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     if match:
         return _count_pets_by_name(match.group(1), role, customer_id)
 
-    if OWNER_MENTION.search(question) and _looks_like_vaccine_question(question):
-        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
-        if resolved_pet_id:
-            if LIST_VACCINATIONS.search(question):
-                return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
-            if COUNT_VACCINATIONS.search(question):
-                return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+    # New check for counting veterinarians
+    match = COUNT_STAFF_BY_ROLE.search(question)
+    if match and role in STAFF_ROLES:
+        role_group = match.group(1).lower()
+        if role_group.startswith('admin'):
+            return _count_staff_by_role('admin')
+        elif role_group.startswith('receptionist'):
+            return _count_staff_by_role('receptionist')
+        else: # vets, doctors, veterinarians
+            return _count_staff_by_role('veterinarian')
 
-    if LIST_VACCINATIONS.search(question):
-        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
-        if resolved_pet_id:
-            return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+    # For any query that might be about a specific pet (records, vaccinations, etc.),
+    # try to resolve the pet_id first. This is the most specific action and should
+    # be prioritized over broader matches like searching by customer name.
+    is_pet_record_query = LIST_RECORDS_BY_PET.search(question)
+    is_vaccine_query = _looks_like_vaccine_question(question)
 
-    if COUNT_VACCINATIONS.search(question):
+    if is_pet_record_query or is_vaccine_query:
         resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
         if resolved_pet_id:
-            return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+            # Now, check which type of query it was.
+            if is_pet_record_query:
+                return _list_records_by_pet(resolved_pet_id, role, customer_id)
+
+            if is_vaccine_query:
+                if LIST_VACCINATIONS.search(question):
+                    return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+                if COUNT_VACCINATIONS.search(question):
+                    return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+
+    # Check for listing all records for a customer's pets (less specific, so it runs after pet resolution)
+    match = LIST_RECORDS_BY_CUSTOMER.search(question)
+    if match and role in STAFF_ROLES:
+        return _list_records_by_customer(match.group(1))
 
     return None
 
@@ -190,6 +227,128 @@ def _count_pets_by_name(name: str, role: str, customer_id: str = None) -> dict:
         'chunks_used': 0,
         'structured': True  # flag so the frontend/caller knows this bypassed RAG
     }
+
+
+def _count_staff_by_role(role_to_count: str) -> dict:
+    """Counts active and inactive users for a given role."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id, first_name, last_name, is_active
+                FROM users
+                WHERE role = %s
+                ORDER BY is_active DESC, first_name, last_name
+                """,
+                (role_to_count,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    role_plural = f'{role_to_count}s'
+
+    if not rows:
+        answer = f'There are no {role_plural} in the system.'
+    else:
+        active_staff = [r for r in rows if r[3]]
+        inactive_staff = [r for r in rows if not r[3]]
+
+        parts = []
+        if active_staff:
+            active_count = len(active_staff)
+            active_listing = ', '.join(f'{r[1]} {r[2]}' for r in active_staff)
+            parts.append(
+                f'There {"is" if active_count == 1 else "are"} {active_count} active '
+                f'{role_to_count}{"s" if active_count != 1 else ""}: {active_listing}.'
+            )
+        if inactive_staff:
+            inactive_count = len(inactive_staff)
+            inactive_listing = ', '.join(f'{r[1]} {r[2]}' for r in inactive_staff)
+            parts.append(
+                f'There {"is" if inactive_count == 1 else "are"} also {inactive_count} inactive '
+                f'{role_to_count}{"s" if inactive_count != 1 else ""} on record: {inactive_listing}.'
+            )
+        answer = ' '.join(parts)
+
+    return {
+        'answer': answer,
+        'sources': [{
+            'source_type': 'user',
+            'source_id': r[0],
+            'metadata': {'name': f'{r[1]} {r[2]}'}
+        } for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _list_records_by_customer(customer_name: str) -> dict:
+    """Lists all medical records for all pets owned by a given customer."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Find the customer first
+            cur.execute(
+                """
+                SELECT customer_id, first_name, last_name
+                FROM customers
+                WHERE (first_name || ' ' || last_name) ILIKE %s
+                """,
+                (f'%{customer_name}%',)
+            )
+            customer_rows = cur.fetchall()
+
+            if not customer_rows:
+                return {'answer': f'No customer found matching the name "{customer_name}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+            if len(customer_rows) > 1:
+                return {'answer': f'Found multiple customers matching "{customer_name}". Please be more specific.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            customer_id, first_name, last_name = customer_rows[0]
+            full_name = f'{first_name} {last_name}'
+
+            # Fetch all medical records for that customer's pets
+            cur.execute(
+                """
+                SELECT mr.record_id, p.pet_name, mr.visit_date, mr.diagnosis
+                FROM medical_records mr
+                JOIN pets p ON mr.pet_id = p.pet_id
+                WHERE p.customer_id = %s
+                ORDER BY p.pet_name, mr.visit_date DESC
+                """,
+                (customer_id,)
+            )
+            record_rows = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    if not record_rows:
+        return {
+            'answer': f'Customer {full_name} exists, but there are no medical records for any of their pets.',
+            'sources': [{'source_type': 'customer', 'source_id': customer_id, 'metadata': {}}],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    record_count = len(record_rows)
+    items = [f'{r[1]} ({r[2]}): {r[3]}' for r in record_rows]
+    listing = '\n- '.join(items)
+
+    answer = f'Found {record_count} medical record{"s" if record_count != 1 else ""} for pets of customer {full_name}:\n- {listing}'
+
+    return {
+        'answer': answer,
+        'sources': [{
+            'source_type': 'medical_record',
+            'source_id': r[0],
+            'metadata': {'pet_name': r[1], 'visit_date': str(r[2])}
+        } for r in record_rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
 
 
 def _count_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
@@ -274,6 +433,70 @@ def _count_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None)
             }
             for r in rows
         ],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _list_records_by_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
+    """Lists all medical records for a specific, resolved pet."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Get pet and owner name for the answer
+            cur.execute(
+                """
+                SELECT p.pet_name, c.first_name, c.last_name
+                FROM pets p
+                JOIN customers c ON p.customer_id = c.customer_id
+                WHERE p.pet_id = %s
+                """,
+                (pet_id,)
+            )
+            pet_row = cur.fetchone()
+            if not pet_row:
+                # This should be rare since resolve_pet_id found it, but handle defensively.
+                return {'answer': 'Could not find the specified pet.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            pet_name, owner_first, owner_last = pet_row
+            owner_name = f'{owner_first} {owner_last}'
+
+            # Fetch all medical records for that pet
+            cur.execute(
+                """
+                SELECT record_id, visit_date, diagnosis, chief_complaint
+                FROM medical_records
+                WHERE pet_id = %s
+                ORDER BY visit_date DESC
+                """,
+                (pet_id,)
+            )
+            record_rows = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    if not record_rows:
+        return {
+            'answer': f'Pet {pet_name} (owner: {owner_name}) has no medical records in the system.',
+            'sources': [{'source_type': 'pet', 'source_id': pet_id, 'metadata': {}}],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    record_count = len(record_rows)
+    items = [f'{r[1]} - {r[2]} (Complaint: {r[3]})' for r in record_rows]
+    listing = '\n- '.join(items)
+
+    answer = f'Found {record_count} medical record{"s" if record_count != 1 else ""} for pet {pet_name} (owner: {owner_name}):\n- {listing}'
+
+    return {
+        'answer': answer,
+        'sources': [{
+            'source_type': 'medical_record',
+            'source_id': r[0],
+            'metadata': {'pet_name': pet_name, 'visit_date': str(r[1])}
+        } for r in record_rows],
         'chunks_used': 0,
         'structured': True
     }
