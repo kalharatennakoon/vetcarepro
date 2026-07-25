@@ -8,7 +8,7 @@ This is what the Flask /api/ml/rag/chat route calls.
 
 from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, OllamaError
-from scripts.rag.structured_query import try_structured_answer
+from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
 
 SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, a decision-support tool \
 for a veterinary clinic. You must follow these rules strictly:
@@ -48,7 +48,13 @@ def answer_question(question: str, role: str, customer_id: str = None, top_k: in
     if structured is not None:
         return structured
 
-    chunks = retrieve_chunks(question, role=role, customer_id=customer_id, top_k=top_k)
+    # Try to resolve an exact pet (e.g. "pet Max whose owner is ...") so that
+    # retrieval isn't polluted by other pets sharing the same common name.
+    resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+
+    chunks = retrieve_chunks(
+        question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
+    )
 
     if not chunks:
         return {

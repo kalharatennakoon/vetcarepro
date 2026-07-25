@@ -5,7 +5,7 @@ Runs fully locally -> no API keys, no per-token cost.
 
 Requires Ollama running locally (default http://localhost:11434) with:
     ollama pull nomic-embed-text
-    ollama pull qwen2.5:7b-instruct
+    ollama pull gemma4:e4b
 """
 
 import os
@@ -16,7 +16,7 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_EMBED_MODEL = os.getenv('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen2.5:7b-instruct')
+OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'gemma4:e4b')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 
 EMBEDDING_DIM = 768  # must match database/migrations/add_rag_vector_store.sql
@@ -88,7 +88,7 @@ def generate_answer(system_prompt: str, user_prompt: str) -> str:
                     {'role': 'user', 'content': user_prompt}
                 ],
                 'stream': False,
-                'options': {'temperature': 0.2}  # low temperature: stay grounded in context
+                'options': {'temperature': 0.1}  # low temperature: stay grounded and consistent
             },
             timeout=OLLAMA_TIMEOUT
         )
@@ -112,7 +112,7 @@ def check_health() -> dict:
         installed = [m['name'] for m in response.json().get('models', [])]
 
         def is_installed(model_name):
-            # Ollama tags include version suffixes e.g. "qwen2.5:7b-instruct"
+            # Ollama tags may include version suffixes, so compare by base name.
             return any(m.startswith(model_name.split(':')[0]) for m in installed)
 
         return {

@@ -13,7 +13,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from config.db_connection import get_raw_db_connection
-from scripts.rag.chunking import chunk_medical_record, chunk_disease_case, chunk_lab_report, chunk_faq
+from scripts.rag.chunking import chunk_medical_record, chunk_disease_case, chunk_lab_report, chunk_vaccination, chunk_faq
 from scripts.rag.faq_data import FAQS
 from scripts.rag.ollama_client import embed_text, OllamaError
 
@@ -187,6 +187,51 @@ def ingest_lab_reports(report_id: int = None) -> dict:
         conn.close()
 
 
+def ingest_vaccinations(vaccination_id: int = None) -> dict:
+    """
+    Ingest vaccination records into rag_chunks. Same on-write / backfill
+    pattern as the other ingest_* functions.
+    """
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        query = """
+            SELECT
+                v.vaccination_id, v.pet_id, p.customer_id, p.pet_name, p.species, p.breed,
+                v.vaccine_name, v.vaccine_type, v.vaccination_date, v.next_due_date,
+                v.manufacturer, v.adverse_reaction, v.reaction_details, v.notes,
+                (u.first_name || ' ' || u.last_name) AS administered_by_name
+            FROM vaccinations v
+            JOIN pets p ON p.pet_id = v.pet_id
+            LEFT JOIN users u ON u.user_id = v.administered_by
+        """
+        params = ()
+        if vaccination_id is not None:
+            query += " WHERE v.vaccination_id = %s"
+            params = (vaccination_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+        for row in rows:
+            try:
+                chunk = chunk_vaccination(row)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+                print(f"  [{ingested + failed}/{len(rows)}] vaccination #{row['vaccination_id']} ingested")
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"vaccination_id={row['vaccination_id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
 def ingest_faqs() -> dict:
     """Ingest the static FAQ/care-instruction content (public, no owner scope)."""
     conn = get_raw_db_connection()
@@ -214,6 +259,7 @@ def ingest_all() -> dict:
         'medical_records': ingest_medical_records(),
         'disease_cases': ingest_disease_cases(),
         'lab_reports': ingest_lab_reports(),
+        'vaccinations': ingest_vaccinations(),
         'faqs': ingest_faqs(),
     }
     return results

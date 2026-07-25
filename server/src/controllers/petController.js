@@ -18,6 +18,7 @@ import {
 import { getCustomerById } from '../models/customerModel.js';
 import { deleteImageFile } from '../config/multer.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { ingestVaccination } from '../services/aiService.js';
 
 /**
  * Pet Controller
@@ -404,6 +405,8 @@ export const createPetVaccination = async (req, res) => {
 
     const vaccination = await createVaccination(id, req.body, userId);
 
+    ingestVaccination(vaccination.vaccination_id).catch(() => {});
+
     res.status(201).json({
       status: 'success',
       message: 'Vaccination record added',
@@ -434,6 +437,8 @@ export const updatePetVaccination = async (req, res) => {
     if (!vaccination) {
       return res.status(404).json({ status: 'error', message: 'Vaccination record not found' });
     }
+
+    ingestVaccination(vaccination.vaccination_id).catch(() => {});
 
     res.status(200).json({
       status: 'success',

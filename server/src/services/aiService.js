@@ -99,6 +99,21 @@ const ingestLabReport = async (reportId = null) => {
 };
 
 /**
+ * (Re)ingest a vaccination record into the vector store.
+ */
+const ingestVaccination = async (vaccinationId = null) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/vaccinations', {
+      ...(vaccinationId ? { vaccination_id: vaccinationId } : {})
+    });
+    return response.data;
+  } catch (error) {
+    console.error('RAG vaccination ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * (Re)ingest the static FAQ / care-instruction content.
  */
 const ingestFaqs = async () => {
@@ -149,6 +164,7 @@ export {
   ingestMedicalRecord,
   ingestDiseaseCase,
   ingestLabReport,
+  ingestVaccination,
   ingestFaqs,
   ingestAll,
   explainMlOutput

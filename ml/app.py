@@ -1227,6 +1227,23 @@ def rag_ingest_lab_reports():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ml/rag/ingest/vaccinations', methods=['POST'])
+def rag_ingest_vaccinations():
+    """
+    (Re)ingest vaccination records into the vector store.
+    Body (optional): { "vaccination_id": 123 }  -> ingest just one record
+    No body / empty body -> backfill all vaccinations
+    """
+    try:
+        from scripts.rag.ingest import ingest_vaccinations
+        data = request.get_json(silent=True) or {}
+        vaccination_id = data.get('vaccination_id')
+        result = ingest_vaccinations(vaccination_id=vaccination_id)
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/rag/ingest/faqs', methods=['POST'])
 def rag_ingest_faqs():
     """(Re)ingest the static FAQ / care-instruction content."""

@@ -134,6 +134,54 @@ def chunk_lab_report(row: dict) -> dict:
     }
 
 
+def chunk_vaccination(row: dict) -> dict:
+    """
+    Build a RAG chunk from a vaccinations row (joined with pet/customer info).
+
+    Expects row to contain:
+        vaccination_id, pet_id, customer_id, pet_name, species, breed,
+        vaccine_name, vaccine_type, vaccination_date, next_due_date,
+        manufacturer, adverse_reaction, reaction_details, administered_by_name,
+        notes
+    """
+    lines = [
+        f"Vaccination record for {row.get('pet_name', 'unknown pet')} "
+        f"({row.get('species', '')} {row.get('breed', '') or ''}).".strip(),
+        f"Vaccine: {row.get('vaccine_name')}"
+        + (f" ({row['vaccine_type']})" if row.get('vaccine_type') else ''),
+        f"Date administered: {row.get('vaccination_date')}",
+    ]
+
+    if row.get('next_due_date'):
+        lines.append(f"Next due date: {row['next_due_date']}")
+    if row.get('manufacturer'):
+        lines.append(f"Manufacturer: {row['manufacturer']}")
+    if row.get('adverse_reaction'):
+        lines.append(
+            f"Adverse reaction: yes"
+            + (f" - {row['reaction_details']}" if row.get('reaction_details') else '')
+        )
+    if row.get('administered_by_name'):
+        lines.append(f"Administered by: {row['administered_by_name']}")
+    if row.get('notes'):
+        lines.append(f"Notes: {row['notes']}")
+
+    content = '\n'.join(lines)
+
+    return {
+        'source_type': 'vaccination',
+        'source_id': str(row['vaccination_id']),
+        'pet_id': row.get('pet_id'),
+        'customer_id': row.get('customer_id'),
+        'content': content,
+        'metadata': {
+            'vaccination_date': str(row.get('vaccination_date')) if row.get('vaccination_date') else None,
+            'pet_name': row.get('pet_name'),
+            'vaccine_name': row.get('vaccine_name'),
+        }
+    }
+
+
 def chunk_faq(faq: dict) -> dict:
     """
     Build a RAG chunk from a static FAQ / care-instruction entry.
