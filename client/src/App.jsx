@@ -35,6 +35,7 @@ import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import BreedingRegistry from './pages/BreedingRegistry';
 import SystemLogs from './pages/SystemLogs';
+import AIAssistant from './pages/AIAssistant';
 
 
 function App() {
@@ -92,6 +93,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Patients />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/ai-assistant" 
+        element={
+          <ProtectedRoute>
+            <AIAssistant />
           </ProtectedRoute>
         } 
       />

@@ -208,6 +208,13 @@ const Layout = ({ children }) => {
                   <i className="fas fa-heart"></i> Breeding Registry
                 </a>
               )}
+              <a
+                href="/ai-assistant"
+                style={getNavItemStyle('/ai-assistant')}
+                onClick={(e) => { e.preventDefault(); handleNavigation('/ai-assistant'); }}
+              >
+                <i className="fas fa-robot"></i> AI Assistant
+              </a>
               {(user?.role === 'admin' || user?.role === 'veterinarian') && (
                 <a
                   href="/analytics"

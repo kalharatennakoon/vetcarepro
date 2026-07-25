@@ -1163,6 +1163,67 @@ def test_db_connection():
 
 
 # ===========================================================================
+# RAG / AI ASSISTANT ROUTES
+# ===========================================================================
+
+@app.route('/api/ml/rag/health', methods=['GET'])
+def rag_health():
+    """Check Ollama connectivity and required models"""
+    try:
+        from scripts.rag.ollama_client import check_health
+        return jsonify(check_health()), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/ingest/medical-records', methods=['POST'])
+def rag_ingest_medical_records():
+    """
+    (Re)ingest medical records into the vector store.
+    Body (optional): { "record_id": 123 }  -> ingest just one record
+    No body / empty body -> backfill all medical records
+    """
+    try:
+        from scripts.rag.ingest import ingest_medical_records
+        data = request.get_json(silent=True) or {}
+        record_id = data.get('record_id')
+        result = ingest_medical_records(record_id=record_id)
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/chat', methods=['POST'])
+def rag_chat():
+    """
+    Ask the AI assistant a question, grounded in scoped clinic data.
+    Body: {
+        "question": "Summarize Bella's medical history",
+        "role": "veterinarian" | "receptionist" | "admin" | "pet_owner" | "guest",
+        "customer_id": "CUST-0001"   # required when role == "pet_owner"
+    }
+    NOTE: role/customer_id must be derived from the authenticated user on the
+    Node backend, never trusted from an unauthenticated client directly.
+    """
+    try:
+        from scripts.rag.rag_service import answer_question
+        data = request.get_json(force=True)
+
+        question = (data.get('question') or '').strip()
+        role = data.get('role', 'guest')
+        customer_id = data.get('customer_id')
+
+        if not question:
+            return jsonify({'success': False, 'error': 'question is required'}), 400
+
+        result = answer_question(question, role=role, customer_id=customer_id)
+        return jsonify({'success': True, **result}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ===========================================================================
 # ERROR HANDLERS (unchanged)
 # ===========================================================================
 
