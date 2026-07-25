@@ -15,11 +15,50 @@ failures in testing.
 import re
 import sys
 import os
+from datetime import date, timedelta
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from config.db_connection import get_raw_db_connection
 
 STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
+
+# Shared timeframe vocabulary used by appointments/disease-case/billing queries.
+TIMEFRAME_WORDS = r'(today|tomorrow|this\s+week|this\s+month|this\s+year)'
+
+
+def _normalize_timeframe(raw: str) -> str:
+    return re.sub(r'\s+', ' ', raw.strip().lower())
+
+
+def _resolve_timeframe(raw: str):
+    """
+    Maps a natural-language timeframe word to a concrete (start_date, end_date)
+    inclusive range, anchored on today's date.
+
+    Returns:
+        (date, date) if recognized, otherwise (None, None).
+    """
+    today = date.today()
+    tf = _normalize_timeframe(raw)
+
+    if tf == 'today':
+        return today, today
+    if tf == 'tomorrow':
+        d = today + timedelta(days=1)
+        return d, d
+    if tf == 'this week':
+        start = today - timedelta(days=today.weekday())  # Monday
+        end = start + timedelta(days=6)
+        return start, end
+    if tf == 'this month':
+        start = today.replace(day=1)
+        next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        end = next_month - timedelta(days=1)
+        return start, end
+    if tf == 'this year':
+        return date(today.year, 1, 1), date(today.year, 12, 31)
+
+    return None, None
 
 # Matches: "how many pets are/is there named/called X", "how many pets named X",
 # "how many pets whose name is X", "how many pets ... name is X",
@@ -88,6 +127,117 @@ PET_BY_MENTION = re.compile(r'\b(?:of|for|about)\s+[\'"]?([A-Za-z]+)[\'"]?', re.
 OWNER_MENTION = re.compile(
     r'owner\s+(?:is|named|called)?\s*[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?', re.IGNORECASE
 )
+
+
+# ============================================================
+# Inventory
+# ============================================================
+
+# Matches: "how many items are low on stock?", "which items are running low?"
+INVENTORY_LOW_STOCK = re.compile(
+    r'\b(?:low\s+(?:on\s+)?stock|running\s+low)\b', re.IGNORECASE
+)
+
+# Matches: "how many items are out of stock?", "what's out of stock?"
+INVENTORY_OUT_OF_STOCK = re.compile(
+    r'\bout\s+of\s+stock\b', re.IGNORECASE
+)
+
+# Matches: "what's expiring soon?", "which items are expiring in the next 30 days?",
+# "what's expiring this month?". Optional day count; defaults to 90 (matches the
+# near-expiry window used elsewhere in the app) if not specified.
+INVENTORY_EXPIRING = re.compile(
+    r'\bexpir(?:ing|es?|ed)\b(?:.*?\b(?:in\s+the\s+next|within|in)\s+(\d+)\s+days?\b)?',
+    re.IGNORECASE
+)
+
+
+# ============================================================
+# Appointments
+# ============================================================
+
+# Matches: "how many appointments does Dr. Silva have?", "how many appointments does Nimal have"
+APPT_COUNT_BY_VET = re.compile(
+    r'how many appointments?\b.*?\bdoes\b\s+(?:dr\.?\s+)?[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?\s+have\b',
+    re.IGNORECASE
+)
+
+# Matches: "how many no-shows this month?", "how many no shows were there today?"
+APPT_COUNT_NO_SHOW = re.compile(
+    r'how many\b.*\bno[\s-]?shows?\b(?:.*?\b' + TIMEFRAME_WORDS + r'\b)?',
+    re.IGNORECASE
+)
+
+# Matches: "how many appointments are scheduled?", "how many appointments were cancelled?"
+APPT_COUNT_BY_STATUS = re.compile(
+    r'how many appointments?\b.*?\b(scheduled|confirmed|in[\s-]?progress|completed|cancelled|no[\s-]?show)\b',
+    re.IGNORECASE
+)
+
+# Matches: "how many appointments today?", "how many appointments are there this week?"
+# Least specific of the four - only checked if the others don't match.
+APPT_COUNT_TIMEFRAME = re.compile(
+    r'how many appointments?\b.*?\b' + TIMEFRAME_WORDS + r'\b',
+    re.IGNORECASE
+)
+
+
+# ============================================================
+# Disease cases
+# ============================================================
+
+# Matches: "how many contagious cases are there?", "how many contagious disease cases this month?"
+DISEASE_COUNT_CONTAGIOUS = re.compile(
+    r'how many\b.*\bcontagious\b.*\bcases?\b', re.IGNORECASE
+)
+
+# Matches: "how many infectious cases?" AND "how many cases are infectious?"
+DISEASE_COUNT_BY_CATEGORY = re.compile(
+    r'how many\b.*?\b(infectious|parasitic|metabolic|genetic|immune[\s-]?mediated|'
+    r'neoplastic|traumatic|nutritional)\b.*?\bcases?\b|'
+    r'how many\b.*?\bcases?\b.*?\b(infectious|parasitic|metabolic|genetic|immune[\s-]?mediated|'
+    r'neoplastic|traumatic|nutritional)\b',
+    re.IGNORECASE
+)
+
+# Matches: "how many critical cases?" AND "how many cases are severe?"
+DISEASE_COUNT_BY_SEVERITY = re.compile(
+    r'how many\b.*?\b(mild|moderate|severe|critical)\b.*?\bcases?\b|'
+    r'how many\b.*?\bcases?\b.*?\b(mild|moderate|severe|critical)\b',
+    re.IGNORECASE
+)
+
+
+# ============================================================
+# Billing
+# ============================================================
+
+# Matches: "how many unpaid bills are there?", "how many overdue bills?"
+BILLING_COUNT_UNPAID = re.compile(
+    r'how many\b.*\b(?:unpaid|overdue)\b.*\bbills?\b', re.IGNORECASE
+)
+
+# Matches: "what's the total revenue this month?", "how much income today?"
+BILLING_REVENUE_TIMEFRAME = re.compile(
+    r'\b(?:total\s+)?(?:revenue|income)\b.*?\b' + TIMEFRAME_WORDS + r'\b|'
+    r'how much\s+(?:revenue|income)\b.*?\b' + TIMEFRAME_WORDS + r'\b',
+    re.IGNORECASE
+)
+
+# Matches: "how many bills were paid by cash?", "how many bills paid via bank transfer?"
+BILLING_COUNT_BY_METHOD = re.compile(
+    r'how many bills?\b.*\bpaid\b.*\b(cash|card|bank[\s-]?transfer|mobile[\s-]?payment|insurance)\b',
+    re.IGNORECASE
+)
+
+
+def _first_group(match):
+    """Returns the first non-None captured group from a regex match whose
+    pattern has multiple alternative branches with separate groups (e.g.
+    "X before Y" vs "Y before X" phrasing), or None if no match."""
+    if not match:
+        return None
+    return next((g for g in match.groups() if g), None)
 
 
 def resolve_pet_id(question: str, role: str, customer_id: str = None):
@@ -199,6 +349,67 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     match = LIST_RECORDS_BY_CUSTOMER.search(question)
     if match and role in STAFF_ROLES:
         return _list_records_by_customer(match.group(1))
+
+    # --- Inventory (staff-only: operational data) ---
+    if role in STAFF_ROLES:
+        if INVENTORY_OUT_OF_STOCK.search(question):
+            return _count_inventory_out_of_stock()
+        if INVENTORY_LOW_STOCK.search(question):
+            return _count_inventory_low_stock()
+        match = INVENTORY_EXPIRING.search(question)
+        if match:
+            days = int(match.group(1)) if match.group(1) else 90
+            return _list_inventory_expiring(days)
+
+    # --- Appointments (staff-only) ---
+    # Checked most-specific-first: a name or explicit status narrows the
+    # question more than a bare timeframe, so those are tried before falling
+    # back to the generic "how many appointments <timeframe>" pattern.
+    if role in STAFF_ROLES:
+        match = APPT_COUNT_BY_VET.search(question)
+        if match:
+            return _count_appointments_by_vet(match.group(1))
+
+        match = APPT_COUNT_NO_SHOW.search(question)
+        if match:
+            return _count_no_shows(match.group(1))
+
+        match = APPT_COUNT_BY_STATUS.search(question)
+        if match:
+            return _count_appointments_by_status(match.group(1))
+
+        match = APPT_COUNT_TIMEFRAME.search(question)
+        if match:
+            return _count_appointments_timeframe(match.group(1))
+
+    # --- Disease cases (staff-only) ---
+    if role in STAFF_ROLES:
+        if DISEASE_COUNT_CONTAGIOUS.search(question):
+            return _count_disease_cases_contagious()
+
+        match = DISEASE_COUNT_BY_CATEGORY.search(question)
+        category = _first_group(match)
+        if category:
+            return _count_disease_cases_by_category(category)
+
+        match = DISEASE_COUNT_BY_SEVERITY.search(question)
+        severity = _first_group(match)
+        if severity:
+            return _count_disease_cases_by_severity(severity)
+
+    # --- Billing (staff-only: financial data) ---
+    if role in STAFF_ROLES:
+        if BILLING_COUNT_UNPAID.search(question):
+            return _count_unpaid_bills()
+
+        match = BILLING_COUNT_BY_METHOD.search(question)
+        if match:
+            return _count_bills_by_payment_method(match.group(1))
+
+        match = BILLING_REVENUE_TIMEFRAME.search(question)
+        timeframe = _first_group(match)
+        if timeframe:
+            return _sum_revenue_timeframe(timeframe)
 
     return None
 
@@ -425,6 +636,380 @@ def _count_pets_by_customer(customer_name: str) -> dict:
         'structured': True
     }
 
+
+# ============================================================
+# Inventory
+# ============================================================
+
+def _count_inventory_low_stock() -> dict:
+    """Items with stock remaining but at or below their reorder level."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT item_id, item_name, quantity, reorder_level
+                FROM inventory
+                WHERE quantity > 0 AND quantity <= reorder_level AND is_active = true
+                ORDER BY item_name
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    if count == 0:
+        answer = 'No items are currently low on stock.'
+    else:
+        listing = ', '.join(f'{r[1]} ({r[2]} left, reorder at {r[3]})' for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} low on stock: {listing}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'inventory', 'source_id': r[0], 'metadata': {'item_name': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_inventory_out_of_stock() -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT item_id, item_name
+                FROM inventory
+                WHERE quantity = 0 AND is_active = true
+                ORDER BY item_name
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    if count == 0:
+        answer = 'No items are currently out of stock.'
+    else:
+        listing = ', '.join(r[1] for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} out of stock: {listing}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'inventory', 'source_id': r[0], 'metadata': {'item_name': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _list_inventory_expiring(days: int = 90) -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT item_id, item_name, expiry_date, quantity
+                FROM inventory
+                WHERE expiry_date IS NOT NULL
+                  AND expiry_date >= CURRENT_DATE
+                  AND expiry_date <= CURRENT_DATE + (%s || ' days')::interval
+                  AND quantity > 0
+                  AND is_active = true
+                ORDER BY expiry_date ASC
+                """,
+                (days,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    if count == 0:
+        answer = f'No items are expiring within the next {days} days.'
+    else:
+        listing = ', '.join(f'{r[1]} (expires {r[2]}, {r[3]} left)' for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} expiring within the next {days} days: {listing}.'
+
+    return {
+        'answer': answer,
+        'sources': [
+            {'source_type': 'inventory', 'source_id': r[0], 'metadata': {'item_name': r[1], 'expiry_date': str(r[2])}}
+            for r in rows
+        ],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+# ============================================================
+# Appointments
+# ============================================================
+
+def _count_appointments_timeframe(timeframe: str) -> dict:
+    start, end = _resolve_timeframe(timeframe)
+    if start is None:
+        return {'answer': f'I could not resolve the timeframe "{timeframe}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT appointment_id, status FROM appointments WHERE appointment_date BETWEEN %s AND %s",
+                (start, end)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    answer = f'There {"is" if count == 1 else "are"} {count} appointment{"s" if count != 1 else ""} {_normalize_timeframe(timeframe)}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_no_shows(timeframe: str = None) -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if timeframe:
+                start, end = _resolve_timeframe(timeframe)
+                if start is None:
+                    return {'answer': f'I could not resolve the timeframe "{timeframe}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+                cur.execute(
+                    "SELECT appointment_id FROM appointments WHERE status = 'no_show' AND appointment_date BETWEEN %s AND %s",
+                    (start, end)
+                )
+            else:
+                cur.execute("SELECT appointment_id FROM appointments WHERE status = 'no_show'")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    suffix = f' {_normalize_timeframe(timeframe)}' if timeframe else ''
+    answer = f'There {"was" if count == 1 else "were"} {count} no-show{"s" if count != 1 else ""}{suffix}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_appointments_by_vet(vet_name: str) -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT user_id, first_name, last_name
+                FROM users
+                WHERE role = 'veterinarian' AND (first_name || ' ' || last_name) ILIKE %s
+                """,
+                (f'%{vet_name}%',)
+            )
+            vet_rows = cur.fetchall()
+
+            if not vet_rows:
+                return {'answer': f'No veterinarian found matching "{vet_name}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+            if len(vet_rows) > 1:
+                return {'answer': f'Found multiple veterinarians matching "{vet_name}". Please be more specific.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            vet_id, first_name, last_name = vet_rows[0]
+            full_name = f'{first_name} {last_name}'
+
+            cur.execute(
+                "SELECT appointment_id, status FROM appointments WHERE veterinarian_id = %s",
+                (vet_id,)
+            )
+            appt_rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(appt_rows)
+    answer = f'Dr. {full_name} has {count} appointment{"s" if count != 1 else ""} on record.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in appt_rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_appointments_by_status(status_raw: str) -> dict:
+    status = re.sub(r'[\s-]+', '_', status_raw.strip().lower())
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT appointment_id FROM appointments WHERE status = %s", (status,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    status_display = status.replace('_', ' ')
+    answer = f'There {"is" if count == 1 else "are"} {count} appointment{"s" if count != 1 else ""} with status "{status_display}".'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+# ============================================================
+# Disease cases
+# ============================================================
+
+def _count_disease_cases_contagious() -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT case_id, disease_name FROM disease_cases WHERE is_contagious = true")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    answer = f'There {"is" if count == 1 else "are"} {count} contagious disease case{"s" if count != 1 else ""} on record.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_disease_cases_by_category(category_raw: str) -> dict:
+    category = re.sub(r'[\s-]+', '_', category_raw.strip().lower())
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT case_id, disease_name FROM disease_cases WHERE disease_category = %s", (category,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    answer = f'There {"is" if count == 1 else "are"} {count} {category.replace("_", " ")} disease case{"s" if count != 1 else ""} on record.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_disease_cases_by_severity(severity_raw: str) -> dict:
+    severity = severity_raw.strip().lower()
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT case_id, disease_name FROM disease_cases WHERE severity = %s", (severity,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    answer = f'There {"is" if count == 1 else "are"} {count} {severity} disease case{"s" if count != 1 else ""} on record.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+# ============================================================
+# Billing
+# ============================================================
+
+def _count_unpaid_bills() -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT bill_id, bill_number, balance_amount FROM billing "
+                "WHERE payment_status IN ('unpaid', 'partially_paid', 'overdue')"
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    if count == 0:
+        answer = 'There are no unpaid bills.'
+    else:
+        total_outstanding = sum(r[2] for r in rows)
+        answer = f'There {"is" if count == 1 else "are"} {count} unpaid bill{"s" if count != 1 else ""}, totaling {total_outstanding:.2f} outstanding.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _sum_revenue_timeframe(timeframe: str) -> dict:
+    start, end = _resolve_timeframe(timeframe)
+    if start is None:
+        return {'answer': f'I could not resolve the timeframe "{timeframe}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT bill_id, paid_amount FROM billing WHERE bill_date BETWEEN %s AND %s",
+                (start, end)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    total = sum(r[1] for r in rows) if rows else 0
+    answer = f'Total revenue collected {_normalize_timeframe(timeframe)} is {total:.2f} across {len(rows)} bill{"s" if len(rows) != 1 else ""}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_bills_by_payment_method(method_raw: str) -> dict:
+    method = re.sub(r'[\s-]+', '_', method_raw.strip().lower())
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT bill_id, bill_number FROM billing WHERE payment_method = %s", (method,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    count = len(rows)
+    answer = f'{count} bill{"s" if count != 1 else ""} {"was" if count == 1 else "were"} paid via {method.replace("_", " ")}.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
 
 
 def _count_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
