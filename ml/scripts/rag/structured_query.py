@@ -124,6 +124,14 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     if match:
         return _count_pets_by_name(match.group(1), role, customer_id)
 
+    if OWNER_MENTION.search(question) and _looks_like_vaccine_question(question):
+        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+        if resolved_pet_id:
+            if LIST_VACCINATIONS.search(question):
+                return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+            if COUNT_VACCINATIONS.search(question):
+                return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+
     if LIST_VACCINATIONS.search(question):
         resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
         if resolved_pet_id:
@@ -135,6 +143,10 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
             return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
 
     return None
+
+
+def _looks_like_vaccine_question(question: str) -> bool:
+    return bool(re.search(r'\b(?:vaccines?|vaccinations?)\b|\bvaccine\b', question, re.IGNORECASE))
 
 
 def _count_pets_by_name(name: str, role: str, customer_id: str = None) -> dict:
