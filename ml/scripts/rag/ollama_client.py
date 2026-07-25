@@ -16,7 +16,7 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_EMBED_MODEL = os.getenv('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'gemma4:e4b')
+OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen2.5-coder:7b')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 
 EMBEDDING_DIM = 768  # must match database/migrations/add_rag_vector_store.sql
