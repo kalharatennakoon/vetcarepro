@@ -14,6 +14,8 @@ import {
   addFollowupRecord
 } from '../models/diseaseCaseModel.js';
 
+import { ingestDiseaseCase } from '../services/aiService.js';
+
 /**
  * Disease Case Controller
  * Handles CRUD operations for disease cases
@@ -173,6 +175,8 @@ export const addDiseaseCase = async (req, res) => {
 
     const newCase = await createDiseaseCase(caseData, userId);
 
+    ingestDiseaseCase(newCase.case_id).catch(() => {});
+
     res.status(201).json({
       status: 'success',
       message: 'Disease case created successfully',
@@ -228,6 +232,8 @@ export const modifyDiseaseCase = async (req, res) => {
     }
 
     const updatedCase = await updateDiseaseCase(id, caseData, userId);
+
+    ingestDiseaseCase(updatedCase.case_id).catch(() => {});
 
     res.status(200).json({
       status: 'success',

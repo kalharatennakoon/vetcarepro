@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { askAssistant, backfillMedicalRecords } from '../services/aiService';
+import { askAssistant, backfillAll } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import '../styles/AIAssistant.css';
@@ -60,14 +60,15 @@ const AIAssistant = () => {
     setBackfilling(true);
     setError('');
     try {
-      const result = await backfillMedicalRecords();
+      const result = await backfillAll();
+      const summary = Object.entries(result.results || {})
+        .map(([source, r]) => `${source}: ${r.ingested} ingested${r.failed ? `, ${r.failed} failed` : ''}`)
+        .join(' · ');
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `Knowledge base updated: ${result.ingested} record(s) ingested${
-            result.failed ? `, ${result.failed} failed` : ''
-          }.`,
+          content: `Knowledge base updated. ${summary}`,
           sources: []
         }
       ]);

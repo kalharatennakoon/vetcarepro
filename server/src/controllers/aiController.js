@@ -89,9 +89,48 @@ const backfillMedicalRecords = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Backfill every RAG source type in one call (medical records,
+ *          disease cases, lab reports, FAQs)
+ * @route   POST /api/ai/ingest/all
+ * @access  Private (Admin only)
+ */
+const backfillAll = async (req, res) => {
+  try {
+    const result = await aiService.ingestAll();
+    res.json(result);
+  } catch (error) {
+    console.error('AI full ingestion backfill error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Explain a raw ML model output (outbreak risk, sales forecast,
+ *          inventory forecast) in plain language
+ * @route   POST /api/ai/explain
+ * @access  Private (staff)
+ */
+const explainOutput = async (req, res) => {
+  try {
+    const { output_type, data } = req.body;
+    if (!data) {
+      return res.status(400).json({ success: false, message: 'data is required' });
+    }
+
+    const result = await aiService.explainMlOutput(output_type, data);
+    res.json(result);
+  } catch (error) {
+    console.error('Explain ML output error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   checkHealth,
   staffChat,
   publicChat,
-  backfillMedicalRecords
+  backfillMedicalRecords,
+  backfillAll,
+  explainOutput
 };

@@ -11,6 +11,8 @@ import { getPetById } from '../models/petModel.js';
 import { sendLabReportEmail } from '../services/emailService.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
+import { ingestLabReport } from '../services/aiService.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -63,6 +65,8 @@ export const uploadReport = async (req, res) => {
       ipAddress: req.ip,
       userAgent: req.get('user-agent')
     });
+
+    ingestLabReport(report.report_id).catch(() => {});
 
     res.status(201).json({ status: 'success', report });
   } catch (err) {

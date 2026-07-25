@@ -29,4 +29,14 @@ router.get('/health', authenticate, staffOnly, aiController.checkHealth);
 // @access  Private (Admin only)
 router.post('/ingest/medical-records', authenticate, adminOnly, aiController.backfillMedicalRecords);
 
+// @route   POST /api/ai/ingest/all
+// @desc    Backfill every RAG source type (medical records, disease cases, lab reports, FAQs)
+// @access  Private (Admin only)
+router.post('/ingest/all', authenticate, adminOnly, aiController.backfillAll);
+
+// @route   POST /api/ai/explain
+// @desc    Explain a raw ML model output (outbreak risk, sales/inventory forecast) in plain language
+// @access  Private (staff)
+router.post('/explain', authenticate, staffOnly, aiController.explainOutput);
+
 export default router;

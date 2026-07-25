@@ -49,3 +49,109 @@ def chunk_medical_record(row: dict) -> dict:
             'pet_name': row.get('pet_name'),
         }
     }
+
+
+def chunk_disease_case(row: dict) -> dict:
+    """
+    Build a RAG chunk from a disease_cases row (joined with pet/customer info).
+
+    Expects row to contain:
+        case_id, pet_id, customer_id, pet_name, species, breed, disease_name,
+        disease_category, diagnosis_date, severity, outcome, symptoms,
+        is_contagious, transmission_method, notes, requires_followup,
+        next_followup_date
+    """
+    lines = [
+        f"Disease case for {row.get('pet_name', 'unknown pet')} "
+        f"({row.get('species', '')} {row.get('breed', '') or ''}).".strip(),
+        f"Disease: {row.get('disease_name')} ({row.get('disease_category', 'uncategorized')})",
+        f"Diagnosis date: {row.get('diagnosis_date')}",
+    ]
+
+    if row.get('severity'):
+        lines.append(f"Severity: {row['severity']}")
+    if row.get('outcome'):
+        lines.append(f"Outcome: {row['outcome']}")
+    if row.get('symptoms'):
+        lines.append(f"Symptoms: {row['symptoms']}")
+    if row.get('is_contagious'):
+        lines.append(
+            f"Contagious: yes"
+            + (f" (transmission: {row['transmission_method']})" if row.get('transmission_method') else '')
+        )
+    if row.get('requires_followup'):
+        lines.append(f"Follow-up required, next date: {row.get('next_followup_date', 'not scheduled')}")
+    if row.get('notes'):
+        lines.append(f"Notes: {row['notes']}")
+
+    content = '\n'.join(lines)
+
+    return {
+        'source_type': 'disease_case',
+        'source_id': str(row['case_id']),
+        'pet_id': row.get('pet_id'),
+        'customer_id': row.get('customer_id'),
+        'content': content,
+        'metadata': {
+            'diagnosis_date': str(row.get('diagnosis_date')) if row.get('diagnosis_date') else None,
+            'pet_name': row.get('pet_name'),
+            'disease_name': row.get('disease_name'),
+            'severity': row.get('severity'),
+        }
+    }
+
+
+def chunk_lab_report(row: dict) -> dict:
+    """
+    Build a RAG chunk from a lab_reports row (joined with pet/customer info).
+    Note: only metadata + notes are chunked, not the file itself (PDF/image
+    text extraction can be added later - see docs/ai-assistant-requirements.md).
+
+    Expects row to contain:
+        report_id, pet_id, customer_id, pet_name, report_name, report_type,
+        notes, created_at
+    """
+    lines = [
+        f"Lab report for {row.get('pet_name', 'unknown pet')}: {row.get('report_name')} "
+        f"({row.get('report_type')}).",
+        f"Date: {row.get('created_at')}",
+    ]
+    if row.get('notes'):
+        lines.append(f"Notes: {row['notes']}")
+
+    content = '\n'.join(lines)
+
+    return {
+        'source_type': 'lab_report',
+        'source_id': str(row['report_id']),
+        'pet_id': row.get('pet_id'),
+        'customer_id': row.get('customer_id'),
+        'content': content,
+        'metadata': {
+            'report_type': row.get('report_type'),
+            'pet_name': row.get('pet_name'),
+        }
+    }
+
+
+def chunk_faq(faq: dict) -> dict:
+    """
+    Build a RAG chunk from a static FAQ / care-instruction entry.
+    These are PUBLIC (pet_id and customer_id are None), so they're visible
+    to guest/public users as well as staff and pet owners.
+
+    Expects faq to contain: id, category, question, answer
+    """
+    content = f"Q: {faq['question']}\nA: {faq['answer']}"
+
+    return {
+        'source_type': 'faq',
+        'source_id': str(faq['id']),
+        'pet_id': None,
+        'customer_id': None,
+        'content': content,
+        'metadata': {
+            'category': faq.get('category'),
+            'question': faq.get('question'),
+        }
+    }

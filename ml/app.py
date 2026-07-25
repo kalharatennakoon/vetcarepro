@@ -1193,6 +1193,85 @@ def rag_ingest_medical_records():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ml/rag/ingest/disease-cases', methods=['POST'])
+def rag_ingest_disease_cases():
+    """
+    (Re)ingest disease cases into the vector store.
+    Body (optional): { "case_id": 123 }  -> ingest just one case
+    No body / empty body -> backfill all disease cases
+    """
+    try:
+        from scripts.rag.ingest import ingest_disease_cases
+        data = request.get_json(silent=True) or {}
+        case_id = data.get('case_id')
+        result = ingest_disease_cases(case_id=case_id)
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/ingest/lab-reports', methods=['POST'])
+def rag_ingest_lab_reports():
+    """
+    (Re)ingest lab report metadata into the vector store.
+    Body (optional): { "report_id": 123 }  -> ingest just one report
+    No body / empty body -> backfill all lab reports
+    """
+    try:
+        from scripts.rag.ingest import ingest_lab_reports
+        data = request.get_json(silent=True) or {}
+        report_id = data.get('report_id')
+        result = ingest_lab_reports(report_id=report_id)
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/ingest/faqs', methods=['POST'])
+def rag_ingest_faqs():
+    """(Re)ingest the static FAQ / care-instruction content."""
+    try:
+        from scripts.rag.ingest import ingest_faqs
+        result = ingest_faqs()
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/ingest/all', methods=['POST'])
+def rag_ingest_all():
+    """Backfill every source type in one call (medical records, disease cases, lab reports, FAQs)."""
+    try:
+        from scripts.rag.ingest import ingest_all
+        results = ingest_all()
+        return jsonify({'success': True, 'results': results}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/explain', methods=['POST'])
+def rag_explain():
+    """
+    Explain a raw ML model output in plain language.
+    Body: { "output_type": "outbreak_risk" | "sales_forecast" | "inventory_forecast" | ...,
+            "data": { ... raw model output ... } }
+    """
+    try:
+        from scripts.rag.rag_service import explain_ml_output
+        payload = request.get_json(force=True)
+        output_type = payload.get('output_type', 'unknown')
+        data = payload.get('data')
+
+        if not data:
+            return jsonify({'success': False, 'error': 'data is required'}), 400
+
+        explanation = explain_ml_output(output_type, data)
+        return jsonify({'success': True, 'explanation': explanation}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/rag/chat', methods=['POST'])
 def rag_chat():
     """

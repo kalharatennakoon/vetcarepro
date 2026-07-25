@@ -68,8 +68,88 @@ const ingestMedicalRecord = async (recordId = null) => {
   }
 };
 
+/**
+ * (Re)ingest disease cases into the vector store.
+ */
+const ingestDiseaseCase = async (caseId = null) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/disease-cases', {
+      ...(caseId ? { case_id: caseId } : {})
+    });
+    return response.data;
+  } catch (error) {
+    console.error('RAG disease case ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * (Re)ingest lab report metadata into the vector store.
+ */
+const ingestLabReport = async (reportId = null) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/lab-reports', {
+      ...(reportId ? { report_id: reportId } : {})
+    });
+    return response.data;
+  } catch (error) {
+    console.error('RAG lab report ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * (Re)ingest the static FAQ / care-instruction content.
+ */
+const ingestFaqs = async () => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/faqs');
+    return response.data;
+  } catch (error) {
+    console.error('RAG FAQ ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Backfill every source type in one call (admin maintenance action).
+ */
+const ingestAll = async () => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/all');
+    return response.data;
+  } catch (error) {
+    console.error('RAG full ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Explain a raw ML model output (outbreak risk, sales forecast, inventory
+ * forecast) in plain language.
+ * @param {string} outputType - e.g. 'outbreak_risk', 'sales_forecast', 'inventory_forecast'
+ * @param {Object} data - the raw ML output to explain
+ */
+const explainMlOutput = async (outputType, data) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/explain', {
+      output_type: outputType,
+      data
+    });
+    return response.data;
+  } catch (error) {
+    console.error('ML output explanation failed:', error.message);
+    throw new Error('Failed to explain ML output');
+  }
+};
+
 export {
   checkRagHealth,
   askAssistant,
-  ingestMedicalRecord
+  ingestMedicalRecord,
+  ingestDiseaseCase,
+  ingestLabReport,
+  ingestFaqs,
+  ingestAll,
+  explainMlOutput
 };

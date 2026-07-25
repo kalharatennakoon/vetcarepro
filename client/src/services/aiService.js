@@ -29,13 +29,36 @@ export const checkAssistantHealth = async () => {
 };
 
 /**
- * Backfill the vector store from all existing medical records (Admin only,
- * one-off / maintenance action).
+ * Backfill the vector store from all existing medical records only.
  */
 export const backfillMedicalRecords = async () => {
   const response = await axios.post(
     `${API_URL}/ai/ingest/medical-records`,
     {},
+    getAuthHeaders()
+  );
+  return response.data;
+};
+
+/**
+ * Backfill every RAG source type in one call (medical records, disease
+ * cases, lab reports, FAQs) - Admin only, one-off / maintenance action.
+ */
+export const backfillAll = async () => {
+  const response = await axios.post(`${API_URL}/ai/ingest/all`, {}, getAuthHeaders());
+  return response.data;
+};
+
+/**
+ * Explain a raw ML model output (outbreak risk, sales forecast, inventory
+ * forecast) in plain language.
+ * @param {string} outputType - e.g. 'outbreak_risk', 'sales_forecast', 'inventory_forecast'
+ * @param {Object} data - the raw ML output to explain
+ */
+export const explainMlOutput = async (outputType, data) => {
+  const response = await axios.post(
+    `${API_URL}/ai/explain`,
+    { output_type: outputType, data },
     getAuthHeaders()
   );
   return response.data;
