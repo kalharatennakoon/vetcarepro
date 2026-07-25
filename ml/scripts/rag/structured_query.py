@@ -25,7 +25,15 @@ STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 # "how many pets whose name is X", "how many pets ... name is X",
 # "how many pets have the name X"
 COUNT_PETS_BY_NAME = re.compile(
-    r'how many pets?\b.*?(?:named|called|(?:name\s+is)|(?:whose\s+name\s+is)|(?:have\s+the\s+name))\s+([a-zA-Z]+)',
+    r'how many pets?\b.*?(?:named|called|(?:name\s+is)|(?:whose\s+name\s+is)|(?:have\s+the\s+name))\s+[\'"]?([a-zA-Z]+)[\'"]?',
+    re.IGNORECASE
+)
+
+# Matches: "how many pets does John Doe have?", "how many pets does customer
+# Jane Doe own?" - counting pets belonging to a specific customer, as opposed
+# to COUNT_PETS_BY_NAME which counts pets sharing a given pet name.
+COUNT_PETS_BY_CUSTOMER = re.compile(
+    r'how many pets?\b.*?\bdoes\b\s+(?:customer\s+)?[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?\s+(?:have|own)\b',
     re.IGNORECASE
 )
 
@@ -62,18 +70,23 @@ LIST_RECORDS_BY_PET = re.compile(
 
 # Matches: "list all medical records for customer John Doe", "show history for pets of Jane Doe"
 LIST_RECORDS_BY_CUSTOMER = re.compile(
-    r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of|owned\s+by)\b\s+(?:customer\s+)?([A-Za-z]+(?:\s+[A-Za-z]+)?)',
+    r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of|owned\s+by)\b\s+(?:customer\s+)?[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?',
     re.IGNORECASE
 )
 
 
-# Matches "pet Max" or "of Max" or "for Max" - a standalone name following a preposition.
-# This is less strict and helps resolve pet names even if the word "pet" isn't used.
-PET_MENTION = re.compile(r'\b(?:pet|of|for|about)\s+([A-Za-z]+)\b', re.IGNORECASE)
+# Matches "pet Max" specifically - tried first since it's unambiguous.
+PET_MENTION = re.compile(r'\bpet\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
+
+# Matches "of Max" or "for Max" or "about Max" - a standalone name following a
+# preposition, used as a fallback when "pet" isn't in the question. Only used
+# if PET_MENTION doesn't match, otherwise "for pet Max" would capture "pet"
+# itself instead of "Max".
+PET_BY_MENTION = re.compile(r'\b(?:of|for|about)\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 
 
 OWNER_MENTION = re.compile(
-    r'owner\s+(?:is|named|called)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)', re.IGNORECASE
+    r'owner\s+(?:is|named|called)?\s*[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?', re.IGNORECASE
 )
 
 
@@ -93,6 +106,8 @@ def resolve_pet_id(question: str, role: str, customer_id: str = None):
         (caller should fall back to normal unscoped retrieval).
     """
     pet_match = PET_MENTION.search(question)
+    if not pet_match:
+        pet_match = PET_BY_MENTION.search(question)
     if not pet_match:
         return None
     pet_name = pet_match.group(1)
@@ -143,6 +158,12 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     match = COUNT_PETS_BY_NAME.search(question)
     if match:
         return _count_pets_by_name(match.group(1), role, customer_id)
+
+    # Counting how many pets a specific customer owns - staff-only, since a
+    # pet_owner asking this about themselves would go through a different flow.
+    match = COUNT_PETS_BY_CUSTOMER.search(question)
+    if match and role in STAFF_ROLES:
+        return _count_pets_by_customer(match.group(1))
 
     # New check for counting veterinarians
     match = COUNT_STAFF_BY_ROLE.search(question)
@@ -345,6 +366,61 @@ def _list_records_by_customer(customer_name: str) -> dict:
             'source_id': r[0],
             'metadata': {'pet_name': r[1], 'visit_date': str(r[2])}
         } for r in record_rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _count_pets_by_customer(customer_name: str) -> dict:
+    """Counts pets owned by a given customer, by exact SQL lookup."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Find the customer first
+            cur.execute(
+                """
+                SELECT customer_id, first_name, last_name
+                FROM customers
+                WHERE (first_name || ' ' || last_name) ILIKE %s
+                """,
+                (f'%{customer_name}%',)
+            )
+            customer_rows = cur.fetchall()
+
+            if not customer_rows:
+                return {'answer': f'No customer found matching the name "{customer_name}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+            if len(customer_rows) > 1:
+                return {'answer': f'Found multiple customers matching "{customer_name}". Please be more specific.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            customer_id, first_name, last_name = customer_rows[0]
+            full_name = f'{first_name} {last_name}'
+
+            # Fetch that customer's pets
+            cur.execute(
+                "SELECT pet_id, pet_name, species, breed FROM pets WHERE customer_id = %s",
+                (customer_id,)
+            )
+            pet_rows = cur.fetchall()
+
+    finally:
+        conn.close()
+
+    count = len(pet_rows)
+    if count == 0:
+        answer = f'Customer {full_name} has no pets on record.'
+    else:
+        listing = ', '.join(
+            f"{r[1]} ({r[2]}{', ' + r[3] if r[3] else ''})" for r in pet_rows
+        )
+        answer = f'Customer {full_name} has {count} pet{"s" if count != 1 else ""}: {listing}.'
+
+    return {
+        'answer': answer,
+        'sources': [{
+            'source_type': 'pet',
+            'source_id': r[0],
+            'metadata': {'pet_name': r[1]}
+        } for r in pet_rows],
         'chunks_used': 0,
         'structured': True
     }
