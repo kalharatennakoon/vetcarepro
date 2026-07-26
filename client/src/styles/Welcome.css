@@ -17,6 +17,11 @@
   transform: translateY(-2px);
 }
 
+.welcome-petowner-button:hover {
+  background-color: #0f172a;
+  transform: translateY(-2px);
+}
+
 .welcome-support-link:hover {
   color: #137fec;
 }

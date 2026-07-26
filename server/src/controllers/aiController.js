@@ -55,6 +55,32 @@ const staffChat = async (req, res) => {
 };
 
 /**
+ * @desc    Ask the AI assistant a question, scoped to the logged-in
+ *          customer's own pets/records only
+ * @route   POST /api/ai/customer-chat
+ * @access  Private (customer / pet owner)
+ */
+const customerChat = async (req, res) => {
+  try {
+    const { question } = req.body;
+    if (!question || !question.trim()) {
+      return res.status(400).json({ success: false, message: 'question is required' });
+    }
+
+    const result = await aiService.askAssistant({
+      question,
+      role: 'pet_owner', // never trusted from the client
+      customerId: req.customer.customer_id // enforced server-side from the authenticated customer
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Customer AI chat error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * @desc    Ask the AI assistant a general question (public FAQs / care guides only)
  * @route   POST /api/ai/public-chat
  * @access  Public
@@ -129,6 +155,7 @@ const explainOutput = async (req, res) => {
 export {
   checkHealth,
   staffChat,
+  customerChat,
   publicChat,
   backfillMedicalRecords,
   backfillAll,

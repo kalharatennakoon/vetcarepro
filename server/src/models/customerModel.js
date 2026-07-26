@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { hashPassword, DEFAULT_CUSTOMER_PASSWORD } from '../utils/authUtils.js';
 
 /**
  * Customer Model
@@ -92,15 +93,21 @@ export const getCustomerById = async (customerId) => {
 
 /**
  * Create new customer
+ * Every new customer is assigned the clinic-wide default portal password
+ * and must change it on first login (mirrors the staff users.password_must_change
+ * pattern) - see database/migrations/add_customer_auth.sql.
  */
 export const createCustomer = async (customerData, createdBy) => {
+  const defaultPasswordHash = await hashPassword(DEFAULT_CUSTOMER_PASSWORD);
+
   const query = `
     INSERT INTO customers (
       first_name, last_name, email, phone, alternate_phone,
       address, city, postal_code, nic, emergency_contact,
-      emergency_phone, preferred_contact_method, notes, created_by
+      emergency_phone, preferred_contact_method, notes, created_by,
+      password_hash, password_must_change
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
     RETURNING *
   `;
 
@@ -118,7 +125,8 @@ export const createCustomer = async (customerData, createdBy) => {
     customerData.emergency_phone || null,
     customerData.preferred_contact_method || 'phone',
     customerData.notes || null,
-    createdBy
+    createdBy,
+    defaultPasswordHash
   ];
 
   const result = await pool.query(query, values);
@@ -335,4 +343,52 @@ export const hardDeleteCustomer = async (customerId) => {
   await pool.query('DELETE FROM pets WHERE customer_id = $1', [customerId]);
   const result = await pool.query('DELETE FROM customers WHERE customer_id = $1', [customerId]);
   return result.rowCount > 0;
+};
+
+// ============================================================
+// Pet-owner portal authentication
+// ============================================================
+
+/**
+ * Find an active customer by email OR phone (used as the portal username).
+ * Includes password_hash - only for use by the auth layer, never returned
+ * to the client directly (see sanitizeUser in authUtils.js).
+ */
+export const findCustomerByEmailOrPhone = async (identifier) => {
+  const query = `
+    SELECT * FROM customers
+    WHERE (email = $1 OR phone = $1) AND is_active = true
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [identifier]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Find a customer by ID for auth purposes (includes password_hash).
+ * Distinct from getCustomerById(), which also joins pets and is used by
+ * the customer-management screens, not the auth layer.
+ */
+export const findCustomerAuthById = async (customerId) => {
+  const result = await pool.query('SELECT * FROM customers WHERE customer_id = $1', [customerId]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Update last_login timestamp after a successful portal login.
+ */
+export const updateCustomerLastLogin = async (customerId) => {
+  await pool.query('UPDATE customers SET last_login = NOW() WHERE customer_id = $1', [customerId]);
+};
+
+/**
+ * Update a customer's password hash. Optionally clears password_must_change
+ * (used by the first-login change-password flow).
+ */
+export const updateCustomerPassword = async (customerId, passwordHash, { clearMustChange = false } = {}) => {
+  const query = clearMustChange
+    ? 'UPDATE customers SET password_hash = $1, password_must_change = false WHERE customer_id = $2 RETURNING *'
+    : 'UPDATE customers SET password_hash = $1 WHERE customer_id = $2 RETURNING *';
+  const result = await pool.query(query, [passwordHash, customerId]);
+  return result.rows[0];
 };

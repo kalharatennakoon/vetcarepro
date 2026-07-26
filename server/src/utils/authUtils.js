@@ -14,6 +14,14 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
+ * Clinic-wide default password assigned to every new customer/pet-owner
+ * account. They are always forced to change it on first login
+ * (customers.password_must_change defaults to true) - see
+ * database/migrations/add_customer_auth.sql.
+ */
+export const DEFAULT_CUSTOMER_PASSWORD = 'VetCare@123';
+
+/**
  * Hash a plain text password
  * Converts plain password to secure hash (used when registering)
  * @param {string} password - Plain text password
@@ -69,6 +77,32 @@ export const verifyToken = (token) => {
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
+};
+
+/**
+ * Generate JWT token for a customer (pet owner)
+ * Kept separate from generateToken() so staff and pet-owner sessions never
+ * collide - `type: 'customer'` lets authenticateCustomer() distinguish this
+ * token from a staff token, and role is always 'pet_owner' for RAG scoping.
+ * @param {Object} customer - Customer object
+ * @returns {string} - JWT token
+ */
+export const generateCustomerToken = (customer) => {
+  const payload = {
+    customer_id: customer.customer_id,
+    first_name: customer.first_name,
+    last_name: customer.last_name,
+    email: customer.email,
+    phone: customer.phone,
+    type: 'customer',
+    role: 'pet_owner'
+  };
+
+  return jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE || '7d' }
+  );
 };
 
 /**

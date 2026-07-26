@@ -4,7 +4,7 @@
 
 import express from 'express';
 import * as aiController from '../controllers/aiController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authenticateCustomer } from '../middleware/auth.js';
 import { staffOnly, adminOnly } from '../middleware/roleCheck.js';
 
 const router = express.Router();
@@ -13,6 +13,11 @@ const router = express.Router();
 // @desc    Ask a general pet-care question (no clinic data, no login required)
 // @access  Public
 router.post('/public-chat', aiController.publicChat);
+
+// @route   POST /api/ai/customer-chat
+// @desc    Ask the AI assistant, scoped to the logged-in customer's own pets
+// @access  Private (customer / pet owner)
+router.post('/customer-chat', authenticateCustomer, aiController.customerChat);
 
 // @route   POST /api/ai/chat
 // @desc    Ask the AI assistant using full clinic-data scope

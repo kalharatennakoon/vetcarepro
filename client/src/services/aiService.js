@@ -20,6 +20,21 @@ export const askAssistant = async (question) => {
 };
 
 /**
+ * Ask the AI assistant a question as a logged-in pet owner (scoped to their
+ * own pets/records only). Uses the customer-portal token, not the staff one.
+ * @param {string} question
+ */
+export const askCustomerAssistant = async (question) => {
+  const customerToken = localStorage.getItem('customerToken');
+  const response = await axios.post(
+    `${API_URL}/ai/customer-chat`,
+    { question },
+    { headers: { Authorization: `Bearer ${customerToken}` } }
+  );
+  return response.data;
+};
+
+/**
  * Ask the AI assistant a general pet-care question as a guest (no login,
  * no clinic-specific data - general info only, backed by the public FAQ/
  * care-instruction sources).

@@ -37,6 +37,11 @@ import BreedingRegistry from './pages/BreedingRegistry';
 import SystemLogs from './pages/SystemLogs';
 import AIAssistant from './pages/AIAssistant';
 import GuestAIAssistant from './pages/GuestAIAssistant';
+import PetOwnerLogin from './pages/PetOwnerLogin';
+import PetOwnerChangePassword from './pages/PetOwnerChangePassword';
+import PetOwnerAIAssistant from './pages/PetOwnerAIAssistant';
+import PetOwnerProfile from './pages/PetOwnerProfile';
+import PetOwnerProtectedRoute from './components/PetOwnerProtectedRoute';
 
 
 function App() {
@@ -63,6 +68,33 @@ function App() {
 
       {/* Guest AI Assistant - public, general pet care info only, no clinic data */}
       <Route path="/guest/ai-assistant" element={<GuestAIAssistant />} />
+
+      {/* Pet Owner Portal - separate login/session from staff, scoped to own pets */}
+      <Route path="/pet-owner/login" element={<PetOwnerLogin />} />
+      <Route
+        path="/pet-owner/change-password"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerChangePassword />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/ai-assistant"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerAIAssistant />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/profile"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerProfile />
+          </PetOwnerProtectedRoute>
+        }
+      />
 
       {/* Protected routes - All authenticated users */}
       <Route 

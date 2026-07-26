@@ -1,0 +1,300 @@
+.po-profile-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f6f7f8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.po-profile-body {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Left panel */
+.po-profile-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.po-profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background-color: #137fec;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 4px 14px rgba(19, 127, 236, 0.3);
+}
+
+.po-profile-sidebar-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.po-profile-sidebar-meta {
+  margin: 0.15rem 0 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.po-profile-sidebar-contact {
+  width: 100%;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.9rem 0;
+  margin-bottom: 1rem;
+}
+
+.po-profile-sidebar-contact p {
+  margin: 0.3rem 0;
+  font-size: 0.8rem;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  word-break: break-word;
+}
+
+.po-profile-sidebar-contact i {
+  color: #137fec;
+  width: 14px;
+}
+
+.po-profile-nav {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.po-profile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.po-profile-nav-item:hover {
+  background-color: #f1f5f9;
+}
+
+.po-profile-nav-item.active {
+  background-color: #eff6ff;
+  color: #137fec;
+  font-weight: 600;
+}
+
+.po-profile-nav-item i {
+  width: 16px;
+}
+
+.po-profile-signout {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: none;
+  background-color: #fef2f2;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.po-profile-signout:hover {
+  background-color: #fee2e2;
+}
+
+/* Main content */
+.po-profile-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.po-profile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.po-profile-section-title {
+  margin: 0 0 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.po-profile-section-title i {
+  color: #137fec;
+}
+
+.po-profile-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.po-profile-details-grid label,
+.po-pet-details-grid label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.2rem;
+}
+
+.po-profile-details-grid p,
+.po-pet-details-grid p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #1e293b;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.po-profile-muted {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.po-profile-error {
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.po-profile-pets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.po-pet-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  padding: 1.1rem;
+  background: #fbfcfe;
+}
+
+.po-pet-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.po-pet-photo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.po-pet-photo-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eef2f6;
+  color: #137fec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.po-pet-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.po-pet-breed {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.po-pet-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.7rem;
+}
+
+.po-pet-alert,
+.po-pet-note {
+  margin-top: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.po-pet-alert {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.po-pet-note {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+@media (max-width: 768px) {
+  .po-profile-body {
+    flex-direction: column;
+  }
+
+  .po-profile-sidebar {
+    width: 100%;
+    position: static;
+  }
+}

@@ -46,6 +46,10 @@ const [showPassword, setShowPassword] = useState(false);
     navigate('/guest/ai-assistant');
   };
 
+  const handlePetOwnerClick = () => {
+    navigate('/pet-owner/login');
+  };
+
   if (showLoginForm) {
     return (
       <div style={styles.container}>
@@ -222,6 +226,16 @@ const [showPassword, setShowPassword] = useState(false);
                   type="button"
                 >
                   Log In to System
+                </button>
+
+                <button
+                  style={styles.petOwnerButton}
+                  className="welcome-petowner-button"
+                  onClick={handlePetOwnerClick}
+                  type="button"
+                >
+                  <i className="fas fa-user" style={styles.guestButtonIcon}></i>
+                  Sign In &mdash; Pet Owner
                 </button>
 
                 <div style={styles.dividerRow}>
@@ -462,6 +476,23 @@ const styles = {
     textDecoration: 'none',
     fontWeight: '500',
     transition: 'color 0.2s',
+  },
+  petOwnerButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '0.875rem 2rem',
+    backgroundColor: '#1e293b',
+    color: '#ffffff',
+    fontSize: '1.05rem',
+    fontWeight: '700',
+    letterSpacing: '0.01em',
+    border: 'none',
+    borderRadius: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
   },
   dividerRow: {
     display: 'flex',

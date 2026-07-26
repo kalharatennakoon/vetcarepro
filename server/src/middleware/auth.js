@@ -1,5 +1,6 @@
 import { verifyToken } from '../utils/authUtils.js';
 import { findById } from '../models/userModel.js';
+import { findCustomerAuthById } from '../models/customerModel.js';
 
 /**
  * Authentication Middleware
@@ -75,5 +76,62 @@ export const optionalAuth = async (req, res, next) => {
   } catch (error) {
     // Continue without user if token is invalid
     next();
+  }
+};
+
+/**
+ * Customer (Pet Owner) Authentication Middleware
+ * Verifies a customer-portal JWT (distinct from staff tokens via the
+ * `type: 'customer'` claim - see generateCustomerToken in authUtils.js) and
+ * attaches the customer to req.customer. Kept fully separate from
+ * `authenticate` so a staff token can never be used to access customer-only
+ * routes and vice versa.
+ */
+export const authenticateCustomer = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'No token provided. Please log in to access this resource.'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+
+    if (decoded.type !== 'customer') {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Invalid token for this resource.'
+      });
+    }
+
+    const customer = await findCustomerAuthById(decoded.customer_id);
+
+    if (!customer) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'Account no longer exists'
+      });
+    }
+
+    if (!customer.is_active) {
+      return res.status(401).json({
+        status: 'error',
+        message: 'This account has been deactivated. Please contact the clinic.'
+      });
+    }
+
+    req.customer = customer;
+
+    next();
+  } catch (error) {
+    console.error('Customer authentication error:', error.message);
+    return res.status(401).json({
+      status: 'error',
+      message: 'Invalid or expired session. Please log in again.'
+    });
   }
 };

@@ -43,6 +43,7 @@ app.get('/health', (req, res) => {
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import customerAuthRoutes from './routes/customerAuthRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import petRoutes from './routes/petRoutes.js';
@@ -87,6 +88,7 @@ app.get('/api', (req, res) => {
 
 // Mount routes
 app.use('/api/auth', authRoutes);
+app.use('/api/customer-auth', customerAuthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/pets', petRoutes);
