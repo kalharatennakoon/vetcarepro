@@ -47,7 +47,7 @@ final class GuestChatViewModel {
         do {
             let response = try await service.askGuest(question)
             messages.append(
-                ChatMessage(role: .assistant, text: response.answer, sources: response.sources)
+                ChatMessage(role: .assistant, text: response.answer, sources: response.sources, isAnswer: true)
             )
         } catch {
             let reason = (error as? APIError)?.errorDescription ?? error.localizedDescription

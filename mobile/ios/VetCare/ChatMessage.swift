@@ -17,4 +17,9 @@ struct ChatMessage: Identifiable, Equatable {
     let role: Role
     var text: String
     var sources: [ChatSource] = []
+
+    /// True for a successful assistant reply. Drives the guest "source" footer
+    /// (FAQ citations vs. a "general knowledge" note) and keeps it off error
+    /// messages. Left false for user messages and error replies.
+    var isAnswer: Bool = false
 }

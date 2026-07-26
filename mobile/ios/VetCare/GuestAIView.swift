@@ -240,17 +240,27 @@ private struct MessageBubble: View {
 
     var body: some View {
         VStack(alignment: isUser ? .trailing : .leading, spacing: 6) {
-            Text(rendered(message.text))
-                .font(.body)
-                .foregroundStyle(isUser ? Color.white : Color.primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(bubbleBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .frame(maxWidth: 300, alignment: isUser ? .trailing : .leading)
+            Group {
+                if isUser {
+                    Text(message.text)
+                } else {
+                    AssistantMarkdown(text: message.text)
+                }
+            }
+            .font(.body)
+            .foregroundStyle(isUser ? Color.white : Color.primary)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(bubbleBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: 300, alignment: isUser ? .trailing : .leading)
 
-            if !message.sources.isEmpty {
-                sourceChips
+            // Guest answers are grounded in FAQs when a match exists, otherwise
+            // they come from the model's general veterinary knowledge — label
+            // which, so a non-FAQ answer reads as intentional, not ungrounded.
+            if message.isAnswer {
+                answerFooter
             }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
@@ -270,36 +280,151 @@ private struct MessageBubble: View {
         }
     }
 
-    private var sourceChips: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("Sources")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-            FlowLayout(spacing: 6) {
-                ForEach(message.sources) { source in
-                    HStack(spacing: 4) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 9))
-                        Text(source.label)
-                            .lineLimit(1)
-                    }
-                    .font(.caption2)
+    @ViewBuilder
+    private var answerFooter: some View {
+        if message.sources.isEmpty {
+            HStack(alignment: .top, spacing: 5) {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 10))
+                Text("General veterinary knowledge — not from a specific clinic article.")
+                Spacer(minLength: 0)
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: 300, alignment: .leading)
+        } else {
+            VStack(alignment: .leading, spacing: 5) {
+                Label("From our clinic FAQs", systemImage: "book")
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.black.opacity(0.05)))
+                FlowLayout(spacing: 6) {
+                    ForEach(message.sources) { source in
+                        HStack(spacing: 4) {
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 9))
+                            Text(source.label)
+                                .lineLimit(1)
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.black.opacity(0.05)))
+                    }
+                }
+            }
+            .frame(maxWidth: 300, alignment: .leading)
+        }
+    }
+}
+
+// MARK: - Markdown rendering
+
+/// Renders the lightweight markdown the local model produces — **bold**,
+/// "- " bullet lists, "1." numbered lists, and paragraph breaks — without a
+/// markdown dependency. Mirrors the web client's guest formatter.
+private struct AssistantMarkdown: View {
+    let text: String
+
+    var body: some View {
+        let blocks = Self.parse(text)
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(blocks.indices, id: \.self) { index in
+                view(for: blocks[index])
+            }
+        }
+    }
+
+    private enum Block {
+        case paragraph(AttributedString)
+        case bullets([AttributedString])
+        case numbered([AttributedString])
+    }
+
+    @ViewBuilder
+    private func view(for block: Block) -> some View {
+        switch block {
+        case .paragraph(let text):
+            Text(text)
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(items.indices, id: \.self) { i in
+                    listRow(marker: "•", content: items[i])
+                }
+            }
+        case .numbered(let items):
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(items.indices, id: \.self) { i in
+                    listRow(marker: "\(i + 1).", content: items[i])
                 }
             }
         }
-        .frame(maxWidth: 300, alignment: .leading)
     }
 
-    /// Renders lightweight markdown (bold, etc.) while preserving line breaks.
-    private func rendered(_ text: String) -> AttributedString {
+    private func listRow(marker: String, content: AttributedString) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(marker)
+            Text(content)
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Parses `**bold**` inline markup for a single line.
+    private static func inline(_ line: String) -> AttributedString {
         (try? AttributedString(
-            markdown: text,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        )) ?? AttributedString(text)
+            markdown: line,
+            options: .init(interpretedSyntax: .inlineOnly)
+        )) ?? AttributedString(line)
+    }
+
+    private static func parse(_ text: String) -> [Block] {
+        var blocks: [Block] = []
+        var paragraph: [String] = []
+        var bullets: [AttributedString] = []
+        var numbered: [AttributedString] = []
+
+        func flushParagraph() {
+            guard !paragraph.isEmpty else { return }
+            var combined = AttributedString()
+            for (i, line) in paragraph.enumerated() {
+                if i > 0 { combined.append(AttributedString("\n")) }
+                combined.append(inline(line))
+            }
+            blocks.append(.paragraph(combined))
+            paragraph.removeAll()
+        }
+        func flushBullets() {
+            guard !bullets.isEmpty else { return }
+            blocks.append(.bullets(bullets))
+            bullets.removeAll()
+        }
+        func flushNumbered() {
+            guard !numbered.isEmpty else { return }
+            blocks.append(.numbered(numbered))
+            numbered.removeAll()
+        }
+        func flushAll() { flushParagraph(); flushBullets(); flushNumbered() }
+
+        let lines = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: "\n")
+
+        for raw in lines {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.isEmpty {
+                flushAll()
+            } else if let range = line.range(of: #"^[-*]\s+"#, options: .regularExpression) {
+                flushParagraph(); flushNumbered()
+                bullets.append(inline(String(line[range.upperBound...])))
+            } else if let range = line.range(of: #"^\d+[.)]\s+"#, options: .regularExpression) {
+                flushParagraph(); flushBullets()
+                numbered.append(inline(String(line[range.upperBound...])))
+            } else {
+                flushBullets(); flushNumbered()
+                paragraph.append(line)
+            }
+        }
+        flushAll()
+        return blocks
     }
 }
 
