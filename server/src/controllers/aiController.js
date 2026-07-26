@@ -10,6 +10,7 @@
  */
 
 import * as aiService from '../services/aiService.js';
+import { FAQ_CATEGORIES, FAQS } from '../data/faqData.js';
 
 /**
  * @desc    Check AI assistant (Ollama/RAG) health
@@ -101,6 +102,21 @@ const publicChat = async (req, res) => {
 };
 
 /**
+ * @desc    List general pet-care FAQs (same content backing the guest
+ *          RAG assistant) - guest-safe, no clinic/account data
+ * @route   GET /api/ai/faqs
+ * @access  Public
+ */
+const getFaqs = async (req, res) => {
+  try {
+    res.json({ success: true, categories: FAQ_CATEGORIES, faqs: FAQS });
+  } catch (error) {
+    console.error('Get FAQs error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * @desc    (Re)ingest all existing medical records into the vector store
  * @route   POST /api/ai/ingest/medical-records
  * @access  Private (Admin only) - one-off backfill / maintenance
@@ -157,6 +173,7 @@ export {
   staffChat,
   customerChat,
   publicChat,
+  getFaqs,
   backfillMedicalRecords,
   backfillAll,
   explainOutput

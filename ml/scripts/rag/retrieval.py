@@ -18,6 +18,17 @@ from scripts.rag.ollama_client import embed_text
 
 STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 
+# Guest retrieval (unlike staff/owner) is always a plain top-k with no
+# relevance floor, so a question with no real FAQ match still gets the
+# closest 5 articles back - and the frontend would show those as "Sources"
+# even though they didn't actually inform the answer. Empirically (cosine
+# distance via embedding <=> %s::vector), a genuinely on-topic FAQ scores
+# well under this, while a same-general-subject-but-not-really-relevant
+# near-miss (e.g. FAQs about checkups/vaccines when asked about feeding
+# schedules) sits meaningfully higher - so filter those out rather than
+# present them as if they grounded the answer.
+GUEST_RELEVANCE_THRESHOLD = 0.32
+
 
 def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: int = 5, pet_id: str = None) -> list:
     """
@@ -115,6 +126,11 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
                 """, (embedding_literal, top_k))
 
             columns = [desc[0] for desc in cur.description]
-            return [dict(zip(columns, r)) for r in cur.fetchall()]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+            if role not in STAFF_ROLES and role != 'pet_owner':
+                rows = [r for r in rows if r['distance'] <= GUEST_RELEVANCE_THRESHOLD]
+
+            return rows
     finally:
         conn.close()

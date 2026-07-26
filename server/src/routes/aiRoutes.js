@@ -14,6 +14,11 @@ const router = express.Router();
 // @access  Public
 router.post('/public-chat', aiController.publicChat);
 
+// @route   GET /api/ai/faqs
+// @desc    List general pet-care FAQs (guest-safe, no clinic/account data)
+// @access  Public
+router.get('/faqs', aiController.getFaqs);
+
 // @route   POST /api/ai/customer-chat
 // @desc    Ask the AI assistant, scoped to the logged-in customer's own pets
 // @access  Private (customer / pet owner)

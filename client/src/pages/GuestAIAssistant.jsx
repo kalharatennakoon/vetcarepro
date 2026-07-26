@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { askPublicAssistant } from '../services/aiService';
+import GuestNav from '../components/GuestNav';
 import '../styles/AIAssistant.css';
 import '../styles/GuestAIAssistant.css';
 
@@ -10,8 +10,55 @@ const SUGGESTED_PROMPTS = [
   'When should I bring my pet in for a check-up?'
 ];
 
+// Splits **bold** segments out of a single line of text into React nodes.
+const formatInlineText = (line) => {
+  const segments = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return segments.map((segment, i) =>
+    segment.startsWith('**') && segment.endsWith('**')
+      ? <strong key={i}>{segment.slice(2, -2)}</strong>
+      : <span key={i}>{segment}</span>
+  );
+};
+
+// Renders assistant replies with basic markdown-style formatting - bold
+// text, bullet/numbered lists, and paragraph breaks - without pulling in
+// a markdown dependency for what the local model produces.
+const formatMessageContent = (content) => {
+  const blocks = content.trim().split(/\n\s*\n/);
+
+  return blocks.map((block, i) => {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    const isBulletList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l));
+    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l));
+
+    if (isBulletList) {
+      return (
+        <ul key={i} className="ai-message-list">
+          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^[-*]\s+/, ''))}</li>)}
+        </ul>
+      );
+    }
+    if (isNumberedList) {
+      return (
+        <ol key={i} className="ai-message-list">
+          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^\d+[.)]\s+/, ''))}</li>)}
+        </ol>
+      );
+    }
+    return (
+      <p key={i}>
+        {lines.map((l, j) => (
+          <span key={j}>
+            {j > 0 && <br />}
+            {formatInlineText(l)}
+          </span>
+        ))}
+      </p>
+    );
+  });
+};
+
 const GuestAIAssistant = () => {
-  const navigate = useNavigate();
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -19,7 +66,8 @@ const GuestAIAssistant = () => {
         "Hi! I'm the VetCare Pro AI assistant. I can answer general pet care " +
         "questions using our clinic's FAQs and care guides. Sign in to ask about " +
         'your own pets\u2019 records.',
-      sources: []
+      sources: [],
+      intro: true
     }
   ]);
   const [input, setInput] = useState('');
@@ -57,24 +105,7 @@ const GuestAIAssistant = () => {
 
   return (
     <div className="guest-ai-page">
-      <header className="guest-ai-header">
-        <div className="guest-ai-header-left">
-          <div className="guest-ai-logo-icon">
-            <i className="fas fa-paw"></i>
-          </div>
-          <div>
-            <h2 className="guest-ai-logo-title">VetCare Pro</h2>
-            <span className="guest-ai-mode-badge">Guest Mode</span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="guest-ai-signin-btn"
-          onClick={() => navigate('/')}
-        >
-          Sign In
-        </button>
-      </header>
+      <GuestNav />
 
       <main className="ai-assistant-page guest-ai-main">
         <div className="ai-assistant-header">
@@ -94,23 +125,36 @@ const GuestAIAssistant = () => {
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
-                <p>{m.content}</p>
-                {m.sources && m.sources.length > 0 && (
-                  <div className="ai-message-sources">
-                    <span>Sources: </span>
-                    {m.sources.map((s, j) => (
-                      <span key={j} className="ai-source-tag">
-                        {s.source_type} #{s.source_id}
+                {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
+                {m.role === 'assistant' && !m.intro && (
+                  m.sources && m.sources.length > 0 ? (
+                    <div className="ai-message-sources">
+                      <span className="ai-message-sources-label">
+                        <i className="fas fa-book"></i> From our clinic FAQs:
                       </span>
-                    ))}
-                  </div>
+                      {m.sources.map((s, j) => (
+                        <span key={j} className="ai-source-tag">
+                          {s.metadata?.question || `${s.source_type} #${s.source_id}`}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="ai-message-sources ai-message-sources-general">
+                      <i className="fas fa-brain"></i> General veterinary knowledge &mdash; not from a specific clinic article.
+                    </div>
+                  )
                 )}
               </div>
             </div>
           ))}
           {loading && (
             <div className="ai-message ai-message-assistant">
-              <div className="ai-message-bubble ai-message-loading">Thinking...</div>
+              <div className="ai-message-bubble ai-message-loading">
+                <span>Thinking</span>
+                <span className="ai-thinking-dots">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           )}
           <div ref={bottomRef} />

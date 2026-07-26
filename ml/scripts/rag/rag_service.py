@@ -6,9 +6,27 @@ Top-level orchestration: retrieve relevant chunks -> build a grounded prompt
 This is what the Flask /api/ml/rag/chat route calls.
 """
 
+import re
+
 from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
+
+# Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
+# doesn't reliably drop the imperial aside it's used to seeing in training
+# data (e.g. "29-36 kilograms (65-80 lbs)") even when told not to. Rather
+# than keep tuning prompt wording against a small local model, strip it
+# deterministically: matches a parenthetical that contains both a digit and
+# an imperial unit word, so it won't touch unrelated parens (e.g. a plain-
+# language term explanation).
+_IMPERIAL_ASIDE = re.compile(
+    r'\s*\([^()]*\d[^()]*(?:lbs?\.?|pounds?|°\s?F(?:ahrenheit)?|fahrenheit|inch(?:es)?)\b[^()]*\)',
+    re.IGNORECASE
+)
+
+
+def _strip_imperial_units(text: str) -> str:
+    return _IMPERIAL_ASIDE.sub('', text)
 
 STAFF_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, a decision-support tool \
 for a veterinary clinic. You must follow these rules strictly:
@@ -23,16 +41,25 @@ help the veterinarian review..." rather than definitive medical conclusions.
 for a professional audience.
 4. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-5. The context you're given is a small SAMPLE of matching records (not the full \
-dataset). If asked for a count, total, or complete list (e.g. "how many...", \
-"list all..."), do NOT calculate or guess a number from the sample - say that \
-you can only see a partial sample and the person should check the relevant \
-page in the app (e.g. Pets, Disease Cases) for an exact count.
+5. For any single question, you are only ever given the small handful of records \
+that matched it best - never every record in the system that could be relevant, \
+even though the full dataset is ingested. If asked for a count, total, or complete \
+list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
+what you were given - say that you only see the top matches for this question and \
+the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
+an exact count.
+6. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
+Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
+metric value. If a value in the context is already in metric, state it as \
+given; only convert if you encounter an imperial value.
 """
 
-# Used for role == 'pet_owner' and role == 'guest' - the audience has no
-# medical training, so the bar is "would a worried pet owner understand this
-# without googling anything", not just "avoid stating a diagnosis as fact".
+# Used for role == 'pet_owner' - the audience has no medical training, so the
+# bar is "would a worried pet owner understand this without googling
+# anything", not just "avoid stating a diagnosis as fact". Context here is
+# the owner's own clinic records, so we stay strict about not inventing
+# record details.
 OWNER_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, helping a pet owner \
 who has no medical training understand their own pet's care. You must follow these \
 rules strictly:
@@ -67,11 +94,67 @@ of plain prose outside of bullets.
 next pet's heading).
 6. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-7. The context you're given is a small SAMPLE of matching records (not the full \
-dataset). If asked for a count, total, or complete list (e.g. "how many...", \
-"list all..."), do NOT calculate or guess a number from the sample - say that \
-you can only see a partial sample and the person should check the relevant \
-page in the app (e.g. Pets, Disease Cases) for an exact count.
+7. For any single question, you are only ever given the small handful of records \
+that matched it best - never every record in the system that could be relevant, \
+even though the full dataset is ingested. If asked for a count, total, or complete \
+list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
+what you were given - say that you only see the top matches for this question and \
+the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
+an exact count.
+8. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
+Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
+metric value. If a value in the context is already in metric, state it as \
+given; only convert if you encounter an imperial value.
+"""
+
+# Used for role == 'guest' - a visitor with no account and no pet/clinic
+# records available at all (retrieval is scoped to public FAQ chunks only).
+# Unlike the owner/staff prompts, we do NOT want a hard "context-only" rule
+# here: the FAQ set is a small curated sample and will not cover every
+# general pet-care question, so the model should fall back to its own
+# veterinary knowledge instead of deflecting whenever a question isn't a
+# near-exact FAQ match. What must stay grounded is anything specific to
+# VetCare Pro itself (policies, hours, pricing) or to an individual pet.
+GUEST_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, answering a general \
+pet-care question from a visitor who is not signed in. You have no access to any \
+specific pet's records - only a small set of public FAQ articles (given as "Context" \
+below) plus your own general veterinary knowledge. You must follow these rules \
+strictly:
+
+1. If the Context directly answers the question, ground your answer in it. If the \
+Context is missing, only partially relevant, or doesn't cover the question, do NOT \
+just say the context lacks the information - answer anyway, using your own general \
+veterinary/pet-care knowledge, the way a knowledgeable clinic assistant would for a \
+common pet-care question (e.g. feeding frequency, vaccine schedules, grooming, \
+general wellness). This is the normal case, not a failure state.
+2. Only answer pet-care, veterinary, or VetCare Pro clinic questions. If the question \
+is about something else entirely (e.g. general trivia, coding, current events), \
+politely say you can only help with pet-care and clinic questions here - do not \
+answer the off-topic question, even though you technically could.
+3. Never invent specific facts about VetCare Pro itself - hours, pricing, staff, or \
+clinic policy - that are not in the Context. For those, say the person should check \
+with the clinic directly or sign in, rather than guessing.
+4. You are NOT a veterinarian and cannot see this person's pet. Never state a \
+diagnosis, prescribe treatment, or give a specific dosage. For anything tied to an \
+individual pet's symptoms or condition, give general guidance and recommend an \
+in-person vet visit rather than trying to resolve it here.
+5. Write in simple, everyday English - the reading level of a general news article, \
+not a medical chart. Avoid clinical jargon; if a technical term is unavoidable, \
+briefly explain it in plain language right after it.
+6. Keep a warm, approachable tone.
+7. Format for skimming, using lightweight markdown:
+   - Use "- " bullet points for lists (steps, schedules, warning signs) instead of \
+packing them into one paragraph.
+   - Bold key terms the first time they appear.
+   - Keep each bullet to one short sentence. Do not write more than 2-3 sentences \
+of plain prose outside of bullets.
+8. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+weight, Celsius for temperature, centimeters for length/height). Never mention \
+pounds, lbs, Fahrenheit, or inches anywhere in the answer, including as a \
+parenthetical or "(~X lbs)" style aside next to a metric value - state the metric \
+number only. For example, write "29-36 kilograms", never "29-36 kilograms \
+(65-80 lbs)".
 """
 
 
@@ -100,7 +183,12 @@ def answer_question(question: str, role: str, customer_id: str = None, top_k: in
         question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
     )
 
-    if not chunks:
+    # Staff/owner answers are grounded in clinic records - with nothing
+    # retrieved there's genuinely nothing to answer from, so bail out early.
+    # Guests get general pet-care knowledge from the model itself, so an
+    # empty FAQ match isn't a dead end - fall through and let it answer
+    # without a context block instead.
+    if not chunks and role != 'guest':
         return {
             'answer': (
                 "I couldn't find any relevant clinic records or information to "
@@ -113,20 +201,30 @@ def answer_question(question: str, role: str, customer_id: str = None, top_k: in
     context_block = '\n\n---\n\n'.join(
         f"[Source {i+1}: {c['source_type']} #{c['source_id']}]\n{c['content']}"
         for i, c in enumerate(chunks)
-    )
+    ) if chunks else '(No matching FAQ articles - answer from general veterinary knowledge instead.)'
 
     is_owner = role in ('pet_owner', 'guest')
     # Both UIs already show the source list as separate citation chips below
     # the answer, so asking the model to also narrate "(Source 1)" inline is
-    # pure redundancy - for owners specifically that redundancy reads as
-    # clutter on top of an already-wordy answer, so we drop the instruction
-    # there. Staff keep inline citations for now (unchanged behavior).
-    citation_instruction = (
-        'Answer using only the context above. Do not list or narrate which '
-        'sources you used - the app shows that separately.'
-        if is_owner else
-        'Answer using only the context above, and mention which source(s) you used (e.g. "Source 1").'
-    )
+    # pure redundancy - for owners/guests specifically that redundancy reads
+    # as clutter on top of an already-wordy answer, so we drop the
+    # instruction there. Staff keep inline citations for now (unchanged
+    # behavior).
+    if role == 'guest':
+        citation_instruction = (
+            'Use the context above if it is relevant to the question, otherwise rely on '
+            'your own general veterinary knowledge as instructed above. Do not list or '
+            'narrate which source(s) you used - the app shows that separately.'
+        )
+    elif is_owner:
+        citation_instruction = (
+            'Answer using only the context above. Do not list or narrate which '
+            'sources you used - the app shows that separately.'
+        )
+    else:
+        citation_instruction = (
+            'Answer using only the context above, and mention which source(s) you used (e.g. "Source 1").'
+        )
 
     user_prompt = f"""Context:
 {context_block}
@@ -135,7 +233,12 @@ Question: {question}
 
 {citation_instruction}"""
 
-    system_prompt = OWNER_SYSTEM_PROMPT if is_owner else STAFF_SYSTEM_PROMPT
+    if role == 'guest':
+        system_prompt = GUEST_SYSTEM_PROMPT
+    elif role == 'pet_owner':
+        system_prompt = OWNER_SYSTEM_PROMPT
+    else:
+        system_prompt = STAFF_SYSTEM_PROMPT
 
     try:
         answer_text = generate_answer(system_prompt, user_prompt)
@@ -146,6 +249,8 @@ Question: {question}
             'chunks_used': 0,
             'error': True
         }
+
+    answer_text = _strip_imperial_units(answer_text)
 
     return {
         'answer': answer_text,
@@ -200,6 +305,6 @@ Raw data:
 Explain this output in plain language for clinic staff."""
 
     try:
-        return generate_answer(EXPLAIN_SYSTEM_PROMPT, user_prompt)
+        return _strip_imperial_units(generate_answer(EXPLAIN_SYSTEM_PROMPT, user_prompt))
     except OllamaError as e:
         return f"Could not generate an explanation right now: {str(e)}"

@@ -120,7 +120,12 @@ const AIAssistant = () => {
           ))}
           {loading && (
             <div className="ai-message ai-message-assistant">
-              <div className="ai-message-bubble ai-message-loading">Thinking...</div>
+              <div className="ai-message-bubble ai-message-loading">
+                <span>Thinking</span>
+                <span className="ai-thinking-dots">
+                  <span></span><span></span><span></span>
+                </span>
+              </div>
             </div>
           )}
           <div ref={bottomRef} />
