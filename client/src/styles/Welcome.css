@@ -12,6 +12,11 @@
   background-color: #e2e8f0;
 }
 
+.welcome-guest-button:hover {
+  background-color: #eff6ff;
+  transform: translateY(-2px);
+}
+
 .welcome-support-link:hover {
   color: #137fec;
 }

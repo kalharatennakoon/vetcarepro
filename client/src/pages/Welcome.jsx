@@ -42,6 +42,10 @@ const [showPassword, setShowPassword] = useState(false);
     setShowLoginForm(true);
   };
 
+  const handleGuestClick = () => {
+    navigate('/guest/ai-assistant');
+  };
+
   if (showLoginForm) {
     return (
       <div style={styles.container}>
@@ -219,6 +223,25 @@ const [showPassword, setShowPassword] = useState(false);
                 >
                   Log In to System
                 </button>
+
+                <div style={styles.dividerRow}>
+                  <span style={styles.dividerLine}></span>
+                  <span style={styles.dividerText}>or</span>
+                  <span style={styles.dividerLine}></span>
+                </div>
+
+                <button
+                  style={styles.guestButton}
+                  className="welcome-guest-button"
+                  onClick={handleGuestClick}
+                  type="button"
+                >
+                  <i className="fas fa-comment-dots" style={styles.guestButtonIcon}></i>
+                  Continue as Guest
+                </button>
+                <p style={styles.guestCaption}>
+                  Ask our AI assistant general pet care questions &mdash; no account needed.
+                </p>
               </div>
 
               <div style={styles.disclaimer}>
@@ -439,6 +462,50 @@ const styles = {
     textDecoration: 'none',
     fontWeight: '500',
     transition: 'color 0.2s',
+  },
+  dividerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    margin: '0.25rem 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  guestButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '0.875rem 2rem',
+    backgroundColor: '#ffffff',
+    color: '#137fec',
+    fontSize: '1.05rem',
+    fontWeight: '700',
+    letterSpacing: '0.01em',
+    border: '1.5px solid #137fec',
+    borderRadius: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  guestButtonIcon: {
+    fontSize: '1rem',
+  },
+  guestCaption: {
+    fontSize: '0.75rem',
+    color: '#94a3b8',
+    textAlign: 'center',
+    margin: '0.25rem 0 0',
   },
   disclaimer: {
     borderTop: '1px solid #f1f5f9',

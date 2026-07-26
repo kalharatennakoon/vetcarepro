@@ -1,0 +1,107 @@
+.guest-ai-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f6f7f8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.guest-ai-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.guest-ai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.guest-ai-logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  background-color: #137fec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 14px rgba(19, 127, 236, 0.3);
+}
+
+.guest-ai-logo-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.guest-ai-mode-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #eef2f6;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.guest-ai-signin-btn {
+  padding: 0.5rem 1.1rem;
+  background-color: #137fec;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(19, 127, 236, 0.25);
+}
+
+.guest-ai-signin-btn:hover {
+  filter: brightness(1.05);
+}
+
+.guest-ai-main {
+  flex: 1;
+  width: 100%;
+  padding-top: 1.5rem;
+}
+
+.guest-ai-scope-banner {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+.guest-ai-footer {
+  border-top: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  padding: 1.25rem 0;
+  margin-top: auto;
+  text-align: center;
+}
+
+.guest-ai-footer p {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}

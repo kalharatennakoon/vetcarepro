@@ -20,6 +20,17 @@ export const askAssistant = async (question) => {
 };
 
 /**
+ * Ask the AI assistant a general pet-care question as a guest (no login,
+ * no clinic-specific data - general info only, backed by the public FAQ/
+ * care-instruction sources).
+ * @param {string} question
+ */
+export const askPublicAssistant = async (question) => {
+  const response = await axios.post(`${API_URL}/ai/public-chat`, { question });
+  return response.data;
+};
+
+/**
  * Check whether the local AI assistant (Ollama) is reachable and the
  * required models are installed.
  */

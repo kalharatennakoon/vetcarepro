@@ -36,6 +36,7 @@ import Profile from './pages/Profile';
 import BreedingRegistry from './pages/BreedingRegistry';
 import SystemLogs from './pages/SystemLogs';
 import AIAssistant from './pages/AIAssistant';
+import GuestAIAssistant from './pages/GuestAIAssistant';
 
 
 function App() {
@@ -59,6 +60,9 @@ function App() {
         path="/" 
         element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />} 
       />
+
+      {/* Guest AI Assistant - public, general pet care info only, no clinic data */}
+      <Route path="/guest/ai-assistant" element={<GuestAIAssistant />} />
 
       {/* Protected routes - All authenticated users */}
       <Route 
