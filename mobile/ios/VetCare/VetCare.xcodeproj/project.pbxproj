@@ -6,6 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D99AEDC03015F07100D117CA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDBF3015F07000D117CA /* Theme.swift */; };
+		D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC13015F07400D117CA /* AuthMode.swift */; };
+		D99AEDC43015F08300D117CA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC33015F08300D117CA /* WelcomeView.swift */; };
+		D99AEDC63015F09600D117CA /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC53015F09600D117CA /* LoginView.swift */; };
+		D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCB3015F41300D117CA /* APIConfig.swift */; };
+		D99AEDCE3015F41E00D117CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCD3015F41E00D117CA /* APIClient.swift */; };
+		D99AEDD03015F42B00D117CA /* AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCF3015F42B00D117CA /* AIModels.swift */; };
+		D99AEDD23015F42E00D117CA /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD13015F42E00D117CA /* AIService.swift */; };
+		D99AEDD43015F43000D117CA /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD33015F43000D117CA /* ChatMessage.swift */; };
+		D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */; };
+		D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD73015F46A00D117CA /* GuestAIView.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D9B9EC383013A4C200C8C883 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,14 +38,38 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		D99AEDBF3015F07000D117CA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D99AEDC13015F07400D117CA /* AuthMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthMode.swift; sourceTree = "<group>"; };
+		D99AEDC33015F08300D117CA /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		D99AEDC53015F09600D117CA /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		D99AEDCB3015F41300D117CA /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
+		D99AEDCD3015F41E00D117CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		D99AEDCF3015F42B00D117CA /* AIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModels.swift; sourceTree = "<group>"; };
+		D99AEDD13015F42E00D117CA /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		D99AEDD33015F43000D117CA /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestChatViewModel.swift; sourceTree = "<group>"; };
+		D99AEDD73015F46A00D117CA /* GuestAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestAIView.swift; sourceTree = "<group>"; };
 		D9B9EC2A3013A4C100C8C883 /* VetCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VetCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D99AEDDA3015F66900D117CA /* Exceptions for "VetCare" folder in "VetCare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D9B9EC293013A4C100C8C883 /* VetCare */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D9B9EC2C3013A4C100C8C883 /* VetCare */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D99AEDDA3015F66900D117CA /* Exceptions for "VetCare" folder in "VetCare" target */,
+			);
 			path = VetCare;
 			sourceTree = "<group>";
 		};
@@ -79,6 +117,17 @@
 				D9B9EC3A3013A4C200C8C883 /* VetCareTests */,
 				D9B9EC443013A4C200C8C883 /* VetCareUITests */,
 				D9B9EC2B3013A4C100C8C883 /* Products */,
+				D99AEDBF3015F07000D117CA /* Theme.swift */,
+				D99AEDC13015F07400D117CA /* AuthMode.swift */,
+				D99AEDC33015F08300D117CA /* WelcomeView.swift */,
+				D99AEDC53015F09600D117CA /* LoginView.swift */,
+				D99AEDCB3015F41300D117CA /* APIConfig.swift */,
+				D99AEDCD3015F41E00D117CA /* APIClient.swift */,
+				D99AEDCF3015F42B00D117CA /* AIModels.swift */,
+				D99AEDD13015F42E00D117CA /* AIService.swift */,
+				D99AEDD33015F43000D117CA /* ChatMessage.swift */,
+				D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */,
+				D99AEDD73015F46A00D117CA /* GuestAIView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -236,6 +285,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D99AEDD23015F42E00D117CA /* AIService.swift in Sources */,
+				D99AEDC63015F09600D117CA /* LoginView.swift in Sources */,
+				D99AEDC43015F08300D117CA /* WelcomeView.swift in Sources */,
+				D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */,
+				D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */,
+				D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */,
+				D99AEDC03015F07100D117CA /* Theme.swift in Sources */,
+				D99AEDD43015F43000D117CA /* ChatMessage.swift in Sources */,
+				D99AEDCE3015F41E00D117CA /* APIClient.swift in Sources */,
+				D99AEDD03015F42B00D117CA /* AIModels.swift in Sources */,
+				D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -400,6 +460,7 @@
 				DEVELOPMENT_TEAM = 588ZPKAXB6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VetCare/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +493,7 @@
 				DEVELOPMENT_TEAM = 588ZPKAXB6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VetCare/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

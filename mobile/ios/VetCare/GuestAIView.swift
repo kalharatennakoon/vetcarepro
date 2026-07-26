@@ -196,6 +196,7 @@ struct GuestAIView: View {
                 .lineLimit(1...4)
                 .focused($isInputFocused)
                 .submitLabel(.send)
+                .accessibilityIdentifier("guestMessageField")
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(
@@ -221,6 +222,7 @@ struct GuestAIView: View {
                     )
             }
             .disabled(!viewModel.canSend)
+            .accessibilityIdentifier("guestSendButton")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
