@@ -125,11 +125,34 @@
   padding: 0.6rem 0.8rem;
   border-radius: 0.75rem;
   font-size: 0.83rem;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-.po-widget-bubble p {
-  margin: 0;
+.po-widget-bubble p,
+.po-widget-bubble ul {
+  margin: 0 0 0.55rem;
+}
+
+.po-widget-bubble p:last-child,
+.po-widget-bubble ul:last-child {
+  margin-bottom: 0;
+}
+
+.po-widget-bubble strong {
+  font-weight: 700;
+}
+
+.po-widget-list {
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.po-widget-list li {
+  margin-bottom: 0.25rem;
+}
+
+.po-widget-list li:last-child {
+  margin-bottom: 0;
 }
 
 .po-widget-message-user .po-widget-bubble {

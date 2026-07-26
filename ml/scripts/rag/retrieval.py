@@ -75,16 +75,33 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
                         LIMIT %s
                     """, (embedding_literal, pet_id, customer_id, top_k))
                 else:
-                    # Owner: their own records + public content only
+                    # Owner asking a broad question not tied to one named pet
+                    # (e.g. "what health issues do my pets have?"). A plain
+                    # top-k-by-distance query lets one pet's chunks crowd out
+                    # another's whenever they happen to score higher on pure
+                    # embedding similarity - an owner with 2+ pets could ask
+                    # about "my pets" and only ever see one of them. Instead,
+                    # rank per pet (and per public/FAQ content) separately so
+                    # every pet gets a fair shot at appearing, then take the
+                    # closest matches overall across those fairly-sampled sets.
                     cur.execute("""
-                        SELECT chunk_id, source_type, source_id, content, metadata,
-                               embedding <=> %s::vector AS distance
-                        FROM rag_chunks
-                        WHERE customer_id = %s
-                           OR (pet_id IS NULL AND customer_id IS NULL)
+                        WITH ranked AS (
+                            SELECT chunk_id, source_type, source_id, content, metadata,
+                                   embedding <=> %s::vector AS distance,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY COALESCE(pet_id, 'PUBLIC')
+                                       ORDER BY embedding <=> %s::vector ASC
+                                   ) AS rn
+                            FROM rag_chunks
+                            WHERE customer_id = %s
+                               OR (pet_id IS NULL AND customer_id IS NULL)
+                        )
+                        SELECT chunk_id, source_type, source_id, content, metadata, distance
+                        FROM ranked
+                        WHERE rn <= 3
                         ORDER BY distance ASC
                         LIMIT %s
-                    """, (embedding_literal, customer_id, top_k))
+                    """, (embedding_literal, embedding_literal, customer_id, max(top_k, 10)))
 
             else:
                 # Guest: public content only (e.g. FAQs, general care instructions)

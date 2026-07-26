@@ -1,6 +1,50 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import { askCustomerAssistant } from '../services/aiService';
 import '../styles/PetOwnerAIWidget.css';
+
+// Minimal markdown-lite renderer for assistant answers: **bold**, "- " bullet
+// lists, and blank-line-separated paragraphs. The system prompt asks the LLM
+// to format this way (see ml/scripts/rag/rag_service.py OWNER_SYSTEM_PROMPT) -
+// this is just enough parsing to turn that into real bold/lists instead of
+// literal asterisks and dashes in a single flat paragraph.
+const renderInline = (text) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : <Fragment key={i}>{part}</Fragment>
+  );
+};
+
+const renderFormattedContent = (content) => {
+  const blocks = content.trim().split(/\n\s*\n/);
+
+  return blocks.map((block, i) => {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    const isList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l));
+
+    if (isList) {
+      return (
+        <ul key={i} className="po-widget-list">
+          {lines.map((line, j) => (
+            <li key={j}>{renderInline(line.replace(/^[-*]\s+/, ''))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return (
+      <p key={i}>
+        {lines.map((line, j) => (
+          <Fragment key={j}>
+            {j > 0 && <br />}
+            {renderInline(line)}
+          </Fragment>
+        ))}
+      </p>
+    );
+  });
+};
 
 const SUGGESTED_PROMPTS = [
   "What vaccines has my pet had?",
@@ -86,7 +130,7 @@ const PetOwnerAIWidget = () => {
             {messages.map((m, i) => (
               <div key={i} className={`po-widget-message po-widget-message-${m.role}`}>
                 <div className="po-widget-bubble">
-                  <p>{m.content}</p>
+                  {m.role === 'assistant' ? renderFormattedContent(m.content) : <p>{m.content}</p>}
                   {m.sources && m.sources.length > 0 && (
                     <div className="po-widget-sources">
                       <span>Sources: </span>
