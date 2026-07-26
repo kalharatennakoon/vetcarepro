@@ -7,15 +7,27 @@
 
 import SwiftUI
 
+/// Destinations reachable from the welcome screen.
+enum WelcomeRoute: Hashable {
+    case login(AuthMode)
+    case guest
+}
+
+/// Root view. Hosts the navigation stack and routes from the welcome screen.
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            WelcomeView()
+                .navigationDestination(for: WelcomeRoute.self) { route in
+                    switch route {
+                    case .login(let mode):
+                        LoginView(mode: mode)
+                    case .guest:
+                        GuestAIView()
+                    }
+                }
         }
-        .padding()
+        .tint(.brand)
     }
 }
 
