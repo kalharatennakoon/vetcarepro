@@ -39,7 +39,6 @@ import AIAssistant from './pages/AIAssistant';
 import GuestAIAssistant from './pages/GuestAIAssistant';
 import PetOwnerLogin from './pages/PetOwnerLogin';
 import PetOwnerChangePassword from './pages/PetOwnerChangePassword';
-import PetOwnerAIAssistant from './pages/PetOwnerAIAssistant';
 import PetOwnerProfile from './pages/PetOwnerProfile';
 import PetOwnerProtectedRoute from './components/PetOwnerProtectedRoute';
 
@@ -76,14 +75,6 @@ function App() {
         element={
           <PetOwnerProtectedRoute>
             <PetOwnerChangePassword />
-          </PetOwnerProtectedRoute>
-        }
-      />
-      <Route
-        path="/pet-owner/ai-assistant"
-        element={
-          <PetOwnerProtectedRoute>
-            <PetOwnerAIAssistant />
           </PetOwnerProtectedRoute>
         }
       />

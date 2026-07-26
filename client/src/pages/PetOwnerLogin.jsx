@@ -29,7 +29,7 @@ const PetOwnerLogin = () => {
       if (result.customer.password_must_change) {
         navigate('/pet-owner/change-password');
       } else {
-        navigate('/pet-owner/ai-assistant');
+        navigate('/pet-owner/profile');
       }
     } else {
       setError(result.message || 'Login failed. Please check your details.');

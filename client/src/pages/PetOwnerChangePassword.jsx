@@ -31,7 +31,7 @@ const PetOwnerChangePassword = () => {
     setLoading(false);
 
     if (result.success) {
-      navigate('/pet-owner/ai-assistant');
+      navigate('/pet-owner/profile');
     } else {
       setError(result.message || 'Failed to change password. Please try again.');
     }

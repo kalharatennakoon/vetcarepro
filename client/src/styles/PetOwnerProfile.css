@@ -6,6 +6,70 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+.po-profile-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.po-profile-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.po-profile-header-logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  background-color: #137fec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 14px rgba(19, 127, 236, 0.3);
+}
+
+.po-profile-header-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.po-profile-header-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #eef2f6;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.po-profile-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.po-profile-header-username {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
 .po-profile-body {
   flex: 1;
   display: flex;
@@ -62,28 +126,19 @@
   color: #64748b;
 }
 
-.po-profile-sidebar-contact {
+.po-profile-sidebar-stat {
   width: 100%;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 0.9rem 0;
-  margin-bottom: 1rem;
-}
-
-.po-profile-sidebar-contact p {
-  margin: 0.3rem 0;
-  font-size: 0.8rem;
-  color: #334155;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  text-align: left;
-  word-break: break-word;
-}
-
-.po-profile-sidebar-contact i {
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: #137fec;
-  width: 14px;
+  background: #eff6ff;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .po-profile-nav {
@@ -91,7 +146,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding-top: 0.9rem;
   margin-bottom: 1rem;
+  border-top: 1px solid #e2e8f0;
 }
 
 .po-profile-nav-item {
@@ -150,6 +207,19 @@
   gap: 1.5rem;
 }
 
+.po-profile-welcome h1 {
+  margin: 0 0 0.2rem;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.po-profile-welcome p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
 .po-profile-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -177,6 +247,11 @@
   gap: 1rem;
 }
 
+.po-profile-detail-wide {
+  grid-column: span 2;
+  min-width: 0;
+}
+
 .po-profile-details-grid label,
 .po-pet-details-grid label {
   display: block;
@@ -202,9 +277,59 @@
   font-size: 0.875rem;
 }
 
+.po-profile-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.po-profile-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #137fec;
+  border-radius: 50%;
+  display: inline-block;
+  animation: po-profile-spin 0.7s linear infinite;
+}
+
+@keyframes po-profile-spin {
+  to { transform: rotate(360deg); }
+}
+
 .po-profile-error {
   color: #dc2626;
   font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.po-profile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #94a3b8;
+}
+
+.po-profile-empty i {
+  font-size: 1.75rem;
+  margin-bottom: 0.6rem;
+  color: #cbd5e1;
+}
+
+.po-profile-empty p {
+  margin: 0 0 0.2rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.po-profile-empty span {
+  font-size: 0.8rem;
 }
 
 .po-profile-pets-grid {
@@ -218,13 +343,62 @@
   border-radius: 0.65rem;
   padding: 1.1rem;
   background: #fbfcfe;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.po-pet-card:hover {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
 }
 
 .po-pet-card-header {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.po-pet-card-header-info {
+  display: flex;
   align-items: center;
   gap: 0.85rem;
-  margin-bottom: 1rem;
+  min-width: 0;
+}
+
+.po-pet-neutered-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.po-pet-neutered-badge.yes {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.po-pet-neutered-badge.no {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.po-pet-gender-icon {
+  font-size: 0.75rem;
+  margin-right: 0.1rem;
+}
+
+.po-pet-gender-male {
+  color: #137fec;
+}
+
+.po-pet-gender-female {
+  color: #ec4899;
 }
 
 .po-pet-photo {
