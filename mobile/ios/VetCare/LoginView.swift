@@ -12,11 +12,13 @@ import SwiftUI
 struct LoginView: View {
     let mode: AuthMode
 
+    @Environment(CustomerSession.self) private var session
+
     @State private var identifier = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
     @State private var isSubmitting = false
-    @State private var message: String?
+    @State private var errorMessage: String?
 
     @FocusState private var focusedField: Field?
 
@@ -34,8 +36,8 @@ struct LoginView: View {
                     header
                     fields
                     signInButton
-                    if let message {
-                        infoBanner(message)
+                    if let errorMessage {
+                        errorBanner(errorMessage)
                     }
                 }
                 .padding(.horizontal, 28)
@@ -121,33 +123,53 @@ struct LoginView: View {
         .opacity(isValid ? 1 : 0.5)
     }
 
-    private func infoBanner(_ text: String) -> some View {
-        Text(text)
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.brand.opacity(0.08))
-            )
+    private func errorBanner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.circle")
+                .foregroundStyle(.red)
+            Text(text)
+                .foregroundStyle(.primary)
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.red.opacity(0.07))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.red.opacity(0.2), lineWidth: 1)
+                )
+        )
     }
 
     private var isValid: Bool {
         !identifier.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
-    /// Validates input and stands in for the real authentication call, which
-    /// will hit the backend once the networking layer is built.
     private func signIn() async {
         guard isValid, !isSubmitting else { return }
         focusedField = nil
-        message = nil
+        errorMessage = nil
         isSubmitting = true
-        // Brief pause so the loading state is visible; replace with the API call.
-        try? await Task.sleep(for: .milliseconds(600))
-        isSubmitting = false
-        message = "Sign-in isn't connected to the backend yet — that's the next step."
+        defer { isSubmitting = false }
+
+        switch mode {
+        case .petOwner:
+            do {
+                let (customer, token) = try await CustomerAuthService().login(
+                    identifier: identifier.trimmingCharacters(in: .whitespaces),
+                    password: password
+                )
+                session.login(customer: customer, token: token)
+            } catch {
+                errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            }
+
+        case .staff:
+            try? await Task.sleep(for: .milliseconds(400))
+            errorMessage = "Staff sign-in is not yet available on mobile."
+        }
     }
 }
 

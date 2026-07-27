@@ -50,11 +50,15 @@ struct APIClient {
     func post<Body: Encodable, Response: Decodable>(
         _ path: String,
         body: Body,
+        bearerToken: String? = nil,
         as responseType: Response.Type
     ) async throws -> Response {
         var request = URLRequest(url: baseURL.appending(path: path))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         do {
             request.httpBody = try JSONEncoder().encode(body)
@@ -62,6 +66,24 @@ struct APIClient {
             throw APIError.transport(error)
         }
 
+        return try await execute(request)
+    }
+
+    /// Sends an authenticated GET and decodes the JSON response.
+    func get<Response: Decodable>(
+        _ path: String,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "GET"
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return try await execute(request)
+    }
+
+    private func execute<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let data: Data
         let response: URLResponse
         do {

@@ -24,4 +24,16 @@ struct AIService {
             as: ChatResponse.self
         )
     }
+
+    /// Pet-owner scope: answers are grounded in the signed-in owner's own
+    /// pets and records only. The server enforces the scope from the JWT.
+    /// → POST /api/ai/customer-chat
+    func askPetOwner(_ question: String, token: String) async throws -> ChatResponse {
+        try await client.post(
+            "ai/customer-chat",
+            body: ChatRequest(question: question),
+            bearerToken: token,
+            as: ChatResponse.self
+        )
+    }
 }

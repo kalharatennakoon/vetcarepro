@@ -233,7 +233,7 @@ struct GuestAIView: View {
 
 // MARK: - Message bubble
 
-private struct MessageBubble: View {
+struct MessageBubble: View {
     let message: ChatMessage
 
     private var isUser: Bool { message.role == .user }
@@ -323,7 +323,7 @@ private struct MessageBubble: View {
 /// Renders the lightweight markdown the local model produces — **bold**,
 /// "- " bullet lists, "1." numbered lists, and paragraph breaks — without a
 /// markdown dependency. Mirrors the web client's guest formatter.
-private struct AssistantMarkdown: View {
+struct AssistantMarkdown: View {
     let text: String
 
     var body: some View {
@@ -430,7 +430,7 @@ private struct AssistantMarkdown: View {
 
 // MARK: - Thinking indicator
 
-private struct ThinkingBubble: View {
+struct ThinkingBubble: View {
     @State private var animating = false
 
     var body: some View {
@@ -467,7 +467,7 @@ private struct ThinkingBubble: View {
 // MARK: - Flow layout for source chips
 
 /// A simple wrapping layout so citation chips flow onto multiple lines.
-private struct FlowLayout: Layout {
+struct FlowLayout: Layout {
     var spacing: CGFloat = 6
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {

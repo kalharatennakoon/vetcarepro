@@ -1,40 +1,45 @@
 //
-//  GuestChatViewModel.swift
+//  PetOwnerChatViewModel.swift
 //  VetCare
 //
-//  Drives the guest AI assistant conversation.
+//  Drives the pet-owner AI assistant. Uses POST /api/ai/customer-chat with
+//  the owner's JWT, so the server scopes answers to their own pets only.
 //
 
 import Foundation
 
 @MainActor
 @Observable
-final class GuestChatViewModel {
+final class PetOwnerChatViewModel {
     private(set) var messages: [ChatMessage] = []
     var input: String = ""
     private(set) var isThinking = false
 
     private let service: AIService
+    private let token: String
 
-    /// Starter questions shown on the empty state.
     let suggestedPrompts = [
-        "What vaccinations does my pet need?",
-        "What counts as a pet emergency?",
-        "Which human foods are dangerous for my pet?",
-        "Does my pet need flea and tick prevention year-round?"
+        "What vaccines has my pet had?",
+        "Summarize my pet's recent medical history",
+        "What aftercare should I follow after the last visit?"
     ]
 
-    init(service: AIService? = nil) {
+    init(token: String, service: AIService? = nil) {
+        self.token = token
         self.service = service ?? AIService()
+        messages = [ChatMessage(
+            role: .assistant,
+            text: "Hi! Ask me about your pets' records, vaccination history, or care instructions. I only answer using your own pets' data, and always defer final medical judgment to your veterinarian."
+        )]
     }
 
     var canSend: Bool {
         !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isThinking
     }
 
-    var isEmpty: Bool { messages.isEmpty }
+    /// True when only the intro message is present (no conversation yet).
+    var isEmpty: Bool { messages.count <= 1 }
 
-    /// Sends the given text (or the current input) and appends the reply.
     func send(_ prompt: String? = nil) async {
         let question = (prompt ?? input).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, !isThinking else { return }
@@ -45,7 +50,7 @@ final class GuestChatViewModel {
         defer { isThinking = false }
 
         do {
-            let response = try await service.askGuest(question)
+            let response = try await service.askPetOwner(question, token: token)
             messages.append(
                 ChatMessage(role: .assistant, text: response.answer, sources: response.sources, isAnswer: true)
             )

@@ -95,10 +95,12 @@ python app.py      # runs on http://localhost:5001
 | Veterinarian  | dulani@propet.lk       | password123   |
 | Receptionist  | kumari@propet.lk       | password123   |
 | Pet Owner     | kalharatennakoon92@gmail.com | customer@pass |
+| Pet Owner     | kavindra.d@gmail.com | customer@pass |
+
 
 > These credentials are only available after running the seed file.
 
-New customer (pet owner) accounts created by staff are assigned the default password `VetCare@123` and must change it on first login.
+Every other pet owner account - seeded or created later by staff - is assigned the default password `VetCare@123` and must change it on first login.
 
 ---
 
