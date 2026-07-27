@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { askPublicAssistant } from '../services/aiService';
 import GuestNav from '../components/GuestNav';
+import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 import '../styles/GuestAIAssistant.css';
 
@@ -9,54 +10,6 @@ const SUGGESTED_PROMPTS = [
   'How often should I feed my cat?',
   'When should I bring my pet in for a check-up?'
 ];
-
-// Splits **bold** segments out of a single line of text into React nodes.
-const formatInlineText = (line) => {
-  const segments = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
-  return segments.map((segment, i) =>
-    segment.startsWith('**') && segment.endsWith('**')
-      ? <strong key={i}>{segment.slice(2, -2)}</strong>
-      : <span key={i}>{segment}</span>
-  );
-};
-
-// Renders assistant replies with basic markdown-style formatting - bold
-// text, bullet/numbered lists, and paragraph breaks - without pulling in
-// a markdown dependency for what the local model produces.
-const formatMessageContent = (content) => {
-  const blocks = content.trim().split(/\n\s*\n/);
-
-  return blocks.map((block, i) => {
-    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
-    const isBulletList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l));
-    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l));
-
-    if (isBulletList) {
-      return (
-        <ul key={i} className="ai-message-list">
-          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^[-*]\s+/, ''))}</li>)}
-        </ul>
-      );
-    }
-    if (isNumberedList) {
-      return (
-        <ol key={i} className="ai-message-list">
-          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^\d+[.)]\s+/, ''))}</li>)}
-        </ol>
-      );
-    }
-    return (
-      <p key={i}>
-        {lines.map((l, j) => (
-          <span key={j}>
-            {j > 0 && <br />}
-            {formatInlineText(l)}
-          </span>
-        ))}
-      </p>
-    );
-  });
-};
 
 const GuestAIAssistant = () => {
   const [messages, setMessages] = useState([
@@ -130,11 +83,12 @@ const GuestAIAssistant = () => {
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources">
                       <span className="ai-message-sources-label">
-                        <i className="fas fa-book"></i> From our clinic FAQs:
+                        <i className="fas fa-book"></i>
+                        {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
                       </span>
                       {m.sources.map((s, j) => (
                         <span key={j} className="ai-source-tag">
-                          {s.metadata?.question || `${s.source_type} #${s.source_id}`}
+                          {getSourceLabel(s)}
                         </span>
                       ))}
                     </div>

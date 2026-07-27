@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
-import { getMyPets } from '../services/customerPortalService';
+import { getMyPets, getPetLabReports, downloadPetLabReport } from '../services/customerPortalService';
 import PetOwnerAIWidget from '../components/PetOwnerAIWidget';
 import '../styles/PetOwnerProfile.css';
+
+const labReportIcon = (fileType) => (fileType === 'pdf' ? 'fa-file-pdf' : 'fa-file-image');
+
+const formatReportType = (reportType) =>
+  (reportType || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 const speciesIcon = (species) => {
   switch ((species || '').toLowerCase()) {
@@ -34,12 +39,28 @@ const PetOwnerProfile = () => {
   const [pets, setPets] = useState([]);
   const [petsLoading, setPetsLoading] = useState(true);
   const [petsError, setPetsError] = useState('');
+  const [labReportsByPet, setLabReportsByPet] = useState({});
+  const [downloadingReportId, setDownloadingReportId] = useState(null);
 
   useEffect(() => {
     const loadPets = async () => {
       try {
         const result = await getMyPets();
-        setPets(result.data.pets || []);
+        const loadedPets = result.data.pets || [];
+        setPets(loadedPets);
+
+        const entries = await Promise.all(
+          loadedPets.map(async (pet) => {
+            try {
+              const reportResult = await getPetLabReports(pet.pet_id);
+              return [pet.pet_id, reportResult.reports || []];
+            } catch {
+              // Non-fatal - the pet card just shows no lab reports section.
+              return [pet.pet_id, []];
+            }
+          })
+        );
+        setLabReportsByPet(Object.fromEntries(entries));
       } catch (err) {
         setPetsError(
           err.response?.data?.message || 'Unable to load your pets right now.'
@@ -51,6 +72,17 @@ const PetOwnerProfile = () => {
 
     loadPets();
   }, []);
+
+  const handleDownloadReport = async (report) => {
+    setDownloadingReportId(report.report_id);
+    try {
+      await downloadPetLabReport(report.report_id, report.report_name, report.file_type);
+    } catch {
+      setPetsError('Unable to download that lab report right now.');
+    } finally {
+      setDownloadingReportId(null);
+    }
+  };
 
   const handleSignOut = async () => {
     await logout();
@@ -201,6 +233,36 @@ const PetOwnerProfile = () => {
                   {pet.special_needs && (
                     <div className="po-pet-note">
                       <i className="fas fa-notes-medical"></i> Special needs: {pet.special_needs}
+                    </div>
+                  )}
+
+                  {(labReportsByPet[pet.pet_id] || []).length > 0 && (
+                    <div className="po-pet-lab-reports">
+                      <h4 className="po-pet-lab-reports-title">
+                        <i className="fas fa-flask"></i> Lab Reports
+                      </h4>
+                      {labReportsByPet[pet.pet_id].map((report) => (
+                        <div key={report.report_id} className="po-lab-report-item">
+                          <div className="po-lab-report-info">
+                            <i className={`fas ${labReportIcon(report.file_type)}`}></i>
+                            <div>
+                              <p className="po-lab-report-name">{report.report_name}</p>
+                              <span className="po-lab-report-meta">
+                                {formatReportType(report.report_type)} &middot; {formatDate(report.created_at)}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="po-lab-report-download-btn"
+                            onClick={() => handleDownloadReport(report)}
+                            disabled={downloadingReportId === report.report_id}
+                            aria-label={`Download ${report.report_name}`}
+                          >
+                            <i className={`fas ${downloadingReportId === report.report_id ? 'fa-spinner fa-spin' : 'fa-download'}`}></i>
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

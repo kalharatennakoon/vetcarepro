@@ -7,6 +7,7 @@ import {
   changePassword,
   changePasswordFirstLogin
 } from '../controllers/customerAuthController.js';
+import { listMyLabReports, viewMyLabReport } from '../controllers/labReportController.js';
 import { authenticateCustomer } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -33,6 +34,17 @@ router.get('/me', authenticateCustomer, getCurrentCustomer);
 // @desc    Get pets belonging to the current customer
 // @access  Private (customer)
 router.get('/me/pets', authenticateCustomer, getMyPets);
+
+// @route   GET /api/customer-auth/pets/:petId/lab-reports
+// @desc    Get lab reports for one of the current customer's own pets
+// @access  Private (customer)
+router.get('/pets/:petId/lab-reports', authenticateCustomer, listMyLabReports);
+
+// @route   GET /api/customer-auth/lab-reports/:reportId/view
+// @desc    Stream a lab report file, only if it belongs to one of the
+//          current customer's own pets
+// @access  Private (customer)
+router.get('/lab-reports/:reportId/view', authenticateCustomer, viewMyLabReport);
 
 // @route   POST /api/customer-auth/logout
 // @desc    Logout

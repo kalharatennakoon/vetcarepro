@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { explainMlOutput } from '../services/aiService';
+import { formatMessageContent } from '../utils/aiChatFormat';
+import '../styles/AIAssistant.css';
 
 /**
  * Small "Explain in plain language" button + result box, for use next to any
@@ -43,7 +45,14 @@ const ExplainWithAI = ({ outputType, data }) => {
           }}
         >
           <i className="fas fa-robot" style={{ marginRight: '0.35rem' }}></i>
-          {loading ? 'Explaining...' : 'Explain in plain language'}
+          {loading ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              Explaining
+              <span className="ai-thinking-dots">
+                <span></span><span></span><span></span>
+              </span>
+            </span>
+          ) : 'Explain in plain language'}
         </button>
       )}
 
@@ -60,7 +69,9 @@ const ExplainWithAI = ({ outputType, data }) => {
           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#4338ca', display: 'block', marginBottom: '0.2rem' }}>
             <i className="fas fa-robot"></i> AI EXPLANATION
           </span>
-          <span style={{ fontSize: '0.8rem', color: '#374151' }}>{explanation}</span>
+          <div style={{ fontSize: '0.8rem', color: '#374151' }}>
+            {formatMessageContent(explanation)}
+          </div>
         </div>
       )}
 

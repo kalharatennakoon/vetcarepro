@@ -123,6 +123,62 @@ PET_MENTION = re.compile(r'\bpet\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 # itself instead of "Max".
 PET_BY_MENTION = re.compile(r'\b(?:of|for|about)\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 
+# Matches a possessive pet name like "Loki's" or "Max's" - the most natural
+# way people actually phrase pet-specific questions ("what did the vet find
+# during Loki's last visit"), which the two patterns above miss since there's
+# no "pet"/"of"/"for"/"about" trigger word immediately before the name. Used
+# as a last-resort fallback, and requires capitalization to cut down on false
+# positives - a false positive here is harmless anyway (the SQL lookup in
+# resolve_pet_id() below simply returns zero rows for a non-pet-name word and
+# falls through to normal unscoped retrieval).
+PET_POSSESSIVE_MENTION = re.compile(r"\b([A-Z][a-zA-Z]*)'s\b")
+
+# Sentence-initial contractions ("What's", "How's", ...) are capitalized too
+# and would otherwise be picked up as a false "pet name" before the real one
+# later in the sentence - skip these when scanning possessive matches.
+_POSSESSIVE_STOPWORDS = {
+    'what', 'how', 'where', 'who', 'when', 'why',
+    'it', 'that', 'this', 'there', 'here', 'he', 'she'
+}
+
+
+def _first_possessive_pet_name(question: str):
+    for match in PET_POSSESSIVE_MENTION.finditer(question):
+        candidate = match.group(1)
+        if candidate.lower() not in _POSSESSIVE_STOPWORDS:
+            return candidate
+    return None
+
+
+def _match_customer_pet_by_name(question: str, customer_id: str):
+    """
+    Last-resort fallback for role='pet_owner' when the question mentions a
+    pet by name with no grammatical trigger word at all - e.g. "help Max
+    with his joint pain" has no "pet"/"of/for/about" before the name and no
+    possessive "'s" either, so none of the patterns above catch it.
+
+    Doing a plain whole-word scan is only safe here because it's bounded to
+    this one customer's own (small) pet list - unlike staff, where the same
+    name can belong to many different customers and genuinely needs a
+    trigger word or owner name to disambiguate which pet is meant.
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT pet_id, pet_name FROM pets WHERE customer_id = %s", (customer_id,))
+            pets = cur.fetchall()
+    finally:
+        conn.close()
+
+    matches = [
+        pet_id for pet_id, pet_name in pets
+        if pet_name and re.search(rf'\b{re.escape(pet_name)}\b', question, re.IGNORECASE)
+    ]
+    # Only resolve if exactly one of the owner's pets is named - if two
+    # distinct pets are both mentioned (e.g. "compare Max and Loki"), fall
+    # through to unscoped retrieval rather than guessing which one matters.
+    return matches[0] if len(matches) == 1 else None
+
 
 OWNER_MENTION = re.compile(
     r'owner\s+(?:is|named|called)?\s*[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?', re.IGNORECASE
@@ -258,9 +314,12 @@ def resolve_pet_id(question: str, role: str, customer_id: str = None):
     pet_match = PET_MENTION.search(question)
     if not pet_match:
         pet_match = PET_BY_MENTION.search(question)
-    if not pet_match:
+    pet_name = pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+
+    if not pet_name:
+        if role == 'pet_owner' and customer_id:
+            return _match_customer_pet_by_name(question, customer_id)
         return None
-    pet_name = pet_match.group(1)
 
     owner_match = OWNER_MENTION.search(question)
     owner_name = owner_match.group(1) if owner_match else None

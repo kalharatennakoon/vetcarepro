@@ -462,6 +462,93 @@
   color: #0369a1;
 }
 
+.po-pet-lab-reports {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.po-pet-lab-reports-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.po-pet-lab-reports-title i {
+  color: #137fec;
+}
+
+.po-lab-report-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  margin-bottom: 0.4rem;
+}
+
+.po-lab-report-item:last-child {
+  margin-bottom: 0;
+}
+
+.po-lab-report-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.po-lab-report-info i {
+  color: #137fec;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.po-lab-report-name {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+.po-lab-report-meta {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.po-lab-report-download-btn {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: #eff6ff;
+  color: #137fec;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.po-lab-report-download-btn:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.po-lab-report-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .po-profile-body {
     flex-direction: column;

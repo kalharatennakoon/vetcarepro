@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { askAssistant, backfillAll } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 
 const SUGGESTED_PROMPTS = [
@@ -19,7 +20,8 @@ const AIAssistant = () => {
         "Hi, I'm the VetCare Pro AI assistant. Ask me about pet records, " +
         "consultation summaries, or the clinic's AI predictions. I answer using " +
         'clinic data and always defer final medical judgment to the veterinarian.',
-      sources: []
+      sources: [],
+      intro: true
     }
   ]);
   const [input, setInput] = useState('');
@@ -69,7 +71,8 @@ const AIAssistant = () => {
         {
           role: 'assistant',
           content: `Knowledge base updated. ${summary}`,
-          sources: []
+          sources: [],
+          intro: true
         }
       ]);
     } catch (err) {
@@ -104,16 +107,25 @@ const AIAssistant = () => {
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
-                <p>{m.content}</p>
-                {m.sources && m.sources.length > 0 && (
-                  <div className="ai-message-sources">
-                    <span>Sources: </span>
-                    {m.sources.map((s, j) => (
-                      <span key={j} className="ai-source-tag">
-                        {s.source_type} #{s.source_id}
+                {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
+                {m.role === 'assistant' && !m.intro && (
+                  m.sources && m.sources.length > 0 ? (
+                    <div className="ai-message-sources">
+                      <span className="ai-message-sources-label">
+                        <i className="fas fa-book"></i>
+                        {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
                       </span>
-                    ))}
-                  </div>
+                      {m.sources.map((s, j) => (
+                        <span key={j} className="ai-source-tag">
+                          {getSourceLabel(s)}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="ai-message-sources ai-message-sources-general">
+                      <i className="fas fa-brain"></i> General veterinary knowledge &mdash; not from a specific clinic record.
+                    </div>
+                  )
                 )}
               </div>
             </div>

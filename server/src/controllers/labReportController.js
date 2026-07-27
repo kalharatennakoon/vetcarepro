@@ -5,7 +5,9 @@ import {
   getLabReportsByPet,
   getLabReportById,
   createLabReport,
-  deleteLabReport
+  deleteLabReport,
+  getLabReportsForCustomerPet,
+  getLabReportForCustomer
 } from '../models/labReportModel.js';
 import { getPetById } from '../models/petModel.js';
 import { sendLabReportEmail } from '../services/emailService.js';
@@ -93,6 +95,39 @@ export const viewReport = async (req, res) => {
     res.sendFile(filePath);
   } catch (err) {
     console.error('❌ viewReport error:', err);
+    res.status(500).json({ status: 'error', message: 'Failed to retrieve report file' });
+  }
+};
+
+// Pet-owner-facing: same file-serving logic as viewReport, but scoped to the
+// authenticated customer's own pets via getLabReportForCustomer's join, so a
+// report belonging to another customer's pet 404s instead of leaking.
+export const listMyLabReports = async (req, res) => {
+  try {
+    const { petId } = req.params;
+    const reports = await getLabReportsForCustomerPet(petId, req.customer.customer_id);
+    res.status(200).json({ status: 'success', reports });
+  } catch (err) {
+    console.error('❌ listMyLabReports error:', err);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch lab reports' });
+  }
+};
+
+export const viewMyLabReport = async (req, res) => {
+  try {
+    const report = await getLabReportForCustomer(req.params.reportId, req.customer.customer_id);
+    if (!report) {
+      return res.status(404).json({ status: 'error', message: 'Lab report not found' });
+    }
+
+    const filePath = path.join(__dirname, '../../uploads', report.file_path);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ status: 'error', message: 'File not found on server' });
+    }
+
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('❌ viewMyLabReport error:', err);
     res.status(500).json({ status: 'error', message: 'Failed to retrieve report file' });
   }
 };

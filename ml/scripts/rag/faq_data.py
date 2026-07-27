@@ -76,6 +76,21 @@ FAQS = [
         ),
     },
     {
+        'id': 'parasites-002',
+        'category': 'parasites',
+        'question': 'How do I know if my dog or cat has ticks?',
+        'answer': (
+            'Check your pet\'s skin and fur regularly, especially after time '
+            'outdoors in grassy or wooded areas - ticks look like small, flat, '
+            'brown or black bumps and are often found around the ears, neck, '
+            'under the collar, and between the toes. If you find one, remove '
+            'it promptly with a tick remover tool or fine-tipped tweezers, '
+            'pulling straight out with steady pressure, and contact your '
+            'veterinarian if your pet later seems unwell or the bite area '
+            'looks infected.'
+        ),
+    },
+    {
         'id': 'clinic-001',
         'category': 'clinic_policy',
         'question': 'How do I book an appointment?',
