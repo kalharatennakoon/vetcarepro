@@ -260,3 +260,66 @@ FAQS = [
         ),
     },
 ]
+
+# Internal/operational FAQs for clinic staff - NOT public. Ingested with
+# source_type='staff_faq' (see chunking.chunk_staff_faq), which guest and
+# pet_owner retrieval explicitly exclude even though these chunks also have
+# pet_id/customer_id NULL (see retrieval.py). Kept deliberately small and
+# front-desk-focused for now (receptionist is the first staff role being
+# configured) - extend as more staff roles/workflows are covered.
+STAFF_FAQS = [
+    {
+        'id': 'staff-001',
+        'category': 'front_desk',
+        'question': 'How do I book, reschedule, or cancel an appointment for a customer?',
+        'answer': (
+            'Use the Appointments section to create a new appointment, or '
+            'open an existing one to change its date, time, or status. If a '
+            'customer needs to cancel, update the appointment status rather '
+            'than deleting the record, so the visit history is kept.'
+        ),
+    },
+    {
+        'id': 'staff-002',
+        'category': 'front_desk',
+        'question': 'How do I register a new customer and their pet?',
+        'answer': (
+            'Add the customer first from the Customers section, then add '
+            'their pet(s) from the Pets section (or directly from the '
+            'customer\'s profile). New pet-owner portal accounts are '
+            'automatically given the default password and must change it on '
+            'first login.'
+        ),
+    },
+    {
+        'id': 'staff-003',
+        'category': 'front_desk',
+        'question': 'How do I check a customer\'s outstanding balance or record a payment?',
+        'answer': (
+            'Open the Billing section to see outstanding and paid invoices '
+            'for a customer, and record a new payment against a bill from '
+            'there.'
+        ),
+    },
+    {
+        'id': 'staff-004',
+        'category': 'front_desk',
+        'question': 'What do I do if a customer asks about their pet\'s diagnosis or treatment?',
+        'answer': (
+            'Receptionists don\'t have access to diagnosis, treatment, or '
+            'other clinical details in this system - politely let the '
+            'customer know a veterinarian will need to answer that, and '
+            'offer to book a follow-up appointment if needed.'
+        ),
+    },
+    {
+        'id': 'staff-005',
+        'category': 'front_desk',
+        'question': 'How do I check whether an inventory item is in stock?',
+        'answer': (
+            'Open the Inventory section and search for the item - it shows '
+            'the current quantity and flags items that are low or out of '
+            'stock.'
+        ),
+    },
+]

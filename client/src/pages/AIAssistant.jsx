@@ -5,10 +5,20 @@ import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 
-const SUGGESTED_PROMPTS = [
+// Admin/veterinarian have full clinic-wide access, so these lean clinical.
+const CLINICAL_SUGGESTED_PROMPTS = [
   "Summarize a pet's recent medical history",
   'Explain the current outbreak risk in plain language',
   'What should I check before an appointment?'
+];
+
+// Receptionist's AI scope excludes disease cases, lab reports, and medical
+// records (see ml/scripts/rag/retrieval.py) - these match what they can
+// actually get answered: front-desk FAQs and vaccination lookups.
+const RECEPTIONIST_SUGGESTED_PROMPTS = [
+  'How do I book or reschedule an appointment?',
+  'How do I register a new customer and their pet?',
+  'What vaccines has a specific pet had?'
 ];
 
 const AIAssistant = () => {
@@ -29,6 +39,9 @@ const AIAssistant = () => {
   const [error, setError] = useState('');
   const [backfilling, setBackfilling] = useState(false);
   const bottomRef = useRef(null);
+  const suggestedPrompts = user?.role === 'receptionist'
+    ? RECEPTIONIST_SUGGESTED_PROMPTS
+    : CLINICAL_SUGGESTED_PROMPTS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -147,7 +160,7 @@ const AIAssistant = () => {
 
         {messages.length <= 1 && (
           <div className="ai-suggested-prompts">
-            {SUGGESTED_PROMPTS.map((p) => (
+            {suggestedPrompts.map((p) => (
               <button key={p} onClick={() => sendQuestion(p)}>{p}</button>
             ))}
           </div>

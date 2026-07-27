@@ -13,8 +13,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from config.db_connection import get_raw_db_connection
-from scripts.rag.chunking import chunk_medical_record, chunk_disease_case, chunk_lab_report, chunk_vaccination, chunk_faq
-from scripts.rag.faq_data import FAQS
+from scripts.rag.chunking import chunk_medical_record, chunk_disease_case, chunk_lab_report, chunk_vaccination, chunk_faq, chunk_staff_faq
+from scripts.rag.faq_data import FAQS, STAFF_FAQS
 from scripts.rag.ollama_client import embed_text, OllamaError
 
 
@@ -253,6 +253,28 @@ def ingest_faqs() -> dict:
         conn.close()
 
 
+def ingest_staff_faqs() -> dict:
+    """Ingest the static staff/internal FAQ content (source_type='staff_faq',
+    excluded from guest/pet_owner retrieval - see retrieval.py)."""
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        for faq in STAFF_FAQS:
+            try:
+                chunk = chunk_staff_faq(faq)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"faq_id={faq['id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
 def ingest_all() -> dict:
     """Run every ingestion type in sequence. Used for full backfills."""
     results = {
@@ -261,6 +283,7 @@ def ingest_all() -> dict:
         'lab_reports': ingest_lab_reports(),
         'vaccinations': ingest_vaccinations(),
         'faqs': ingest_faqs(),
+        'staff_faqs': ingest_staff_faqs(),
     }
     return results
 

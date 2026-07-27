@@ -1,9 +1,14 @@
 """
 RAG Retrieval
 Semantic search over rag_chunks, scoped by who is asking:
-  - staff (admin/veterinarian/receptionist): can see clinic-wide chunks
-  - pet_owner: only chunks tied to their own customer_id
-  - guest: only public chunks (pet_id IS NULL AND customer_id IS NULL) - e.g. FAQs
+  - staff (admin/veterinarian): can see clinic-wide chunks, including
+    internal staff_faq content
+  - staff (receptionist): clinic-wide chunks minus clinical detail
+    (disease_case, lab_report, medical_record) - still includes vaccinations,
+    the public faq set, and staff_faq
+  - pet_owner: only chunks tied to their own customer_id, plus public faq
+  - guest: only public faq chunks (pet_id IS NULL AND customer_id IS NULL,
+    excluding staff_faq even though those share the same NULL scoping)
 
 This is the enforcement point that keeps private medical data private -
 the caller (Flask route) must always pass the requester's role + customer_id.
@@ -54,7 +59,34 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
     try:
         with conn.cursor() as cur:
             if role in STAFF_ROLES:
-                if pet_id:
+                if role == 'receptionist':
+                    # Receptionist is fully blocked from disease cases and lab
+                    # reports in the regular app (roleCheck.js's vetOrAdmin),
+                    # and medical records are hidden from their nav (App.jsx
+                    # requiredRoles) - mirror that here rather than handing
+                    # over clinical detail through the AI assistant instead.
+                    # Vaccinations stay in scope - front-desk staff routinely
+                    # field "when's their next shot due" questions.
+                    if pet_id:
+                        cur.execute("""
+                            SELECT chunk_id, source_type, source_id, content, metadata,
+                                   embedding <=> %s::vector AS distance
+                            FROM rag_chunks
+                            WHERE pet_id = %s
+                              AND source_type NOT IN ('disease_case', 'lab_report', 'medical_record')
+                            ORDER BY distance ASC
+                            LIMIT %s
+                        """, (embedding_literal, pet_id, top_k))
+                    else:
+                        cur.execute("""
+                            SELECT chunk_id, source_type, source_id, content, metadata,
+                                   embedding <=> %s::vector AS distance
+                            FROM rag_chunks
+                            WHERE source_type NOT IN ('disease_case', 'lab_report', 'medical_record')
+                            ORDER BY distance ASC
+                            LIMIT %s
+                        """, (embedding_literal, top_k))
+                elif pet_id:
                     cur.execute("""
                         SELECT chunk_id, source_type, source_id, content, metadata,
                                embedding <=> %s::vector AS distance
@@ -64,7 +96,7 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
                         LIMIT %s
                     """, (embedding_literal, pet_id, top_k))
                 else:
-                    # Staff: clinic-wide access (private + public chunks)
+                    # Staff (admin/vet): clinic-wide access (private + public chunks)
                     cur.execute("""
                         SELECT chunk_id, source_type, source_id, content, metadata,
                                embedding <=> %s::vector AS distance
@@ -105,7 +137,7 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
                                    ) AS rn
                             FROM rag_chunks
                             WHERE customer_id = %s
-                               OR (pet_id IS NULL AND customer_id IS NULL)
+                               OR (pet_id IS NULL AND customer_id IS NULL AND source_type != 'staff_faq')
                         )
                         SELECT chunk_id, source_type, source_id, content, metadata, distance
                         FROM ranked
@@ -115,12 +147,16 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
                     """, (embedding_literal, embedding_literal, customer_id, max(top_k, 10)))
 
             else:
-                # Guest: public content only (e.g. FAQs, general care instructions)
+                # Guest: public content only (e.g. FAQs, general care
+                # instructions) - explicitly excludes staff_faq (internal/
+                # operational FAQs like "how do I register a new customer")
+                # even though those chunks also have pet_id/customer_id NULL.
                 cur.execute("""
                     SELECT chunk_id, source_type, source_id, content, metadata,
                            embedding <=> %s::vector AS distance
                     FROM rag_chunks
                     WHERE pet_id IS NULL AND customer_id IS NULL
+                      AND source_type != 'staff_faq'
                     ORDER BY distance ASC
                     LIMIT %s
                 """, (embedding_literal, top_k))

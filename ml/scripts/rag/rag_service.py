@@ -213,27 +213,21 @@ def answer_question(question: str, role: str, customer_id: str = None, top_k: in
         for i, c in enumerate(chunks)
     ) if chunks else '(No matching FAQ articles - answer from general veterinary knowledge instead.)'
 
-    is_owner = role in ('pet_owner', 'guest')
-    # Both UIs already show the source list as separate citation chips below
-    # the answer, so asking the model to also narrate "(Source 1)" inline is
-    # pure redundancy - for owners/guests specifically that redundancy reads
-    # as clutter on top of an already-wordy answer, so we drop the
-    # instruction there. Staff keep inline citations for now (unchanged
-    # behavior).
+    # All three chat UIs (guest page, pet-owner widget, staff page) already
+    # show the source list as separate citation chips below the answer, so
+    # asking the model to also narrate "(Source 1)" inline is pure
+    # redundancy on top of an already-wordy answer - true for staff too,
+    # not just owners/guests.
     if role == 'guest':
         citation_instruction = (
             'Use the context above if it is relevant to the question, otherwise rely on '
             'your own general veterinary knowledge as instructed above. Do not list or '
             'narrate which source(s) you used - the app shows that separately.'
         )
-    elif is_owner:
+    else:
         citation_instruction = (
             'Answer using only the context above. Do not list or narrate which '
             'sources you used - the app shows that separately.'
-        )
-    else:
-        citation_instruction = (
-            'Answer using only the context above, and mention which source(s) you used (e.g. "Source 1").'
         )
 
     user_prompt = f"""Context:

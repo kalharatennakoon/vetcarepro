@@ -57,6 +57,7 @@ export const getSourceLabel = (source) => {
   const meta = source.metadata || {};
   switch (source.source_type) {
     case 'faq':
+    case 'staff_faq':
       return meta.question || `FAQ #${source.source_id}`;
     case 'medical_record':
       return `Medical record${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.visit_date ? ` (${meta.visit_date})` : ''}`;
@@ -66,10 +67,12 @@ export const getSourceLabel = (source) => {
       return `${meta.disease_name || 'Disease case'}${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.diagnosis_date ? ` (${meta.diagnosis_date})` : ''}`;
     case 'lab_report':
       return `Lab report${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.report_type ? ` (${meta.report_type})` : ''}`;
+    case 'outbreak_risk_model':
+      return `Outbreak risk model${meta.risk_level ? ` – ${meta.risk_level} risk` : ''}`;
     default:
       return `${source.source_type} #${source.source_id}`;
   }
 };
 
 export const allSourcesAreFaq = (sources) =>
-  sources.length > 0 && sources.every((s) => s.source_type === 'faq');
+  sources.length > 0 && sources.every((s) => s.source_type === 'faq' || s.source_type === 'staff_faq');

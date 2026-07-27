@@ -203,3 +203,28 @@ def chunk_faq(faq: dict) -> dict:
             'question': faq.get('question'),
         }
     }
+
+
+def chunk_staff_faq(faq: dict) -> dict:
+    """
+    Build a RAG chunk from a static staff/internal FAQ entry (see
+    faq_data.STAFF_FAQS). Also has pet_id/customer_id None like chunk_faq,
+    but uses a distinct source_type='staff_faq' so guest and pet_owner
+    retrieval - which otherwise match on "pet_id IS NULL AND customer_id IS
+    NULL" - can explicitly exclude it (see retrieval.py).
+
+    Expects faq to contain: id, category, question, answer
+    """
+    content = f"Q: {faq['question']}\nA: {faq['answer']}"
+
+    return {
+        'source_type': 'staff_faq',
+        'source_id': str(faq['id']),
+        'pet_id': None,
+        'customer_id': None,
+        'content': content,
+        'metadata': {
+            'category': faq.get('category'),
+            'question': faq.get('question'),
+        }
+    }

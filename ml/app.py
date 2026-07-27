@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import os
 import glob
+import re
 from dotenv import load_dotenv
 
 # DB connection for retraining check
@@ -1255,9 +1256,20 @@ def rag_ingest_faqs():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ml/rag/ingest/staff-faqs', methods=['POST'])
+def rag_ingest_staff_faqs():
+    """(Re)ingest the static staff/internal FAQ content (source_type='staff_faq')."""
+    try:
+        from scripts.rag.ingest import ingest_staff_faqs
+        result = ingest_staff_faqs()
+        return jsonify({'success': True, **result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/rag/ingest/all', methods=['POST'])
 def rag_ingest_all():
-    """Backfill every source type in one call (medical records, disease cases, lab reports, FAQs)."""
+    """Backfill every source type in one call (medical records, disease cases, lab reports, FAQs, staff FAQs)."""
     try:
         from scripts.rag.ingest import ingest_all
         results = ingest_all()
@@ -1302,7 +1314,7 @@ def rag_chat():
     Node backend, never trusted from an unauthenticated client directly.
     """
     try:
-        from scripts.rag.rag_service import answer_question
+        from scripts.rag.rag_service import answer_question, explain_ml_output
         data = request.get_json(force=True)
 
         question = (data.get('question') or '').strip()
@@ -1311,6 +1323,47 @@ def rag_chat():
 
         if not question:
             return jsonify({'success': False, 'error': 'question is required'}), 400
+
+        # "Explain the current outbreak risk" style questions can't be
+        # answered through RAG retrieval - outbreak risk is a live model
+        # computation (see /api/ml/disease/outbreak-risk), never ingested
+        # into rag_chunks - so the general chat pipeline would otherwise
+        # hallucinate an answer stitched from tangentially-related
+        # vaccination/FAQ chunks instead of a real assessment. Route these
+        # to the actual model + explain feature instead.
+        if re.search(r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE):
+            if role not in ('admin', 'veterinarian'):
+                return jsonify({
+                    'success': True,
+                    'answer': (
+                        "Disease outbreak risk assessments aren't available through "
+                        "this assistant for your role - check the Analytics page, "
+                        "or ask a veterinarian or admin."
+                    ),
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            if not disease_model:
+                return jsonify({
+                    'success': True,
+                    'answer': "The outbreak risk model isn't loaded right now - please try again shortly.",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            risk_assessment = disease_model.predict_outbreak_risk(days_lookback=30)
+            explanation = explain_ml_output('outbreak_risk', risk_assessment)
+            return jsonify({
+                'success': True,
+                'answer': explanation,
+                'sources': [{
+                    'source_type': 'outbreak_risk_model',
+                    'source_id': 'current',
+                    'metadata': risk_assessment
+                }],
+                'chunks_used': 0
+            }), 200
 
         result = answer_question(question, role=role, customer_id=customer_id)
         return jsonify({'success': True, **result}), 200

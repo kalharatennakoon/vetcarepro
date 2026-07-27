@@ -15,15 +15,25 @@ failures in testing.
 import re
 import sys
 import os
+import json
 from datetime import date, timedelta
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from config.db_connection import get_raw_db_connection
+from scripts.rag.ollama_client import generate_answer, OllamaError
 
 STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 
+# Clinical detail (diagnoses, treatment, disease-case specifics) is narrower
+# than the general STAFF_ROLES bucket: receptionist is fully blocked from
+# disease-case endpoints and medical-record pages in the regular app
+# (roleCheck.js's vetOrAdmin, and App.jsx's requiredRoles), so the AI
+# assistant shouldn't hand over clinical detail there either - only
+# admin/veterinarian get it.
+CLINICAL_STAFF_ROLES = {'admin', 'veterinarian'}
+
 # Shared timeframe vocabulary used by appointments/disease-case/billing queries.
-TIMEFRAME_WORDS = r'(today|tomorrow|this\s+week|this\s+month|this\s+year)'
+TIMEFRAME_WORDS = r'(today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
 
 
 def _normalize_timeframe(raw: str) -> str:
@@ -43,6 +53,9 @@ def _resolve_timeframe(raw: str):
 
     if tf == 'today':
         return today, today
+    if tf == 'yesterday':
+        d = today - timedelta(days=1)
+        return d, d
     if tf == 'tomorrow':
         d = today + timedelta(days=1)
         return d, d
@@ -50,15 +63,141 @@ def _resolve_timeframe(raw: str):
         start = today - timedelta(days=today.weekday())  # Monday
         end = start + timedelta(days=6)
         return start, end
+    if tf == 'last week':
+        this_week_start = today - timedelta(days=today.weekday())
+        start = this_week_start - timedelta(days=7)
+        end = this_week_start - timedelta(days=1)
+        return start, end
     if tf == 'this month':
         start = today.replace(day=1)
         next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
         end = next_month - timedelta(days=1)
         return start, end
+    if tf == 'last month':
+        this_month_start = today.replace(day=1)
+        end = this_month_start - timedelta(days=1)
+        start = end.replace(day=1)
+        return start, end
     if tf == 'this year':
         return date(today.year, 1, 1), date(today.year, 12, 31)
 
     return None, None
+
+
+def _resolve_specific_day(day: int, month_qualifier: str = None):
+    """
+    Resolves a bare day-of-month (e.g. 31) plus an optional relative month
+    qualifier ('this'/'next'/'last', defaulting to 'this') into a concrete
+    date. Returns None if the day doesn't exist in that month (e.g. day=31,
+    month_qualifier='next' when next month has only 30 days).
+    """
+    today = date.today()
+    month_qualifier = (month_qualifier or 'this').lower()
+
+    year = today.year
+    month = today.month
+    if month_qualifier == 'next':
+        month += 1
+        if month > 12:
+            month = 1
+            year += 1
+    elif month_qualifier == 'last':
+        month -= 1
+        if month < 1:
+            month = 12
+            year -= 1
+
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+_WEEKDAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+
+def _resolve_relative_weekday(qualifier: str, weekday_name: str):
+    """
+    Resolves "this/next/last <weekday>" into a concrete date, anchored on
+    the same Monday-start calendar week used by _resolve_timeframe's
+    "this/next/last week" (not "N days from today") - keeps "next Friday"
+    consistent with what "next week" already means elsewhere in this file.
+
+    Deliberately deterministic Python arithmetic, NOT delegated to the LLM:
+    relative weekday math is exactly the kind of thing a small local model
+    gets subtly wrong (verified: asked for "next Friday" anchored on Monday
+    2026-07-27, qwen2.5-coder:7b returned 2026-08-04 - a Tuesday). The LLM
+    fallback (_extract_date_via_llm) is reserved for absolute dates only,
+    where there's no arithmetic to get wrong.
+    """
+    today = date.today()
+    this_week_start = today - timedelta(days=today.weekday())  # Monday
+    target_weekday = _WEEKDAY_NAMES.index(weekday_name.lower())
+
+    qualifier = (qualifier or 'this').lower()
+    if qualifier == 'next':
+        week_start = this_week_start + timedelta(days=7)
+    elif qualifier == 'last':
+        week_start = this_week_start - timedelta(days=7)
+    else:
+        week_start = this_week_start
+
+    return week_start + timedelta(days=target_weekday)
+
+
+_DATE_EXTRACTION_PROMPT = """You extract a single calendar date from a question about appointments. Today's date is {today}.
+
+Respond with ONLY a JSON object, no other text, no markdown, in exactly this shape:
+{{"date": "YYYY-MM-DD"}}
+
+If the question names a relative weekday (e.g. "next Friday", "last Monday"), respond with exactly:
+{{"date": null}}
+That case is handled separately with reliable date arithmetic, not by you - guessing it yourself is exactly the kind of calendar math small models get wrong.
+
+If the question does not name or clearly imply one specific calendar date at all (e.g. it's about a whole week/month), also respond with:
+{{"date": null}}
+"""
+
+
+def _extract_date_via_llm(question: str):
+    """
+    Last-resort date extraction for appointment questions that don't match
+    any regex pattern above - regexes can't cover every phrasing ("July
+    31st, 2026", "next Friday", "the first Monday of August"), so ask the
+    LLM to normalize whatever date is in the question into YYYY-MM-DD, then
+    look that date up for real in the database. The LLM only ever parses
+    the date here - the actual appointment data always comes from a live
+    SQL query (_list_appointments_on_date), never from the LLM itself.
+
+    Returns:
+        date if a single concrete date was confidently extracted, else None
+        (caller should fall through to normal RAG rather than guess).
+    """
+    system_prompt = _DATE_EXTRACTION_PROMPT.format(today=date.today().isoformat())
+    try:
+        raw = generate_answer(system_prompt, question)
+    except OllamaError:
+        return None
+
+    # Defensive: the model may still wrap the JSON in a code fence or add
+    # stray commentary despite the instruction - pull out the first {...}.
+    match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if not match:
+        return None
+
+    try:
+        parsed = json.loads(match.group(0))
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    date_str = parsed.get('date') if isinstance(parsed, dict) else None
+    if not date_str:
+        return None
+
+    try:
+        return date.fromisoformat(date_str)
+    except (ValueError, TypeError):
+        return None
 
 # Matches: "how many pets are/is there named/called X", "how many pets named X",
 # "how many pets whose name is X", "how many pets ... name is X",
@@ -237,6 +376,33 @@ APPT_COUNT_TIMEFRAME = re.compile(
     re.IGNORECASE
 )
 
+# Matches: "what appointments do we have this week?", "list appointments today",
+# "show me the appointments this month" - listing counterpart to
+# APPT_COUNT_TIMEFRAME for "what's on" rather than "how many" questions.
+LIST_APPOINTMENTS_TIMEFRAME = re.compile(
+    r'\b(?:what|which|list|show)\b.*\bappointments?\b.*\b' + TIMEFRAME_WORDS + r'\b',
+    re.IGNORECASE
+)
+
+# Matches a specific day-of-month, e.g. "what's the appointment on 31st of
+# this month?", "any appointments on the 5th?", "appointment on the 12th
+# next month" - checked BEFORE LIST_APPOINTMENTS_TIMEFRAME so a specific day
+# doesn't get swallowed into a whole-month/week listing. Month qualifier
+# defaults to the current month when omitted.
+APPT_SPECIFIC_DAY = re.compile(
+    r'\bappointments?\b.*?\bon\s+(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\b'
+    r'(?:\s+of\s+(this|next|last)\s+month|\s+(this|next|last)\s+month)?',
+    re.IGNORECASE
+)
+
+# Matches: "any appointments next Friday?", "what's on this Monday",
+# "appointments last Sunday" - resolved via _resolve_relative_weekday
+# (deterministic arithmetic), not the LLM date-extraction fallback.
+APPT_RELATIVE_WEEKDAY = re.compile(
+    r'\bappointments?\b.*?\b(this|next|last)\s+(' + '|'.join(_WEEKDAY_NAMES) + r')\b',
+    re.IGNORECASE
+)
+
 
 # ============================================================
 # Disease cases
@@ -355,6 +521,23 @@ def resolve_pet_id(question: str, role: str, customer_id: str = None):
     return rows[0][0] if len(rows) == 1 else None
 
 
+def _clinical_detail_redirect() -> dict:
+    """Returned instead of medical-record/disease-case detail for a staff
+    role outside CLINICAL_STAFF_ROLES (i.e. receptionist) - explicit and
+    immediate, rather than silently falling through to a RAG answer that
+    would just look like a random "no information found"."""
+    return {
+        'answer': (
+            "Medical record and diagnosis details aren't available through "
+            "this assistant for your role - please check with a veterinarian "
+            "or admin for clinical specifics."
+        ),
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
 def try_structured_answer(question: str, role: str, customer_id: str = None) -> dict:
     """
     Check if `question` matches a known structured-query pattern. If so,
@@ -392,6 +575,12 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     is_vaccine_query = _looks_like_vaccine_question(question)
 
     if is_pet_record_query or is_vaccine_query:
+        # Receptionist doesn't get medical-record detail (matches the
+        # backend/UI block elsewhere) - vaccinations are still fine, those
+        # fall through to the branches below unaffected.
+        if is_pet_record_query and role == 'receptionist':
+            return _clinical_detail_redirect()
+
         resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
         if resolved_pet_id:
             # Now, check which type of query it was.
@@ -406,7 +595,9 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
 
     # Check for listing all records for a customer's pets (less specific, so it runs after pet resolution)
     match = LIST_RECORDS_BY_CUSTOMER.search(question)
-    if match and role in STAFF_ROLES:
+    if match and role == 'receptionist':
+        return _clinical_detail_redirect()
+    if match and role in CLINICAL_STAFF_ROLES:
         return _list_records_by_customer(match.group(1))
 
     # --- Inventory (staff-only: operational data) ---
@@ -425,6 +616,21 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     # question more than a bare timeframe, so those are tried before falling
     # back to the generic "how many appointments <timeframe>" pattern.
     if role in STAFF_ROLES:
+        # Most specific first: a bare day-of-month ("on the 31st") should
+        # never get swallowed into a whole-month/week listing further down.
+        match = APPT_SPECIFIC_DAY.search(question)
+        if match:
+            day = int(match.group(1))
+            month_qualifier = match.group(2) or match.group(3)
+            target_date = _resolve_specific_day(day, month_qualifier)
+            if target_date:
+                return _list_appointments_on_date(target_date)
+
+        match = APPT_RELATIVE_WEEKDAY.search(question)
+        if match:
+            target_date = _resolve_relative_weekday(match.group(1), match.group(2))
+            return _list_appointments_on_date(target_date)
+
         match = APPT_COUNT_BY_VET.search(question)
         if match:
             return _count_appointments_by_vet(match.group(1))
@@ -441,8 +647,32 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         if match:
             return _count_appointments_timeframe(match.group(1))
 
-    # --- Disease cases (staff-only) ---
-    if role in STAFF_ROLES:
+        match = LIST_APPOINTMENTS_TIMEFRAME.search(question)
+        if match:
+            return _list_appointments_timeframe(match.group(1))
+
+        # Last resort: the question mentions appointments but named a date
+        # in a shape none of the regexes above cover (e.g. "July 31st,
+        # 2026", "next Friday"). Rather than fall through to RAG - which
+        # has zero appointment data and will confidently hallucinate a
+        # wrong "no appointments" answer - ask the LLM to normalize
+        # whatever date is in the question, then look it up for real.
+        if re.search(r'\bappointments?\b', question, re.IGNORECASE):
+            extracted_date = _extract_date_via_llm(question)
+            if extracted_date:
+                return _list_appointments_on_date(extracted_date)
+
+    # --- Disease cases (clinical staff only - receptionist is fully
+    # blocked from disease-case data in the regular app too, see
+    # roleCheck.js's vetOrAdmin on diseaseCaseRoutes.js) ---
+    if role == 'receptionist' and (
+        DISEASE_COUNT_CONTAGIOUS.search(question)
+        or DISEASE_COUNT_BY_CATEGORY.search(question)
+        or DISEASE_COUNT_BY_SEVERITY.search(question)
+    ):
+        return _clinical_detail_redirect()
+
+    if role in CLINICAL_STAFF_ROLES:
         if DISEASE_COUNT_CONTAGIOUS.search(question):
             return _count_disease_cases_contagious()
 
@@ -828,6 +1058,127 @@ def _count_appointments_timeframe(timeframe: str) -> dict:
     return {
         'answer': answer,
         'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _list_appointments_timeframe(timeframe: str) -> dict:
+    """Listing counterpart to _count_appointments_timeframe - "what
+    appointments do we have this week" needs the actual bookings, not just
+    a number."""
+    start, end = _resolve_timeframe(timeframe)
+    if start is None:
+        return {'answer': f'I could not resolve the timeframe "{timeframe}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                       a.reason, p.pet_name, c.first_name, c.last_name,
+                       u.first_name, u.last_name
+                FROM appointments a
+                JOIN pets p ON p.pet_id = a.pet_id
+                JOIN customers c ON c.customer_id = a.customer_id
+                LEFT JOIN users u ON u.user_id = a.veterinarian_id
+                WHERE a.appointment_date BETWEEN %s AND %s
+                ORDER BY a.appointment_date, a.appointment_time
+            """, (start, end))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': f'There are no appointments {_normalize_timeframe(timeframe)}.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    items = []
+    sources = []
+    for appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last in rows:
+        vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
+        items.append(
+            f'{appt_date} {appt_time} - {pet_name} ({cust_first} {cust_last}){vet_str}, '
+            f'{status} - {reason}'
+        )
+        sources.append({
+            'source_type': 'appointment',
+            'source_id': appt_id,
+            'metadata': {'appointment_date': str(appt_date), 'status': status}
+        })
+
+    count = len(rows)
+    listing = '\n- '.join(items)
+    answer = (
+        f'There {"is" if count == 1 else "are"} {count} appointment{"s" if count != 1 else ""} '
+        f'{_normalize_timeframe(timeframe)}:\n- {listing}'
+    )
+
+    return {
+        'answer': answer,
+        'sources': sources,
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _list_appointments_on_date(target_date: date) -> dict:
+    """Same shape as _list_appointments_timeframe, but for one specific
+    calendar date rather than a whole week/month range - "what's the
+    appointment on the 31st" shouldn't return the entire month."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                       a.reason, p.pet_name, c.first_name, c.last_name,
+                       u.first_name, u.last_name
+                FROM appointments a
+                JOIN pets p ON p.pet_id = a.pet_id
+                JOIN customers c ON c.customer_id = a.customer_id
+                LEFT JOIN users u ON u.user_id = a.veterinarian_id
+                WHERE a.appointment_date = %s
+                ORDER BY a.appointment_time
+            """, (target_date,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    date_str = target_date.strftime('%B %d, %Y')
+
+    if not rows:
+        return {
+            'answer': f'There are no appointments on {date_str}.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    items = []
+    sources = []
+    for appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last in rows:
+        vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
+        items.append(f'{appt_time} - {pet_name} ({cust_first} {cust_last}){vet_str}, {status} - {reason}')
+        sources.append({
+            'source_type': 'appointment',
+            'source_id': appt_id,
+            'metadata': {'appointment_date': str(appt_date), 'status': status}
+        })
+
+    count = len(rows)
+    listing = '\n- '.join(items)
+    answer = (
+        f'There {"is" if count == 1 else "are"} {count} appointment{"s" if count != 1 else ""} '
+        f'on {date_str}:\n- {listing}'
+    )
+
+    return {
+        'answer': answer,
+        'sources': sources,
         'chunks_used': 0,
         'structured': True
     }
