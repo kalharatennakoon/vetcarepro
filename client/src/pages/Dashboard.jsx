@@ -358,7 +358,7 @@ const Dashboard = () => {
 
   const handlePasswordChangeLogout = () => {
     logout();
-    navigate('/');
+    navigate('/staff/login');
   };
 
   const handleAssignToMe = async (appointment) => {

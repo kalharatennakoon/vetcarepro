@@ -3,6 +3,7 @@ import ScrollToTop from './components/ScrollToTop';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
+import StaffLogin from './pages/StaffLogin';
 import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import AppointmentCreate from './pages/AppointmentCreate';
@@ -60,9 +61,15 @@ function App() {
     <ScrollToTop />
     <Routes>
       {/* Public routes */}
-      <Route 
-        path="/" 
-        element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />} 
+      <Route
+        path="/"
+        element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />}
+      />
+
+      {/* Staff sign-in - separate URL from the public/pet-owner landing page */}
+      <Route
+        path="/staff/login"
+        element={!isAuthenticated ? <StaffLogin /> : <Navigate to="/dashboard" replace />}
       />
 
       {/* Guest AI Assistant - public, general pet care info only, no clinic data */}

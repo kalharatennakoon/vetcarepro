@@ -27,7 +27,7 @@ const Layout = ({ children }) => {
   const handleLogout = async () => {
     await logout();
     showSuccess('You have been signed out successfully');
-    navigate('/');
+    navigate('/staff/login');
   };
 
   const toggleMobileMenu = () => {

@@ -18,11 +18,15 @@
 }
 
 .welcome-petowner-button:hover {
-  background-color: #0f172a;
+  background-color: #0c6fd9;
   transform: translateY(-2px);
 }
 
 .welcome-support-link:hover {
+  color: #137fec;
+}
+
+.welcome-staff-login-link:hover {
   color: #137fec;
 }
 
@@ -97,7 +101,14 @@
   .welcome-hero-subtext {
     font-size: 0.875rem;
   }
-  
+
+  /* Too narrow here to keep the AI callout on one line without either
+     overflowing or shrinking the text to the point of illegibility - let it
+     wrap only at this breakpoint, single line everywhere else. */
+  .welcome-ai-highlight-text {
+    white-space: normal;
+  }
+
   .welcome-footer-content {
     flex-direction: column;
     gap: 0.5rem;
