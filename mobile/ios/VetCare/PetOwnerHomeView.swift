@@ -36,6 +36,9 @@ struct PetOwnerHomeView: View {
             .navigationDestination(for: String.self) { _ in
                 PetOwnerAIView(token: session.token ?? "")
             }
+            .navigationDestination(for: Pet.self) { pet in
+                PetDetailView(pet: pet, token: session.token ?? "")
+            }
         }
         .task { await loadPets() }
     }
@@ -118,7 +121,10 @@ struct PetOwnerHomeView: View {
                 emptyPets
             } else {
                 ForEach(pets) { pet in
-                    PetCard(pet: pet)
+                    NavigationLink(value: pet) {
+                        PetCard(pet: pet)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -243,6 +249,10 @@ private struct PetCard: View {
                     .padding(.vertical, 4)
                     .background(Capsule().fill(Color.brand.opacity(0.1)))
             }
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .padding(14)
         .background(

@@ -8,6 +8,7 @@ import {
   hardDeletePet,
   getPetMedicalHistory,
   getPetVaccinations,
+  getVaccinationsForCustomerPet,
   createVaccination,
   updateVaccination,
   deleteVaccination,
@@ -607,5 +608,15 @@ export const getBreedingRegistry = async (req, res) => {
   } catch (error) {
     console.error('Get breeding registry error:', error);
     res.status(500).json({ status: 'error', message: 'Failed to fetch breeding registry' });
+  }
+};
+export const listMyPetVaccinations = async (req, res) => {
+  try {
+    const { petId } = req.params;
+    const vaccinations = await getVaccinationsForCustomerPet(petId, req.customer.customer_id);
+    res.status(200).json({ status: 'success', vaccinations });
+  } catch (error) {
+    console.error("listMyPetVaccinations error:", error);
+    res.status(500).json({ status: 'error', message: 'Failed to fetch vaccinations' });
   }
 };

@@ -301,6 +301,27 @@ export const getPetVaccinations = async (petId) => {
   return result.rows;
 };
 
+export const getVaccinationsForCustomerPet = async (petId, customerId) => {
+  const query = `
+    SELECT
+      v.vaccination_id,
+      v.vaccine_name,
+      v.vaccine_type,
+      v.vaccination_date,
+      v.next_due_date,
+      v.adverse_reaction,
+      v.notes,
+      CONCAT(u.first_name, ' ', u.last_name) AS administered_by_name
+    FROM vaccinations v
+    JOIN pets p ON p.pet_id = v.pet_id
+    LEFT JOIN users u ON v.administered_by = u.user_id
+    WHERE v.pet_id = $1 AND p.customer_id = $2
+    ORDER BY v.vaccination_date DESC
+  `;
+  const result = await pool.query(query, [petId, customerId]);
+  return result.rows;
+};
+
 export const createVaccination = async (petId, data, userId) => {
   const query = `
     INSERT INTO vaccinations (

@@ -83,6 +83,30 @@ struct APIClient {
         return try await execute(request)
     }
 
+    /// Downloads raw bytes (for file viewing via QuickLook).
+    func download(_ path: String, bearerToken: String? = nil) async throws -> Data {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "GET"
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw APIError.transport(error)
+        }
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let payload = try? JSONDecoder().decode(ErrorPayload.self, from: data)
+            throw APIError.server(status: http.statusCode, message: payload?.displayMessage)
+        }
+        return data
+    }
+
     private func execute<Response: Decodable>(_ request: URLRequest) async throws -> Response {
         let data: Data
         let response: URLResponse

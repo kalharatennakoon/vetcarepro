@@ -8,6 +8,7 @@ import {
   changePasswordFirstLogin
 } from '../controllers/customerAuthController.js';
 import { listMyLabReports, viewMyLabReport } from '../controllers/labReportController.js';
+import { listMyPetVaccinations } from '../controllers/petController.js';
 import { authenticateCustomer } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -34,6 +35,11 @@ router.get('/me', authenticateCustomer, getCurrentCustomer);
 // @desc    Get pets belonging to the current customer
 // @access  Private (customer)
 router.get('/me/pets', authenticateCustomer, getMyPets);
+
+// @route   GET /api/customer-auth/pets/:petId/vaccinations
+// @desc    Get vaccination history for one of the current customer's own pets
+// @access  Private (customer)
+router.get('/pets/:petId/vaccinations', authenticateCustomer, listMyPetVaccinations);
 
 // @route   GET /api/customer-auth/pets/:petId/lab-reports
 // @desc    Get lab reports for one of the current customer's own pets

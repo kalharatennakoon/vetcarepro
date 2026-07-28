@@ -55,21 +55,66 @@ struct WelcomeView: View {
 
     private var actions: some View {
         VStack(spacing: 14) {
-            NavigationLink(value: WelcomeRoute.login(.staff)) {
-                PillLabel(title: "Staff Sign In", style: .filled)
-            }
-
+            // Primary: pet owner
             NavigationLink(value: WelcomeRoute.login(.petOwner)) {
-                PillLabel(title: "Pet Owner Sign In", style: .outlined)
+                PillLabel(title: "Sign In — Pet Owner", style: .filled)
             }
 
-            NavigationLink(value: WelcomeRoute.guest) {
-                Text("Continue as guest")
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(Color.brand)
-                    .padding(.vertical, 8)
+            // Divider
+            HStack(spacing: 10) {
+                Rectangle()
+                    .fill(Color.black.opacity(0.1))
+                    .frame(height: 1)
+                Text("or")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Rectangle()
+                    .fill(Color.black.opacity(0.1))
+                    .frame(height: 1)
             }
-            .padding(.top, 2)
+
+            // Secondary: guest
+            NavigationLink(value: WelcomeRoute.guest) {
+                PillLabel(title: "Continue as Guest", style: .outlined)
+            }
+
+            // AI note
+            VStack(spacing: 6) {
+                Image(systemName: "wand.and.stars")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.brand)
+                Text("Ask our **AI Assistant** general pet care questions\n(no account needed)")
+                    .font(.caption)
+                    .foregroundStyle(Color.brand)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.brand.opacity(0.10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(Color.brand.opacity(0.30), lineWidth: 1)
+                    )
+            )
+
+            // Staff login — demoted to small link
+            VStack(spacing: 6) {
+                Divider()
+                    .padding(.top, 4)
+                Text("Your account and pet records are kept private and secure.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                NavigationLink(value: WelcomeRoute.login(.staff)) {
+                    Text("Clinic Staff Login")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .underline()
+                }
+            }
         }
     }
 }

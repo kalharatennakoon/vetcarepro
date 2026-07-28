@@ -239,6 +239,20 @@ LIST_VACCINATIONS = re.compile(
     re.IGNORECASE
 )
 
+# Matches temporal "last / most recent" vaccine questions such as:
+# "when did Max take his last vaccine?"
+# "when was Max last vaccinated?"
+# "what was the latest vaccination for Bella?"
+# "most recent vaccine for Max"
+LAST_VACCINATION = re.compile(
+    r'\b(?:last|latest|most\s+recent|recent)\b.*\b(?:vaccines?|vaccinations?)\b|'
+    r'\b(?:vaccines?|vaccinations?)\b.*\b(?:last|latest|most\s+recent|recent)\b|'
+    r'\bwhen\b.*\b(?:last|latest|recent)\b.*\bvaccinat|'
+    r'\bwhen\b.*\bvaccinat.*\b(?:last|latest|recent)\b|'
+    r'\blast\s+time\b.*\bvaccinat',
+    re.IGNORECASE
+)
+
 # Matches: "list medical records for pet Max", "show me the history of pet Fido"
 LIST_RECORDS_BY_PET = re.compile(
     r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of)\s+pet\b',
@@ -588,6 +602,8 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
                 return _list_records_by_pet(resolved_pet_id, role, customer_id)
 
             if is_vaccine_query:
+                if LAST_VACCINATION.search(question):
+                    return _last_vaccination_for_pet(resolved_pet_id, role, customer_id)
                 if LIST_VACCINATIONS.search(question):
                     return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
                 if COUNT_VACCINATIONS.search(question):
@@ -1661,4 +1677,109 @@ def _list_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None) 
         ],
         'chunks_used': 0,
         'structured': True
+    }
+
+def _last_vaccination_for_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
+    """Return the most recent vaccination for a pet, queried directly from the DB."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if role in STAFF_ROLES:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON c.customer_id = p.customer_id
+                    WHERE p.pet_id = %s
+                    """,
+                    (pet_id,)
+                )
+            elif role == 'pet_owner' and customer_id:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON c.customer_id = p.customer_id
+                    WHERE p.pet_id = %s AND p.customer_id = %s
+                    """,
+                    (pet_id, customer_id)
+                )
+            else:
+                return None
+
+            pet_row = cur.fetchone()
+            if not pet_row:
+                return {
+                    'answer': 'I could not find vaccination records for that pet.',
+                    'sources': [],
+                    'chunks_used': 0,
+                    'structured': True,
+                }
+
+            pet_name = pet_row[0]
+
+            cur.execute(
+                """
+                SELECT v.vaccine_name, v.vaccine_type, v.vaccination_date,
+                       v.next_due_date,
+                       (u.first_name || ' ' || u.last_name) AS administered_by_name
+                FROM vaccinations v
+                LEFT JOIN users u ON v.administered_by = u.user_id
+                WHERE v.pet_id = %s
+                ORDER BY v.vaccination_date DESC
+                LIMIT 1
+                """,
+                (pet_id,)
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        return {
+            'answer': f'{pet_name} has no vaccination records yet.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True,
+        }
+
+    vaccine_name, vaccine_type, vaccination_date, next_due_date, administered_by_name = row
+    type_text = f' ({vaccine_type})' if vaccine_type else ''
+    date_str = (
+        vaccination_date.strftime('%d %B %Y')
+        if hasattr(vaccination_date, 'strftime')
+        else str(vaccination_date)
+    )
+
+    answer = (
+        f"{pet_name}'s most recent vaccination was **{vaccine_name}**{type_text}, "
+        f"administered on **{date_str}**."
+    )
+    if administered_by_name:
+        answer += f' Administered by {administered_by_name}.'
+    if next_due_date:
+        due_str = (
+            next_due_date.strftime('%d %B %Y')
+            if hasattr(next_due_date, 'strftime')
+            else str(next_due_date)
+        )
+        answer += f' Next due: {due_str}.'
+
+    return {
+        'answer': answer,
+        'sources': [
+            {
+                'source_type': 'vaccination',
+                'source_id': str(pet_id),
+                'metadata': {
+                    'pet_name': pet_name,
+                    'vaccine_name': vaccine_name,
+                    'vaccine_type': vaccine_type,
+                    'vaccination_date': str(vaccination_date) if vaccination_date else None,
+                    'next_due_date': str(next_due_date) if next_due_date else None,
+                },
+            }
+        ],
+        'chunks_used': 0,
+        'structured': True,
     }
