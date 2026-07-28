@@ -76,10 +76,10 @@ struct PetOwnerAIView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
                 )
         )
         .padding(.horizontal, 16)
@@ -138,7 +138,7 @@ struct PetOwnerAIView: View {
                         .padding(.vertical, 12)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white)
+                                .fill(Color.cardSurface)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                                         .strokeBorder(Color.brand.opacity(0.25), lineWidth: 1)
@@ -162,10 +162,10 @@ struct PetOwnerAIView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.black.opacity(0.1), lineWidth: 1)
+                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
                         )
                 )
 

@@ -43,9 +43,7 @@ struct GuestAIView: View {
 
             Spacer()
 
-            Button {
-                dismiss()
-            } label: {
+            NavigationLink(value: WelcomeRoute.login(.petOwner)) {
                 Text("Sign In")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.brand)
@@ -95,10 +93,10 @@ struct GuestAIView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.06), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
                 )
         )
     }
@@ -174,7 +172,7 @@ struct GuestAIView: View {
                             .padding(.vertical, 12)
                             .background(
                                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white)
+                                    .fill(Color.cardSurface)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                                             .strokeBorder(Color.brand.opacity(0.25), lineWidth: 1)
@@ -192,7 +190,7 @@ struct GuestAIView: View {
 
     private var inputBar: some View {
         HStack(spacing: 10) {
-            TextField("Type your question...", text: $viewModel.input, axis: .vertical)
+            TextField("Ask a pet care question...", text: $viewModel.input, axis: .vertical)
                 .lineLimit(1...4)
                 .focused($isInputFocused)
                 .submitLabel(.send)
@@ -201,10 +199,10 @@ struct GuestAIView: View {
                 .padding(.vertical, 10)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.black.opacity(0.1), lineWidth: 1)
+                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
                         )
                 )
 
@@ -272,10 +270,10 @@ struct MessageBubble: View {
             LinearGradient.brand
         } else {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
         }
     }
@@ -309,7 +307,7 @@ struct MessageBubble: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.black.opacity(0.05)))
+                        .background(Capsule().fill(Color.primary.opacity(0.05)))
                     }
                 }
             }
@@ -453,10 +451,10 @@ struct ThinkingBubble: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
         )
         .frame(maxWidth: .infinity, alignment: .leading)

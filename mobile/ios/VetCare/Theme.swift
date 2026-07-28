@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension Color {
     /// Primary brand color for VetCare Pro — a calm medical teal.
@@ -14,8 +15,11 @@ extension Color {
     /// Darker brand shade, used for gradients and pressed states.
     static let brandDark = Color(red: 0.05, green: 0.35, blue: 0.41)
 
-    /// Soft neutral background for full-screen views.
-    static let appBackground = Color(red: 0.96, green: 0.97, blue: 0.98)
+    /// Grouped view background — light gray in light mode, near-black in dark mode.
+    static let appBackground = Color(UIColor.systemGroupedBackground)
+
+    /// Card / elevated surface — white in light mode, elevated dark in dark mode.
+    static let cardSurface = Color(UIColor.secondarySystemGroupedBackground)
 }
 
 extension LinearGradient {

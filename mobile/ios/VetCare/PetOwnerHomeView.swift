@@ -69,7 +69,7 @@ struct PetOwnerHomeView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         )
     }
@@ -115,7 +115,7 @@ struct PetOwnerHomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                 )
             } else if pets.isEmpty {
                 emptyPets
@@ -146,7 +146,7 @@ struct PetOwnerHomeView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
         )
     }
 
@@ -181,7 +181,7 @@ struct PetOwnerHomeView: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         )
     }
@@ -257,7 +257,7 @@ private struct PetCard: View {
         .padding(14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.04), radius: 6, y: 1)
         )
     }

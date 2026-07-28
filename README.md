@@ -94,8 +94,8 @@ python app.py      # runs on http://localhost:5001
 | Admin         | admin1@propet.lk       | admin1@pass   |
 | Veterinarian  | dulani@propet.lk       | password123   |
 | Receptionist  | kumari@propet.lk       | password123   |
-| Pet Owner     | kalharatennakoon92@gmail.com | customer@pass |
-| Pet Owner     | kavindra.d@gmail.com | customer@pass |
+| Pet Owner     | nishantha.rj@pgmail.com| customer@pass |
+| Pet Owner     | kavindra.d@gmail.com   | customer@pass |
 
 
 > These credentials are only available after running the seed file.

@@ -57,7 +57,7 @@ struct WelcomeView: View {
         VStack(spacing: 14) {
             // Primary: pet owner
             NavigationLink(value: WelcomeRoute.login(.petOwner)) {
-                PillLabel(title: "Sign In — Pet Owner", style: .filled)
+                PillLabel(title: "Sign In", style: .filled)
             }
 
             // Divider
@@ -100,21 +100,11 @@ struct WelcomeView: View {
                     )
             )
 
-            // Staff login — demoted to small link
-            VStack(spacing: 6) {
-                Divider()
-                    .padding(.top, 4)
-                Text("Your account and pet records are kept private and secure.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                NavigationLink(value: WelcomeRoute.login(.staff)) {
-                    Text("Clinic Staff Login")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .underline()
-                }
-            }
+            Text("Your account and pet records are kept private and secure.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 4)
         }
     }
 }
@@ -147,7 +137,7 @@ struct PillLabel: View {
         case .outlined:
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(Color.brand, lineWidth: 1.5)
-                .background(Color.white.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+                .background(Color.cardSurface.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
         }
     }
 }

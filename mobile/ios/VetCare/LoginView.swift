@@ -53,9 +53,9 @@ struct LoginView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(mode.title)
+            Text("Welcome Back")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-            Text(mode.subtitle)
+            Text("Sign in to view your pets' records and care history.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -66,10 +66,10 @@ struct LoginView: View {
 
     private var fields: some View {
         VStack(spacing: 16) {
-            FieldContainer(label: mode.identifierLabel) {
-                TextField(mode.identifierPrompt, text: $identifier)
-                    .keyboardType(mode.keyboardType)
-                    .textContentType(mode == .staff ? .emailAddress : .username)
+            FieldContainer(label: "Email or phone") {
+                TextField("Email or phone number", text: $identifier)
+                    .keyboardType(.default)
+                    .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .focused($focusedField, equals: .identifier)
@@ -154,21 +154,14 @@ struct LoginView: View {
         isSubmitting = true
         defer { isSubmitting = false }
 
-        switch mode {
-        case .petOwner:
-            do {
-                let (customer, token) = try await CustomerAuthService().login(
-                    identifier: identifier.trimmingCharacters(in: .whitespaces),
-                    password: password
-                )
-                session.login(customer: customer, token: token)
-            } catch {
-                errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
-            }
-
-        case .staff:
-            try? await Task.sleep(for: .milliseconds(400))
-            errorMessage = "Staff sign-in is not yet available on mobile."
+        do {
+            let (customer, token) = try await CustomerAuthService().login(
+                identifier: identifier.trimmingCharacters(in: .whitespaces),
+                password: password
+            )
+            session.login(customer: customer, token: token)
+        } catch {
+            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
         }
     }
 }
@@ -189,24 +182,19 @@ struct FieldContainer<Content: View>: View {
                 .frame(height: 50)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.black.opacity(0.08), lineWidth: 1)
+                                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                         )
                 )
         }
     }
 }
 
-#Preview("Staff") {
-    NavigationStack {
-        LoginView(mode: .staff)
-    }
-}
-
-#Preview("Pet Owner") {
+#Preview {
     NavigationStack {
         LoginView(mode: .petOwner)
     }
+    .environment(CustomerSession())
 }

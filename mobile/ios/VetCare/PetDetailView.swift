@@ -85,7 +85,7 @@ struct PetDetailView: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
         )
     }
@@ -130,7 +130,7 @@ struct PetDetailView: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Color.cardSurface)
                     .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             )
         }
@@ -157,7 +157,7 @@ struct PetDetailView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                 )
             } else if vaccinations.isEmpty {
                 Text("No vaccination records on file.")
@@ -166,7 +166,7 @@ struct PetDetailView: View {
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                     )
             } else {
                 VStack(spacing: 0) {
@@ -179,7 +179,7 @@ struct PetDetailView: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                         .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                 )
             }
@@ -218,7 +218,7 @@ struct PetDetailView: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                 )
             } else if labReports.isEmpty {
                 Text("No lab reports on file.")
@@ -227,7 +227,7 @@ struct PetDetailView: View {
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white)
+                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                     )
             } else {
                 VStack(spacing: 0) {
@@ -245,7 +245,7 @@ struct PetDetailView: View {
                 }
                 .background(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Color.cardSurface)
                         .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                 )
             }
@@ -328,7 +328,7 @@ private struct StatChip: View {
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.04), radius: 6, y: 1)
         )
     }
@@ -376,7 +376,7 @@ private struct HealthNoteCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.cardSurface)
                 .shadow(color: .black.opacity(0.04), radius: 6, y: 1)
         )
     }
