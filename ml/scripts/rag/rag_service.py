@@ -11,6 +11,7 @@ import re
 from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
+from scripts.rag.action_intent import try_action_intent
 
 # Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
 # doesn't reliably drop the imperial aside it's used to seeing in training
@@ -168,7 +169,10 @@ number only. For example, write "29-36 kilograms", never "29-36 kilograms \
 """
 
 
-def answer_question(question: str, role: str, customer_id: str = None, top_k: int = 5) -> dict:
+def answer_question(
+    question: str, role: str, customer_id: str = None, top_k: int = 5,
+    history=None, pending_intent: dict = None
+) -> dict:
     """
     Full RAG pipeline: retrieve -> generate -> return grounded answer + citations.
 
@@ -178,7 +182,19 @@ def answer_question(question: str, role: str, customer_id: str = None, top_k: in
             'sources': [{'source_type', 'source_id', 'metadata'}, ...],
             'chunks_used': int
         }
+        (staff write-action turns may instead/also include 'action' +
+        'requires_confirmation', or 'pending_intent' - see action_intent.py)
     """
+    # Staff write-action requests (book/reschedule/cancel an appointment,
+    # send a reminder, register a customer, add a pet) are checked first -
+    # these never touch the database themselves, only propose an action or
+    # ask a follow-up question, so it's safe to try before anything else.
+    action_result = try_action_intent(
+        question, role=role, customer_id=customer_id, history=history, pending_intent=pending_intent
+    )
+    if action_result is not None:
+        return action_result
+
     # Counting/listing questions ("how many pets are named X") are unreliable
     # with pure semantic retrieval - answer them exactly via SQL when we can.
     structured = try_structured_answer(question, role=role, customer_id=customer_id)

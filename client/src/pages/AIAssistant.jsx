@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { askAssistant, backfillAll } from '../services/aiService';
+import { askAssistant, confirmAiAction, backfillAll } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
@@ -38,6 +38,11 @@ const AIAssistant = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [backfilling, setBackfilling] = useState(false);
+  // Round-trips an in-progress write-action proposal (book/reschedule/cancel
+  // an appointment, a reminder, or intake) across turns - there's no
+  // server-side conversation session, so this (plus recent message history)
+  // is how the assistant remembers what it already asked.
+  const [pendingIntent, setPendingIntent] = useState(null);
   const bottomRef = useRef(null);
   const suggestedPrompts = user?.role === 'receptionist'
     ? RECEPTIONIST_SUGGESTED_PROMPTS
@@ -50,17 +55,42 @@ const AIAssistant = () => {
   const sendQuestion = async (question) => {
     if (!question.trim() || loading) return;
 
+    // Last few turns give the assistant enough context to keep filling in a
+    // multi-turn action (e.g. answering "2pm" after being asked for a time).
+    const history = messages
+      .filter((m) => !m.intro)
+      .slice(-6)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
     setInput('');
     setLoading(true);
     setError('');
 
     try {
-      const result = await askAssistant(question);
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: result.answer, sources: result.sources || [] }
-      ]);
+      const result = await askAssistant(question, { history, pendingIntent });
+
+      if (result.action && result.requires_confirmation) {
+        setPendingIntent(null);
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: result.answer, sources: [], action: result.action, structured: true }
+        ]);
+      } else {
+        setPendingIntent(result.pending_intent || null);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: result.answer,
+            sources: result.sources || [],
+            // Follow-up slot-filling questions and deterministic SQL answers
+            // aren't the model's own general knowledge, even when there's no
+            // specific record to cite as a source - don't label them as such.
+            structured: Boolean(result.structured || result.pending_intent)
+          }
+        ]);
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -69,6 +99,48 @@ const AIAssistant = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmAction = async (messageIndex) => {
+    const target = messages[messageIndex];
+    if (!target?.action || target.resolved) return;
+
+    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await confirmAiAction(target.action);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: result.success ? (result.message || 'Done.') : (result.message || 'That action failed.'),
+          sources: [],
+          structured: true
+        }
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: err.response?.data?.message || 'Something went wrong performing that action.',
+          sources: [],
+          structured: true
+        }
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelAction = (messageIndex) => {
+    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
+    setMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: "No problem, I've cancelled that.", sources: [], structured: true }
+    ]);
   };
 
   const handleBackfill = async () => {
@@ -121,7 +193,25 @@ const AIAssistant = () => {
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
-                {m.role === 'assistant' && !m.intro && (
+                {m.role === 'assistant' && m.action && !m.resolved && (
+                  <div className="ai-action-confirm">
+                    <button
+                      className="ai-action-confirm-btn"
+                      onClick={() => handleConfirmAction(i)}
+                      disabled={loading}
+                    >
+                      <i className="fas fa-check"></i> Confirm
+                    </button>
+                    <button
+                      className="ai-action-cancel-btn"
+                      onClick={() => handleCancelAction(i)}
+                      disabled={loading}
+                    >
+                      <i className="fas fa-times"></i> Cancel
+                    </button>
+                  </div>
+                )}
+                {m.role === 'assistant' && !m.intro && !m.action && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources">
                       <span className="ai-message-sources-label">
@@ -134,11 +224,16 @@ const AIAssistant = () => {
                         </span>
                       ))}
                     </div>
-                  ) : (
+                  ) : !m.structured ? (
+                    // Only a genuine unsourced RAG answer (the model falling back to
+                    // its own training knowledge) gets this label - deterministic
+                    // structured/action-flow replies (follow-up questions, booking
+                    // confirmations, DB lookups with nothing to cite) are still
+                    // clinic-data-driven even without a source chip to show.
                     <div className="ai-message-sources ai-message-sources-general">
                       <i className="fas fa-brain"></i> General veterinary knowledge &mdash; not from a specific clinic record.
                     </div>
-                  )
+                  ) : null
                 )}
               </div>
             </div>

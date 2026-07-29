@@ -1308,7 +1308,9 @@ def rag_chat():
     Body: {
         "question": "Summarize Bella's medical history",
         "role": "veterinarian" | "receptionist" | "admin" | "pet_owner" | "guest",
-        "customer_id": "CUST-0001"   # required when role == "pet_owner"
+        "customer_id": "CUST-0001",  # required when role == "pet_owner"
+        "history": [{"role": "user"|"assistant", "content": "..."}, ...],  # optional, staff write-actions only
+        "pending_intent": {"type": "book_appointment", "slots": {...}}     # optional, echoed back mid-flow
     }
     NOTE: role/customer_id must be derived from the authenticated user on the
     Node backend, never trusted from an unauthenticated client directly.
@@ -1320,6 +1322,8 @@ def rag_chat():
         question = (data.get('question') or '').strip()
         role = data.get('role', 'guest')
         customer_id = data.get('customer_id')
+        history = data.get('history')
+        pending_intent = data.get('pending_intent')
 
         if not question:
             return jsonify({'success': False, 'error': 'question is required'}), 400
@@ -1365,7 +1369,10 @@ def rag_chat():
                 'chunks_used': 0
             }), 200
 
-        result = answer_question(question, role=role, customer_id=customer_id)
+        result = answer_question(
+            question, role=role, customer_id=customer_id,
+            history=history, pending_intent=pending_intent
+        )
         return jsonify({'success': True, **result}), 200
 
     except Exception as e:

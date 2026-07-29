@@ -9,11 +9,32 @@ const getAuthHeaders = () => ({
 /**
  * Ask the AI assistant a question (full clinic-data scope, staff only)
  * @param {string} question
+ * @param {Object} [options]
+ * @param {Array} [options.history] - recent {role, content} turns, needed for multi-turn
+ *   write-action requests (booking, rescheduling, reminders, intake)
+ * @param {Object} [options.pendingIntent] - an in-progress write-action proposal echoed back
+ *   from the previous turn's response, so slot-filling can continue
  */
-export const askAssistant = async (question) => {
+export const askAssistant = async (question, { history, pendingIntent } = {}) => {
   const response = await axios.post(
     `${API_URL}/ai/chat`,
-    { question },
+    { question, history, pending_intent: pendingIntent },
+    getAuthHeaders()
+  );
+  return response.data;
+};
+
+/**
+ * Execute a write action the assistant proposed (book/reschedule/cancel an
+ * appointment, send a reminder, register a customer, add a pet) - only ever
+ * called after the staff member explicitly confirms it in the chat UI.
+ * @param {Object} action - the `action` object returned by askAssistant
+ *   (`{ type, slots }`)
+ */
+export const confirmAiAction = async (action) => {
+  const response = await axios.post(
+    `${API_URL}/ai/actions/confirm`,
+    { action },
     getAuthHeaders()
   );
   return response.data;

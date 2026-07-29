@@ -34,13 +34,19 @@ const checkRagHealth = async () => {
  * @param {string} params.question
  * @param {string} params.role - 'admin' | 'veterinarian' | 'receptionist' | 'pet_owner' | 'guest'
  * @param {string} [params.customerId] - required when role === 'pet_owner'
+ * @param {Array} [params.history] - recent {role, content} turns, used by staff write-action
+ *   slot-filling (book/reschedule/cancel appointment, reminders, intake) - ignored otherwise
+ * @param {Object} [params.pendingIntent] - echoes back an in-progress write-action proposal
+ *   from a previous turn (see action_intent.py) so multi-turn slot-filling works statelessly
  */
-const askAssistant = async ({ question, role, customerId }) => {
+const askAssistant = async ({ question, role, customerId, history, pendingIntent }) => {
   try {
     const response = await aiClient.post('/api/ml/rag/chat', {
       question,
       role,
-      customer_id: customerId
+      customer_id: customerId,
+      history,
+      pending_intent: pendingIntent
     });
     return response.data;
   } catch (error) {

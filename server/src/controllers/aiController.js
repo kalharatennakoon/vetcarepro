@@ -11,6 +11,18 @@
 
 import * as aiService from '../services/aiService.js';
 import { FAQ_CATEGORIES, FAQS } from '../data/faqData.js';
+import {
+  createAppointment,
+  updateAppointment,
+  updateAppointmentStatus,
+  checkAppointmentConflict,
+  getAppointmentById,
+  markReminderSent
+} from '../models/appointmentModel.js';
+import { createCustomer, getCustomerById, phoneExists, emailExists } from '../models/customerModel.js';
+import { createPet, getPetById } from '../models/petModel.js';
+import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { sendAppointmentReminder } from '../services/emailService.js';
 
 /**
  * @desc    Check AI assistant (Ollama/RAG) health
@@ -38,14 +50,16 @@ const checkHealth = async (req, res) => {
  */
 const staffChat = async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, history, pending_intent } = req.body;
     if (!question || !question.trim()) {
       return res.status(400).json({ success: false, message: 'question is required' });
     }
 
     const result = await aiService.askAssistant({
       question,
-      role: req.user.role // enforced server-side from the authenticated user, never trusted from the client
+      role: req.user.role, // enforced server-side from the authenticated user, never trusted from the client
+      history,
+      pendingIntent: pending_intent
     });
 
     res.json(result);
@@ -53,6 +67,230 @@ const staffChat = async (req, res) => {
     console.error('Staff AI chat error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
+};
+
+/**
+ * @desc    Execute a write action the assistant proposed (book/reschedule/
+ *          cancel an appointment, send a reminder, register a customer, add
+ *          a pet) - only ever called after the staff member has explicitly
+ *          confirmed the proposal shown in chat. Re-validates everything the
+ *          equivalent manual REST endpoint would (existence, conflicts,
+ *          duplicates) rather than trusting the AI-resolved slots blindly.
+ * @route   POST /api/ai/actions/confirm
+ * @access  Private (admin, veterinarian, receptionist)
+ */
+const confirmAction = async (req, res) => {
+  try {
+    const { action } = req.body;
+    if (!action || !action.type || !action.slots) {
+      return res.status(400).json({ success: false, message: 'action (with type and slots) is required' });
+    }
+
+    switch (action.type) {
+      case 'book_appointment':
+        return await executeBookAppointment(action.slots, req, res);
+      case 'reschedule_appointment':
+        return await executeRescheduleAppointment(action.slots, req, res);
+      case 'cancel_appointment':
+        return await executeCancelAppointment(action.slots, req, res);
+      case 'send_reminder':
+        return await executeSendReminder(action.slots, req, res);
+      case 'register_customer':
+        return await executeRegisterCustomer(action.slots, req, res);
+      case 'add_pet':
+        return await executeAddPet(action.slots, req, res);
+      default:
+        return res.status(400).json({ success: false, message: `Unknown action type: ${action.type}` });
+    }
+  } catch (error) {
+    console.error('AI action confirm error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const executeBookAppointment = async (slots, req, res) => {
+  const customer = await getCustomerById(slots.customer_id);
+  if (!customer) {
+    return res.status(404).json({ success: false, message: 'Customer not found' });
+  }
+  const pet = await getPetById(slots.pet_id);
+  if (!pet) {
+    return res.status(404).json({ success: false, message: 'Pet not found' });
+  }
+
+  if (slots.veterinarian_id) {
+    const hasConflict = await checkAppointmentConflict({
+      veterinarian_id: slots.veterinarian_id,
+      appointment_date: slots.appointment_date,
+      appointment_time: slots.appointment_time
+    });
+    if (hasConflict) {
+      return res.status(409).json({ success: false, message: 'This time slot is already booked for the selected veterinarian' });
+    }
+  }
+
+  const newAppointment = await createAppointment({
+    customer_id: slots.customer_id,
+    pet_id: slots.pet_id,
+    veterinarian_id: slots.veterinarian_id || null,
+    appointment_date: slots.appointment_date,
+    appointment_time: slots.appointment_time,
+    appointment_type: slots.appointment_type,
+    reason: slots.reason || null
+  }, req.user.user_id);
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'CREATE',
+    tableName: 'appointments',
+    recordId: newAppointment.appointment_id,
+    oldValues: null,
+    newValues: {
+      pet_id: newAppointment.pet_id,
+      appointment_date: newAppointment.appointment_date,
+      appointment_type: newAppointment.appointment_type,
+      status: newAppointment.status
+    },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(201).json({ success: true, message: 'Appointment booked successfully', data: { appointment: newAppointment } });
+};
+
+const executeRescheduleAppointment = async (slots, req, res) => {
+  const existingAppointment = await getAppointmentById(slots.appointment_id);
+  if (!existingAppointment) {
+    return res.status(404).json({ success: false, message: 'Appointment not found' });
+  }
+
+  if (existingAppointment.veterinarian_id) {
+    const hasConflict = await checkAppointmentConflict({
+      veterinarian_id: existingAppointment.veterinarian_id,
+      appointment_date: slots.appointment_date,
+      appointment_time: slots.appointment_time
+    }, slots.appointment_id);
+    if (hasConflict) {
+      return res.status(409).json({ success: false, message: 'This time slot is already booked for the selected veterinarian' });
+    }
+  }
+
+  const updatedAppointment = await updateAppointment(slots.appointment_id, {
+    appointment_date: slots.appointment_date,
+    appointment_time: slots.appointment_time
+  }, req.user.user_id);
+
+  res.status(200).json({ success: true, message: 'Appointment rescheduled successfully', data: { appointment: updatedAppointment } });
+};
+
+const executeCancelAppointment = async (slots, req, res) => {
+  const existingAppointment = await getAppointmentById(slots.appointment_id);
+  if (!existingAppointment) {
+    return res.status(404).json({ success: false, message: 'Appointment not found' });
+  }
+
+  const updatedAppointment = await updateAppointmentStatus(
+    slots.appointment_id, 'cancelled', req.user.user_id, slots.cancellation_reason || null
+  );
+
+  res.status(200).json({ success: true, message: 'Appointment cancelled successfully', data: { appointment: updatedAppointment } });
+};
+
+const executeSendReminder = async (slots, req, res) => {
+  const appointment = await getAppointmentById(slots.appointment_id);
+  if (!appointment) {
+    return res.status(404).json({ success: false, message: 'Appointment not found' });
+  }
+
+  const customer = await getCustomerById(appointment.customer_id);
+  if (!customer || !customer.email) {
+    return res.status(400).json({ success: false, message: 'This customer has no email on file' });
+  }
+
+  await sendAppointmentReminder({
+    to: customer.email,
+    customerName: `${appointment.customer_first_name} ${appointment.customer_last_name}`,
+    petName: appointment.pet_name,
+    appointmentDate: appointment.appointment_date,
+    appointmentTime: appointment.appointment_time,
+    vetName: appointment.veterinarian_name || null,
+    reason: appointment.reason || null
+  });
+
+  await markReminderSent(slots.appointment_id);
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'UPDATE',
+    tableName: 'appointments',
+    recordId: slots.appointment_id,
+    oldValues: { reminder_sent: false },
+    newValues: { reminder_sent: true },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(200).json({ success: true, message: 'Reminder sent successfully' });
+};
+
+const executeRegisterCustomer = async (slots, req, res) => {
+  if (await phoneExists(slots.phone)) {
+    return res.status(409).json({ success: false, message: 'A customer with this phone number already exists' });
+  }
+  if (slots.email && await emailExists(slots.email)) {
+    return res.status(409).json({ success: false, message: 'A customer with this email already exists' });
+  }
+
+  const newCustomer = await createCustomer({
+    first_name: slots.first_name,
+    last_name: slots.last_name,
+    phone: slots.phone,
+    email: slots.email || null,
+    address: slots.address || null,
+    city: slots.city || null
+  }, req.user.user_id);
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'CREATE',
+    tableName: 'customers',
+    recordId: newCustomer.customer_id,
+    oldValues: null,
+    newValues: { first_name: newCustomer.first_name, last_name: newCustomer.last_name, phone: newCustomer.phone },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(201).json({ success: true, message: 'Customer registered successfully', data: { customer: newCustomer } });
+};
+
+const executeAddPet = async (slots, req, res) => {
+  const customer = await getCustomerById(slots.customer_id);
+  if (!customer) {
+    return res.status(404).json({ success: false, message: 'Customer not found' });
+  }
+
+  const newPet = await createPet({
+    customer_id: slots.customer_id,
+    pet_name: slots.pet_name,
+    species: slots.species,
+    breed: slots.breed || null,
+    gender: slots.gender || null,
+    date_of_birth: slots.date_of_birth || null
+  }, req.user.user_id);
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'CREATE',
+    tableName: 'pets',
+    recordId: newPet.pet_id,
+    oldValues: null,
+    newValues: { pet_name: newPet.pet_name, species: newPet.species, customer_id: newPet.customer_id },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(201).json({ success: true, message: 'Pet added successfully', data: { pet: newPet } });
 };
 
 /**
@@ -176,5 +414,6 @@ export {
   getFaqs,
   backfillMedicalRecords,
   backfillAll,
-  explainOutput
+  explainOutput,
+  confirmAction
 };

@@ -466,6 +466,54 @@ BILLING_COUNT_BY_METHOD = re.compile(
     re.IGNORECASE
 )
 
+# Matches: "what does John Doe owe?", "how much does Jane Doe owe?",
+# "outstanding balance for John Doe", "what's John Doe's balance/outstanding balance"
+BILLING_BALANCE_BY_CUSTOMER = re.compile(
+    r'(?:what\s+does|how\s+much\s+does)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+owe\b|'
+    r'outstanding\s+balance\s+for\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\b|'
+    r"\b([A-Za-z]+(?:\s+[A-Za-z]+)?)'s\s+(?:outstanding\s+)?balance\b",
+    re.IGNORECASE
+)
+
+# Matches: "has John Doe paid?", "is Jane Doe's bill paid?",
+# "what's the payment status for John Doe", "payment status of Jane Doe"
+BILLING_PAYMENT_STATUS_BY_CUSTOMER = re.compile(
+    r'\bhas\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+paid\b|'
+    r'payment\s+status\s+(?:for|of)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\b|'
+    r"\bis\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)'s\s+bill\s+paid\b",
+    re.IGNORECASE
+)
+
+# Appointment-type vocabulary matching the `appointments.appointment_type` enum
+# (checkup|vaccination|surgery|emergency|follow_up|consultation).
+APPT_TYPE_WORDS = r'(checkups?|vaccinations?|surgery|surgeries|emergenc(?:y|ies)|follow[\s-]?ups?|consultations?)'
+
+# Matches: "how much does a checkup cost?", "what's the estimated cost for a
+# vaccination appointment?", "price of a surgery", "cost of a consultation"
+BILLING_PRICE_ESTIMATE = re.compile(
+    r'\b(?:how\s+much\s+(?:does|would|will|is)|what\'?s?\s+the\s+(?:estimated\s+)?(?:price|cost)\s+(?:of|for)|'
+    r'price\s+of|cost\s+of|estimate[d]?\s+(?:cost|price)\s+(?:of|for))\b.*?\b' + APPT_TYPE_WORDS + r'\b',
+    re.IGNORECASE
+)
+
+_APPT_TYPE_NORMALIZE = {
+    'checkup': 'checkup', 'checkups': 'checkup',
+    'vaccination': 'vaccination', 'vaccinations': 'vaccination',
+    'surgery': 'surgery', 'surgeries': 'surgery',
+    'emergency': 'emergency', 'emergencies': 'emergency',
+    'consultation': 'consultation', 'consultations': 'consultation',
+}
+
+
+def _normalize_appointment_type(raw: str) -> str:
+    key = raw.strip().lower()
+    if key in _APPT_TYPE_NORMALIZE:
+        return _APPT_TYPE_NORMALIZE[key]
+    # "follow up" / "follow-up" / "follow ups" / "followup(s)" -> 'follow_up'
+    if re.match(r'^follow[\s-]?ups?$', key):
+        return 'follow_up'
+    return re.sub(r'[\s-]+', '_', key)
+
 
 def _first_group(match):
     """Returns the first non-None captured group from a regex match whose
@@ -715,6 +763,23 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         timeframe = _first_group(match)
         if timeframe:
             return _sum_revenue_timeframe(timeframe)
+
+        # Pricing estimate is checked before the per-customer patterns below
+        # since it never names a customer - no ambiguity to resolve there.
+        match = BILLING_PRICE_ESTIMATE.search(question)
+        appt_type_raw = _first_group(match)
+        if appt_type_raw:
+            return _estimate_price_by_appointment_type(_normalize_appointment_type(appt_type_raw))
+
+        match = BILLING_PAYMENT_STATUS_BY_CUSTOMER.search(question)
+        customer_name = _first_group(match)
+        if customer_name:
+            return _customer_payment_status(customer_name)
+
+        match = BILLING_BALANCE_BY_CUSTOMER.search(question)
+        customer_name = _first_group(match)
+        if customer_name:
+            return _customer_balance(customer_name)
 
     return None
 
@@ -1433,6 +1498,189 @@ def _count_bills_by_payment_method(method_raw: str) -> dict:
     return {
         'answer': answer,
         'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _find_customer_by_name(cur, customer_name: str):
+    """Shared customer-name lookup used by the billing handlers below - same
+    ambiguous/not-found handling as _count_pets_by_customer (line 890) so a
+    vague or multi-match name gets a clear "be more specific" answer instead
+    of silently picking one."""
+    cur.execute(
+        """
+        SELECT customer_id, first_name, last_name
+        FROM customers
+        WHERE (first_name || ' ' || last_name) ILIKE %s
+        """,
+        (f'%{customer_name}%',)
+    )
+    return cur.fetchall()
+
+
+def _customer_balance(customer_name: str) -> dict:
+    """Total outstanding balance across all of a customer's bills - the
+    receptionist-facing "what does this customer owe" lookup."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            customer_rows = _find_customer_by_name(cur, customer_name)
+            if not customer_rows:
+                return {'answer': f'No customer found matching the name "{customer_name}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+            if len(customer_rows) > 1:
+                return {'answer': f'Found multiple customers matching "{customer_name}". Please be more specific.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            customer_id, first_name, last_name = customer_rows[0]
+            full_name = f'{first_name} {last_name}'
+
+            cur.execute(
+                """
+                SELECT bill_id, bill_number, balance_amount, due_date
+                FROM billing
+                WHERE customer_id = %s AND payment_status != 'fully_paid'
+                ORDER BY due_date ASC NULLS LAST
+                """,
+                (customer_id,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': f'{full_name} has no outstanding balance - all bills are fully paid.',
+            'sources': [{'source_type': 'customer', 'source_id': customer_id, 'metadata': {}}],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    total_owed = sum(r[2] for r in rows)
+    listing = ', '.join(
+        f'{r[1]} (Rs. {r[2]:.2f}{", due " + str(r[3]) if r[3] else ""})' for r in rows
+    )
+    answer = (
+        f'{full_name} owes Rs. {total_owed:.2f} in total across {len(rows)} unpaid bill'
+        f'{"s" if len(rows) != 1 else ""}: {listing}.'
+    )
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _customer_payment_status(customer_name: str) -> dict:
+    """Per-bill payment status for a customer - "has X paid" / "payment
+    status for X" - distinct from _customer_balance which only totals what's
+    still owed."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            customer_rows = _find_customer_by_name(cur, customer_name)
+            if not customer_rows:
+                return {'answer': f'No customer found matching the name "{customer_name}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+            if len(customer_rows) > 1:
+                return {'answer': f'Found multiple customers matching "{customer_name}". Please be more specific.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            customer_id, first_name, last_name = customer_rows[0]
+            full_name = f'{first_name} {last_name}'
+
+            cur.execute(
+                """
+                SELECT bill_id, bill_number, payment_status, total_amount, balance_amount, bill_date
+                FROM billing
+                WHERE customer_id = %s
+                ORDER BY bill_date DESC
+                """,
+                (customer_id,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': f'{full_name} has no bills on record.',
+            'sources': [{'source_type': 'customer', 'source_id': customer_id, 'metadata': {}}],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    items = [
+        f'{bill_number} ({bill_date}): {payment_status.replace("_", " ")}'
+        + (f', balance Rs. {balance_amount:.2f}' if balance_amount and float(balance_amount) > 0 else '')
+        for _, bill_number, payment_status, _, balance_amount, bill_date in rows
+    ]
+    answer = f'Payment status for {full_name}:\n- ' + '\n- '.join(items)
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1], 'payment_status': r[2]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _estimate_price_by_appointment_type(appointment_type: str) -> dict:
+    """Historical-average price estimate for an appointment type - explicitly
+    framed as an average of past bills, never a guaranteed quote. Falls back
+    to appointments.estimated_cost if there's no billing history yet for this
+    type (e.g. a newly added appointment_type with no completed visits)."""
+    type_display = appointment_type.replace('_', ' ')
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT AVG(b.total_amount), COUNT(*)
+                FROM billing b
+                JOIN appointments a ON b.appointment_id = a.appointment_id
+                WHERE a.appointment_type = %s
+                """,
+                (appointment_type,)
+            )
+            avg_total, bill_count = cur.fetchone()
+
+            if avg_total is not None:
+                return {
+                    'answer': (
+                        f'Based on {bill_count} past bill{"s" if bill_count != 1 else ""}, a {type_display} '
+                        f'appointment costs an average of Rs. {float(avg_total):.2f}. This is a historical '
+                        f'average, not a fixed price or quote - the actual cost depends on the specific visit.'
+                    ),
+                    'sources': [],
+                    'chunks_used': 0,
+                    'structured': True
+                }
+
+            # No billing history for this type yet - fall back to the
+            # appointment-level estimate staff enter when booking.
+            cur.execute(
+                "SELECT AVG(estimated_cost), COUNT(*) FROM appointments WHERE appointment_type = %s AND estimated_cost IS NOT NULL",
+                (appointment_type,)
+            )
+            avg_estimate, estimate_count = cur.fetchone()
+    finally:
+        conn.close()
+
+    if avg_estimate is not None:
+        return {
+            'answer': (
+                f'There\'s no billing history yet for {type_display} appointments, but based on '
+                f'{estimate_count} past appointment estimate{"s" if estimate_count != 1 else ""}, expect '
+                f'around Rs. {float(avg_estimate):.2f}. This is an estimate, not a fixed price.'
+            ),
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    return {
+        'answer': f'There is no pricing history yet for {type_display} appointments to estimate from.',
+        'sources': [],
         'chunks_used': 0,
         'structured': True
     }

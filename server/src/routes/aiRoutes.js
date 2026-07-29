@@ -29,6 +29,13 @@ router.post('/customer-chat', authenticateCustomer, aiController.customerChat);
 // @access  Private (admin, veterinarian, receptionist)
 router.post('/chat', authenticate, staffOnly, aiController.staffChat);
 
+// @route   POST /api/ai/actions/confirm
+// @desc    Execute a write action the assistant proposed (book/reschedule/
+//          cancel an appointment, send a reminder, register a customer, add
+//          a pet) after explicit staff confirmation
+// @access  Private (admin, veterinarian, receptionist)
+router.post('/actions/confirm', authenticate, staffOnly, aiController.confirmAction);
+
 // @route   GET /api/ai/health
 // @desc    Check AI assistant (Ollama/RAG) health
 // @access  Private (staff)

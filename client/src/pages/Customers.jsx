@@ -40,19 +40,8 @@ const Customers = () => {
     }
   };
 
-
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
-  };
-
-  const formatPhone = (phone) => {
-    if (!phone) return '';
-    const cleaned = phone.replace(/\D/g, '');
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `(${match[1]}) ${match[2]}-${match[3]}`;
-    }
-    return phone;
   };
 
   const activeCount = customers.filter(c => c.is_active !== false).length;
@@ -257,7 +246,7 @@ const Customers = () => {
                         </div>
                       </td>
                       <td style={styles.td}>
-                        <span style={styles.phoneNumber}>{formatPhone(customer.phone)}</span>
+                        <span style={styles.phoneNumber}>{customer.phone}</span>
                       </td>
                       <td style={styles.td}>
                         {customer.email ? (

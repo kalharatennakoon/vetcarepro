@@ -261,6 +261,17 @@ export const getAppointmentCount = async () => {
 };
 
 /**
+ * Mark an appointment's reminder as sent (the AI assistant's on-demand
+ * "send a reminder" action is the first thing in the codebase to write to
+ * this column - the client-side 30-min auto-reminder never persists it).
+ */
+export const markReminderSent = async (appointmentId) => {
+  const query = 'UPDATE appointments SET reminder_sent = true WHERE appointment_id = $1 RETURNING *';
+  const result = await pool.query(query, [appointmentId]);
+  return result.rows[0];
+};
+
+/**
  * Check for appointment conflicts
  */
 export const checkAppointmentConflict = async (appointmentData, excludeId = null) => {

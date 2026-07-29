@@ -89,6 +89,32 @@ export const sendAppointmentConfirmation = async ({ to, customerName, petName, a
   });
 };
 
+export const sendAppointmentReminder = async ({ to, customerName, petName, appointmentDate, appointmentTime, vetName, reason }) => {
+  const transporter = createTransporter();
+
+  const html = baseTemplate(`
+    <h2>Appointment Reminder</h2>
+    <p>Dear ${customerName},</p>
+    <p>This is a friendly reminder of your upcoming appointment at <strong>${CLINIC_NAME}</strong>.</p>
+    <table class="info-table">
+      <tr><td>Patient (Pet)</td><td>${petName}</td></tr>
+      <tr><td>Date</td><td>${appointmentDate}</td></tr>
+      <tr><td>Time</td><td>${appointmentTime}</td></tr>
+      ${vetName ? `<tr><td>Veterinarian</td><td>${vetName}</td></tr>` : ''}
+      ${reason ? `<tr><td>Reason</td><td>${reason}</td></tr>` : ''}
+    </table>
+    <p>Please arrive 10 minutes before your scheduled time. If you need to reschedule or cancel, contact us as soon as possible.</p>
+    <p style="color:#6b7280; font-size:13px;">If you have any questions, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
+  `);
+
+  await transporter.sendMail({
+    from: `"${CLINIC_NAME}" <${CLINIC_EMAIL}>`,
+    to,
+    subject: `Appointment Reminder – ${appointmentDate} at ${appointmentTime}`,
+    html
+  });
+};
+
 export const sendBillEmail = async ({ to, customerName, billId, billDate, items, totalAmount, paidAmount, balanceAmount, paymentStatus, note }) => {
   const transporter = createTransporter();
 

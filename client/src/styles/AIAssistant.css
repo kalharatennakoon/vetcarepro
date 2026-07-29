@@ -167,6 +167,41 @@
   font-style: italic;
 }
 
+.ai-action-confirm {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ai-action-confirm-btn,
+.ai-action-cancel-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-action-confirm-btn {
+  background: #4338ca;
+  color: #fff;
+}
+
+.ai-action-confirm-btn:disabled,
+.ai-action-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-action-cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .ai-assistant-error {
   background: #fef2f2;
   color: #b91c1c;

@@ -8,6 +8,27 @@ import { hashPassword } from '../utils/authUtils.js';
  */
 
 /**
+ * Normalizes a Sri Lankan phone number to the "+94XXXXXXXXX" format the rest
+ * of the app assumes (validation.js's regex, CustomerForm.jsx's placeholder).
+ * The manual create/update REST routes already reject anything else via
+ * express-validator before it reaches this model, but other write paths
+ * (e.g. the AI assistant's conversational intake) don't go through that
+ * middleware - normalizing here, at the one place all customer writes
+ * funnel through, guarantees consistency regardless of caller.
+ */
+const normalizePhone = (phone) => {
+  if (!phone) return phone;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10 && digits.startsWith('0')) {
+    return `+94${digits.slice(1)}`;
+  }
+  if (digits.length === 11 && digits.startsWith('94')) {
+    return `+${digits}`;
+  }
+  return phone;
+};
+
+/**
  * Get all customers with optional filters and search
  */
 export const getAllCustomers = async (filters = {}) => {
@@ -119,14 +140,14 @@ export const createCustomer = async (customerData, createdBy) => {
     customerData.first_name,
     customerData.last_name,
     customerData.email || null,
-    customerData.phone,
-    customerData.alternate_phone || null,
+    normalizePhone(customerData.phone),
+    normalizePhone(customerData.alternate_phone) || null,
     customerData.address || null,
     customerData.city || null,
     customerData.postal_code || null,
     customerData.nic || null,
     customerData.emergency_contact || null,
-    customerData.emergency_phone || null,
+    normalizePhone(customerData.emergency_phone) || null,
     customerData.preferred_contact_method || 'phone',
     customerData.notes || null,
     createdBy,
@@ -162,12 +183,12 @@ export const updateCustomer = async (customerId, customerData, updatedBy) => {
   }
   if (customerData.phone) {
     fields.push(`phone = $${paramCount}`);
-    values.push(customerData.phone);
+    values.push(normalizePhone(customerData.phone));
     paramCount++;
   }
   if (customerData.alternate_phone !== undefined) {
     fields.push(`alternate_phone = $${paramCount}`);
-    values.push(customerData.alternate_phone);
+    values.push(normalizePhone(customerData.alternate_phone));
     paramCount++;
   }
   if (customerData.address !== undefined) {
@@ -197,7 +218,7 @@ export const updateCustomer = async (customerId, customerData, updatedBy) => {
   }
   if (customerData.emergency_phone !== undefined) {
     fields.push(`emergency_phone = $${paramCount}`);
-    values.push(customerData.emergency_phone);
+    values.push(normalizePhone(customerData.emergency_phone));
     paramCount++;
   }
   if (customerData.preferred_contact_method) {
