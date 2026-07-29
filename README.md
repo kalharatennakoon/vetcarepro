@@ -100,7 +100,7 @@ python app.py      # runs on http://localhost:5001
 
 > These credentials are only available after running the seed file.
 
-Every other pet owner account - seeded or created later by staff - is assigned the default password `VetCare@123` and must change it on first login.
+Every other pet owner account - seeded or created later by staff - has no usable password until the owner completes account setup themselves. There is no shared default password. On the pet owner login page, they choose **"Set Up Your Account"**, enter the email and phone number the clinic has on file for them, and are then prompted to choose their own password (see `POST /api/customer-auth/verify-identity` and `/set-password` in `server/src/routes/customerAuthRoutes.js`).
 
 ---
 
