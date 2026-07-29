@@ -67,4 +67,22 @@ struct CustomerAuthService {
             as: AckResponse.self
         )
     }
+
+    func verifyIdentity(email: String, phone: String) async throws -> (setupToken: String, firstName: String) {
+        let response = try await client.post(
+            "customer-auth/verify-identity",
+            body: VerifyIdentityRequest(email: email, phone: phone),
+            as: VerifyIdentityResponse.self
+        )
+        return (response.data.setupToken, response.data.firstName)
+    }
+
+    func setFirstPassword(setupToken: String, newPassword: String) async throws -> (Customer, String) {
+        let response = try await client.post(
+            "customer-auth/set-password",
+            body: SetFirstPasswordRequest(setupToken: setupToken, newPassword: newPassword),
+            as: CustomerLoginResponse.self
+        )
+        return (response.data.customer, response.data.token)
+    }
 }

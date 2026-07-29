@@ -19,6 +19,8 @@
 		D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */; };
 		D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD73015F46A00D117CA /* GuestAIView.swift */; };
 		D99E86C63018AC8600B730BC /* PetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99E86C53018AC8500B730BC /* PetDetailView.swift */; };
+		D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */; };
+		D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27630197F4700ACE00D /* SetPasswordView.swift */; };
 		D9EA01313016F67300FCFE3B /* CustomerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01303016F67300FCFE3B /* CustomerModels.swift */; };
 		D9EA01333016F67600FCFE3B /* CustomerAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */; };
 		D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01343016F68200FCFE3B /* CustomerSession.swift */; };
@@ -58,6 +60,8 @@
 		D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestChatViewModel.swift; sourceTree = "<group>"; };
 		D99AEDD73015F46A00D117CA /* GuestAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestAIView.swift; sourceTree = "<group>"; };
 		D99E86C53018AC8500B730BC /* PetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailView.swift; sourceTree = "<group>"; };
+		D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyIdentityView.swift; sourceTree = "<group>"; };
+		D9A6E27630197F4700ACE00D /* SetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPasswordView.swift; sourceTree = "<group>"; };
 		D9B9EC2A3013A4C100C8C883 /* VetCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VetCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -152,6 +156,8 @@
 				D9EA013A3016FAB200FCFE3B /* PetOwnerChatViewModel.swift */,
 				D9EA013C3016FACA00FCFE3B /* PetOwnerAIView.swift */,
 				D99E86C53018AC8500B730BC /* PetDetailView.swift */,
+				D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */,
+				D9A6E27630197F4700ACE00D /* SetPasswordView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -327,7 +333,9 @@
 				D99AEDCE3015F41E00D117CA /* APIClient.swift in Sources */,
 				D99AEDD03015F42B00D117CA /* AIModels.swift in Sources */,
 				D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */,
+				D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */,
 				D9EA01393016F6AF00FCFE3B /* PetOwnerHomeView.swift in Sources */,
+				D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

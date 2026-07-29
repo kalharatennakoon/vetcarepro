@@ -19,6 +19,7 @@ struct LoginView: View {
     @State private var isPasswordVisible = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var requiresSetup = false
 
     @FocusState private var focusedField: Field?
 
@@ -39,9 +40,11 @@ struct LoginView: View {
                     if let errorMessage {
                         errorBanner(errorMessage)
                     }
+                    setupFooter
                 }
                 .padding(.horizontal, 28)
                 .padding(.top, 12)
+                .padding(.bottom, 32)
             }
             .scrollDismissesKeyboard(.interactively)
         }
@@ -124,13 +127,27 @@ struct LoginView: View {
     }
 
     private func errorBanner(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.circle")
-                .foregroundStyle(.red)
-            Text(text)
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "exclamationmark.circle")
+                    .foregroundStyle(.red)
+                Text(text)
+                    .foregroundStyle(.primary)
+            }
+            .font(.footnote)
+
+            if requiresSetup {
+                NavigationLink(value: WelcomeRoute.verifyIdentity) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "person.badge.key.fill")
+                        Text("Set Up Your Account")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(Color.brand)
+                }
+            }
         }
-        .font(.footnote)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(
@@ -143,6 +160,29 @@ struct LoginView: View {
         )
     }
 
+    // MARK: - Setup footer
+
+    private var setupFooter: some View {
+        VStack(spacing: 12) {
+            HStack { Divider() }
+
+            VStack(spacing: 6) {
+                Text("First time here?")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Verify your email and phone number to set up your password.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            NavigationLink(value: WelcomeRoute.verifyIdentity) {
+                PillLabel(title: "Set Up Your Account", style: .outlined)
+            }
+        }
+        .padding(.top, 4)
+    }
+
     private var isValid: Bool {
         !identifier.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
@@ -151,6 +191,7 @@ struct LoginView: View {
         guard isValid, !isSubmitting else { return }
         focusedField = nil
         errorMessage = nil
+        requiresSetup = false
         isSubmitting = true
         defer { isSubmitting = false }
 
@@ -160,8 +201,15 @@ struct LoginView: View {
                 password: password
             )
             session.login(customer: customer, token: token)
+        } catch let apiError as APIError {
+            if case .server(let status, _) = apiError, status == 403 {
+                requiresSetup = true
+                errorMessage = "This account hasn't been set up yet. Please verify your identity to create your password."
+            } else {
+                errorMessage = apiError.errorDescription
+            }
         } catch {
-            errorMessage = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            errorMessage = error.localizedDescription
         }
     }
 }

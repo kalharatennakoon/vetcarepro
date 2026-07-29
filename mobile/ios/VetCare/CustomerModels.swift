@@ -274,3 +274,24 @@ struct ChangePasswordFirstLoginRequest: Encodable {
 struct AckResponse: Decodable {
     let status: String
 }
+
+// MARK: - First-time account setup
+
+struct VerifyIdentityRequest: Encodable {
+    let email: String
+    let phone: String
+}
+
+struct VerifyIdentityResponse: Decodable {
+    let data: VerifyIdentityData
+}
+
+struct VerifyIdentityData: Decodable {
+    let setupToken: String
+    let firstName: String
+}
+
+struct SetFirstPasswordRequest: Encodable {
+    let setupToken: String
+    let newPassword: String
+}

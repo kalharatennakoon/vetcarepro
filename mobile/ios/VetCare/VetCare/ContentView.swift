@@ -11,6 +11,7 @@ import SwiftUI
 enum WelcomeRoute: Hashable {
     case login(AuthMode)
     case guest
+    case verifyIdentity
 }
 
 /// Root view. Hosts the navigation stack and routes from the welcome screen.
@@ -24,6 +25,8 @@ struct ContentView: View {
                         LoginView(mode: mode)
                     case .guest:
                         GuestAIView()
+                    case .verifyIdentity:
+                        VerifyIdentityView()
                     }
                 }
         }
