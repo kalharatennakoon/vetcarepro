@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VetCare Pro - How RAG Works (Interactive CS Guide)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Mermaid CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --bg-card: rgba(15, 23, 42, 0.75);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --border-glow: rgba(56, 189, 248, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-cyan: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-green: #34d399;
+            --accent-amber: #fbbf24;
+            --accent-rose: #f43f5e;
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-code: 'Fira Code', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+            min-height: 100vh;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 3rem 1rem 2rem;
+            position: relative;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.35rem 1rem;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(168, 85, 247, 0.15));
+            border: 1px solid var(--border-glow);
+            border-radius: 9999px;
+            color: var(--accent-cyan);
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-family: var(--font-heading);
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1.15rem;
+            color: var(--text-muted);
+            max-width: 750px;
+            margin: 0 auto 2rem;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 3rem;
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            background: rgba(9, 13, 22, 0.85);
+            backdrop-filter: blur(16px);
+            padding: 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.6rem 1.25rem;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(168, 85, 247, 0.25));
+            border: 1px solid var(--border-glow);
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+        }
+
+        /* Section Layout */
+        .section-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 1.25rem;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transition: border-color 0.3s ease;
+        }
+
+        .section-card:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 0.75rem;
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
+            border: 1px solid var(--border-glow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--accent-cyan);
+        }
+
+        .section-title {
+            font-family: var(--font-heading);
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .section-desc {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2, .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mental Model & Concept Cards */
+        .comparison-card {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 1rem;
+            padding: 1.75rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .comparison-card.llm {
+            border-top: 4px solid var(--accent-rose);
+        }
+
+        .comparison-card.rag {
+            border-top: 4px solid var(--accent-green);
+        }
+
+        .comparison-card.tech {
+            border-top: 4px solid var(--accent-purple);
+        }
+
+        .card-header-tag {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header-tag.llm { color: var(--accent-rose); }
+        .card-header-tag.rag { color: var(--accent-green); }
+        .card-header-tag.tech { color: var(--accent-purple); }
+
+        .analogy-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 3px solid var(--accent-cyan);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+            color: #cbd5e1;
+        }
+
+        /* Diagram Box */
+        .diagram-container {
+            background: #060911;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+            min-height: 250px;
+        }
+
+        /* Interactive Simulator */
+        .simulator-box {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+        }
+
+        .step-progress {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .step-progress::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+            transform: translateY(-50%);
+        }
+
+        .step-node {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: var(--bg-dark);
+            border: 2px solid var(--text-muted);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            z-index: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .step-node.active {
+            border-color: var(--accent-cyan);
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--accent-cyan);
+        }
+
+        .step-node.completed {
+            border-color: var(--accent-green);
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .step-content {
+            min-height: 220px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .step-title {
+            font-family: var(--font-heading);
+            font-size: 1.25rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+
+        .step-file-badge {
+            display: inline-block;
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-cyan);
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.3rem;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--accent-cyan), #0284c7);
+            color: #fff;
+            border: none;
+            padding: 0.65rem 1.5rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Vector Visualizer Canvas */
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 340px;
+            background: #040711;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .vector-controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.4rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            color: #fff;
+            border-color: var(--accent-cyan);
+        }
+
+        /* Code Table */
+        .cs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        .cs-table th {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--accent-cyan);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .cs-table td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+        }
+
+        .cs-table tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .code-tag {
+            font-family: var(--font-code);
+            color: var(--accent-amber);
+            background: rgba(251, 191, 36, 0.1);
+            padding: 0.15rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.85rem;
+        }
+
+        /* Glossary Grid */
+        .glossary-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .glossary-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-cyan);
+        }
+
+        .glossary-term {
+            font-family: var(--font-code);
+            font-size: 1.05rem;
+            color: var(--accent-cyan);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <span class="badge">Interactive CS Architecture Visualizer</span>
+            <h1>Retrieval-Augmented Generation (RAG)</h1>
+            <p class="subtitle">A visual deep-dive into how VetCare Pro combines relational databases, vector similarity search, and local AI models to eliminate hallucinations.</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="scrollToSection('rag-fundamentals')">🎓 0. RAG Fundamentals (1st Year CS)</button>
+            <button class="tab-btn" onclick="scrollToSection('mental-model')">💡 1. Mental Model</button>
+            <button class="tab-btn" onclick="scrollToSection('architecture')">🏗 2. Architecture</button>
+            <button class="tab-btn" onclick="scrollToSection('vector-math')">📐 3. Vector Embeddings</button>
+            <button class="tab-btn" onclick="scrollToSection('simulator')">🔄 4. Step-by-Step Simulator</button>
+            <button class="tab-btn" onclick="scrollToSection('router')">🔀 5. Hybrid Router</button>
+            <button class="tab-btn" onclick="scrollToSection('security')">🔒 6. Security Isolation</button>
+        </nav>
+
+        <!-- Section 0: RAG Fundamentals for AI Beginners (NEW TAB) -->
+        <section id="rag-fundamentals" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">🎓</div>
+                <div>
+                    <h2 class="section-title">What is RAG & How Does It Work? (AI Primer)</h2>
+                </div>
+            </div>
+            <p class="section-desc">Designed for 1st-year CS students starting their AI journey: technical definitions, core mechanics, and key AI concepts explained from first principles.</p>
+
+            <!-- Technical Definition & Dual Memory Concept -->
+            <div class="grid-2" style="margin-bottom:2rem;">
+                <div class="comparison-card tech">
+                    <div class="card-header-tag tech">
+                        <span>Technical Definition</span>
+                        <span>Lewis et al., 2020 📄</span>
+                    </div>
+                    <p><strong>Retrieval-Augmented Generation (RAG)</strong> is an AI system pattern that pairs an **autoregressive Large Language Model (LLM)** with an **external non-parametric retriever** (e.g. vector database).</p>
+                    <div class="analogy-box">
+                        <strong>Formulaic Overview:</strong><br>
+                        Given query $q$, RAG computes: <br>
+                        1. $P_{\text{retrieval}}(d \mid q) \implies$ Top-$k$ relevant passages $D$<br>
+                        2. $P_{\text{generator}}(y \mid q, D) \implies$ Generated response tokens $y$
+                    </div>
+                </div>
+
+                <div class="comparison-card rag">
+                    <div class="card-header-tag rag">
+                        <span>Dual Memory Architecture</span>
+                        <span>Parametric vs. Non-Parametric</span>
+                    </div>
+                    <p>Understanding the two distinct types of memory in modern AI systems:</p>
+                    <ul style="margin-left:1.25rem; font-size:0.95rem; color:#cbd5e1;">
+                        <li style="margin-bottom:0.5rem;"><strong>Parametric Memory</strong>: The frozen weight matrices ($W \in \mathbb{R}^{m \times n}$) inside the neural network. Hard to update without expensive retraining.</li>
+                        <li><strong>Non-Parametric Knowledge Base</strong>: An external database (e.g. Postgres + `pgvector`). Instantly updated with simple $O(1)$ SQL `INSERT` statements!</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- The 3 Stages Breakdown -->
+            <h3 style="margin-bottom:1.25rem; color:var(--text-main); font-family:var(--font-heading); font-size:1.4rem;">The 3 Technical Stages of RAG Mechanics</h3>
+            <div class="grid-3" style="margin-bottom:2.5rem;">
+                <div class="comparison-card" style="border-top:3px solid var(--accent-cyan);">
+                    <h4 style="color:var(--accent-cyan); margin-bottom:0.75rem; font-family:var(--font-heading);">Stage 1: Dense Retrieval</h4>
+                    <p style="font-size:0.9rem; color:#94a3b8;">
+                        1. <strong>Tokenization</strong>: Query text $q$ is converted into token IDs.<br>
+                        2. <strong>Dense Vector Embedding</strong>: Passed into an Encoder Model (`nomic-embed-text`) to produce high-dimensional vector $\vec{q} \in \mathbb{R}^{768}$.<br>
+                        3. <strong>$k$-NN Search</strong>: Nearest Neighbors search in vector space using Cosine Similarity ($\cos\theta$).
+                    </p>
+                </div>
+
+                <div class="comparison-card" style="border-top:3px solid var(--accent-purple);">
+                    <h4 style="color:var(--accent-purple); margin-bottom:0.75rem; font-family:var(--font-heading);">Stage 2: Prompt Augmentation</h4>
+                    <p style="font-size:0.9rem; color:#94a3b8;">
+                        1. Top-$k$ retrieved chunks $\{c_1, c_2, \dots, c_k\}$ are extracted.<br>
+                        2. A structured <strong>Augmented Prompt</strong> is built.<br>
+                        3. Leverages <strong>In-Context Learning</strong>: The LLM reads the context using Self-Attention ($Q, K, V$ matrices) without mutating its model weights.
+                    </p>
+                </div>
+
+                <div class="comparison-card" style="border-top:3px solid var(--accent-green);">
+                    <h4 style="color:var(--accent-green); margin-bottom:0.75rem; font-family:var(--font-heading);">Stage 3: Autoregressive Generation</h4>
+                    <p style="font-size:0.9rem; color:#94a3b8;">
+                        1. The Transformer Decoder receives the augmented prompt.<br>
+                        2. Predicts token probabilities sequentially:<br>
+                        $P(w_t \mid w_{<t}, \text{Context})$ using Softmax.<br>
+                        3. Appends verifiable source citations to the answer.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Key AI Terms Glossary -->
+            <h3 style="margin-bottom:1.25rem; color:var(--text-main); font-family:var(--font-heading); font-size:1.4rem;">Essential AI Glossary for 1st-Year CS Students</h3>
+            <div class="grid-3">
+                <div class="glossary-card">
+                    <div class="glossary-term">Tokenization</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">The process of splitting raw text strings into numerical sub-word units (Tokens) that neural networks can process.</p>
+                </div>
+                <div class="glossary-card">
+                    <div class="glossary-term">Embedding Vector</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">A dense array of real numbers (e.g. 768 floats) representing text semantics in high-dimensional latent space.</p>
+                </div>
+                <div class="glossary-card">
+                    <div class="glossary-term">Cosine Similarity</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">A mathematical metric measuring the cosine of the angle $\theta$ between two vectors: $\cos(\theta) = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$.</p>
+                </div>
+                <div class="glossary-card">
+                    <div class="glossary-term">Context Window</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">The maximum number of tokens an LLM can process simultaneously in its Self-Attention memory at inference time.</p>
+                </div>
+                <div class="glossary-card">
+                    <div class="glossary-term">Hallucination</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">When a generative model generates statistically plausible but factually incorrect statements due to ungrounded parametric memory.</p>
+                </div>
+                <div class="glossary-card">
+                    <div class="glossary-term">In-Context Learning</div>
+                    <p style="font-size:0.88rem; color:#94a3b8;">The ability of Transformer models to follow instructions and extract facts directly from the prompt without fine-tuning weights.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: Mental Model -->
+        <section id="mental-model" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">💡</div>
+                <div>
+                    <h2 class="section-title">The Mental Model: Closed-Book vs. Open-Book</h2>
+                </div>
+            </div>
+            <p class="section-desc">Why can't we just ask a Large Language Model (LLM) direct questions about clinic records?</p>
+            
+            <div class="grid-2">
+                <div class="comparison-card llm">
+                    <div class="card-header-tag llm">
+                        <span>Standard LLM</span>
+                        <span>Closed-Book Exam ❌</span>
+                    </div>
+                    <p>The model answers using <strong>only its pre-trained memory</strong>. Since it was never trained on your private clinic database, it has two bad options: refuse or guess.</p>
+                    <div class="analogy-box">
+                        <strong>Result: Hallucination</strong><br>
+                        <em>User:</em> "What vaccines has Max received?"<br>
+                        <em>LLM:</em> "Max received Rabies on June 5th." (Completely fabricated!)
+                    </div>
+                </div>
+
+                <div class="comparison-card rag">
+                    <div class="card-header-tag rag">
+                        <span>RAG Architecture</span>
+                        <span>Open-Book Exam ✅</span>
+                    </div>
+                    <p>Before answering, the system first <strong>retrieves</strong> real records from Postgres, attaches them to the prompt, and instructs the LLM to write a response using <strong>only</strong> that context.</p>
+                    <div class="analogy-box">
+                        <strong>Result: Authoritative & Verifiable</strong><br>
+                        <em>RAG System:</em> "Based on record #1042, Max received his DHPP vaccine on Jan 10, 2024."
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Architecture Diagram -->
+        <section id="architecture" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">🏗</div>
+                <div>
+                    <h2 class="section-title">System Component Architecture</h2>
+                </div>
+            </div>
+            <p class="section-desc">How the React frontend, Express gateway, Flask microservice, PostgreSQL (pgvector), and local Ollama models talk to each other.</p>
+
+            <div class="diagram-container">
+                <pre class="mermaid">
+flowchart TB
+    subgraph Layer1["1. Presentation Layer"]
+        UI["React Frontend<br/>(AIAssistant.jsx)"]
+    end
+
+    subgraph Layer2["2. Security Gateway"]
+        Node["Express API Server<br/>(aiController.js)"]
+        JWT["JWT Auth & Role Verification<br/>(guest | pet_owner | staff)"]
+    end
+
+    subgraph Layer3["3. Flask ML Service (rag_service.py)"]
+        Router{"Query Router"}
+        ActionEngine["Action Intent Engine<br/>(action_intent.py)"]
+        SQLengine["Structured Query Engine<br/>(structured_query.py)"]
+        RAGengine["Vector RAG Engine<br/>(retrieval.py)"]
+    end
+
+    subgraph Layer4["4. Database & AI Models"]
+        PG[("PostgreSQL + pgvector<br/>(vector_store)")]
+        OllamaEmbed["Ollama: nomic-embed-text<br/>(768-dim Vectorizer)"]
+        OllamaLLM["Ollama: qwen2.5-coder:7b<br/>(Local Generator)"]
+    end
+
+    UI -->|"1. POST /api/ai/chat"| Node
+    Node --> JWT
+    JWT -->|"2. Authenticated Query + Role"| Router
+    
+    Router -->|"Action Request"| ActionEngine
+    Router -->|"Exact Count / List"| SQLengine
+    Router -->|"Semantic Knowledge"| RAGengine
+
+    SQLengine -->|"Direct SQL"| PG
+    RAGengine -->|"a. Embed Query"| OllamaEmbed
+    OllamaEmbed -->|"b. 768 Float Vector"| RAGengine
+    RAGengine -->|"c. Cosine Distance Search (<=>)"| PG
+    PG -->|"d. Top-3 Relevant Chunks"| RAGengine
+    RAGengine -->|"e. Assembled Context Prompt"| OllamaLLM
+    OllamaLLM -->|"f. Generated Response"| UI
+                </pre>
+            </div>
+        </section>
+
+        <!-- Section 3: Vector Embeddings & Math -->
+        <section id="vector-math" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">📐</div>
+                <div>
+                    <h2 class="section-title">Vector Embeddings & Semantic Search</h2>
+                </div>
+            </div>
+            <p class="section-desc">Traditional string search relies on exact keyword matches. Vector embeddings map human language into points on a 768-dimensional map where <strong>similar meanings are close together</strong>.</p>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom:1rem; color:var(--accent-cyan);">Interactive 2D Vector Space Simulation</h3>
+                    <div class="canvas-container">
+                        <canvas id="vectorCanvas"></canvas>
+                    </div>
+                    <div class="vector-controls">
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Try preset query:</span>
+                        <button class="preset-btn" onclick="simulateQuery('What vaccines has Max received?', 0.85, 0.82)">"Max vaccines?"</button>
+                        <button class="preset-btn" onclick="simulateQuery('How much does a checkup cost?', 0.20, 0.35)">"Checkup cost?"</button>
+                        <button class="preset-btn" onclick="simulateQuery('What time do you close?', 0.10, 0.12)">"Opening hours?"</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom:1rem; color:var(--accent-purple);">Cosine Similarity Math</h3>
+                    <div class="analogy-box" style="margin-top:0;">
+                        <p style="font-family:var(--font-code); color:var(--accent-cyan);">
+                            Similarity = cos(θ) = (A · B) / (||A|| ||B||)
+                        </p>
+                        <br>
+                        <p><strong>How pgvector queries the DB:</strong></p>
+                        <p style="font-family:var(--font-code); font-size:0.85rem; color:#cbd5e1; margin-top:0.5rem;">
+                            SELECT content, 1 - (embedding <=> $1) AS similarity<br>
+                            FROM vector_store<br>
+                            ORDER BY embedding <=> $1 ASC<br>
+                            LIMIT 3;
+                        </p>
+                    </div>
+                    <div id="similarityOutput" style="background:rgba(0,0,0,0.4); padding:1rem; border-radius:0.5rem; border:1px solid rgba(255,255,255,0.05); font-size:0.9rem;">
+                        Click a query button on the left to measure cosine distance $\cos(\theta)$ to stored database chunks!
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Step-by-Step Simulator -->
+        <section id="simulator" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">🔄</div>
+                <div>
+                    <h2 class="section-title">Step-by-Step Execution Simulator</h2>
+                </div>
+            </div>
+            <p class="section-desc">Trace the journey of a user request through each layer of the VetCare Pro stack.</p>
+
+            <div class="simulator-box">
+                <div class="step-progress">
+                    <div class="step-node active" id="node-1" onclick="setStep(1)">1</div>
+                    <div class="step-node" id="node-2" onclick="setStep(2)">2</div>
+                    <div class="step-node" id="node-3" onclick="setStep(3)">3</div>
+                    <div class="step-node" id="node-4" onclick="setStep(4)">4</div>
+                    <div class="step-node" id="node-5" onclick="setStep(5)">5</div>
+                    <div class="step-node" id="node-6" onclick="setStep(6)">6</div>
+                </div>
+
+                <div class="step-content">
+                    <h3 class="step-title" id="step-title">Step 1: User Types Question</h3>
+                    <div class="step-file-badge" id="step-file">client/src/pages/AIAssistant.jsx</div>
+                    <p id="step-desc">The receptionist or pet owner types: <em>"Has Max had his Rabies shot?"</em> into the React chat box. The client sends a HTTP POST request to Express. Notice that user identity is NOT sent in the body — it relies on server-side HTTP session cookies / JWT headers.</p>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-outline" onclick="prevStep()">← Previous Step</button>
+                    <span id="step-indicator" style="color:var(--text-muted); font-size:0.9rem;">Step 1 of 6</span>
+                    <button class="btn" onclick="nextStep()">Next Step →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 5: Hybrid Router -->
+        <section id="router" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">🔀</div>
+                <div>
+                    <h2 class="section-title">Hybrid Query Routing: Avoiding RAG Flaws</h2>
+                </div>
+            </div>
+            <p class="section-desc">RAG is great for semantic search, but terrible at exact counting (vector search only returns top-K chunks, not the whole DB!). VetCare Pro uses a hybrid router.</p>
+
+            <div class="diagram-container">
+                <pre class="mermaid">
+flowchart TD
+    Start["User Question Arrives"] --> Q1{"Action Request?<br/><i>'Book appointment'</i>"}
+    Q1 -- Yes --> Action["action_intent.py<br/>Extract JSON params + Await Human Confirmation"]
+    
+    Q1 -- No --> Q2{"Exact Count / List?<br/><i>'How many dogs registered?'</i>"}
+    Q2 -- Yes --> SQL["structured_query.py<br/>Execute SELECT COUNT(*) directly (No AI guessing!)"]
+    
+    Q2 -- No --> RAG["retrieval.py<br/>Perform Vector Search + Prompt Context LLM"]
+                </pre>
+            </div>
+        </section>
+
+        <!-- Section 6: Security & Role Isolation -->
+        <section id="security" class="section-card">
+            <div class="section-header">
+                <div class="section-icon">🔒</div>
+                <div>
+                    <h2 class="section-title">Multi-Tenant Role Security Isolation</h2>
+                </div>
+            </div>
+            <p class="section-desc">Security is enforced at the database query layer so private clinic data never reaches the LLM context for unauthorized users.</p>
+
+            <table class="cs-table">
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Permissions</th>
+                        <th>Postgres Query Clause (`retrieval.py`)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Guest</strong></td>
+                        <td>Public FAQs & general advice only</td>
+                        <td><span class="code-tag">WHERE role_scope = 'public_faq'</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pet Owner</strong></td>
+                        <td>Own pets' medical & billing records</td>
+                        <td><span class="code-tag">WHERE role_scope IN ('public_faq', 'pet_owner') AND customer_id = $auth_user</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Staff / Vet</strong></td>
+                        <td>Full clinic medical records</td>
+                        <td><span class="code-tag">WHERE role_scope IN ('public_faq', 'pet_owner', 'staff')</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                darkMode: true,
+                background: '#060911',
+                primaryColor: '#0ea5e9',
+                secondaryColor: '#8b5cf6',
+                tertiaryColor: '#1e293b'
+            }
+        });
+
+        // Tab Scrolling
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Execution Step Simulator Logic
+        const steps = [
+            {
+                title: "Step 1: User Types Question",
+                file: "client/src/pages/AIAssistant.jsx",
+                desc: "The user types: 'Has Max had his Rabies shot?' in the browser. The frontend dispatches a POST request to Express. Authentication tokens (JWT) are sent in secure HTTP headers."
+            },
+            {
+                title: "Step 2: Gateway Authentication & Role Resolution",
+                file: "server/src/controllers/aiController.js",
+                desc: "Node/Express verifies the JWT signature, extracts the user's role ('pet_owner') and customer ID (e.g. 42), and forwards the request to the Python Flask microservice."
+            },
+            {
+                title: "Step 3: Intent Classification & Routing",
+                file: "ml/scripts/rag/rag_service.py",
+                desc: "Flask inspects the question. Since it's not a booking action ('action_intent.py') nor an exact count ('structured_query.py'), it routes to the Vector RAG engine."
+            },
+            {
+                title: "Step 4: Embedding Generation",
+                file: "ml/scripts/rag/ollama_client.py",
+                desc: "Flask calls Ollama's local 'nomic-embed-text' model to convert the question into a 768-float vector representing its semantic meaning."
+            },
+            {
+                title: "Step 5: pgvector Similarity Search",
+                file: "ml/scripts/rag/retrieval.py",
+                desc: "PostgreSQL executes Cosine Distance search (`ORDER BY embedding <=> query_vec`). It applies a strict filter: `WHERE customer_id = 42` so no other customer's records can be returned."
+            },
+            {
+                title: "Step 6: Context Augmentation & LLM Generation",
+                file: "ml/scripts/rag/rag_service.py -> Ollama",
+                desc: "The retrieved chunks are embedded into a System Prompt: 'Answer using ONLY this context: [Max DHPP vaccine on 2024-01-10]'. The local `qwen2.5-coder:7b` model generates the final verified answer with source badges."
+            }
+        ];
+
+        let currentStep = 1;
+
+        function updateStepUI() {
+            const stepData = steps[currentStep - 1];
+            document.getElementById('step-title').innerText = stepData.title;
+            document.getElementById('step-file').innerText = stepData.file;
+            document.getElementById('step-desc').innerHTML = stepData.desc;
+            document.getElementById('step-indicator').innerText = `Step ${currentStep} of ${steps.length}`;
+
+            for (let i = 1; i <= 6; i++) {
+                const node = document.getElementById(`node-${i}`);
+                if (i === currentStep) {
+                    node.className = "step-node active";
+                } else if (i < currentStep) {
+                    node.className = "step-node completed";
+                } else {
+                    node.className = "step-node";
+                }
+            }
+        }
+
+        function setStep(step) {
+            currentStep = step;
+            updateStepUI();
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length) {
+                currentStep++;
+                updateStepUI();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepUI();
+            }
+        }
+
+        // Vector Canvas Simulator
+        const canvas = document.getElementById('vectorCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            drawCanvas(null);
+        }
+
+        const storedChunks = [
+            { label: "Max Rabies Shot (2024-03-15)", x: 0.85, y: 0.80, color: "#34d399" },
+            { label: "Max Vaccine History", x: 0.82, y: 0.85, color: "#34d399" },
+            { label: "Checkup Fee $50", x: 0.20, y: 0.30, color: "#fbbf24" },
+            { label: "Clinic Hours 9am-5pm", x: 0.10, y: 0.15, color: "#f43f5e" }
+        ];
+
+        let activeQuery = null;
+
+        function drawCanvas(queryPoint) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Grid lines
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.lineWidth = 1;
+            for(let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y = 0; y < canvas.height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // Draw stored chunks
+            storedChunks.forEach(chunk => {
+                const px = chunk.x * (canvas.width - 60) + 30;
+                const py = (1 - chunk.y) * (canvas.height - 60) + 30;
+
+                ctx.fillStyle = chunk.color;
+                ctx.beginPath();
+                ctx.arc(px, py, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#94a3b8";
+                ctx.font = "11px Inter";
+                ctx.fillText(chunk.label, px + 10, py + 4);
+            });
+
+            // Draw query point if active
+            if (queryPoint) {
+                const qx = queryPoint.x * (canvas.width - 60) + 30;
+                const qy = (1 - queryPoint.y) * (canvas.height - 60) + 30;
+
+                ctx.fillStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.arc(qx, qy, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = "#38bdf8";
+                ctx.font = "bold 12px Inter";
+                ctx.fillText("QUERY: " + queryPoint.label, qx + 12, qy + 4);
+
+                // Draw distance line to closest chunk
+                const closest = storedChunks[0]; // Max Rabies
+                const cx = closest.x * (canvas.width - 60) + 30;
+                const cy = (1 - closest.y) * (canvas.height - 60) + 30;
+
+                ctx.setLineDash([4, 4]);
+                ctx.strokeStyle = "#38bdf8";
+                ctx.beginPath();
+                ctx.moveTo(qx, qy);
+                ctx.lineTo(cx, cy);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        function simulateQuery(text, x, y) {
+            activeQuery = { label: text, x: x, y: y };
+            drawCanvas(activeQuery);
+
+            const output = document.getElementById('similarityOutput');
+            const dist = Math.hypot(x - 0.85, y - 0.80).toFixed(3);
+            const sim = (1 - dist).toFixed(3);
+
+            output.innerHTML = `
+                <strong style="color:var(--accent-cyan);">Query Vector:</strong> [${(x*0.5).toFixed(2)}, ${(y*0.4).toFixed(2)}, ... 768 floats]<br>
+                <strong style="color:var(--accent-green);">Nearest DB Chunk:</strong> "Max Rabies Shot (2024-03-15)"<br>
+                <strong style="color:var(--accent-amber);">Cosine Distance (<=>):</strong> ${dist} &nbsp;|&nbsp; <strong>Similarity Score:</strong> ${(sim * 100).toFixed(1)}% ✅
+            `;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            updateStepUI();
+        });
+    </script>
+</body>
+</html>
