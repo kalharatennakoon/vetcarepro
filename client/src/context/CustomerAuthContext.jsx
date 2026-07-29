@@ -70,6 +70,67 @@ export const CustomerAuthProvider = ({ children }) => {
       return { success: true, customer: customerData };
     } catch (error) {
       const message = error.response?.data?.message || 'Login failed';
+      const requiresSetup = !!error.response?.data?.requiresSetup;
+      return { success: false, message, requiresSetup };
+    }
+  };
+
+  /**
+   * Step 1 of first-time account setup: confirm email + phone match an
+   * account on file. Returns a short-lived setupToken (not a session token)
+   * on success, used by setPassword() below.
+   */
+  const verifyIdentity = async (email, phone) => {
+    try {
+      const response = await axios.post(`${API_URL}/customer-auth/verify-identity`, {
+        email,
+        phone
+      });
+
+      const { setupToken, firstName } = response.data.data;
+      return { success: true, setupToken, firstName };
+    } catch (error) {
+      const message = error.response?.data?.message || 'We could not verify your identity';
+      return { success: false, message };
+    }
+  };
+
+  /**
+   * Step 2 of first-time account setup: set a password using the setupToken
+   * from verifyIdentity(). Logs the customer in on success, same as login().
+   */
+  const setPassword = async (setupToken, newPassword) => {
+    try {
+      const response = await axios.post(`${API_URL}/customer-auth/set-password`, {
+        setupToken,
+        newPassword
+      });
+
+      const { customer: customerData, token: authToken } = response.data.data;
+
+      setCustomer(customerData);
+      setToken(authToken);
+
+      return { success: true, customer: customerData };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to set password';
+      return { success: false, message };
+    }
+  };
+
+  /**
+   * Change password for an already-logged-in customer (requires current password)
+   */
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      await axios.post(
+        `${API_URL}/customer-auth/change-password`,
+        { currentPassword, newPassword },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to change password';
       return { success: false, message };
     }
   };
@@ -91,31 +152,15 @@ export const CustomerAuthProvider = ({ children }) => {
     }
   };
 
-  /**
-   * Set a new password on first login (clears password_must_change)
-   */
-  const changePasswordFirstLogin = async (newPassword) => {
-    try {
-      await axios.post(
-        `${API_URL}/customer-auth/change-password-first-login`,
-        { newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCustomer((prev) => (prev ? { ...prev, password_must_change: false } : prev));
-      return { success: true };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to change password';
-      return { success: false, message };
-    }
-  };
-
   const value = {
     customer,
     token,
     loading,
     login,
     logout,
-    changePasswordFirstLogin,
+    verifyIdentity,
+    setPassword,
+    changePassword,
     isAuthenticated: !!customer
   };
 

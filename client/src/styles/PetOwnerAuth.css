@@ -135,6 +135,19 @@
   margin-bottom: 1rem;
 }
 
+.po-auth-success-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.5rem;
+  color: #166534;
+  font-size: 0.8125rem;
+  margin-bottom: 1rem;
+}
+
 .po-auth-form {
   display: flex;
   flex-direction: column;
@@ -236,6 +249,22 @@
   color: #137fec;
   text-decoration: none;
   font-weight: 600;
+}
+
+.po-auth-link-button,
+.po-auth-inline-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.po-auth-inline-link {
+  color: #137fec;
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: underline;
 }
 
 .po-auth-footer-bar {

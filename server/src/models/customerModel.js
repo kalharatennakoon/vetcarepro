@@ -1,5 +1,6 @@
+import crypto from 'crypto';
 import pool from '../config/database.js';
-import { hashPassword, DEFAULT_CUSTOMER_PASSWORD } from '../utils/authUtils.js';
+import { hashPassword } from '../utils/authUtils.js';
 
 /**
  * Customer Model
@@ -93,12 +94,15 @@ export const getCustomerById = async (customerId) => {
 
 /**
  * Create new customer
- * Every new customer is assigned the clinic-wide default portal password
- * and must change it on first login (mirrors the staff users.password_must_change
- * pattern) - see database/migrations/add_customer_auth.sql.
+ * Every new customer starts with password_must_change = true and an
+ * unguessable random password hash - they can't log in with it directly.
+ * Portal access is unlocked by verifying identity (email + phone) via
+ * POST /api/customer-auth/verify-identity and then setting their own
+ * password via POST /api/customer-auth/set-password.
  */
 export const createCustomer = async (customerData, createdBy) => {
-  const defaultPasswordHash = await hashPassword(DEFAULT_CUSTOMER_PASSWORD);
+  const randomPassword = crypto.randomBytes(32).toString('hex');
+  const defaultPasswordHash = await hashPassword(randomPassword);
 
   const query = `
     INSERT INTO customers (
@@ -361,6 +365,23 @@ export const findCustomerByEmailOrPhone = async (identifier) => {
     LIMIT 1
   `;
   const result = await pool.query(query, [identifier]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Find an active customer whose email AND phone both match (used by the
+ * identity-verification step that unlocks first-time password setup).
+ * Requiring both to match, rather than either, is what confirms the
+ * requester is the same pet owner on file - not just someone who knows one
+ * of the two values.
+ */
+export const findCustomerByEmailAndPhone = async (email, phone) => {
+  const query = `
+    SELECT * FROM customers
+    WHERE email = $1 AND phone = $2 AND is_active = true
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [email, phone]);
   return result.rows[0] || null;
 };
 

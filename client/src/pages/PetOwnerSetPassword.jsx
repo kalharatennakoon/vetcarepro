@@ -1,24 +1,28 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import '../styles/PetOwnerAuth.css';
 
-const PetOwnerChangePassword = () => {
-  const [currentPassword, setCurrentPassword] = useState('');
+const PetOwnerSetPassword = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { changePassword, customer, logout } = useCustomerAuth();
+  const { setPassword } = useCustomerAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { setupToken, firstName } = location.state || {};
+
+  // Can't set a password without first verifying identity
+  if (!setupToken) {
+    return <Navigate to="/pet-owner/verify-identity" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
     if (newPassword.length < 6) {
       setError('Password must be at least 6 characters long.');
@@ -30,16 +34,13 @@ const PetOwnerChangePassword = () => {
     }
 
     setLoading(true);
-    const result = await changePassword(currentPassword, newPassword);
+    const result = await setPassword(setupToken, newPassword);
     setLoading(false);
 
     if (result.success) {
-      setSuccess('Password changed successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      navigate('/pet-owner/profile');
     } else {
-      setError(result.message || 'Failed to change password. Please try again.');
+      setError(result.message || 'Failed to set password. Please try again.');
     }
   };
 
@@ -55,9 +56,6 @@ const PetOwnerChangePassword = () => {
             <p className="po-auth-logo-subtitle">Pet Owner Portal</p>
           </div>
         </div>
-        <button type="button" className="po-auth-back-button" onClick={() => navigate('/pet-owner/profile')}>
-          &larr; Back to Profile
-        </button>
       </header>
 
       <main className="po-auth-main">
@@ -65,12 +63,13 @@ const PetOwnerChangePassword = () => {
           <div className="po-auth-card-header">
             <div className="po-auth-badge">
               <i className="fas fa-lock"></i>
-              <span>Account Security</span>
+              <span>Account Setup</span>
             </div>
-            <h1 className="po-auth-title">Change Password</h1>
+            <h1 className="po-auth-title">Set Your Password</h1>
             <p className="po-auth-subtitle">
-              {customer ? `Hi ${customer.first_name}, ` : ''}
-              enter your current password and choose a new one.
+              {firstName ? `Hi ${firstName}, ` : ''}
+              your identity is verified. Choose a password to finish setting up
+              your account.
             </p>
           </div>
 
@@ -81,30 +80,7 @@ const PetOwnerChangePassword = () => {
             </div>
           )}
 
-          {success && (
-            <div className="po-auth-success-box">
-              <i className="fas fa-check-circle"></i>
-              {success}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="po-auth-form">
-            <div className="po-auth-input-group">
-              <label className="po-auth-label">Current Password</label>
-              <div className="po-auth-input-wrapper">
-                <i className="fas fa-lock po-auth-input-icon"></i>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter your current password"
-                  required
-                  className="po-auth-input"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-
             <div className="po-auth-input-group">
               <label className="po-auth-label">New Password</label>
               <div className="po-auth-input-wrapper">
@@ -146,15 +122,9 @@ const PetOwnerChangePassword = () => {
             </div>
 
             <button type="submit" className="po-auth-submit-button" disabled={loading}>
-              {loading ? 'Saving...' : 'Change Password'}
+              {loading ? 'Saving...' : 'Set Password & Continue'}
             </button>
           </form>
-
-          <div className="po-auth-footer">
-            <button type="button" className="po-auth-support-link po-auth-link-button" onClick={logout}>
-              Sign Out
-            </button>
-          </div>
         </div>
       </main>
 
@@ -165,4 +135,4 @@ const PetOwnerChangePassword = () => {
   );
 };
 
-export default PetOwnerChangePassword;
+export default PetOwnerSetPassword;

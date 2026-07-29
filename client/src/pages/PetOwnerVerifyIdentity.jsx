@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 import '../styles/PetOwnerAuth.css';
 
-const PetOwnerLogin = () => {
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+const PetOwnerVerifyIdentity = () => {
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
-  const [requiresSetup, setRequiresSetup] = useState(false);
   const [loading, setLoading] = useState(false);
   const errorRef = useRef(null);
 
-  const { login } = useCustomerAuth();
+  const { verifyIdentity } = useCustomerAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -22,16 +20,16 @@ const PetOwnerLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setRequiresSetup(false);
     setLoading(true);
 
-    const result = await login(identifier, password);
+    const result = await verifyIdentity(email.trim(), phone.trim());
 
     if (result.success) {
-      navigate('/pet-owner/profile');
+      navigate('/pet-owner/set-password', {
+        state: { setupToken: result.setupToken, firstName: result.firstName }
+      });
     } else {
-      setError(result.message || 'Login failed. Please check your details.');
-      setRequiresSetup(!!result.requiresSetup);
+      setError(result.message || 'We could not verify your identity. Please try again.');
     }
 
     setLoading(false);
@@ -52,9 +50,9 @@ const PetOwnerLogin = () => {
         <button
           type="button"
           className="po-auth-back-button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/pet-owner/login')}
         >
-          &larr; Back to Welcome
+          &larr; Back to Login
         </button>
       </header>
 
@@ -62,46 +60,33 @@ const PetOwnerLogin = () => {
         <div className="po-auth-card">
           <div className="po-auth-card-header">
             <div className="po-auth-badge">
-              <i className="fas fa-heart"></i>
-              <span>Pet Owner Sign In</span>
+              <i className="fas fa-user-check"></i>
+              <span>Account Setup</span>
             </div>
-            <h1 className="po-auth-title">Welcome Back</h1>
+            <h1 className="po-auth-title">Verify Your Identity</h1>
             <p className="po-auth-subtitle">
-              Sign in with the email or phone number on file with the clinic.
+              Enter the email and phone number the clinic has on file for you.
+              We&rsquo;ll confirm they match before letting you set a password.
             </p>
           </div>
 
           {error && (
             <div ref={errorRef} className="po-auth-error-box">
               <i className="fas fa-exclamation-triangle"></i>
-              <span>
-                {error}
-                {requiresSetup && (
-                  <>
-                    {' '}
-                    <button
-                      type="button"
-                      className="po-auth-inline-link"
-                      onClick={() => navigate('/pet-owner/verify-identity')}
-                    >
-                      Set up your account
-                    </button>
-                  </>
-                )}
-              </span>
+              {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="po-auth-form">
             <div className="po-auth-input-group">
-              <label className="po-auth-label">Email or Phone Number</label>
+              <label className="po-auth-label">Email Address</label>
               <div className="po-auth-input-wrapper">
-                <i className="fas fa-user po-auth-input-icon"></i>
+                <i className="fas fa-envelope po-auth-input-icon"></i>
                 <input
-                  type="text"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="name@example.com or +947XXXXXXXX"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
                   required
                   className="po-auth-input"
                   disabled={loading}
@@ -110,45 +95,36 @@ const PetOwnerLogin = () => {
             </div>
 
             <div className="po-auth-input-group">
-              <label className="po-auth-label">Password</label>
+              <label className="po-auth-label">Phone Number</label>
               <div className="po-auth-input-wrapper">
-                <i className="fas fa-lock po-auth-input-icon"></i>
+                <i className="fas fa-phone po-auth-input-icon"></i>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+947XXXXXXXX"
                   required
                   className="po-auth-input"
                   disabled={loading}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="po-auth-toggle-password"
-                  disabled={loading}
-                >
-                  <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                </button>
               </div>
             </div>
 
             <button type="submit" className="po-auth-submit-button" disabled={loading}>
-              {loading ? 'Logging in...' : 'Log In'}
+              {loading ? 'Verifying...' : 'Verify & Continue'}
             </button>
           </form>
 
           <div className="po-auth-footer">
             <p className="po-auth-support-text">
-              First time here? Verify your email and phone number to set up your
-              password.
+              Already set up your password?
             </p>
             <button
               type="button"
               className="po-auth-support-link po-auth-link-button"
-              onClick={() => navigate('/pet-owner/verify-identity')}
+              onClick={() => navigate('/pet-owner/login')}
             >
-              <i className="fas fa-user-check"></i> Set Up Your Account
+              Back to Login
             </button>
             <a href="mailto:support@vetcarepro.lk" className="po-auth-support-link">
               <i className="fas fa-headset"></i> Contact Support
@@ -164,4 +140,4 @@ const PetOwnerLogin = () => {
   );
 };
 
-export default PetOwnerLogin;
+export default PetOwnerVerifyIdentity;

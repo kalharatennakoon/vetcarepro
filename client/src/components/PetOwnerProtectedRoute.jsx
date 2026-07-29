@@ -1,9 +1,8 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
 
 const PetOwnerProtectedRoute = ({ children }) => {
-  const { isAuthenticated, customer, loading } = useCustomerAuth();
-  const location = useLocation();
+  const { isAuthenticated, loading } = useCustomerAuth();
 
   if (loading) {
     return (
@@ -16,11 +15,6 @@ const PetOwnerProtectedRoute = ({ children }) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/pet-owner/login" replace />;
-  }
-
-  // Force password change before accessing anything else
-  if (customer?.password_must_change && location.pathname !== '/pet-owner/change-password') {
-    return <Navigate to="/pet-owner/change-password" replace />;
   }
 
   return children;

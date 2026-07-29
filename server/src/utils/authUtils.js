@@ -14,14 +14,6 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
- * Clinic-wide default password assigned to every new customer/pet-owner
- * account. They are always forced to change it on first login
- * (customers.password_must_change defaults to true) - see
- * database/migrations/add_customer_auth.sql.
- */
-export const DEFAULT_CUSTOMER_PASSWORD = 'VetCare@123';
-
-/**
  * Hash a plain text password
  * Converts plain password to secure hash (used when registering)
  * @param {string} password - Plain text password
@@ -103,6 +95,37 @@ export const generateCustomerToken = (customer) => {
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
+};
+
+/**
+ * Generate a short-lived token authorizing a pet owner to set their password
+ * for the first time, issued after they verify their email + phone match an
+ * account (see verifyIdentity in customerAuthController.js). Deliberately a
+ * different token `type` than generateCustomerToken() so it can't be used to
+ * access the portal itself - only to call /customer-auth/set-password.
+ * @param {Object} customer - Customer object
+ * @returns {string} - JWT token, expires in 15 minutes
+ */
+export const generateCustomerSetupToken = (customer) => {
+  const payload = {
+    customer_id: customer.customer_id,
+    type: 'customer-setup'
+  };
+
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+};
+
+/**
+ * Verify a customer setup token (see generateCustomerSetupToken)
+ * @param {string} token - JWT token
+ * @returns {Object} - Decoded token payload
+ */
+export const verifyCustomerSetupToken = (token) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (decoded.type !== 'customer-setup') {
+    throw new Error('Invalid or expired setup token');
+  }
+  return decoded;
 };
 
 /**

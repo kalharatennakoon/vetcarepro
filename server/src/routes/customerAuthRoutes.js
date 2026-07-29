@@ -5,7 +5,8 @@ import {
   getMyPets,
   logout,
   changePassword,
-  changePasswordFirstLogin
+  verifyIdentity,
+  setPassword
 } from '../controllers/customerAuthController.js';
 import { listMyLabReports, viewMyLabReport } from '../controllers/labReportController.js';
 import { listMyPetVaccinations } from '../controllers/petController.js';
@@ -25,6 +26,16 @@ const router = express.Router();
 // @desc    Log in with email or phone as username
 // @access  Public
 router.post('/login', login);
+
+// @route   POST /api/customer-auth/verify-identity
+// @desc    Confirm email + phone match a pet owner on file, issue a setup token
+// @access  Public
+router.post('/verify-identity', verifyIdentity);
+
+// @route   POST /api/customer-auth/set-password
+// @desc    Set a password for the first time using a setup token, then log in
+// @access  Public (requires a valid setupToken)
+router.post('/set-password', setPassword);
 
 // @route   GET /api/customer-auth/me
 // @desc    Get current logged-in customer
@@ -61,10 +72,5 @@ router.post('/logout', authenticateCustomer, logout);
 // @desc    Change own password (requires current password)
 // @access  Private (customer)
 router.post('/change-password', authenticateCustomer, changePassword);
-
-// @route   POST /api/customer-auth/change-password-first-login
-// @desc    Change password for first-time login
-// @access  Private (customer)
-router.post('/change-password-first-login', authenticateCustomer, changePasswordFirstLogin);
 
 export default router;

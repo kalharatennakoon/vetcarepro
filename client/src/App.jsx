@@ -39,6 +39,8 @@ import SystemLogs from './pages/SystemLogs';
 import AIAssistant from './pages/AIAssistant';
 import GuestAIAssistant from './pages/GuestAIAssistant';
 import PetOwnerLogin from './pages/PetOwnerLogin';
+import PetOwnerVerifyIdentity from './pages/PetOwnerVerifyIdentity';
+import PetOwnerSetPassword from './pages/PetOwnerSetPassword';
 import PetOwnerChangePassword from './pages/PetOwnerChangePassword';
 import PetOwnerProfile from './pages/PetOwnerProfile';
 import PetOwnerProtectedRoute from './components/PetOwnerProtectedRoute';
@@ -77,6 +79,8 @@ function App() {
 
       {/* Pet Owner Portal - separate login/session from staff, scoped to own pets */}
       <Route path="/pet-owner/login" element={<PetOwnerLogin />} />
+      <Route path="/pet-owner/verify-identity" element={<PetOwnerVerifyIdentity />} />
+      <Route path="/pet-owner/set-password" element={<PetOwnerSetPassword />} />
       <Route
         path="/pet-owner/change-password"
         element={
