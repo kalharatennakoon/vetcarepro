@@ -5,31 +5,62 @@ import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 
-// Admin/veterinarian have full clinic-wide access, so these lean clinical.
+// Admin has full clinic-wide access, so these lean clinical/operational.
 const CLINICAL_SUGGESTED_PROMPTS = [
   "Summarize a pet's recent medical history",
   'Explain the current outbreak risk in plain language',
   'What should I check before an appointment?'
 ];
 
-// Receptionist's AI scope excludes disease cases, lab reports, and medical
-// records (see ml/scripts/rag/retrieval.py) - these match what they can
-// actually get answered: front-desk FAQs and vaccination lookups.
-const RECEPTIONIST_SUGGESTED_PROMPTS = [
-  'How do I book or reschedule an appointment?',
-  'How do I register a new customer and their pet?',
-  'What vaccines has a specific pet had?'
+// Veterinarian-specific: mirrors the four clinical-generation capabilities
+// built for vets (full history, note drafting, aftercare, pre-visit
+// briefing) - deliberately excludes booking/scheduling, which is a
+// receptionist workflow, not part of the vet's own use of the assistant.
+const VETERINARIAN_SUGGESTED_PROMPTS = [
+  "Summarize a pet's complete medical history",
+  'Draft a consultation note from my visit observations',
+  'Write owner-friendly aftercare instructions',
+  'What should I know before seeing a patient today?'
 ];
+
+// Receptionist-specific: mirrors their actual front-desk workflow - booking/
+// rescheduling/cancelling appointments, intake, and billing lookups are all
+// real chat-driven actions now (not just "how do I" instructions), and
+// billing is a self-contained example that always gives a real answer
+// without needing a specific customer name first.
+const RECEPTIONIST_SUGGESTED_PROMPTS = [
+  'Book an appointment for a pet',
+  'Register a new customer',
+  'How much does a checkup usually cost?'
+];
+
+// Veterinarian's own intro - written in first person for them, not "defer
+// to the veterinarian" (redundant/odd when the veterinarian IS the user).
+const VET_INTRO =
+  "Hi, I'm the VetCare Pro AI assistant. I can summarize medical histories, draft " +
+  'consultation notes, write aftercare instructions, and brief you before visits - ' +
+  'grounded in real clinic data. Diagnosis and treatment are always your call.';
+
+// Receptionist's own intro - front-desk workflow only, no clinical/medical
+// framing at all (that's never in scope for this role).
+const RECEPTIONIST_INTRO =
+  "Hi, I'm the VetCare Pro AI assistant. I can book, reschedule, or cancel " +
+  'appointments, send reminders, register new customers and pets, and answer ' +
+  'billing questions - grounded in real clinic data. Clinical questions go to a veterinarian.';
+
+const DEFAULT_INTRO =
+  "Hi, I'm the VetCare Pro AI assistant. Ask me about pet records, " +
+  "consultation summaries, or the clinic's AI predictions. I answer using " +
+  'clinic data and always defer final medical judgment to the veterinarian.';
 
 const AIAssistant = () => {
   const { user } = useAuth();
+  const isVeterinarian = user?.role === 'veterinarian';
+  const isReceptionist = user?.role === 'receptionist';
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content:
-        "Hi, I'm the VetCare Pro AI assistant. Ask me about pet records, " +
-        "consultation summaries, or the clinic's AI predictions. I answer using " +
-        'clinic data and always defer final medical judgment to the veterinarian.',
+      content: isVeterinarian ? VET_INTRO : isReceptionist ? RECEPTIONIST_INTRO : DEFAULT_INTRO,
       sources: [],
       intro: true
     }
@@ -46,7 +77,9 @@ const AIAssistant = () => {
   const bottomRef = useRef(null);
   const suggestedPrompts = user?.role === 'receptionist'
     ? RECEPTIONIST_SUGGESTED_PROMPTS
-    : CLINICAL_SUGGESTED_PROMPTS;
+    : isVeterinarian
+      ? VETERINARIAN_SUGGESTED_PROMPTS
+      : CLINICAL_SUGGESTED_PROMPTS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -87,7 +120,10 @@ const AIAssistant = () => {
             // Follow-up slot-filling questions and deterministic SQL answers
             // aren't the model's own general knowledge, even when there's no
             // specific record to cite as a source - don't label them as such.
-            structured: Boolean(result.structured || result.pending_intent)
+            structured: Boolean(result.structured || result.pending_intent),
+            // Disambiguation choices (e.g. "which Max?") - clicking one just
+            // re-submits its value as the next message, same as typing it.
+            options: result.options || []
           }
         ]);
       }
@@ -143,6 +179,11 @@ const AIAssistant = () => {
     ]);
   };
 
+  const handleOptionClick = (messageIndex, value) => {
+    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
+    sendQuestion(value);
+  };
+
   const handleBackfill = async () => {
     setBackfilling(true);
     setError('');
@@ -174,7 +215,11 @@ const AIAssistant = () => {
           <div>
             <h1><i className="fas fa-robot"></i> AI Assistant</h1>
             <p className="ai-assistant-subtitle">
-              Decision-support only &mdash; always confirm medical decisions with a veterinarian.
+              {isVeterinarian
+                ? 'Decision-support only — you always make the final call on diagnosis and treatment.'
+                : isReceptionist
+                  ? 'Front-desk support only — clinical and diagnosis questions go to a veterinarian.'
+                  : 'Decision-support only — always confirm medical decisions with a veterinarian.'}
             </p>
           </div>
           {user?.role === 'admin' && (
@@ -209,6 +254,20 @@ const AIAssistant = () => {
                     >
                       <i className="fas fa-times"></i> Cancel
                     </button>
+                  </div>
+                )}
+                {m.role === 'assistant' && m.options && m.options.length > 0 && !m.resolved && (
+                  <div className="ai-option-choices">
+                    {m.options.map((opt, j) => (
+                      <button
+                        key={j}
+                        className="ai-option-btn"
+                        onClick={() => handleOptionClick(i, opt.value)}
+                        disabled={loading}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 )}
                 {m.role === 'assistant' && !m.intro && !m.action && (

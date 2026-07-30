@@ -202,6 +202,29 @@
   color: #374151;
 }
 
+.ai-option-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ai-option-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-option-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .ai-assistant-error {
   background: #fef2f2;
   color: #b91c1c;

@@ -22,7 +22,7 @@ import {
 import { createCustomer, getCustomerById, phoneExists, emailExists } from '../models/customerModel.js';
 import { createPet, getPetById } from '../models/petModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
-import { sendAppointmentReminder } from '../services/emailService.js';
+import { sendAppointmentReminder, sendCustomEmail } from '../services/emailService.js';
 
 /**
  * @desc    Check AI assistant (Ollama/RAG) health
@@ -99,6 +99,8 @@ const confirmAction = async (req, res) => {
         return await executeRegisterCustomer(action.slots, req, res);
       case 'add_pet':
         return await executeAddPet(action.slots, req, res);
+      case 'send_aftercare_email':
+        return await executeSendAftercareEmail(action.slots, req, res);
       default:
         return res.status(400).json({ success: false, message: `Unknown action type: ${action.type}` });
     }
@@ -231,6 +233,34 @@ const executeSendReminder = async (slots, req, res) => {
   });
 
   res.status(200).json({ success: true, message: 'Reminder sent successfully' });
+};
+
+const executeSendAftercareEmail = async (slots, req, res) => {
+  const customer = await getCustomerById(slots.customer_id);
+  if (!customer || !customer.email) {
+    return res.status(400).json({ success: false, message: 'This customer has no email on file' });
+  }
+
+  await sendCustomEmail({
+    to: customer.email,
+    customerName: `${customer.first_name} ${customer.last_name}`,
+    subject: slots.subject,
+    message: slots.message,
+    senderName: `Dr. ${req.user.first_name} ${req.user.last_name}`
+  });
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'CREATE',
+    tableName: 'customers',
+    recordId: slots.customer_id,
+    oldValues: null,
+    newValues: { aftercare_email_sent_for: slots.pet_name },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(200).json({ success: true, message: 'Aftercare instructions emailed successfully' });
 };
 
 const executeRegisterCustomer = async (slots, req, res) => {

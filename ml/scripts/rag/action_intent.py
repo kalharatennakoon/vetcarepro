@@ -261,8 +261,34 @@ def _find_veterinarian_by_name(cur, vet_name: str):
     return cur.fetchall()
 
 
-def _ask(intent_type: str, slots: dict, question_text: str) -> dict:
-    return {'answer': question_text, 'pending_intent': {'type': intent_type, 'slots': slots}, 'structured': True}
+def _ask(intent_type: str, slots: dict, question_text: str, field: str, options: list = None) -> dict:
+    """`field` names exactly which SLOT_SCHEMAS key this question is trying
+    to fill (or the pseudo-field 'full_name', split into first_name/last_name
+    - see try_action_intent). On the next turn, the reply is injected
+    directly into that field and the resolver re-run immediately, rather
+    than routed through the general LLM slot-merge - that step isn't
+    reliable at attributing a short/bare reply to the right field (observed
+    looping forever instead of ever updating it, especially when the reply
+    overlaps with an already-set field, e.g. "vaccination" as both
+    appointment_type and reason)."""
+    result = {
+        'answer': question_text,
+        'pending_intent': {'type': intent_type, 'slots': slots, 'field': field},
+        'structured': True
+    }
+    if options:
+        result['options'] = options
+    return result
+
+
+def _owner_options(pet_rows) -> list:
+    """Builds clickable disambiguation options from _find_pet_by_name's rows
+    - clicking one just re-submits the owner's name as the next message,
+    same as if the vet/receptionist had typed it themselves."""
+    return [
+        {'label': f'{r[1]} ({r[3]} {r[4]})', 'value': f'{r[3]} {r[4]}'}
+        for r in pet_rows
+    ]
 
 
 def _done(answer_text: str) -> dict:
@@ -282,7 +308,7 @@ def _resolve_book_appointment(slots: dict) -> dict:
     reason = (slots.get('reason') or '').strip() or None
 
     if not pet_name:
-        return _ask('book_appointment', slots, 'Which pet is this appointment for?')
+        return _ask('book_appointment', slots, 'Which pet is this appointment for?', field='pet_name')
 
     conn = get_raw_db_connection()
     try:
@@ -294,28 +320,32 @@ def _resolve_book_appointment(slots: dict) -> dict:
     if not pet_rows:
         return _done(f'I couldn\'t find an active pet named "{pet_name}". Could you double-check the name?')
     if len(pet_rows) > 1:
-        return _ask('book_appointment', slots, f'There are multiple pets named "{pet_name}" - could you tell me the owner\'s name too?')
+        return _ask(
+            'book_appointment', slots, f'I found multiple pets named "{pet_name}" - which one did you mean?',
+            field='owner_name', options=_owner_options(pet_rows)
+        )
 
     pet_id, resolved_pet_name, customer_id, owner_first, owner_last = pet_rows[0]
 
     resolved_date = _resolve_date_phrase(slots.get('date_phrase'))
     if not resolved_date:
-        return _ask('book_appointment', slots, f'What date would you like to book {resolved_pet_name} in for?')
+        return _ask('book_appointment', slots, f'What date would you like to book {resolved_pet_name} in for?', field='date_phrase')
 
     if not _TIME_RE.match(time_raw):
-        return _ask('book_appointment', slots, f'What time on {resolved_date.strftime("%B %d, %Y")} works?')
+        return _ask('book_appointment', slots, f'What time on {resolved_date.strftime("%B %d, %Y")} works?', field='time')
 
     appointment_type = _normalize_appointment_type(appt_type_raw) if appt_type_raw else None
     if appointment_type not in VALID_APPOINTMENT_TYPES:
         return _ask(
             'book_appointment', slots,
-            'What type of appointment is this - checkup, vaccination, surgery, emergency, follow-up, or consultation?'
+            'What type of appointment is this - checkup, vaccination, surgery, emergency, follow-up, or consultation?',
+            field='appointment_type'
         )
 
     # appointments.reason is NOT NULL in the schema (same as the manual "New
     # Appointment" form) - unlike vet_name below, this can't be left blank.
     if not reason:
-        return _ask('book_appointment', slots, f"What's the reason for {resolved_pet_name}'s visit?")
+        return _ask('book_appointment', slots, f"What's the reason for {resolved_pet_name}'s visit?", field='reason')
 
     veterinarian_id = None
     vet_display = ''
@@ -327,9 +357,9 @@ def _resolve_book_appointment(slots: dict) -> dict:
         finally:
             conn.close()
         if not vet_rows:
-            return _ask('book_appointment', slots, f'I couldn\'t find a veterinarian named "{vet_name}" - could you confirm the name, or should I leave it unassigned?')
+            return _ask('book_appointment', slots, f'I couldn\'t find a veterinarian named "{vet_name}" - could you confirm the name, or should I leave it unassigned?', field='vet_name')
         if len(vet_rows) > 1:
-            return _ask('book_appointment', slots, f'There are multiple veterinarians matching "{vet_name}" - could you be more specific?')
+            return _ask('book_appointment', slots, f'There are multiple veterinarians matching "{vet_name}" - could you be more specific?', field='vet_name')
         veterinarian_id, vet_first, vet_last = vet_rows[0]
         vet_display = f' with Dr. {vet_first} {vet_last}'
 
@@ -371,7 +401,7 @@ def _resolve_reschedule_appointment(slots: dict) -> dict:
     owner_name = (slots.get('owner_name') or '').strip() or None
 
     if not pet_name:
-        return _ask('reschedule_appointment', slots, "Which pet's appointment would you like to reschedule?")
+        return _ask('reschedule_appointment', slots, "Which pet's appointment would you like to reschedule?", field='pet_name')
 
     conn = get_raw_db_connection()
     try:
@@ -380,7 +410,10 @@ def _resolve_reschedule_appointment(slots: dict) -> dict:
             if not pet_rows:
                 return _done(f'I couldn\'t find an active pet named "{pet_name}".')
             if len(pet_rows) > 1:
-                return _ask('reschedule_appointment', slots, f'There are multiple pets named "{pet_name}" - could you tell me the owner\'s name too?')
+                return _ask(
+                    'reschedule_appointment', slots, f'I found multiple pets named "{pet_name}" - which one did you mean?',
+                    field='owner_name', options=_owner_options(pet_rows)
+                )
 
             pet_id, resolved_pet_name, customer_id, owner_first, owner_last = pet_rows[0]
             appt_rows = _find_upcoming_appointments(cur, pet_id, ('scheduled', 'confirmed'))
@@ -403,13 +436,13 @@ def _resolve_reschedule_appointment(slots: dict) -> dict:
             target = appt_rows[0]
         else:
             listing = ', '.join(f'{r[1]} at {str(r[2])[:5]}' for r in appt_rows)
-            return _ask('reschedule_appointment', slots, f'{resolved_pet_name} has multiple upcoming appointments ({listing}) - which one would you like to reschedule?')
+            return _ask('reschedule_appointment', slots, f'{resolved_pet_name} has multiple upcoming appointments ({listing}) - which one would you like to reschedule?', field='old_date_phrase')
 
     appointment_id, old_date, old_time, veterinarian_id = target
 
     new_date = _resolve_date_phrase(slots.get('new_date_phrase'))
     if not new_date:
-        return _ask('reschedule_appointment', slots, 'What new date would you like to move it to?')
+        return _ask('reschedule_appointment', slots, 'What new date would you like to move it to?', field='new_date_phrase')
 
     new_time_raw = (slots.get('new_time') or '').strip()
     new_time = new_time_raw if _TIME_RE.match(new_time_raw) else str(old_time)[:5]
@@ -435,7 +468,7 @@ def _resolve_cancel_appointment(slots: dict) -> dict:
     reason = (slots.get('reason') or '').strip() or 'Cancelled via AI assistant'
 
     if not pet_name:
-        return _ask('cancel_appointment', slots, "Which pet's appointment would you like to cancel?")
+        return _ask('cancel_appointment', slots, "Which pet's appointment would you like to cancel?", field='pet_name')
 
     conn = get_raw_db_connection()
     try:
@@ -444,7 +477,10 @@ def _resolve_cancel_appointment(slots: dict) -> dict:
             if not pet_rows:
                 return _done(f'I couldn\'t find an active pet named "{pet_name}".')
             if len(pet_rows) > 1:
-                return _ask('cancel_appointment', slots, f'There are multiple pets named "{pet_name}" - could you tell me the owner\'s name too?')
+                return _ask(
+                    'cancel_appointment', slots, f'I found multiple pets named "{pet_name}" - which one did you mean?',
+                    field='owner_name', options=_owner_options(pet_rows)
+                )
 
             pet_id, resolved_pet_name, customer_id, owner_first, owner_last = pet_rows[0]
             appt_rows = _find_upcoming_appointments(cur, pet_id, ('scheduled', 'confirmed'))
@@ -467,7 +503,7 @@ def _resolve_cancel_appointment(slots: dict) -> dict:
             target = appt_rows[0]
         else:
             listing = ', '.join(f'{r[1]} at {str(r[2])[:5]}' for r in appt_rows)
-            return _ask('cancel_appointment', slots, f'{resolved_pet_name} has multiple upcoming appointments ({listing}) - which one would you like to cancel?')
+            return _ask('cancel_appointment', slots, f'{resolved_pet_name} has multiple upcoming appointments ({listing}) - which one would you like to cancel?', field='date_phrase')
 
     appointment_id, appt_date, appt_time, _vet_id = target
 
@@ -484,7 +520,7 @@ def _resolve_send_reminder(slots: dict) -> dict:
     owner_name = (slots.get('owner_name') or '').strip() or None
 
     if not pet_name:
-        return _ask('send_reminder', slots, "Which pet's appointment should I send a reminder for?")
+        return _ask('send_reminder', slots, "Which pet's appointment should I send a reminder for?", field='pet_name')
 
     conn = get_raw_db_connection()
     try:
@@ -493,7 +529,10 @@ def _resolve_send_reminder(slots: dict) -> dict:
             if not pet_rows:
                 return _done(f'I couldn\'t find an active pet named "{pet_name}".')
             if len(pet_rows) > 1:
-                return _ask('send_reminder', slots, f'There are multiple pets named "{pet_name}" - could you tell me the owner\'s name too?')
+                return _ask(
+                    'send_reminder', slots, f'I found multiple pets named "{pet_name}" - which one did you mean?',
+                    field='owner_name', options=_owner_options(pet_rows)
+                )
 
             pet_id, resolved_pet_name, customer_id, owner_first, owner_last = pet_rows[0]
 
@@ -537,9 +576,9 @@ def _resolve_register_customer(slots: dict) -> dict:
     city = (slots.get('city') or '').strip() or None
 
     if not first_name or not last_name:
-        return _ask('register_customer', slots, "What's the customer's full name?")
+        return _ask('register_customer', slots, "What's the customer's full name?", field='full_name')
     if not phone:
-        return _ask('register_customer', slots, f'What\'s a phone number for {first_name} {last_name}?')
+        return _ask('register_customer', slots, f'What\'s a phone number for {first_name} {last_name}?', field='phone')
 
     # Mirrors customerModel.js's phoneExists/emailExists dedup checks (can't
     # call that Node code from here, so this re-implements the same lookup
@@ -582,7 +621,7 @@ def _resolve_add_pet(slots: dict) -> dict:
     dob = (slots.get('date_of_birth') or '').strip() or None
 
     if not customer_name:
-        return _ask('add_pet', slots, 'Which customer is this pet for?')
+        return _ask('add_pet', slots, 'Which customer is this pet for?', field='customer_name')
 
     conn = get_raw_db_connection()
     try:
@@ -594,14 +633,14 @@ def _resolve_add_pet(slots: dict) -> dict:
     if not customer_rows:
         return _done(f'I couldn\'t find a customer matching "{customer_name}".')
     if len(customer_rows) > 1:
-        return _ask('add_pet', slots, f'Found multiple customers matching "{customer_name}" - could you be more specific?')
+        return _ask('add_pet', slots, f'Found multiple customers matching "{customer_name}" - could you be more specific?', field='customer_name')
 
     customer_id, first_name, last_name = customer_rows[0]
 
     if not pet_name:
-        return _ask('add_pet', slots, "What's the pet's name?")
+        return _ask('add_pet', slots, "What's the pet's name?", field='pet_name')
     if not species:
-        return _ask('add_pet', slots, f'What species is {pet_name} (e.g. dog, cat)?')
+        return _ask('add_pet', slots, f'What species is {pet_name} (e.g. dog, cat)?', field='species')
 
     gender = gender_raw if gender_raw in ('male', 'female') else None
     if dob:
@@ -645,6 +684,30 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return _done("No problem, I've dropped that request.")
         intent_type = pending_intent['type']
         prior_slots = pending_intent.get('slots') or {}
+        awaiting_field = pending_intent.get('field')
+
+        if awaiting_field:
+            # Deterministic: this reply answers the single field we just
+            # asked about (see _ask) - inject it directly and re-run the
+            # resolver immediately, rather than routing it through the LLM
+            # slot-merge below. That step isn't reliable at attributing a
+            # short/bare reply to the right field - it was observed looping
+            # on the same question forever instead of ever updating it,
+            # especially when the reply overlaps with an already-set field
+            # (e.g. "vaccination" answering both appointment_type and reason).
+            reply = question.strip()
+            if awaiting_field == 'full_name':
+                # Splitting a full name doesn't need an LLM either - first
+                # word is the first name, the rest is the last name.
+                parts = reply.split(None, 1)
+                updated_slots = {
+                    **prior_slots,
+                    'first_name': parts[0] if parts else '',
+                    'last_name': parts[1] if len(parts) > 1 else ''
+                }
+            else:
+                updated_slots = {**prior_slots, awaiting_field: reply}
+            return _RESOLVERS[intent_type](updated_slots)
     else:
         intent_type = None
         if RESCHEDULE_APPOINTMENT.search(question):
@@ -664,6 +727,8 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return None
         prior_slots = {}
 
+    # Only reached on a genuinely fresh request (first turn, no pending_intent) -
+    # continuations above always resolve deterministically without an LLM call.
     conversation_text = _conversation_text(history, question)
     slots = _extract_slots_via_llm(intent_type, prior_slots, conversation_text)
 

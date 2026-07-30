@@ -12,6 +12,7 @@ from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
 from scripts.rag.action_intent import try_action_intent
+from scripts.rag.clinical_tools import try_clinical_tool
 
 # Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
 # doesn't reliably drop the imperial aside it's used to seeing in training
@@ -194,6 +195,15 @@ def answer_question(
     )
     if action_result is not None:
         return action_result
+
+    # Clinical generation requests (full history summary, consultation note
+    # draft, aftercare instructions, pre-appointment briefing) need the
+    # COMPLETE record set for a pet, not a top-k RAG sample - checked next,
+    # before falling to exact-SQL/RAG. Staff-only (admin/veterinarian); the
+    # module itself gates on CLINICAL_STAFF_ROLES and returns None otherwise.
+    clinical_result = try_clinical_tool(question, role=role, history=history, pending_intent=pending_intent)
+    if clinical_result is not None:
+        return clinical_result
 
     # Counting/listing questions ("how many pets are named X") are unreliable
     # with pure semantic retrieval - answer them exactly via SQL when we can.
