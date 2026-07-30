@@ -9,6 +9,7 @@ Requires Ollama running locally (default http://localhost:11434) with:
 """
 
 import os
+import re
 import requests
 from dotenv import load_dotenv
 
@@ -102,6 +103,23 @@ def generate_answer(system_prompt: str, user_prompt: str) -> str:
         ) from e
     except requests.exceptions.RequestException as e:
         raise OllamaError(f'Ollama chat request failed: {e}') from e
+
+
+# This clinic operates in Sri Lanka and bills exclusively in LKR - qwen2.5-coder:7b
+# still occasionally defaults to '$'/'USD'/'dollars' from its training data even when
+# a system prompt explicitly says not to (same failure mode as the imperial-units
+# aside stripped in rag_service.py's _strip_imperial_units). Rather than keep tuning
+# prompt wording against a small local model, normalize deterministically. Lives here
+# (not in rag_service.py, where _strip_imperial_units lives) so both rag_service.py
+# and clinical_tools.py can share it without a circular import between them.
+_DOLLAR_AMOUNT = re.compile(r'\$\s?([\d,]+(?:\.\d+)?)')
+_DOLLAR_WORD = re.compile(r'\bUSD\b|\bU\.S\.\s?dollars?\b|\bdollars?\b', re.IGNORECASE)
+
+
+def normalize_currency(text: str) -> str:
+    text = _DOLLAR_AMOUNT.sub(lambda m: f'Rs. {m.group(1)}', text)
+    text = _DOLLAR_WORD.sub('LKR', text)
+    return text
 
 
 def check_health() -> dict:

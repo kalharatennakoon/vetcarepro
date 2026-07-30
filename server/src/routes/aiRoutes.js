@@ -32,8 +32,10 @@ router.post('/chat', authenticate, staffOnly, aiController.staffChat);
 // @route   POST /api/ai/actions/confirm
 // @desc    Execute a write action the assistant proposed (book/reschedule/
 //          cancel an appointment, send a reminder, register a customer, add
-//          a pet) after explicit staff confirmation
-// @access  Private (admin, veterinarian, receptionist)
+//          a pet, or - admin only - register a new staff member) after
+//          explicit staff confirmation
+// @access  Private (admin, veterinarian, receptionist) - register_staff is
+//          further restricted to admin inside the controller
 router.post('/actions/confirm', authenticate, staffOnly, aiController.confirmAction);
 
 // @route   GET /api/ai/health

@@ -21,8 +21,16 @@ import {
 } from '../models/appointmentModel.js';
 import { createCustomer, getCustomerById, phoneExists, emailExists } from '../models/customerModel.js';
 import { createPet, getPetById } from '../models/petModel.js';
+import { createUser, emailExists as staffEmailExists } from '../models/userModel.js';
+import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { sendAppointmentReminder, sendCustomEmail } from '../services/emailService.js';
+
+const VALID_STAFF_ROLES = ['admin', 'veterinarian', 'receptionist'];
+// Matches server/src/middleware/validation.js's phone format for staff -
+// the AI action path writes via createUser() directly, bypassing that
+// express-validator chain, so it's re-checked here.
+const STAFF_PHONE_RE = /^\+94[0-9]{9}$/;
 
 /**
  * @desc    Check AI assistant (Ollama/RAG) health
@@ -72,12 +80,15 @@ const staffChat = async (req, res) => {
 /**
  * @desc    Execute a write action the assistant proposed (book/reschedule/
  *          cancel an appointment, send a reminder, register a customer, add
- *          a pet) - only ever called after the staff member has explicitly
- *          confirmed the proposal shown in chat. Re-validates everything the
- *          equivalent manual REST endpoint would (existence, conflicts,
- *          duplicates) rather than trusting the AI-resolved slots blindly.
+ *          a pet, or - admin only - register a new staff member) - only
+ *          ever called after the staff member has explicitly confirmed the
+ *          proposal shown in chat. Re-validates everything the equivalent
+ *          manual REST endpoint would (existence, conflicts, duplicates,
+ *          and per-action role) rather than trusting the AI-resolved slots
+ *          blindly.
  * @route   POST /api/ai/actions/confirm
- * @access  Private (admin, veterinarian, receptionist)
+ * @access  Private (admin, veterinarian, receptionist) - individual action
+ *          types may further restrict (e.g. register_staff is admin-only)
  */
 const confirmAction = async (req, res) => {
   try {
@@ -101,6 +112,8 @@ const confirmAction = async (req, res) => {
         return await executeAddPet(action.slots, req, res);
       case 'send_aftercare_email':
         return await executeSendAftercareEmail(action.slots, req, res);
+      case 'register_staff':
+        return await executeRegisterStaff(action.slots, req, res);
       default:
         return res.status(400).json({ success: false, message: `Unknown action type: ${action.type}` });
     }
@@ -321,6 +334,61 @@ const executeAddPet = async (slots, req, res) => {
   });
 
   res.status(201).json({ success: true, message: 'Pet added successfully', data: { pet: newPet } });
+};
+
+const executeRegisterStaff = async (slots, req, res) => {
+  // Defense in depth: action_intent.py already refuses to propose this
+  // action for a non-admin, but this endpoint is reachable directly with
+  // any staff-confirmed action payload (see staffOnly on the route) - the
+  // real REST equivalent (POST /api/users) is adminOnly, so this must be too.
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Only admin accounts can register new staff members' });
+  }
+  if (!VALID_STAFF_ROLES.includes(slots.role)) {
+    return res.status(400).json({ success: false, message: 'role must be admin, veterinarian, or receptionist' });
+  }
+  if (slots.phone && !STAFF_PHONE_RE.test(slots.phone)) {
+    return res.status(400).json({ success: false, message: 'phone must be in format +94XXXXXXXXX' });
+  }
+  if (await staffEmailExists(slots.email)) {
+    return res.status(409).json({ success: false, message: 'A user with this email already exists' });
+  }
+
+  // Matches createUserByAdmin's default-password convention (POST /api/users) -
+  // the account is created with password_must_change so this is never a
+  // standing credential.
+  const password_hash = await hashPassword('VetCare123');
+
+  const newUser = await createUser({
+    first_name: slots.first_name,
+    last_name: slots.last_name,
+    email: slots.email,
+    phone: slots.phone || null,
+    role: slots.role,
+    specialization: slots.specialization || null,
+    license_number: slots.license_number || null,
+    password_hash,
+    password_must_change: true,
+    created_by: req.user.user_id
+  });
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'CREATE',
+    tableName: 'users',
+    recordId: newUser.user_id,
+    oldValues: null,
+    newValues: { email: newUser.email, role: newUser.role, first_name: newUser.first_name, last_name: newUser.last_name },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  res.status(201).json({
+    success: true,
+    message: `Staff account created for ${newUser.first_name} ${newUser.last_name} (${newUser.role}). ` +
+      "Temporary password: VetCare123 - they'll be required to change it on first login.",
+    data: { user: sanitizeUser(newUser) }
+  });
 };
 
 /**

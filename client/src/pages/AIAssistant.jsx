@@ -7,12 +7,17 @@ import '../styles/AIAssistant.css';
 
 // Admin oversees the whole clinic - operations, staffing, and finances, not
 // just the clinical side - so these spotlight revenue/staffing/inventory
-// oversight and ML-driven analytics rather than per-patient visit prep.
+// oversight and ML-driven analytics (live model predictions/explanations,
+// not just RAG lookups) rather than per-patient visit prep. Registering a
+// new staff member is also admin-only, mirroring the write-action examples
+// given to receptionist/veterinarian below.
 const CLINICAL_SUGGESTED_PROMPTS = [
   "What's the total revenue this month?",
+  "What's our revenue forecast for the next few months?",
   'How many veterinarians do we have?',
-  'Which items are running low on stock?',
-  'Explain the current outbreak risk in plain language'
+  'What should I reorder soon?',
+  'Explain the current outbreak risk in plain language',
+  'Register a new veterinarian to the team'
 ];
 
 // Veterinarian-specific: mirrors the four clinical-generation capabilities
@@ -56,7 +61,8 @@ const RECEPTIONIST_INTRO =
 // than the veterinarian/receptionist copy above.
 const DEFAULT_INTRO =
   "Hi, I'm the VetCare Pro AI assistant. I can summarize pet records, explain " +
-  "clinic-wide analytics and AI predictions, and help you review operations " +
+  'clinic-wide analytics and AI predictions (revenue forecasts, inventory demand, ' +
+  'outbreak risk), register new staff members, and help you review operations ' +
   'across the clinic - grounded in real clinic data. Diagnosis and treatment ' +
   'decisions are always left to a veterinarian.';
 

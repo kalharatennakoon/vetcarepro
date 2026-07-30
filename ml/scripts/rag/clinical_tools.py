@@ -28,7 +28,7 @@ an email without the vet reviewing it first.
 import re
 
 from config.db_connection import get_raw_db_connection
-from scripts.rag.ollama_client import generate_answer, OllamaError
+from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
 from scripts.rag.structured_query import CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name
 from scripts.rag.action_intent import _find_pet_by_name
 
@@ -238,6 +238,7 @@ Present facts from the records; let the veterinarian draw clinical conclusions.
 5. Keep it concise - a few short paragraphs or a bulleted list, not a re-statement of every record.
 6. This clinic operates in Sri Lanka - always use metric units (kilograms, Celsius, centimeters). \
 Never use pounds, Fahrenheit, or inches.
+7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 DRAFT_NOTE_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, helping a veterinarian quickly \
@@ -259,6 +260,7 @@ clear, professional clinical language under the right heading.
 5. Produce exactly ONE draft, in this exact format, one time - do not repeat yourself or produce a \
 second version.
 6. This clinic operates in Sri Lanka - always use metric units. Never use pounds, Fahrenheit, or inches.
+7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 AFTERCARE_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, helping a veterinarian write \
@@ -277,6 +279,7 @@ schedule ONLY if one was actually given) and when to contact the clinic again (e
 4. Never invent a follow-up date, medication, or dosage that wasn't given to you.
 5. Format for skimming: a short paragraph or two, then a bullet list of care steps.
 6. This clinic operates in Sri Lanka - always use metric units. Never use pounds, Fahrenheit, or inches.
+7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 BRIEFING_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, giving a veterinarian a quick \
@@ -289,6 +292,7 @@ the visit: known allergies, special needs, past adverse reactions, recent/ongoin
 vaccinations or follow-ups, and current medication if a recent prescription is on file.
 3. Keep it short and scannable - a few bullet points, not a full history retelling.
 4. This clinic operates in Sri Lanka - always use metric units. Never use pounds, Fahrenheit, or inches.
+5. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 
@@ -321,7 +325,7 @@ def _resolve_full_history_summary(pet_id: str, observations_text: str) -> dict:
     user_prompt = f"Full record for this pet:\n\n{dataset_text}\n\nWrite a summary of this pet's complete medical history for the veterinarian."
 
     try:
-        answer = generate_answer(HISTORY_SUMMARY_SYSTEM_PROMPT, user_prompt)
+        answer = normalize_currency(generate_answer(HISTORY_SUMMARY_SYSTEM_PROMPT, user_prompt))
     except OllamaError as e:
         return _unavailable(e)
 
@@ -346,7 +350,7 @@ def _resolve_draft_consultation_note(pet_id: str, observations_text: str) -> dic
     )
 
     try:
-        answer = generate_answer(DRAFT_NOTE_SYSTEM_PROMPT, user_prompt)
+        answer = normalize_currency(generate_answer(DRAFT_NOTE_SYSTEM_PROMPT, user_prompt))
     except OllamaError as e:
         return _unavailable(e)
 
@@ -380,7 +384,7 @@ def _resolve_aftercare_instructions(pet_id: str, observations_text: str) -> dict
     )
 
     try:
-        answer = generate_answer(AFTERCARE_SYSTEM_PROMPT, user_prompt)
+        answer = normalize_currency(generate_answer(AFTERCARE_SYSTEM_PROMPT, user_prompt))
     except OllamaError as e:
         return _unavailable(e)
 
@@ -423,7 +427,7 @@ def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str) -> di
     user_prompt = f"Record for this pet:\n\n{dataset_text}\n\nGive the veterinarian a short pre-visit briefing for today's appointment."
 
     try:
-        answer = generate_answer(BRIEFING_SYSTEM_PROMPT, user_prompt)
+        answer = normalize_currency(generate_answer(BRIEFING_SYSTEM_PROMPT, user_prompt))
     except OllamaError as e:
         return _unavailable(e)
 

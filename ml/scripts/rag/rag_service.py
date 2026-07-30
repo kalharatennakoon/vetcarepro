@@ -9,7 +9,7 @@ This is what the Flask /api/ml/rag/chat route calls.
 import re
 
 from scripts.rag.retrieval import retrieve_chunks
-from scripts.rag.ollama_client import generate_answer, OllamaError
+from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
 from scripts.rag.action_intent import try_action_intent
 from scripts.rag.clinical_tools import try_clinical_tool
@@ -55,6 +55,8 @@ weight, Celsius for temperature, centimeters for length/height). Never use pound
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
+7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+"$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
 # Used for role == 'pet_owner' - the audience has no medical training, so the
@@ -108,6 +110,8 @@ weight, Celsius for temperature, centimeters for length/height). Never use pound
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
+9. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+"$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
 # Used for role == 'guest' - a visitor with no account and no pet/clinic
@@ -167,6 +171,8 @@ pounds, lbs, Fahrenheit, or inches anywhere in the answer, including as a \
 parenthetical or "(~X lbs)" style aside next to a metric value - state the metric \
 number only. For example, write "29-36 kilograms", never "29-36 kilograms \
 (65-80 lbs)".
+11. If any monetary amount comes up, always state it in Sri Lankan Rupees, written \
+as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 
@@ -280,7 +286,7 @@ Question: {question}
             'error': True
         }
 
-    answer_text = _strip_imperial_units(answer_text)
+    answer_text = normalize_currency(_strip_imperial_units(answer_text))
 
     return {
         'answer': answer_text,
@@ -309,6 +315,9 @@ estimates" or "based on current trends".
 3. Keep it concise: 2-4 sentences, plain English, no jargon unless you also explain it.
 4. If the data looks incomplete or you can't make sense of it, say so rather than \
 guessing.
+5. This clinic operates in Sri Lanka - any revenue, cost, or price figure in the data \
+is in Sri Lankan Rupees, even though the field itself carries no currency label. \
+Always present it as "Rs. X", never "$", "USD", or "dollars".
 """
 
 
@@ -335,6 +344,6 @@ Raw data:
 Explain this output in plain language for clinic staff."""
 
     try:
-        return _strip_imperial_units(generate_answer(EXPLAIN_SYSTEM_PROMPT, user_prompt))
+        return normalize_currency(_strip_imperial_units(generate_answer(EXPLAIN_SYSTEM_PROMPT, user_prompt)))
     except OllamaError as e:
         return f"Could not generate an explanation right now: {str(e)}"

@@ -1,10 +1,11 @@
 """
 Action Intent
 Detects staff requests to perform a write action - book/reschedule/cancel an
-appointment, send an appointment reminder, register a new customer, or add a
-pet - and resolves the details to real database IDs. This module never
-writes anything itself: it only ever proposes an `action` (executed by Node,
-see server/src/controllers/aiController.js's confirmAction) after the staff
+appointment, send an appointment reminder, register a new customer, add a
+pet, or (admin only) register a new staff member - and resolves the details
+to real database IDs. This module never writes anything itself: it only ever
+proposes an `action` (executed by Node, see
+server/src/controllers/aiController.js's confirmAction) after the staff
 member explicitly confirms it, or asks a follow-up question when a detail is
 still missing.
 
@@ -63,6 +64,17 @@ REGISTER_CUSTOMER = re.compile(
 )
 ADD_PET = re.compile(r'\b(?:register|add|create)\b.*\bpet\b', re.IGNORECASE)
 
+# Admin-only - a distinct trigger vocabulary (staff/team member/employee, or
+# an explicit role name) so it never overlaps with REGISTER_CUSTOMER/ADD_PET
+# above. Matched for any staff role (so a receptionist/vet asking still gets
+# a clear "admin only" answer instead of silently falling through to RAG),
+# but only ever resolved for role == 'admin' - see try_action_intent.
+REGISTER_STAFF = re.compile(
+    r'\b(?:register|add|create|hire|onboard)\b.*\b(?:new\s+)?'
+    r'(?:staff\s+member|team\s+member|employee|veterinarian|vet|receptionist|administrator|doctor)\b',
+    re.IGNORECASE
+)
+
 # Lets a staff member back out of an in-progress multi-turn action instead of
 # being stuck answering slot questions forever.
 _BREAK_OUT = re.compile(
@@ -92,6 +104,23 @@ _MONTH_NAME_IN_PHRASE = re.compile(
 VALID_APPOINTMENT_TYPES = {
     'checkup', 'vaccination', 'surgery', 'emergency', 'follow_up', 'consultation'
 }
+
+# Matches the same +94XXXXXXXXX shape server/src/middleware/validation.js
+# enforces for staff phone numbers - the AI action path writes to the users
+# table directly (via createUser), bypassing that express-validator chain,
+# so it's re-checked here rather than trusting whatever the LLM extracted.
+_STAFF_PHONE_RE = re.compile(r'^\+94\d{9}$')
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+_STAFF_ROLE_NORMALIZE = {
+    'admin': 'admin', 'administrator': 'admin',
+    'veterinarian': 'veterinarian', 'vet': 'veterinarian', 'doctor': 'veterinarian', 'dr': 'veterinarian',
+    'receptionist': 'receptionist', 'front desk': 'receptionist', 'front-desk': 'receptionist',
+}
+
+
+def _normalize_staff_role(raw: str):
+    return _STAFF_ROLE_NORMALIZE.get((raw or '').strip().lower())
 
 
 # ============================================================
@@ -152,6 +181,17 @@ SLOT_SCHEMAS = {
             'to. pet_name: the pet\'s name. species: e.g. dog, cat, bird. breed: optional. '
             'gender: "male" or "female" if stated, else null. date_of_birth: an ISO date '
             '(YYYY-MM-DD) only if an exact date is given, else null - do not guess an age into a date.'
+        ),
+    },
+    'register_staff': {
+        'fields': ['first_name', 'last_name', 'email', 'phone', 'role', 'specialization', 'license_number'],
+        'instructions': (
+            'Extract new-staff-member registration details: first_name, last_name, email, phone '
+            '(optional). role: the job role as the person actually said it (e.g. "vet", "doctor", '
+            '"receptionist", "admin") - do NOT normalize or guess a role that was not stated. '
+            'specialization: optional, a veterinarian\'s area of specialty. license_number: '
+            'optional, a veterinarian\'s professional license number. If a full name is given as '
+            'one phrase, split it into first_name/last_name as best you can.'
         ),
     },
 }
@@ -660,6 +700,65 @@ def _resolve_add_pet(slots: dict) -> dict:
     return {'answer': confirmation, 'action': action, 'requires_confirmation': True, 'structured': True}
 
 
+def _resolve_register_staff(slots: dict) -> dict:
+    first_name = (slots.get('first_name') or '').strip()
+    last_name = (slots.get('last_name') or '').strip()
+    email = (slots.get('email') or '').strip()
+    phone = (slots.get('phone') or '').strip() or None
+    staff_role = _normalize_staff_role(slots.get('role'))
+    specialization = (slots.get('specialization') or '').strip() or None
+    license_number = (slots.get('license_number') or '').strip() or None
+
+    if not first_name or not last_name:
+        return _ask('register_staff', slots, "What's the new team member's full name?", field='full_name')
+
+    if not staff_role:
+        return _ask(
+            'register_staff', slots,
+            f'What role is {first_name} joining as - admin, veterinarian, or receptionist?',
+            field='role'
+        )
+
+    if not email or not _EMAIL_RE.match(email):
+        return _ask('register_staff', slots, f"What's a valid email address for {first_name} {last_name}?", field='email')
+
+    if phone and not _STAFF_PHONE_RE.match(phone):
+        return _ask(
+            'register_staff', slots,
+            'That phone number doesn\'t look right - please give it in the format +94XXXXXXXXX.',
+            field='phone'
+        )
+
+    # Mirrors _resolve_register_customer's dedup check - re-implements the
+    # same lookup emailExists() in userModel.js does, since that Node code
+    # can't be called from here.
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT user_id, first_name, last_name FROM users WHERE email = %s", (email,))
+            existing = cur.fetchone()
+    finally:
+        conn.close()
+
+    if existing:
+        return _done(f'A user with email {email} already exists: {existing[1]} {existing[2]}.')
+
+    action = {
+        'type': 'register_staff',
+        'slots': {
+            'first_name': first_name, 'last_name': last_name, 'email': email,
+            'phone': phone, 'role': staff_role,
+            'specialization': specialization, 'license_number': license_number,
+        }
+    }
+    confirmation = (
+        f'Add {first_name} {last_name} as a new {staff_role}, email {email}'
+        f'{", phone " + phone if phone else ""} - they\'ll be created with a temporary password '
+        f'and required to change it on first login. Shall I confirm this?'
+    )
+    return {'answer': confirmation, 'action': action, 'requires_confirmation': True, 'structured': True}
+
+
 _RESOLVERS = {
     'book_appointment': _resolve_book_appointment,
     'reschedule_appointment': _resolve_reschedule_appointment,
@@ -667,6 +766,7 @@ _RESOLVERS = {
     'send_reminder': _resolve_send_reminder,
     'register_customer': _resolve_register_customer,
     'add_pet': _resolve_add_pet,
+    'register_staff': _resolve_register_staff,
 }
 
 
@@ -722,9 +822,21 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             intent_type = 'register_customer'
         elif ADD_PET.search(question):
             intent_type = 'add_pet'
+        elif REGISTER_STAFF.search(question):
+            intent_type = 'register_staff'
 
         if intent_type is None:
             return None
+
+        # Staff-account creation is admin-only (matches adminOnly on
+        # POST /api/users) - caught here, before any slot-filling starts,
+        # rather than letting a receptionist/vet get partway through a
+        # request that will only ever dead-end.
+        if intent_type == 'register_staff' and role != 'admin':
+            return _done(
+                "Staff registration is limited to admin accounts - please ask an admin to add this team member."
+            )
+
         prior_slots = {}
 
     # Only reached on a genuinely fresh request (first turn, no pending_intent) -

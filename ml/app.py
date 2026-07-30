@@ -1369,6 +1369,112 @@ def rag_chat():
                 'chunks_used': 0
             }), 200
 
+        # "Forecast/predict revenue" is the same shape of problem as outbreak
+        # risk above - a live model computation, never ingested into
+        # rag_chunks. Distinct from BILLING_REVENUE_TIMEFRAME in
+        # structured_query.py, which reports ACTUAL past/current revenue from
+        # real billing rows via SQL - this is a genuine forward-looking
+        # prediction, so it needs the trained sales model, not a query.
+        if re.search(
+            r'\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b.*\b(?:revenue|sales|income)\b',
+            question, re.IGNORECASE
+        ):
+            if role not in ('admin', 'veterinarian'):
+                return jsonify({
+                    'success': True,
+                    'answer': (
+                        "Revenue forecasts aren't available through this assistant "
+                        "for your role - check the Analytics page, or ask an admin."
+                    ),
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            if not sales_model:
+                return jsonify({
+                    'success': True,
+                    'answer': "The sales forecasting model isn't loaded right now - please try again shortly.",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            forecast = sales_model.forecast_revenue(periods=90)
+            if 'error' in forecast:
+                return jsonify({
+                    'success': True,
+                    'answer': f"Couldn't generate a revenue forecast right now: {forecast['error']}",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            # forecast_revenue's 'daily_forecast' is ~90 individual rows -
+            # far more detail than a chat explanation needs and large enough
+            # to bloat the local model's prompt for no benefit; the monthly
+            # rollup is what a plain-language summary should be grounded in.
+            condensed_forecast = {
+                k: v for k, v in forecast.items() if k != 'daily_forecast'
+            }
+            explanation = explain_ml_output('sales_forecast', condensed_forecast)
+            return jsonify({
+                'success': True,
+                'answer': explanation,
+                'sources': [{'source_type': 'sales_forecast_model', 'source_id': 'current', 'metadata': {}}],
+                'chunks_used': 0
+            }), 200
+
+        # "What should we reorder/restock soon" - clinic-wide inventory
+        # demand forecast, same live-model reasoning as above. Distinct from
+        # structured_query.py's INVENTORY_LOW_STOCK/INVENTORY_EXPIRING, which
+        # report CURRENT stock levels via SQL - this is a forward-looking
+        # demand prediction from the trained inventory model.
+        if re.search(
+            r'\b(?:reorder|restock)\b.*\b(?:suggest|recommend|predict|forecast|need)\b|'
+            r'\bwhat\s+(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?reorder\b|'
+            r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b',
+            question, re.IGNORECASE
+        ):
+            if role not in ('admin', 'veterinarian'):
+                return jsonify({
+                    'success': True,
+                    'answer': (
+                        "Inventory demand forecasts aren't available through this "
+                        "assistant for your role - check the Analytics page, or ask an admin."
+                    ),
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            if not inventory_model:
+                return jsonify({
+                    'success': True,
+                    'answer': "The inventory forecasting model isn't loaded right now - please try again shortly.",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            recommendations = inventory_model.get_reorder_recommendations(days=30)
+            if 'error' in recommendations:
+                return jsonify({
+                    'success': True,
+                    'answer': f"Couldn't generate reorder suggestions right now: {recommendations['error']}",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            # 'sufficient_stock' lists every well-stocked item (often most of
+            # the catalog) - irrelevant to a "what should I reorder" question
+            # and, like daily_forecast above, just bloats the prompt.
+            condensed_recommendations = {
+                k: v for k, v in recommendations.items() if k != 'sufficient_stock'
+            }
+            explanation = explain_ml_output('inventory_forecast', condensed_recommendations)
+            return jsonify({
+                'success': True,
+                'answer': explanation,
+                'sources': [{'source_type': 'inventory_forecast_model', 'source_id': 'current', 'metadata': {}}],
+                'chunks_used': 0
+            }), 200
+
         result = answer_question(
             question, role=role, customer_id=customer_id,
             history=history, pending_intent=pending_intent

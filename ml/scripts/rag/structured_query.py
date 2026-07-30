@@ -1445,7 +1445,7 @@ def _count_unpaid_bills() -> dict:
         answer = 'There are no unpaid bills.'
     else:
         total_outstanding = sum(r[2] for r in rows)
-        answer = f'There {"is" if count == 1 else "are"} {count} unpaid bill{"s" if count != 1 else ""}, totaling {total_outstanding:.2f} outstanding.'
+        answer = f'There {"is" if count == 1 else "are"} {count} unpaid bill{"s" if count != 1 else ""}, totaling Rs. {total_outstanding:.2f} outstanding.'
 
     return {
         'answer': answer,
@@ -1472,7 +1472,7 @@ def _sum_revenue_timeframe(timeframe: str) -> dict:
         conn.close()
 
     total = sum(r[1] for r in rows) if rows else 0
-    answer = f'Total revenue collected {_normalize_timeframe(timeframe)} is {total:.2f} across {len(rows)} bill{"s" if len(rows) != 1 else ""}.'
+    answer = f'Total revenue collected {_normalize_timeframe(timeframe)} is Rs. {total:.2f} across {len(rows)} bill{"s" if len(rows) != 1 else ""}.'
 
     return {
         'answer': answer,
