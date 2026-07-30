@@ -160,14 +160,14 @@ struct PetDetailView: View {
                     RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                 )
             } else if vaccinations.isEmpty {
-                Text("No vaccination records on file.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
-                    )
+                ContentUnavailableView(
+                    "No Vaccinations",
+                    systemImage: "syringe",
+                    description: Text("Vaccination records added by the clinic will appear here.")
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.cardSurface)
+                )
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(vaccinations.enumerated()), id: \.element.id) { index, vax in
@@ -221,14 +221,14 @@ struct PetDetailView: View {
                     RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
                 )
             } else if labReports.isEmpty {
-                Text("No lab reports on file.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.cardSurface)
-                    )
+                ContentUnavailableView(
+                    "No Lab Reports",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text("Lab reports uploaded by the clinic will appear here.")
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.cardSurface)
+                )
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(labReports.enumerated()), id: \.element.id) { index, report in

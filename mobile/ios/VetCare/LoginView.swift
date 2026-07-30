@@ -50,6 +50,9 @@ struct LoginView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(trigger: errorMessage) { _, newValue in
+            newValue != nil ? .error : nil
+        }
     }
 
     // MARK: - Header

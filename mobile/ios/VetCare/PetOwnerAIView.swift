@@ -29,6 +29,7 @@ struct PetOwnerAIView: View {
         }
         .background(Color.appBackground)
         .toolbar(.hidden, for: .navigationBar)
+        .sensoryFeedback(.impact(weight: .light), trigger: viewModel.messages.count)
     }
 
     // MARK: - Header
@@ -125,25 +126,21 @@ struct PetOwnerAIView: View {
     }
 
     private var promptChips: some View {
-        VStack(spacing: 10) {
-            ForEach(viewModel.suggestedPrompts, id: \.self) { prompt in
-                Button {
-                    Task { await viewModel.send(prompt) }
-                } label: {
-                    Text(prompt)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.cardSurface)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .strokeBorder(Color.brand.opacity(0.25), lineWidth: 1)
-                                )
-                        )
+        GlassEffectContainer {
+            VStack(spacing: 10) {
+                ForEach(viewModel.suggestedPrompts, id: \.self) { prompt in
+                    Button {
+                        Task { await viewModel.send(prompt) }
+                    } label: {
+                        Text(prompt)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 14))
+                    }
                 }
             }
         }
@@ -153,42 +150,34 @@ struct PetOwnerAIView: View {
     // MARK: - Input
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Ask about your pets...", text: $viewModel.input, axis: .vertical)
-                .lineLimit(1...4)
-                .focused($isInputFocused)
-                .submitLabel(.send)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.cardSurface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.primary.opacity(0.1), lineWidth: 1)
-                        )
-                )
+        GlassEffectContainer {
+            HStack(spacing: 10) {
+                TextField("Ask about your pets...", text: $viewModel.input, axis: .vertical)
+                    .lineLimit(1...4)
+                    .focused($isInputFocused)
+                    .submitLabel(.send)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 12))
 
-            Button {
-                isInputFocused = false
-                Task { await viewModel.send() }
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle().fill(viewModel.canSend
-                            ? AnyShapeStyle(LinearGradient.brand)
-                            : AnyShapeStyle(Color.gray.opacity(0.4)))
-                    )
+                Button {
+                    isInputFocused = false
+                    Task { await viewModel.send() }
+                } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.headline)
+                        .foregroundStyle(viewModel.canSend ? .white : .secondary)
+                        .frame(width: 44, height: 44)
+                        .glassEffect(
+                            viewModel.canSend ? .regular.tint(.brand).interactive() : .regular,
+                            in: .circle
+                        )
+                }
+                .disabled(!viewModel.canSend)
             }
-            .disabled(!viewModel.canSend)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) { Divider() }
     }
 }
 

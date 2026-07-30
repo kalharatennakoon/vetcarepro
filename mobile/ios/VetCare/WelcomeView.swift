@@ -63,13 +63,13 @@ struct WelcomeView: View {
             // Divider
             HStack(spacing: 10) {
                 Rectangle()
-                    .fill(Color.black.opacity(0.1))
+                    .fill(Color.primary.opacity(0.1))
                     .frame(height: 1)
                 Text("or")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Rectangle()
-                    .fill(Color.black.opacity(0.1))
+                    .fill(Color.primary.opacity(0.1))
                     .frame(height: 1)
             }
 
@@ -110,6 +110,8 @@ struct WelcomeView: View {
 }
 
 /// A full-width pill-shaped label used for the primary navigation actions.
+/// Rendered in Liquid Glass: the filled style carries a brand tint for
+/// prominence; the outlined style is untinted glass with brand text.
 struct PillLabel: View {
     enum Style {
         case filled
@@ -125,19 +127,13 @@ struct PillLabel: View {
             .frame(maxWidth: .infinity)
             .frame(height: 54)
             .foregroundStyle(style == .filled ? Color.white : Color.brand)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .glassEffect(glass, in: .rect(cornerRadius: 14))
     }
 
-    @ViewBuilder
-    private var background: some View {
+    private var glass: Glass {
         switch style {
-        case .filled:
-            LinearGradient.brand
-        case .outlined:
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.brand, lineWidth: 1.5)
-                .background(Color.cardSurface.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous)))
+        case .filled: .regular.tint(.brand).interactive()
+        case .outlined: .regular.interactive()
         }
     }
 }

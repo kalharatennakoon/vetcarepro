@@ -39,6 +39,7 @@ struct PetOwnerHomeView: View {
             .navigationDestination(for: Pet.self) { pet in
                 PetDetailView(pet: pet, token: session.token ?? "")
             }
+            .refreshable { await loadPets(showSpinner: false) }
         }
         .task { await loadPets() }
     }
@@ -104,19 +105,16 @@ struct PetOwnerHomeView: View {
                 }
                 .padding(.vertical, 20)
             } else if let error = petsError {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.secondary)
+                ContentUnavailableView {
+                    Label("Couldn't Load Pets", systemImage: "exclamationmark.triangle")
+                } description: {
                     Text(error)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                } actions: {
+                    Button("Try Again") {
+                        Task { await loadPets() }
+                    }
+                    .buttonStyle(.glass)
                 }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.cardSurface)
-                )
             } else if pets.isEmpty {
                 emptyPets
             } else {
@@ -131,22 +129,10 @@ struct PetOwnerHomeView: View {
     }
 
     private var emptyPets: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "pawprint")
-                .font(.system(size: 32))
-                .foregroundStyle(Color.brand.opacity(0.4))
-            Text("No pets on file")
-                .font(.subheadline.weight(.medium))
-            Text("Your pets will appear here once the clinic adds them to your account.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.cardSurface)
+        ContentUnavailableView(
+            "No Pets on File",
+            systemImage: "pawprint",
+            description: Text("Your pets will appear here once the clinic adds them to your account.")
         )
     }
 
@@ -188,9 +174,11 @@ struct PetOwnerHomeView: View {
 
     // MARK: - Data
 
-    private func loadPets() async {
+    /// Pull-to-refresh shows its own indicator, so it skips the inline spinner
+    /// to avoid collapsing the list while reloading.
+    private func loadPets(showSpinner: Bool = true) async {
         guard let token = session.token else { return }
-        petsLoading = true
+        if showSpinner { petsLoading = true }
         petsError = nil
         do {
             pets = try await CustomerAuthService().fetchMyPets(token: token)
