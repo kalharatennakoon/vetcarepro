@@ -34,7 +34,8 @@ Scope: AI assistant/copilot layer + mobile app extension for VetCare Pro.
 | Single unscoped data access for all users | Rejected — privacy risk across guest/owner/staff |
 | Three-tier RBAC (guest / pet owner / staff) | **Selected** |
 | Web-only | Rejected — doesn't reach pet owners/public |
-| Native or cross-platform mobile app | **Selected**, phased separately from the AI layer |
+| Staff access via the mobile app | Rejected — staff workflows remain web-only; mobile serves pet owners and the public |
+| Native iOS app (SwiftUI) | **Selected**, phased separately from the AI layer |
 
 ### 4. Deliver *(what this becomes)*
 - RAG assistant grounded in pet records, FAQs, and care instructions
@@ -42,7 +43,7 @@ Scope: AI assistant/copilot layer + mobile app extension for VetCare Pro.
 - Plain-language explanations of ML outputs: outbreak risk, sales forecasts, inventory predictions
 - Every AI response framed as decision-support, never diagnostic or prescriptive
 - Three access modes: guest (general pet care info only), pet owner (own pets only), staff (full clinic data per role)
-- Mobile app (iOS/Android) extending the above to pet owners and the public
+- Mobile app (iOS) extending the above to pet owners and the public
 
 ---
 
@@ -60,17 +61,19 @@ Scope: AI assistant/copilot layer + mobile app extension for VetCare Pro.
 - Guest-mode general pet care Q&A — *no clinic-specific or customer data exposed*
 
 ### Could Have — *next phase, once the AI layer is stable*
-- Mobile app (iOS/Android) extending VetCare Pro to pet owners and the public
+- Mobile app (iOS) extending VetCare Pro to pet owners and the public
 - Push notifications via the mobile app — *appointment reminders, vaccine due dates*
 - Typo-tolerant / fuzzy matching, lab report queries, customer growth queries *(earlier structured-query backlog)*
 - Voice input, multi-turn conversational memory
 
-> **Assumption to confirm:** the mobile app is placed in "Could Have" because it's a separate, large workstream (iOS/Android build) that doesn't block the AI layer shipping on web first. If the mobile app needs to ship in the same phase as the AI assistant, move it to "Should Have" and flag the resourcing implication.
+> **Resolved:** mobile scope is confirmed as an iOS-only native app (SwiftUI), covering guest and pet-owner modes. Android is out of scope for this program, and staff access stays web-only by design. The mobile build is phased separately so it never blocks the AI layer shipping on web first.
 
 ### Won't Have *(this phase)*
 - AI making autonomous clinical decisions or diagnoses — explicitly out of scope, by design
 - Free-form text-to-SQL / arbitrary query generation
 - Cross-clinic / multi-tenant support
+- An Android app — mobile is iOS-only for this program
+- Staff access via the mobile app — staff workflows remain web-only
 - Full mobile feature parity with web in the first mobile release
 
 ---
