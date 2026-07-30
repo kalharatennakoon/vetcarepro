@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# This script runs the entire application: server, ml service, and client.
-# All three run in parallel; Ctrl+C stops all of them.
+# This script runs the entire application: ollama, server, ml service, and client.
+# All of them run in parallel; Ctrl+C stops all of them.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -14,6 +14,9 @@ cleanup() {
     done
 }
 trap cleanup EXIT INT TERM
+
+ollama serve &
+pids+=($!)
 
 (cd "$ROOT_DIR/server" && npm run dev) &
 pids+=($!)
