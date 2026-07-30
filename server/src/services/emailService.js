@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 const CLINIC_NAME = 'Pro Pet Animal Hospital';
 const CLINIC_EMAIL = 'contact@propet.lk';
 const CLINIC_PHONE = process.env.CLINIC_PHONE || '+94 37 123 4567';
-const CLINIC_ADDRESS = 'Mawathagama, Kurunegala, Sri Lanka';
+const CLINIC_ADDRESS = 'Kurunegala, Sri Lanka';
 
 const createTransporter = () => {
   return nodemailer.createTransport({

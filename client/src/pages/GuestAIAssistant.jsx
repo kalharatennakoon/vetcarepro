@@ -16,9 +16,9 @@ const GuestAIAssistant = () => {
     {
       role: 'assistant',
       content:
-        "Hi! I'm the VetCare Pro AI assistant. I can answer general pet care " +
-        "questions using our clinic's FAQs and care guides. Sign in to ask about " +
-        'your own pets\u2019 records.',
+        "Hi! I'm the VetCare Pro AI assistant. Ask me anything about pet care - " +
+        "feeding, vaccines, grooming, general wellness - and I'll answer using our " +
+        "clinic's FAQs, care guides, and general veterinary knowledge.",
       sources: [],
       intro: true
     }
@@ -65,13 +65,9 @@ const GuestAIAssistant = () => {
           <div>
             <h1><i className="fas fa-robot"></i> AI Assistant</h1>
             <p className="ai-assistant-subtitle">
-              Decision-support only &mdash; always confirm medical decisions with a veterinarian.
+              General pet care info only &mdash; sign in to ask about your own pet&rsquo;s records.
             </p>
           </div>
-        </div>
-
-        <div className="guest-ai-scope-banner">
-          General pet care info only &mdash; sign in to ask about your own pet&rsquo;s records.
         </div>
 
         <div className="ai-assistant-chat">

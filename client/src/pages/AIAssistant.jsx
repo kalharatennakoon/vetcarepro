@@ -5,11 +5,14 @@ import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 
-// Admin has full clinic-wide access, so these lean clinical/operational.
+// Admin oversees the whole clinic - operations, staffing, and finances, not
+// just the clinical side - so these spotlight revenue/staffing/inventory
+// oversight and ML-driven analytics rather than per-patient visit prep.
 const CLINICAL_SUGGESTED_PROMPTS = [
-  "Summarize a pet's recent medical history",
-  'Explain the current outbreak risk in plain language',
-  'What should I check before an appointment?'
+  "What's the total revenue this month?",
+  'How many veterinarians do we have?',
+  'Which items are running low on stock?',
+  'Explain the current outbreak risk in plain language'
 ];
 
 // Veterinarian-specific: mirrors the four clinical-generation capabilities
@@ -48,10 +51,14 @@ const RECEPTIONIST_INTRO =
   'appointments, send reminders, register new customers and pets, and answer ' +
   'billing questions - grounded in real clinic data. Clinical questions go to a veterinarian.';
 
+// Admin's own intro - admin sees the whole clinic (records, operations,
+// billing, analytics), not just the clinical side, so this stays broader
+// than the veterinarian/receptionist copy above.
 const DEFAULT_INTRO =
-  "Hi, I'm the VetCare Pro AI assistant. Ask me about pet records, " +
-  "consultation summaries, or the clinic's AI predictions. I answer using " +
-  'clinic data and always defer final medical judgment to the veterinarian.';
+  "Hi, I'm the VetCare Pro AI assistant. I can summarize pet records, explain " +
+  "clinic-wide analytics and AI predictions, and help you review operations " +
+  'across the clinic - grounded in real clinic data. Diagnosis and treatment ' +
+  'decisions are always left to a veterinarian.';
 
 const AIAssistant = () => {
   const { user } = useAuth();

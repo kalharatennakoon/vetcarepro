@@ -269,7 +269,7 @@ const Layout = ({ children }) => {
           {children}
           <footer style={styles.footer}>
             <p style={styles.footerText}>
-              © 2026 VetCare Pro - Pro Pet Animal Hospital, Mawathagama, Kurunegala
+              © 2026 VetCare Pro - Pro Pet Animal Hospital, Kurunegala
             </p>
           </footer>
         </main>
