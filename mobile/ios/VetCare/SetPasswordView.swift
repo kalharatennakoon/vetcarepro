@@ -17,7 +17,8 @@ struct SetPasswordView: View {
 
     @State private var newPassword = ""
     @State private var confirmPassword = ""
-    @State private var isPasswordVisible = false
+    @State private var isNewVisible = false
+    @State private var isConfirmVisible = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -44,6 +45,9 @@ struct SetPasswordView: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .sensoryFeedback(trigger: errorMessage) { _, newValue in
+            newValue != nil ? .error : nil
+        }
     }
 
     // MARK: - Header
@@ -68,7 +72,7 @@ struct SetPasswordView: View {
             FieldContainer(label: "New Password") {
                 HStack {
                     Group {
-                        if isPasswordVisible {
+                        if isNewVisible {
                             TextField("At least 6 characters", text: $newPassword)
                         } else {
                             SecureField("At least 6 characters", text: $newPassword)
@@ -81,27 +85,34 @@ struct SetPasswordView: View {
                     .submitLabel(.next)
                     .onSubmit { focusedField = .confirm }
 
-                    Button { isPasswordVisible.toggle() } label: {
-                        Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                    Button { isNewVisible.toggle() } label: {
+                        Image(systemName: isNewVisible ? "eye.slash" : "eye")
                             .foregroundStyle(.secondary)
                     }
                 }
             }
 
             FieldContainer(label: "Confirm Password") {
-                Group {
-                    if isPasswordVisible {
-                        TextField("Re-enter your password", text: $confirmPassword)
-                    } else {
-                        SecureField("Re-enter your password", text: $confirmPassword)
+                HStack {
+                    Group {
+                        if isConfirmVisible {
+                            TextField("Re-enter your password", text: $confirmPassword)
+                        } else {
+                            SecureField("Re-enter your password", text: $confirmPassword)
+                        }
+                    }
+                    .textContentType(.newPassword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .confirm)
+                    .submitLabel(.go)
+                    .onSubmit { Task { await save() } }
+
+                    Button { isConfirmVisible.toggle() } label: {
+                        Image(systemName: isConfirmVisible ? "eye.slash" : "eye")
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .textContentType(.newPassword)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .focused($focusedField, equals: .confirm)
-                .submitLabel(.go)
-                .onSubmit { Task { await save() } }
             }
 
             if !confirmPassword.isEmpty && newPassword != confirmPassword {

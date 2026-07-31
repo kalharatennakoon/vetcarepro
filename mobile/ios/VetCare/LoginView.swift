@@ -72,10 +72,10 @@ struct LoginView: View {
 
     private var fields: some View {
         VStack(spacing: 16) {
-            FieldContainer(label: "Email or phone") {
-                TextField("Email or phone number", text: $identifier)
-                    .keyboardType(.default)
-                    .textContentType(.username)
+            FieldContainer(label: mode.identifierLabel) {
+                TextField(mode.identifierPrompt, text: $identifier)
+                    .keyboardType(mode.keyboardType)
+                    .textContentType(mode == .staff ? .emailAddress : .username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .focused($focusedField, equals: .identifier)

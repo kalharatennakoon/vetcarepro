@@ -41,7 +41,10 @@ struct PetDetailView: View {
         .navigationTitle(pet.name)
         .navigationBarTitleDisplayMode(.large)
         .quickLookPreview($previewURL)
-        .alert("Couldn't open report", isPresented: .constant(downloadError != nil)) {
+        .alert("Couldn't open report", isPresented: Binding(
+            get: { downloadError != nil },
+            set: { if !$0 { downloadError = nil } }
+        )) {
             Button("OK") { downloadError = nil }
         } message: {
             Text(downloadError ?? "")

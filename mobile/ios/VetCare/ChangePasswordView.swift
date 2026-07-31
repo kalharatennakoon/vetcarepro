@@ -41,6 +41,9 @@ struct ChangePasswordView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
+        .sensoryFeedback(trigger: errorMessage) { _, newValue in
+            newValue != nil ? .error : nil
+        }
     }
 
     // MARK: - Header

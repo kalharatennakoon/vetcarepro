@@ -18,8 +18,8 @@ final class GuestAIUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let guestButton = app.buttons["Continue as guest"]
-        XCTAssertTrue(guestButton.waitForExistence(timeout: 10), "welcome 'Continue as guest' button")
+        let guestButton = app.buttons["Continue as Guest"]
+        XCTAssertTrue(guestButton.waitForExistence(timeout: 10), "welcome 'Continue as Guest' button")
         guestButton.tap()
 
         XCTAssertTrue(
@@ -28,7 +28,7 @@ final class GuestAIUITests: XCTestCase {
         )
 
         // 1) FAQ-grounded answer via a suggested prompt chip.
-        let chip = app.buttons["What vaccines does a new puppy need?"]
+        let chip = app.buttons["What vaccinations does my pet need?"]
         XCTAssertTrue(chip.waitForExistence(timeout: 5), "suggested prompt chip")
         chip.tap()
 

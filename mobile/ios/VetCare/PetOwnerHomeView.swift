@@ -8,6 +8,10 @@
 
 import SwiftUI
 
+private enum PetOwnerRoute: Hashable {
+    case aiAssistant
+}
+
 struct PetOwnerHomeView: View {
     @Environment(CustomerSession.self) private var session
 
@@ -33,8 +37,11 @@ struct PetOwnerHomeView: View {
                     signOutButton
                 }
             }
-            .navigationDestination(for: String.self) { _ in
-                PetOwnerAIView(token: session.token ?? "")
+            .navigationDestination(for: PetOwnerRoute.self) { route in
+                switch route {
+                case .aiAssistant:
+                    PetOwnerAIView(token: session.token ?? "")
+                }
             }
             .navigationDestination(for: Pet.self) { pet in
                 PetDetailView(pet: pet, token: session.token ?? "")
@@ -147,7 +154,7 @@ struct PetOwnerHomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
-            NavigationLink(value: "guestAI") {
+            NavigationLink(value: PetOwnerRoute.aiAssistant) {
                 HStack {
                     Text("Ask a question")
                         .font(.subheadline.weight(.semibold))

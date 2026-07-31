@@ -10,6 +10,8 @@
 import SwiftUI
 
 struct VerifyIdentityView: View {
+    @Environment(\.dismiss) private var dismiss
+
     @State private var email = ""
     @State private var phone = ""
     @State private var isSubmitting = false
@@ -46,6 +48,9 @@ struct VerifyIdentityView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: $showSetPassword) {
             SetPasswordView(setupToken: setupToken, firstName: verifiedFirstName)
+        }
+        .sensoryFeedback(trigger: errorMessage) { _, newValue in
+            newValue != nil ? .error : nil
         }
     }
 
@@ -113,7 +118,9 @@ struct VerifyIdentityView: View {
             Text("Already have a password?")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            NavigationLink(value: WelcomeRoute.login(.petOwner)) {
+            Button {
+                dismiss()
+            } label: {
                 Text("Back to Sign In")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color.brand)

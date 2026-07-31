@@ -289,6 +289,11 @@ struct VerifyIdentityResponse: Decodable {
 struct VerifyIdentityData: Decodable {
     let setupToken: String
     let firstName: String
+
+    enum CodingKeys: String, CodingKey {
+        case setupToken = "setup_token"
+        case firstName = "first_name"
+    }
 }
 
 struct SetFirstPasswordRequest: Encodable {
