@@ -31,6 +31,7 @@ Scoped to Max's own records only — no other customer's pets are visible.
 3. Can you summarize Max's last visit in simple terms?
 4. What aftercare should I follow after Max's recent treatment?
 5. Does Max have any lab results on file, and what do they mean?
+Is max up to date on shots?
 
 ---
 
