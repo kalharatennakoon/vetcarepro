@@ -14,6 +14,13 @@ Thumbs.db
 *.swo
 *~
 
+# ── Xcode ─────────────────────────────────────────────────────────────────────
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.xccheckout
+*.moved-aside
+
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
