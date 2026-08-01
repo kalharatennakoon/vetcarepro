@@ -10,36 +10,29 @@ const formatInlineText = (line) => {
   );
 };
 
-// Renders assistant replies with basic markdown-style formatting - bold
-// text, bullet/numbered lists, and paragraph breaks - without pulling in a
-// markdown dependency for what the local model produces. Shared by the
-// guest, pet-owner, and staff chat UIs so all three render consistently.
-// `listClassName` lets each surface keep its own list styling.
+// One tag per heading depth (#/##/###), sized down to fit inside a chat
+// bubble rather than using the page's own h1/h2/h3 (which are already
+// spoken for by page titles/section headers elsewhere in the UI).
+const HEADING_TAGS = { 1: 'h4', 2: 'h5', 3: 'h6' };
+
+// Renders assistant replies with basic markdown-style formatting - headings,
+// bold text, bullet/numbered lists, and paragraph breaks - without pulling
+// in a markdown dependency for what the local model produces. Shared by the
+// guest, pet-owner, and staff chat UIs (plus Explain-with-AI) so they all
+// render consistently. `listClassName` lets each surface keep its own list
+// styling.
 export const formatMessageContent = (content, { listClassName = 'ai-message-list' } = {}) => {
-  const blocks = content.trim().split(/\n\s*\n/);
+  const nodes = [];
+  let paragraphLines = [];
+  let bulletItems = [];
+  let numberedItems = [];
+  let key = 0;
 
-  return blocks.map((block, i) => {
-    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
-    const isBulletList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l));
-    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l));
-
-    if (isBulletList) {
-      return (
-        <ul key={i} className={listClassName}>
-          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^[-*]\s+/, ''))}</li>)}
-        </ul>
-      );
-    }
-    if (isNumberedList) {
-      return (
-        <ol key={i} className={listClassName}>
-          {lines.map((l, j) => <li key={j}>{formatInlineText(l.replace(/^\d+[.)]\s+/, ''))}</li>)}
-        </ol>
-      );
-    }
-    return (
-      <p key={i}>
-        {lines.map((l, j) => (
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) return;
+    nodes.push(
+      <p key={key++}>
+        {paragraphLines.map((l, j) => (
           <Fragment key={j}>
             {j > 0 && <br />}
             {formatInlineText(l)}
@@ -47,7 +40,63 @@ export const formatMessageContent = (content, { listClassName = 'ai-message-list
         ))}
       </p>
     );
-  });
+    paragraphLines = [];
+  };
+  const flushBullets = () => {
+    if (bulletItems.length === 0) return;
+    nodes.push(
+      <ul key={key++} className={listClassName}>
+        {bulletItems.map((l, j) => <li key={j}>{formatInlineText(l)}</li>)}
+      </ul>
+    );
+    bulletItems = [];
+  };
+  const flushNumbered = () => {
+    if (numberedItems.length === 0) return;
+    nodes.push(
+      <ol key={key++} className={listClassName}>
+        {numberedItems.map((l, j) => <li key={j}>{formatInlineText(l)}</li>)}
+      </ol>
+    );
+    numberedItems = [];
+  };
+  const flushAll = () => { flushParagraph(); flushBullets(); flushNumbered(); };
+
+  for (const raw of content.trim().split('\n')) {
+    const line = raw.trim();
+    if (!line) {
+      flushAll();
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.*)/);
+    if (heading) {
+      flushAll();
+      const level = heading[1].length;
+      const HeadingTag = HEADING_TAGS[level];
+      nodes.push(
+        <HeadingTag key={key++} className={`ai-message-heading ai-message-heading-${level}`}>
+          {formatInlineText(heading[2])}
+        </HeadingTag>
+      );
+      continue;
+    }
+    if (/^[-*]\s+/.test(line)) {
+      flushParagraph(); flushNumbered();
+      bulletItems.push(line.replace(/^[-*]\s+/, ''));
+      continue;
+    }
+    if (/^\d+[.)]\s+/.test(line)) {
+      flushParagraph(); flushBullets();
+      numberedItems.push(line.replace(/^\d+[.)]\s+/, ''));
+      continue;
+    }
+    flushBullets(); flushNumbered();
+    paragraphLines.push(line);
+  }
+  flushAll();
+
+  return nodes;
 };
 
 // Turns a rag_chunks source (as returned by /api/ml/rag/chat) into a short
