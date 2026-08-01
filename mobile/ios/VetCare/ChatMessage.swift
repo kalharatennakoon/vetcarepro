@@ -13,13 +13,17 @@ struct ChatMessage: Identifiable, Equatable {
         case assistant
     }
 
+    /// Which AI mode produced this message. Drives the source footer label
+    /// and icon — guest answers cite FAQs, pet-owner answers cite pet records.
+    enum Context {
+        case guest
+        case petOwner
+    }
+
     let id = UUID()
     let role: Role
     var text: String
     var sources: [ChatSource] = []
-
-    /// True for a successful assistant reply. Drives the guest "source" footer
-    /// (FAQ citations vs. a "general knowledge" note) and keeps it off error
-    /// messages. Left false for user messages and error replies.
     var isAnswer: Bool = false
+    var context: Context = .guest
 }

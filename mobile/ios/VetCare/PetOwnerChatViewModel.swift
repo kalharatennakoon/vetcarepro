@@ -52,7 +52,7 @@ final class PetOwnerChatViewModel {
         do {
             let response = try await service.askPetOwner(question, token: token)
             messages.append(
-                ChatMessage(role: .assistant, text: response.answer, sources: response.sources, isAnswer: true)
+                ChatMessage(role: .assistant, text: response.answer, sources: response.sources, isAnswer: true, context: .petOwner)
             )
         } catch {
             let reason = (error as? APIError)?.errorDescription ?? error.localizedDescription

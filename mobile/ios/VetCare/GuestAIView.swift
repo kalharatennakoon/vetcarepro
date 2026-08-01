@@ -242,9 +242,6 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .frame(maxWidth: 300, alignment: isUser ? .trailing : .leading)
 
-            // Guest answers are grounded in FAQs when a match exists, otherwise
-            // they come from the model's general veterinary knowledge — label
-            // which, so a non-FAQ answer reads as intentional, not ungrounded.
             if message.isAnswer {
                 answerFooter
             }
@@ -269,20 +266,27 @@ struct MessageBubble: View {
     @ViewBuilder
     private var answerFooter: some View {
         if message.sources.isEmpty {
-            HStack(alignment: .top, spacing: 5) {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 10))
-                Text("General veterinary knowledge — not from a specific clinic article.")
-                Spacer(minLength: 0)
+            // Pet owner mode: the scoped banner already explains context; no need
+            // for a redundant footer on every message.
+            if message.context == .guest {
+                HStack(alignment: .top, spacing: 5) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 10))
+                    Text("General veterinary knowledge — not from a specific clinic article.")
+                    Spacer(minLength: 0)
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: 300, alignment: .leading)
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: 300, alignment: .leading)
         } else {
             VStack(alignment: .leading, spacing: 5) {
-                Label("From our clinic FAQs", systemImage: "book")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                Label(
+                    message.context == .guest ? "From our clinic FAQs" : "From your pet's records",
+                    systemImage: message.context == .guest ? "book" : "pawprint.fill"
+                )
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
                 FlowLayout(spacing: 6) {
                     ForEach(message.sources) { source in
                         HStack(spacing: 4) {
@@ -322,6 +326,7 @@ struct AssistantMarkdown: View {
     }
 
     private enum Block {
+        case heading(AttributedString, level: Int)
         case paragraph(AttributedString)
         case bullets([AttributedString])
         case numbered([AttributedString])
@@ -330,6 +335,13 @@ struct AssistantMarkdown: View {
     @ViewBuilder
     private func view(for block: Block) -> some View {
         switch block {
+        case .heading(let text, let level):
+            Text(text)
+                .font(level == 1 ? .title3.weight(.bold) :
+                      level == 2 ? .headline :
+                      .subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, level <= 2 ? 4 : 2)
         case .paragraph(let text):
             Text(text)
         case .bullets(let items):
@@ -398,6 +410,15 @@ struct AssistantMarkdown: View {
             let line = raw.trimmingCharacters(in: .whitespaces)
             if line.isEmpty {
                 flushAll()
+            } else if line.hasPrefix("### ") {
+                flushAll()
+                blocks.append(.heading(inline(String(line.dropFirst(4))), level: 3))
+            } else if line.hasPrefix("## ") {
+                flushAll()
+                blocks.append(.heading(inline(String(line.dropFirst(3))), level: 2))
+            } else if line.hasPrefix("# ") {
+                flushAll()
+                blocks.append(.heading(inline(String(line.dropFirst(2))), level: 1))
             } else if let range = line.range(of: #"^[-*]\s+"#, options: .regularExpression) {
                 flushParagraph(); flushNumbered()
                 bullets.append(inline(String(line[range.upperBound...])))
