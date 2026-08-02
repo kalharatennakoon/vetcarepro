@@ -135,6 +135,28 @@ export const CustomerAuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Update own editable contact details (alternate phone, address, city,
+   * preferred contact method, emergency contact/phone). Updates local
+   * `customer` state on success so the profile page reflects the change
+   * without a full reload.
+   */
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await axios.put(
+        `${API_URL}/customer-auth/me`,
+        profileData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const updatedCustomer = response.data.data.customer;
+      setCustomer(updatedCustomer);
+      return { success: true, customer: updatedCustomer };
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to update profile';
+      return { success: false, message };
+    }
+  };
+
   const logout = async () => {
     try {
       if (token) {
@@ -161,6 +183,7 @@ export const CustomerAuthProvider = ({ children }) => {
     verifyIdentity,
     setPassword,
     changePassword,
+    updateProfile,
     isAuthenticated: !!customer
   };
 

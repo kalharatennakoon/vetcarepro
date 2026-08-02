@@ -3,7 +3,10 @@ import {
   findCustomerByEmailAndPhone,
   findCustomerAuthById,
   updateCustomerLastLogin,
-  updateCustomerPassword
+  updateCustomerPassword,
+  updateCustomer,
+  addressExists,
+  emergencyPhoneExists
 } from '../models/customerModel.js';
 import {
   hashPassword,
@@ -106,6 +109,51 @@ export const getCurrentCustomer = async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'An error occurred while fetching account data'
+    });
+  }
+};
+
+/**
+ * @route   PUT /api/customer-auth/me
+ * @desc    Update the current customer's own editable contact details.
+ *          Only a fixed whitelist is accepted - identity fields
+ *          (name/email/phone/NIC) can't be self-edited, only staff can
+ *          change those. Any other keys in the body are ignored.
+ * @access  Private (customer)
+ */
+export const updateMyProfile = async (req, res) => {
+  try {
+    const { alternate_phone, address, city, preferred_contact_method, emergency_contact, emergency_phone } = req.body;
+    const customerId = req.customer.customer_id;
+
+    if (address && await addressExists(address, customerId)) {
+      return res.status(409).json({ status: 'error', message: 'That address is already registered to another customer' });
+    }
+    if (emergency_phone && await emergencyPhoneExists(emergency_phone, customerId)) {
+      return res.status(409).json({ status: 'error', message: 'That emergency phone number is already registered to another customer' });
+    }
+
+    const updatedCustomer = await updateCustomer(customerId, {
+      alternate_phone,
+      address,
+      city,
+      preferred_contact_method,
+      emergency_contact,
+      emergency_phone
+    }, null);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: {
+        customer: sanitizeUser(updatedCustomer)
+      }
+    });
+  } catch (error) {
+    console.error('Update my profile error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'An error occurred while updating your profile'
     });
   }
 };

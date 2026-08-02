@@ -16,6 +16,14 @@ export const getMyPets = async () => {
   return response.data;
 };
 
+export const getPetVaccinations = async (petId) => {
+  const customerToken = localStorage.getItem('customerToken');
+  const response = await axios.get(`${API_URL}/customer-auth/pets/${petId}/vaccinations`, {
+    headers: { Authorization: `Bearer ${customerToken}` }
+  });
+  return response.data;
+};
+
 export const getPetLabReports = async (petId) => {
   const customerToken = localStorage.getItem('customerToken');
   const response = await axios.get(`${API_URL}/customer-auth/pets/${petId}/lab-reports`, {

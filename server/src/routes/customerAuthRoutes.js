@@ -2,6 +2,7 @@ import express from 'express';
 import {
   login,
   getCurrentCustomer,
+  updateMyProfile,
   getMyPets,
   logout,
   changePassword,
@@ -10,7 +11,20 @@ import {
 } from '../controllers/customerAuthController.js';
 import { listMyLabReports, viewMyLabReport } from '../controllers/labReportController.js';
 import { listMyPetVaccinations } from '../controllers/petController.js';
+import {
+  listVeterinarians,
+  listMyAppointments,
+  getAvailability,
+  createMyAppointment,
+  updateMyAppointment,
+  cancelMyAppointment
+} from '../controllers/customerAppointmentController.js';
 import { authenticateCustomer } from '../middleware/auth.js';
+import {
+  validateCustomerAppointmentCreate,
+  validateCustomerAppointmentUpdate,
+  validateCustomerProfileUpdate
+} from '../middleware/validation.js';
 
 const router = express.Router();
 
@@ -42,6 +56,12 @@ router.post('/set-password', setPassword);
 // @access  Private (customer)
 router.get('/me', authenticateCustomer, getCurrentCustomer);
 
+// @route   PUT /api/customer-auth/me
+// @desc    Update own editable contact details (alternate phone, address,
+//          city, preferred contact method, emergency contact/phone only)
+// @access  Private (customer)
+router.put('/me', authenticateCustomer, validateCustomerProfileUpdate, updateMyProfile);
+
 // @route   GET /api/customer-auth/me/pets
 // @desc    Get pets belonging to the current customer
 // @access  Private (customer)
@@ -62,6 +82,36 @@ router.get('/pets/:petId/lab-reports', authenticateCustomer, listMyLabReports);
 //          current customer's own pets
 // @access  Private (customer)
 router.get('/lab-reports/:reportId/view', authenticateCustomer, viewMyLabReport);
+
+// @route   GET /api/customer-auth/veterinarians
+// @desc    List active veterinarians a pet owner can pick as their preferred vet
+// @access  Private (customer)
+router.get('/veterinarians', authenticateCustomer, listVeterinarians);
+
+// @route   GET /api/customer-auth/appointments
+// @desc    Get the current customer's own appointments
+// @access  Private (customer)
+router.get('/appointments', authenticateCustomer, listMyAppointments);
+
+// @route   GET /api/customer-auth/appointments/availability
+// @desc    Get bookable time slots for a date (no other owners' details exposed)
+// @access  Private (customer)
+router.get('/appointments/availability', authenticateCustomer, getAvailability);
+
+// @route   POST /api/customer-auth/appointments
+// @desc    Book a new appointment for one of the customer's own pets
+// @access  Private (customer)
+router.post('/appointments', authenticateCustomer, validateCustomerAppointmentCreate, createMyAppointment);
+
+// @route   PUT /api/customer-auth/appointments/:id
+// @desc    Update/reschedule the customer's own appointment (>= 48h out only)
+// @access  Private (customer)
+router.put('/appointments/:id', authenticateCustomer, validateCustomerAppointmentUpdate, updateMyAppointment);
+
+// @route   DELETE /api/customer-auth/appointments/:id
+// @desc    Cancel the customer's own appointment (>= 48h out only)
+// @access  Private (customer)
+router.delete('/appointments/:id', authenticateCustomer, cancelMyAppointment);
 
 // @route   POST /api/customer-auth/logout
 // @desc    Logout
