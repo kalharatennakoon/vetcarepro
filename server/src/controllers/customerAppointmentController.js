@@ -215,10 +215,12 @@ export const createMyAppointment = async (req, res) => {
       status: 'confirmed'
     }, null);
 
+    const fullAppointment = await getAppointmentById(newAppointment.appointment_id);
+
     res.status(201).json({
       status: 'success',
       message: 'Appointment booked successfully',
-      data: { appointment: newAppointment }
+      data: { appointment: fullAppointment }
     });
   } catch (error) {
     console.error('Create my appointment error:', error);
@@ -269,7 +271,7 @@ export const updateMyAppointment = async (req, res) => {
       return res.status(409).json({ status: 'error', message: slotError });
     }
 
-    const updatedAppointment = await updateAppointment(id, {
+    await updateAppointment(id, {
       appointment_date: newDate,
       appointment_time: newTime,
       appointment_type: req.body.appointment_type,
@@ -277,10 +279,12 @@ export const updateMyAppointment = async (req, res) => {
       veterinarian_id: newVeterinarianId
     }, null);
 
+    const fullAppointment = await getAppointmentById(id);
+
     res.status(200).json({
       status: 'success',
       message: 'Appointment updated successfully',
-      data: { appointment: updatedAppointment }
+      data: { appointment: fullAppointment }
     });
   } catch (error) {
     console.error('Update my appointment error:', error);

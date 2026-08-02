@@ -83,6 +83,56 @@ struct APIClient {
         return try await execute(request)
     }
 
+    /// Sends an authenticated GET to a pre-built URL (use when query parameters are needed,
+    /// since appending(path:) percent-encodes '?' and '&').
+    func get<Response: Decodable>(
+        url: URL,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return try await execute(request)
+    }
+
+    /// Sends a JSON PUT and decodes the JSON response.
+    func put<Body: Encodable, Response: Decodable>(
+        _ path: String,
+        body: Body,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            request.httpBody = try JSONEncoder().encode(body)
+        } catch {
+            throw APIError.transport(error)
+        }
+        return try await execute(request)
+    }
+
+    /// Sends an authenticated DELETE and decodes the JSON response.
+    func delete<Response: Decodable>(
+        _ path: String,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "DELETE"
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        return try await execute(request)
+    }
+
     /// Downloads raw bytes (for file viewing via QuickLook).
     func download(_ path: String, bearerToken: String? = nil) async throws -> Data {
         var request = URLRequest(url: baseURL.appending(path: path))

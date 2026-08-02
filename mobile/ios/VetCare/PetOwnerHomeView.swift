@@ -10,6 +10,8 @@ import SwiftUI
 
 private enum PetOwnerRoute: Hashable {
     case aiAssistant
+    case appointments
+    case profile
 }
 
 struct PetOwnerHomeView: View {
@@ -25,6 +27,7 @@ struct PetOwnerHomeView: View {
                 VStack(spacing: 24) {
                     greeting
                     petsSection
+                    appointmentsCard
                     aiCard
                 }
                 .padding(20)
@@ -33,6 +36,13 @@ struct PetOwnerHomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink(value: PetOwnerRoute.profile) {
+                        Image(systemName: "person.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.brand)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     signOutButton
                 }
@@ -41,6 +51,10 @@ struct PetOwnerHomeView: View {
                 switch route {
                 case .aiAssistant:
                     PetOwnerAIView(token: session.token ?? "")
+                case .appointments:
+                    AppointmentsView(token: session.token ?? "")
+                case .profile:
+                    ProfileView(token: session.token ?? "")
                 }
             }
             .navigationDestination(for: Pet.self) { pet in
@@ -140,6 +154,42 @@ struct PetOwnerHomeView: View {
             "No Pets on File",
             systemImage: "pawprint",
             description: Text("Your pets will appear here once the clinic adds them to your account.")
+        )
+    }
+
+    // MARK: - Appointments card
+
+    private var appointmentsCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Appointments", systemImage: "calendar")
+                .font(.headline)
+
+            Text("Book a new visit, reschedule, or view your appointment history.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            NavigationLink(value: PetOwnerRoute.appointments) {
+                HStack {
+                    Text("Manage Appointments")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(LinearGradient.brand)
+                )
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.cardSurface)
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
         )
     }
 

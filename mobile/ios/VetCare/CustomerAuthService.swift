@@ -85,4 +85,79 @@ struct CustomerAuthService {
         )
         return (response.data.customer, response.data.token)
     }
+
+    // MARK: - Appointments
+
+    func fetchMyAppointments(token: String) async throws -> [Appointment] {
+        let response = try await client.get(
+            "customer-auth/appointments",
+            bearerToken: token,
+            as: AppointmentsResponse.self
+        )
+        return response.data.appointments
+    }
+
+    func fetchVeterinarians(token: String) async throws -> [Veterinarian] {
+        let response = try await client.get(
+            "customer-auth/veterinarians",
+            bearerToken: token,
+            as: VeterinariansResponse.self
+        )
+        return response.data.veterinarians
+    }
+
+    func fetchAvailability(date: String, veterinarianId: Int?, token: String) async throws -> AvailabilityData {
+        // Use URLComponents so the ? separator is NOT percent-encoded by appending(path:).
+        let base = APIConfig.baseURL.appending(path: "customer-auth/appointments/availability")
+        guard var components = URLComponents(url: base, resolvingAgainstBaseURL: false) else {
+            throw APIError.invalidResponse
+        }
+        var queryItems = [URLQueryItem(name: "date", value: date)]
+        if let vetId = veterinarianId {
+            queryItems.append(URLQueryItem(name: "veterinarian_id", value: String(vetId)))
+        }
+        components.queryItems = queryItems
+        guard let url = components.url else { throw APIError.invalidResponse }
+        let response = try await client.get(url: url, bearerToken: token, as: AvailabilityResponse.self)
+        return response.data
+    }
+
+    func createAppointment(_ request: CreateAppointmentRequest, token: String) async throws -> Appointment {
+        let response = try await client.post(
+            "customer-auth/appointments",
+            body: request,
+            bearerToken: token,
+            as: AppointmentSingleResponse.self
+        )
+        return response.data.appointment
+    }
+
+    func updateAppointment(id: String, request: UpdateAppointmentRequest, token: String) async throws -> Appointment {
+        let response = try await client.put(
+            "customer-auth/appointments/\(id)",
+            body: request,
+            bearerToken: token,
+            as: AppointmentSingleResponse.self
+        )
+        return response.data.appointment
+    }
+
+    func updateProfile(_ request: UpdateProfileRequest, token: String) async throws -> Customer {
+        let response = try await client.put(
+            "customer-auth/me",
+            body: request,
+            bearerToken: token,
+            as: CustomerUpdateResponse.self
+        )
+        return response.data.customer
+    }
+
+    func cancelAppointment(id: String, token: String) async throws -> Appointment {
+        let response = try await client.delete(
+            "customer-auth/appointments/\(id)",
+            bearerToken: token,
+            as: AppointmentSingleResponse.self
+        )
+        return response.data.appointment
+    }
 }
