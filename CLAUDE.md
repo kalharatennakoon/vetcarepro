@@ -1,86 +1,141 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code (claude.ai/code) when working in this repository.
 
-## What this is
+## Overview
 
-VetCare Pro is a full-stack veterinary clinic management system (Pro Pet Animal Hospital): appointments, EMR, billing, inventory, disease-case tracking, plus ML-powered analytics and a RAG-based AI assistant. Proprietary/private codebase — see `LICENSE`.
+VetCare Pro is a veterinary clinic management system for Pro Pet Animal Hospital, covering appointments, electronic medical records, billing, inventory, and disease-case tracking, plus ML-driven analytics and a RAG-based AI assistant. The codebase is proprietary and private — see `LICENSE`.
 
-Four independent services, run together via `./run.sh` (starts `ollama serve`, server, ml, client in parallel):
+Four services make up the system. `./run.sh` from the repository root starts `ollama serve`, the backend, the ML service, and the frontend in parallel (Ctrl+C stops all four).
 
 | Service | Path | Stack | Port |
 |---|---|---|---|
-| Frontend | `client/` | React 19, Vite, React Router 7 | 5173 |
-| Backend API | `server/` | Node/Express 5, PostgreSQL (`pg`), JWT | 3000 |
-| ML/RAG service | `ml/` | Python/Flask, scikit-learn, Prophet, Ollama | 5001 |
-| iOS app | `mobile/ios/VetCare` | Swift/Xcode, hits the same backend API | — |
+| Frontend | `client/` | React 19, Vite, React Router 7, Recharts | 5173 |
+| Backend API | `server/` | Node.js, Express 5, PostgreSQL (`pg`), JWT | 3000 |
+| ML / RAG service | `ml/` | Python, Flask, scikit-learn, Prophet, Ollama | 5001 |
+| iOS app | `mobile/ios/VetCare/` | Swift, SwiftUI, Xcode | — |
+
+The iOS app is a pet-owner and guest client only; it consumes the same backend API and has no staff-facing screens. Its own documentation lives in `mobile/ios/VetCare/docs/` (`app-flow.md`, `rag-and-ai.md`).
 
 ## Commands
 
 ```bash
-# Backend (server/)
+# Backend — server/
 npm install && cp .env.example .env
-npm run dev              # nodemon, http://localhost:3000
-# no test script defined (npm test is a stub)
+npm run dev                    # nodemon, http://localhost:3000
+npm start                      # node src/server.js
 
-# Frontend (client/)
+# Frontend — client/
 npm install
-npm run dev               # http://localhost:5173
-npm run build              # vite build
-npm run lint                # eslint .
+npm run dev                    # http://localhost:5173
+npm run build                  # vite build
+npm run lint                   # eslint .
 
-# ML service (ml/) — always use start.sh or venv's python, never bare `python app.py`
+# ML service — ml/
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-./start.sh                  # or: ./venv/bin/python app.py — http://localhost:5001
-python test_setup.py         # verifies DB connection + data loading, not a full test suite
+./start.sh                     # http://localhost:5001
+python test_setup.py           # DB connectivity + data-loading sanity check
 
 # Database
 psql -U postgres -c "CREATE DATABASE vetcarepro;"
 psql -U postgres -d vetcarepro -f database/schema.sql
-psql -U postgres -d vetcarepro -f database/seed.sql   # or demo_seed.sql for demo data
-# one-off changes since schema.sql live in database/migrations/*.sql — apply individually, no runner
+psql -U postgres -d vetcarepro -f database/seed.sql      # or demo_seed.sql
 
 # Health checks
 curl http://localhost:3000/health
 curl http://localhost:5001/api/ml/health
 ```
 
-There is no automated test suite for `server/` or `client/`. `ml/test_setup.py` only sanity-checks DB connectivity. Verify backend changes via the `/health` endpoints and manual API calls; verify frontend changes with `npm run build` + `npm run lint` and, per the project's UI-change convention, exercising the feature in a browser.
+Run the ML service via `./start.sh` or the venv's interpreter (`./venv/bin/python app.py`) rather than a bare `python app.py`, which will resolve against the system interpreter and fail on missing dependencies.
 
-Ollama must be running locally with `nomic-embed-text` and `qwen2.5-coder:7b` pulled for the AI assistant to work; without it, chat endpoints degrade to an "unavailable" message rather than erroring.
+### Verification
+
+There is no automated test suite. `server/package.json`'s `test` script is an unimplemented stub, `server/tests/` contains only a bcrypt scratch script, and `ml/test_setup.py` checks database connectivity rather than behaviour. The Swift test targets under `VetCareTests/` and `VetCareUITests/` are the scaffolded defaults.
+
+Verify changes accordingly:
+
+- **Backend** — hit `/health` and exercise the affected endpoints directly.
+- **Frontend** — `npm run build` and `npm run lint`, then exercise the feature in a browser. Per project convention, UI changes are confirmed visually rather than assumed correct from a clean build.
+- **ML / RAG** — `python test_setup.py`, then call the affected `/api/ml/*` route.
+
+### Ollama dependency
+
+The AI assistant requires Ollama running locally with both models pulled:
+
+```bash
+ollama pull nomic-embed-text          # embeddings, 768-dim
+ollama pull qwen2.5-coder:7b          # generation; override via OLLAMA_CHAT_MODEL
+```
+
+Without Ollama, chat endpoints degrade to an "unavailable" message rather than erroring — a passing health check does not imply the assistant is functional.
 
 ## Architecture
 
-### Request flow and auth boundary
-`client` never talks to Postgres or Ollama directly — everything goes through `server`, which is the sole source of truth for *who the caller is*. Two entirely separate auth systems coexist and must never cross:
-- **Staff auth**: `authenticate` middleware (`server/src/middleware/auth.js`) verifies a JWT and attaches `req.user`; `authorize(...)` / `adminOnly` / `vetOrAdmin` / `staffOnly` (`roleCheck.js`) gate by role (`admin`, `veterinarian`, `receptionist`).
-- **Customer (pet-owner) auth**: `authenticateCustomer` verifies a JWT with a distinct `type: 'customer'` claim and attaches `req.customer` — a staff token is rejected here and vice versa. Separate frontend context (`CustomerAuthContext.jsx`) and localStorage key (`customerToken`) from staff (`AuthContext.jsx`, plain `token`).
+### Request flow and the auth boundary
 
-Route → controller → model layering in `server/src/`: `routes/*Routes.js` wire middleware + controller; `controllers/*Controller.js` handle req/res; `models/*Model.js` hold the raw SQL (via `pg`); `services/` wrap outbound calls to the ML service (`mlService.js`), AI/RAG service (`aiService.js`), and email (`emailService.js`).
+The frontend and iOS app never reach PostgreSQL or Ollama directly. Everything routes through `server/`, which is the sole authority on caller identity. Two independent authentication systems coexist and must never intersect:
 
-Role scoping matters throughout: e.g. `/medical-records` and `/disease-cases` are vet/admin-only, `/inventory` and `/billing` are admin/receptionist, `/reports` is admin-only — mirrored in both `client/src/App.jsx` route guards (`ProtectedRoute requiredRoles={[...]}`) and server-side `authorize(...)` calls. Client-side guarding is UX only; the real enforcement is server-side.
+- **Staff auth** — `authenticate` (`server/src/middleware/auth.js`) verifies the JWT and attaches `req.user`. `authorize(...)` and its shorthands `adminOnly`, `vetOrAdmin`, `adminOrReceptionist`, `staffOnly` (`roleCheck.js`) gate by role: `admin`, `veterinarian`, `receptionist`.
+- **Customer (pet-owner) auth** — `authenticateCustomer` verifies a JWT carrying a distinct `type: 'customer'` claim and attaches `req.customer`. A staff token is rejected here and vice versa. The frontend keeps these separate too: `CustomerAuthContext.jsx` with a `customerToken` localStorage key, versus `AuthContext.jsx` with a plain `token`.
 
-### AI assistant (RAG) — cross-service feature
-Full walkthrough: `docs/HOW_THE_AI_ASSISTANT_WORKS.md`. Summary of the pipeline: `client` (`AIAssistant.jsx` for staff, `GuestAIAssistant.jsx`, `PetOwnerAIWidget.jsx`) → `server` (`aiController.js`/`aiRoutes.js`, which resolve role/customerId server-side and forward to Flask via `aiService.js`) → `ml/app.py`'s `/api/ml/rag/chat` → `ml/scripts/rag/`:
-- `rag_service.py` — traffic controller: decides action vs. exact-SQL vs. full RAG.
-- `action_intent.py` — detects write-intents (book/cancel/reschedule appointment, register customer) via pattern matching, extracts structured fields via the LLM, always requires explicit user confirmation before any DB write.
-- `structured_query.py` — answers exact count/list questions (e.g. "how many appointments today?") with deterministic SQL, never via the LLM — retrieval only ever sees a handful of chunks, so counting via RAG would be a guess.
-- `retrieval.py` — pgvector similarity search over embedded chunks, filtered by caller role/customer ID at the SQL level (not just hidden in the UI).
-- `ingest.py` / `chunking.py` — turn clinic data into embedded chunks (`nomic-embed-text`, 768-dim, via Ollama).
-- `ollama_client.py` — talks to Ollama for both embeddings and generation (`qwen2.5-coder:7b`, overridable via `OLLAMA_CHAT_MODEL`).
+Layering in `server/src/` is consistent: `routes/*Routes.js` wire middleware and controllers, `controllers/*Controller.js` handle request and response, `models/*Model.js` hold the raw SQL, and `services/` wrap outbound calls to the ML service (`mlService.js`), the AI/RAG service (`aiService.js`), and email (`emailService.js`).
 
-Three access modes enforced server-side: guest (public FAQs only), pet owner (own records only), staff (full data, further scoped by role — e.g. receptionists don't get clinical diagnosis detail).
+Role scoping runs throughout. Medical records and disease cases are vet/admin only; inventory and billing are admin/receptionist; reports are admin only. These constraints are mirrored in `client/src/App.jsx` route guards (`ProtectedRoute requiredRoles={[...]}`) and in server-side `authorize(...)` calls. **Client-side guarding is a UX affordance only — the server is the enforcement point.** When adding a role-restricted feature, change both.
 
-### ML analytics (separate from RAG)
-`ml/scripts/disease_prediction.py`, `sales_forecasting.py`, `inventory_forecasting.py` are trained offline and pickled into `ml/models/*.pkl` (filename-dated, e.g. `disease_prediction_20260721.pkl`); `ml/app.py` loads the *latest* file per model type (`max(glob(...))`) at startup. `server/src/services/mlService.js` proxies `/api/ml/*` calls from `server` to Flask. Retraining is triggered via an admin-only endpoint, not automatic.
+### AI assistant (RAG)
+
+The pipeline crosses all three services: `client` (`AIAssistant.jsx` for staff, `GuestAIAssistant.jsx`, `PetOwnerAIWidget.jsx`) → `server` (`aiRoutes.js` / `aiController.js`, which resolve role and `customerId` server-side and forward via `aiService.js`) → `ml/app.py`'s `/api/ml/rag/chat` → the modules in `ml/scripts/rag/`.
+
+`rag_service.py` orchestrates, attempting four paths in a deliberate order:
+
+1. **`action_intent.py`** — detects staff write-intents (book, reschedule, or cancel an appointment; send a reminder; register a customer; add a pet; register staff, admin only). It never writes to the database itself: it proposes an action that `aiController.js`'s `confirmAction` executes only after explicit user confirmation, or asks a follow-up when a slot is unfilled.
+2. **`clinical_tools.py`** — capabilities needing a pet's *complete* record set rather than a top-k sample: full history summary, consultation-note draft, aftercare instructions, and pre-appointment briefing. Restricted to `CLINICAL_STAFF_ROLES` (admin and veterinarian). Nothing here saves a record or sends an email without review.
+3. **`structured_query.py`** — answers exact count and list questions ("how many appointments today?") with deterministic SQL, never through the LLM.
+4. **`retrieval.py`** — pgvector similarity search over embedded chunks, filtered by role and customer ID *in the SQL*, not in the UI.
+
+Supporting modules: `ingest.py` and `chunking.py` convert clinic data into embedded chunks; `ollama_client.py` handles both embeddings and generation; `faq_data.py` holds the seed FAQ content.
+
+Two design rules recur across these modules and should be preserved in any extension:
+
+- **The LLM parses; it never decides.** One generation call turns free text into a JSON slot object. Every resolution of a pet, customer, veterinarian, appointment, or date is a real SQL lookup or deterministic date arithmetic.
+- **Ask rather than guess.** An ambiguous pet name (common names such as "Max" collide across owners) or a missing slot produces a clarifying question, not a best guess. There is no server-side conversation session — multi-turn slot filling round-trips a `pending_intent` object through the client.
+
+Three access modes are enforced server-side and again at the retrieval SQL layer: **guest** (public FAQs only), **pet owner** (own records only), and **staff** (clinic-wide, scoped further by role — receptionists are excluded from clinical detail, matching the `vetOrAdmin` boundary in the rest of the app).
+
+Aggregate questions are routed to SQL because retrieval only ever surfaces a handful of chunks; the staff system prompt additionally instructs the model to decline counts rather than extrapolate from its sample. Prompts also enforce metric units and Sri Lankan Rupees, with a regex post-process in `rag_service.py` stripping imperial asides the local model reinserts regardless of instruction.
+
+### ML analytics
+
+Distinct from RAG. `ml/scripts/disease_prediction.py`, `sales_forecasting.py`, `inventory_forecasting.py`, and `pet_health_predictor.py` are trained offline and pickled into `ml/models/*.pkl` with dated filenames (for example `disease_prediction_20260721.pkl`). `ml/app.py` loads the newest file per model type via `max(glob(...))` at startup.
+
+The `.pkl` files are gitignored and absent from a fresh clone, so ML endpoints will report models as unavailable until training runs. Retraining is triggered through admin-only endpoints (`/api/ml/*/train`), never automatically. `server/src/services/mlService.js` proxies `/api/ml/*` calls from the backend to Flask.
 
 ### Database
-Schema in `database/schema.sql`, seed data in `database/seed.sql` (or `demo_seed.sql`), incremental changes since then in `database/migrations/*.sql` (no migration runner — apply manually, and check which have already landed against a given DB before assuming schema state). Notable: `pgvector` extension for RAG embeddings (`add_rag_vector_store.sql`), separate `password_hash`/`password_must_change` on `customers` for pet-owner auth (`add_customer_auth.sql`). See `DATABASE.md` for connection details and seeded test credentials.
 
-### Pet-owner portal password flow
-New/seeded customers get a default password (`DEFAULT_CUSTOMER_PASSWORD` in `server/src/utils/authUtils.js`) and `password_must_change = true`; first login forces `PetOwnerVerifyIdentity` → `PetOwnerSetPassword` before granting access, driven by `POST /api/customer-auth/verify-identity` and `/set-password`. There's currently no self-service "change password" flow outside that first-login path.
+Schema lives in `database/schema.sql` (17 tables), seed data in `seed.sql` or `demo_seed.sql`. Incremental changes since the base schema sit in `database/migrations/*.sql`.
+
+**There is no migration runner.** Migrations are applied by hand, and the filesystem is not a record of what a given database has actually received — check the live schema before assuming state. Notable migrations include `add_rag_vector_store.sql` (the `pgvector` extension and `rag_chunks` table) and `add_customer_auth.sql` (pet-owner credential columns on `customers`).
+
+See `DATABASE.md` for connection details and seeded test credentials.
+
+### Pet-owner account setup
+
+Pet owners have no usable password until they complete setup themselves; there is no shared default. From the login page they choose "Set Up Your Account", confirm the email and phone the clinic holds on file (`POST /api/customer-auth/verify-identity`, which issues a short-lived 15-minute setup token with its own JWT `type`), then choose a password (`/set-password`). A separate authenticated `/change-password` route handles subsequent changes.
+
+### Appointment rules
+
+`server/src/utils/appointmentRules.js` centralizes self-service booking constraints so the booking controller and the availability endpoint cannot drift: clinic open Monday–Saturday 09:00–18:30, 30-minute slots, up to three concurrent appointments per slot, and a 48-hour minimum lead time on create, reschedule, and cancel. Change the constants there rather than in calling code.
 
 ### Uploads
-`server/uploads/` (pet images, lab reports) is `multer`-backed, served statically at `/uploads`, and is gitignored — not present after a fresh clone.
+
+`server/uploads/` holds pet images, profile images, and lab reports, is `multer`-backed, and is served statically at `/uploads`. Its contents are gitignored and absent after a fresh clone.
+
+## Conventions
+
+- API responses follow a consistent envelope: `{ status: 'success' | 'error', message, data }`.
+- The backend uses ES modules (`"type": "module"`); imports require explicit `.js` extensions.
+- SQL belongs in `models/`, not in controllers.
+- New RAG capabilities extend the existing module chain in `ml/scripts/rag/` rather than adding branches to `rag_service.answer_question` directly.
+- `PersonalContext/` holds the author's working notes and is not part of the application.
