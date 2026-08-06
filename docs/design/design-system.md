@@ -133,6 +133,7 @@ The colour-alone constraint deserves emphasis in this product. A severity indica
 
 ## Related
 
+- [`ui-style-reference.pdf`](ui-style-reference.pdf) — source style reference this spec is derived from
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md) §7 — frontend structure
 - [`../SCOPE.md`](../SCOPE.md) §5 — styling recorded as a known gap
 - [`../deliverables/wireframes/`](../deliverables/wireframes/) — low-fidelity wireframes
