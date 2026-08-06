@@ -10,7 +10,7 @@ import re
 
 from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
-from scripts.rag.structured_query import try_structured_answer, resolve_pet_id
+from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, find_pet_candidates, STAFF_ROLES
 from scripts.rag.action_intent import try_action_intent
 from scripts.rag.clinical_tools import try_clinical_tool
 
@@ -220,6 +220,45 @@ def answer_question(
     # Try to resolve an exact pet (e.g. "pet Max whose owner is ...") so that
     # retrieval isn't polluted by other pets sharing the same common name.
     resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+
+    # A name that matched MORE THAN ONE pet is not the same as "no pet
+    # mentioned" - staff can see pets across every owner, so a common name
+    # like "Max" easily collides. Silently falling through to unscoped,
+    # clinic-wide retrieval here would let semantic search grab a completely
+    # unrelated pet's (or several pets') records and present them as if they
+    # were about the one pet asked about - ask which one is meant instead of
+    # guessing, the same "ask rather than guess" discipline action_intent.py
+    # already uses for write-actions.
+    if resolved_pet_id is None and role in STAFF_ROLES:
+        pet_name, candidates = find_pet_candidates(question, role=role, customer_id=customer_id)
+        if pet_name and len(candidates) > 1:
+            listing = '\n'.join(f'- {r[1]} (owner: {r[3]} {r[4]})' for r in candidates)
+            # "pet <Name> whose owner is <Owner>" - not just any rephrasing:
+            # it has to actually round-trip through resolve_pet_id's own
+            # extraction patterns (PET_MENTION requires the literal "pet "
+            # trigger word; OWNER_MENTION picks up "owner is ..." after it).
+            # A phrasing like "Max whose owner is ..." with no "pet"/"of"/
+            # "for"/"about" trigger or possessive "'s" would silently fail
+            # to resolve on the follow-up turn, right back to this same
+            # ambiguity - or worse, back to unscoped retrieval.
+            example = f'pet {pet_name} whose owner is {candidates[0][3]} {candidates[0][4]}'
+            return {
+                'answer': (
+                    f'There are {len(candidates)} pets named "{pet_name}" in the system - '
+                    f'which one do you mean?\n{listing}\n\n'
+                    f'Ask again naming the owner, e.g. "{example}".'
+                ),
+                'sources': [],
+                'chunks_used': 0,
+                'options': [
+                    {
+                        'label': f'{r[1]} ({r[3]} {r[4]})',
+                        'value': f'pet {r[1]} whose owner is {r[3]} {r[4]}'
+                    }
+                    for r in candidates
+                ],
+                'structured': True
+            }
 
     chunks = retrieve_chunks(
         question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
