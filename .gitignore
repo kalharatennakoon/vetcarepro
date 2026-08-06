@@ -52,7 +52,8 @@ server/uploads/profile-images/
 server/uploads/lab-reports/
 
 # ── Docs ──────────────────────────────────────────────────────────────────────
-docs/insights/
+docs/insights/*
+!docs/insights/README.md
 docs/tests/*.json
 
 # ── Temporary / backup files ──────────────────────────────────────────────────
