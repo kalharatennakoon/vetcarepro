@@ -308,6 +308,36 @@ export const nicExists = async (nic, excludeCustomerId = null) => {
 };
 
 /**
+ * Check if address exists (only when a value is provided)
+ */
+export const addressExists = async (address, excludeCustomerId = null) => {
+  if (!address) return false;
+  let query = 'SELECT 1 FROM customers WHERE address = $1';
+  const params = [address];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
+ * Check if emergency phone exists (only when a value is provided)
+ */
+export const emergencyPhoneExists = async (emergencyPhone, excludeCustomerId = null) => {
+  if (!emergencyPhone) return false;
+  let query = 'SELECT 1 FROM customers WHERE emergency_phone = $1';
+  const params = [emergencyPhone];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
  * Get customer count
  */
 export const getCustomerCount = async () => {

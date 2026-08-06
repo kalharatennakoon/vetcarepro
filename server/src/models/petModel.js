@@ -310,6 +310,7 @@ export const getVaccinationsForCustomerPet = async (petId, customerId) => {
       v.vaccination_date,
       v.next_due_date,
       v.adverse_reaction,
+      v.reaction_details,
       v.notes,
       CONCAT(u.first_name, ' ', u.last_name) AS administered_by_name
     FROM vaccinations v

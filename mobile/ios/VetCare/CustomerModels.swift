@@ -31,20 +31,53 @@ struct Customer: Codable, Identifiable {
     let lastName: String
     let email: String?
     let phone: String
+    let alternatePhone: String?
+    let address: String?
     let city: String?
-    let passwordMustChange: Bool
+    let nic: String?
+    let preferredContactMethod: String?
+    let emergencyContact: String?
+    let emergencyPhone: String?
+    var passwordMustChange: Bool
+    let createdAt: String?
 
     var id: String { customerId }
     var fullName: String { "\(firstName) \(lastName)" }
+    var initials: String { "\(firstName.prefix(1))\(lastName.prefix(1))" }
+
+    var memberSince: String? {
+        guard let raw = createdAt else { return nil }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = iso.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        guard let d = date else { return nil }
+        return "\(Calendar.current.component(.year, from: d))"
+    }
+
+    var preferredContactDisplay: String {
+        switch preferredContactMethod {
+        case "phone": return "Phone"
+        case "email": return "Email"
+        case "sms":   return "SMS"
+        default:      return "—"
+        }
+    }
 
     enum CodingKeys: String, CodingKey {
-        case customerId = "customer_id"
-        case firstName = "first_name"
-        case lastName = "last_name"
+        case customerId           = "customer_id"
+        case firstName            = "first_name"
+        case lastName             = "last_name"
         case email
         case phone
+        case alternatePhone       = "alternate_phone"
+        case address
         case city
-        case passwordMustChange = "password_must_change"
+        case nic
+        case preferredContactMethod = "preferred_contact_method"
+        case emergencyContact     = "emergency_contact"
+        case emergencyPhone       = "emergency_phone"
+        case passwordMustChange   = "password_must_change"
+        case createdAt            = "created_at"
     }
 }
 
@@ -294,4 +327,271 @@ struct VerifyIdentityData: Decodable {
 struct SetFirstPasswordRequest: Encodable {
     let setupToken: String
     let newPassword: String
+}
+
+// MARK: - Appointments
+
+struct Appointment: Codable, Identifiable {
+    let appointmentId: String   // e.g. "APPT-2026-0001" (VARCHAR, trigger-generated)
+    let petId: String
+    let appointmentDate: String   // DATE from pg → "YYYY-MM-DDT00:00:00.000Z"
+    let appointmentTime: String   // TIME from pg → "HH:MM:SS"
+    let durationMinutes: Int
+    let appointmentType: String
+    let reason: String?
+    let status: String
+    let cancellationReason: String?
+    let createdAt: String
+    let veterinarianId: Int?
+    let veterinarianName: String?
+    let petName: String
+    let species: String
+
+    var id: String { appointmentId }
+
+    enum CodingKeys: String, CodingKey {
+        case appointmentId      = "appointment_id"
+        case petId              = "pet_id"
+        case appointmentDate    = "appointment_date"
+        case appointmentTime    = "appointment_time"
+        case durationMinutes    = "duration_minutes"
+        case appointmentType    = "appointment_type"
+        case reason
+        case status
+        case cancellationReason = "cancellation_reason"
+        case createdAt          = "created_at"
+        case veterinarianId     = "veterinarian_id"
+        case veterinarianName   = "veterinarian_name"
+        case petName            = "pet_name"
+        case species
+    }
+
+    private static let dateParser: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = TimeZone(abbreviation: "UTC")
+        return f
+    }()
+
+    var dateObject: Date? {
+        Self.dateParser.date(from: String(appointmentDate.prefix(10)))
+    }
+
+    var dateFormatted: String {
+        guard let d = dateObject else { return String(appointmentDate.prefix(10)) }
+        let out = DateFormatter()
+        out.dateStyle = .medium
+        out.timeStyle = .none
+        return out.string(from: d)
+    }
+
+    var timeFormatted: String {
+        let raw = String(appointmentTime.prefix(5))
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        guard let d = f.date(from: raw) else { return raw }
+        let out = DateFormatter()
+        out.timeStyle = .short
+        out.dateStyle = .none
+        return out.string(from: d)
+    }
+
+    var typeDisplayName: String {
+        switch appointmentType {
+        case "checkup":      return "Check-up"
+        case "vaccination":  return "Vaccination"
+        case "follow_up":    return "Follow-up"
+        case "consultation": return "Consultation"
+        default:             return appointmentType.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    var typeIcon: String {
+        switch appointmentType {
+        case "checkup":      return "stethoscope"
+        case "vaccination":  return "syringe"
+        case "follow_up":    return "arrow.clockwise"
+        case "consultation": return "text.bubble"
+        default:             return "calendar"
+        }
+    }
+
+    var statusDisplayName: String {
+        switch status {
+        case "confirmed":   return "Confirmed"
+        case "scheduled":   return "Scheduled"
+        case "in_progress": return "In Progress"
+        case "completed":   return "Completed"
+        case "cancelled":   return "Cancelled"
+        case "no_show":     return "No Show"
+        default:            return status.replacingOccurrences(of: "_", with: " ").capitalized
+        }
+    }
+
+    var isActiveStatus: Bool {
+        status == "confirmed" || status == "scheduled"
+    }
+
+    var isUpcoming: Bool {
+        isActiveStatus || status == "in_progress"
+    }
+
+    // Returns true when the appointment is at least 48 hours away and still modifiable.
+    var canModify: Bool {
+        guard isActiveStatus else { return false }
+        let datePart = String(appointmentDate.prefix(10))
+        let timePart = String(appointmentTime.prefix(5))
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd HH:mm"
+        guard let target = f.date(from: "\(datePart) \(timePart)") else { return false }
+        return target.timeIntervalSinceNow >= 48 * 3600
+    }
+}
+
+struct AppointmentsResponse: Decodable {
+    let status: String
+    let data: AppointmentsData
+}
+
+struct AppointmentsData: Decodable {
+    let appointments: [Appointment]
+}
+
+struct AppointmentSingleResponse: Decodable {
+    let status: String
+    let message: String?
+    let data: AppointmentSingleData
+}
+
+struct AppointmentSingleData: Decodable {
+    let appointment: Appointment
+}
+
+// MARK: - Veterinarians list
+
+struct Veterinarian: Codable, Identifiable {
+    let veterinarianId: Int
+    let firstName: String
+    let lastName: String
+    let specialization: String?
+
+    var id: Int { veterinarianId }
+    var fullName: String { "\(firstName) \(lastName)" }
+
+    enum CodingKeys: String, CodingKey {
+        case veterinarianId = "veterinarian_id"
+        case firstName      = "first_name"
+        case lastName       = "last_name"
+        case specialization
+    }
+}
+
+struct VeterinariansResponse: Decodable {
+    let status: String
+    let data: VeterinariansData
+}
+
+struct VeterinariansData: Decodable {
+    let veterinarians: [Veterinarian]
+}
+
+// MARK: - Availability
+
+struct AvailabilityResponse: Decodable {
+    let status: String
+    let data: AvailabilityData
+}
+
+struct AvailabilityData: Decodable {
+    let date: String
+    let isClinicDay: Bool
+    let slots: [TimeSlot]
+}
+
+struct TimeSlot: Codable, Identifiable {
+    let time: String
+    let remainingCapacity: Int
+    let available: Bool
+    let meetsLeadTime: Bool
+
+    var id: String { time }
+
+    var timeFormatted: String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        guard let d = f.date(from: time) else { return time }
+        let out = DateFormatter()
+        out.timeStyle = .short
+        out.dateStyle = .none
+        return out.string(from: d)
+    }
+}
+
+// MARK: - Appointment booking requests
+
+struct CreateAppointmentRequest: Encodable {
+    let petId: String
+    let appointmentDate: String
+    let appointmentTime: String
+    let appointmentType: String
+    let reason: String
+    let veterinarianId: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case petId           = "pet_id"
+        case appointmentDate = "appointment_date"
+        case appointmentTime = "appointment_time"
+        case appointmentType = "appointment_type"
+        case reason
+        case veterinarianId  = "veterinarian_id"
+    }
+}
+
+// MARK: - Profile update
+
+struct UpdateProfileRequest: Encodable {
+    let alternatePhone: String?
+    let address: String?
+    let city: String?
+    let preferredContactMethod: String?
+    let emergencyContact: String?
+    let emergencyPhone: String?
+
+    enum CodingKeys: String, CodingKey {
+        case alternatePhone         = "alternate_phone"
+        case address
+        case city
+        case preferredContactMethod = "preferred_contact_method"
+        case emergencyContact       = "emergency_contact"
+        case emergencyPhone         = "emergency_phone"
+    }
+}
+
+struct CustomerUpdateResponse: Decodable {
+    let status: String
+    let data: CustomerUpdateData
+}
+
+struct CustomerUpdateData: Decodable {
+    let customer: Customer
+}
+
+struct UpdateAppointmentRequest: Encodable {
+    let appointmentDate: String
+    let appointmentTime: String
+    let appointmentType: String
+    let reason: String
+    let veterinarianId: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case appointmentDate = "appointment_date"
+        case appointmentTime = "appointment_time"
+        case appointmentType = "appointment_type"
+        case reason
+        case veterinarianId  = "veterinarian_id"
+    }
 }

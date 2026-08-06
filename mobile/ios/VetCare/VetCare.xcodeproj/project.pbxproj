@@ -21,6 +21,9 @@
 		D99E86C63018AC8600B730BC /* PetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99E86C53018AC8500B730BC /* PetDetailView.swift */; };
 		D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */; };
 		D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27630197F4700ACE00D /* SetPasswordView.swift */; };
+		D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */; };
+		D9D2205E301F49CD009B9CD1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */; };
+		D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205F301F82B3009B9CD1 /* ProfileView.swift */; };
 		D9EA01313016F67300FCFE3B /* CustomerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01303016F67300FCFE3B /* CustomerModels.swift */; };
 		D9EA01333016F67600FCFE3B /* CustomerAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */; };
 		D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01343016F68200FCFE3B /* CustomerSession.swift */; };
@@ -65,6 +68,9 @@
 		D9B9EC2A3013A4C100C8C883 /* VetCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VetCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
+		D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
+		D9D2205F301F82B3009B9CD1 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		D9EA01303016F67300FCFE3B /* CustomerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerModels.swift; sourceTree = "<group>"; };
 		D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerAuthService.swift; sourceTree = "<group>"; };
 		D9EA01343016F68200FCFE3B /* CustomerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerSession.swift; sourceTree = "<group>"; };
@@ -158,6 +164,9 @@
 				D99E86C53018AC8500B730BC /* PetDetailView.swift */,
 				D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */,
 				D9A6E27630197F4700ACE00D /* SetPasswordView.swift */,
+				D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */,
+				D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */,
+				D9D2205F301F82B3009B9CD1 /* ProfileView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -322,11 +331,14 @@
 				D99AEDC63015F09600D117CA /* LoginView.swift in Sources */,
 				D9EA01373016F69500FCFE3B /* ChangePasswordView.swift in Sources */,
 				D9EA013B3016FAB200FCFE3B /* PetOwnerChatViewModel.swift in Sources */,
+				D9D2205E301F49CD009B9CD1 /* BookAppointmentView.swift in Sources */,
 				D99AEDC43015F08300D117CA /* WelcomeView.swift in Sources */,
 				D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */,
 				D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */,
 				D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */,
+				D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */,
 				D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */,
+				D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */,
 				D99AEDC03015F07100D117CA /* Theme.swift in Sources */,
 				D99AEDD43015F43000D117CA /* ChatMessage.swift in Sources */,
 				D9EA01333016F67600FCFE3B /* CustomerAuthService.swift in Sources */,

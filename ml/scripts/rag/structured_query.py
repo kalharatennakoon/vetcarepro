@@ -239,17 +239,22 @@ LIST_VACCINATIONS = re.compile(
     re.IGNORECASE
 )
 
-# Matches temporal "last / most recent" vaccine questions such as:
+# Matches temporal "last / most recent" vaccine questions, PLUS "up to date"
+# status-check questions - both are answered the same way (most recent shot
+# + its next_due_date), so they share one handler:
 # "when did Max take his last vaccine?"
 # "when was Max last vaccinated?"
 # "what was the latest vaccination for Bella?"
 # "most recent vaccine for Max"
+# "is Max up to date with shots?" / "is Max up to date on vaccinations?"
 LAST_VACCINATION = re.compile(
     r'\b(?:last|latest|most\s+recent|recent)\b.*\b(?:vaccines?|vaccinations?)\b|'
     r'\b(?:vaccines?|vaccinations?)\b.*\b(?:last|latest|most\s+recent|recent)\b|'
     r'\bwhen\b.*\b(?:last|latest|recent)\b.*\bvaccinat|'
     r'\bwhen\b.*\bvaccinat.*\b(?:last|latest|recent)\b|'
-    r'\blast\s+time\b.*\bvaccinat',
+    r'\blast\s+time\b.*\bvaccinat|'
+    r'\bup[\s-]?to[\s-]?date\b.*\b(?:vaccines?|vaccinations?|shots?)\b|'
+    r'\b(?:vaccines?|vaccinations?|shots?)\b.*\bup[\s-]?to[\s-]?date\b',
     re.IGNORECASE
 )
 
@@ -276,15 +281,16 @@ PET_MENTION = re.compile(r'\bpet\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 # itself instead of "Max".
 PET_BY_MENTION = re.compile(r'\b(?:of|for|about)\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 
-# Matches a possessive pet name like "Loki's" or "Max's" - the most natural
-# way people actually phrase pet-specific questions ("what did the vet find
-# during Loki's last visit"), which the two patterns above miss since there's
-# no "pet"/"of"/"for"/"about" trigger word immediately before the name. Used
-# as a last-resort fallback, and requires capitalization to cut down on false
-# positives - a false positive here is harmless anyway (the SQL lookup in
+# Matches a possessive pet name like "Loki's", "Max's", or "loki's" - the
+# most natural way people actually phrase pet-specific questions ("what did
+# the vet find during Loki's last visit"), which the two patterns above miss
+# since there's no "pet"/"of"/"for"/"about" trigger word immediately before
+# the name. Used as a last-resort fallback. Case-insensitive so a lowercase-
+# typed name (e.g. "loki's" from someone not bothering to capitalize) still
+# resolves - a false positive here is harmless anyway (the SQL lookup in
 # resolve_pet_id() below simply returns zero rows for a non-pet-name word and
 # falls through to normal unscoped retrieval).
-PET_POSSESSIVE_MENTION = re.compile(r"\b([A-Z][a-zA-Z]*)'s\b")
+PET_POSSESSIVE_MENTION = re.compile(r"\b([A-Za-z][a-zA-Z]*)'s\b")
 
 # Sentence-initial contractions ("What's", "How's", ...) are capitalized too
 # and would otherwise be picked up as a false "pet name" before the real one
@@ -336,6 +342,47 @@ def _match_customer_pet_by_name(question: str, customer_id: str):
 OWNER_MENTION = re.compile(
     r'owner\s+(?:is|named|called)?\s*[\'"]?([A-Za-z]+(?:\s+[A-Za-z]+)?)[\'"]?', re.IGNORECASE
 )
+
+
+def _bare_staff_pet_mention(question: str):
+    """
+    Last-resort pet-name extraction for STAFF questions with no grammatical
+    trigger word ("pet"/"of"/"for"/"about") and no possessive "'s" at all -
+    e.g. "is Max up to date with shots?" or "is max up to date with shots?"
+    (no capital needed). None of PET_MENTION / PET_BY_MENTION /
+    _first_possessive_pet_name catch this shape.
+
+    Unlike _match_customer_pet_by_name, this is NOT bounded to one owner's
+    pet list - it scans every pet name in the clinic, since staff can ask
+    about any pet. That used to make a bare match unsafe to act on (the same
+    name can belong to many different owners with no way to tell which one
+    was meant) - now safe, because find_pet_candidates()/resolve_pet_id()
+    already fall back to "ask which owner" (see rag_service.answer_question)
+    whenever a resolved name turns out to match more than one pet, rather
+    than silently guessing. Returning the bare name here just feeds that
+    same disambiguation path instead of leaving the question with no pet
+    identity at all and falling through to unscoped clinic-wide retrieval.
+
+    Returns:
+        the matched pet_name (str) if exactly one DISTINCT pet name (which
+        may still belong to several different pets/owners) was found
+        mentioned in the question, else None - zero matches, or two+
+        different pet names mentioned (e.g. "compare Max and Loki", where
+        guessing which one matters would be wrong).
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT pet_name FROM pets WHERE pet_name IS NOT NULL")
+            names = [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    matched = {
+        name for name in names
+        if name and re.search(rf'\b{re.escape(name)}\b', question, re.IGNORECASE)
+    }
+    return next(iter(matched)) if len(matched) == 1 else None
 
 
 # ============================================================
@@ -524,6 +571,72 @@ def _first_group(match):
     return next((g for g in match.groups() if g), None)
 
 
+def find_pet_candidates(question: str, role: str, customer_id: str = None):
+    """
+    Name-extraction + SQL lookup shared by resolve_pet_id() and by
+    rag_service.answer_question()'s ambiguity check. Unlike resolve_pet_id,
+    this returns the full candidate row set (including owner name) rather
+    than collapsing straight to a single pet_id or None - callers that need
+    to tell "no pet mentioned" apart from "multiple pets matched, ask which
+    one" (staff can share a pet name across many different owners) need to
+    see who the candidates actually are.
+
+    Returns:
+        (pet_name, rows) - pet_name is the extracted name, or None if the
+        question doesn't mention one at all (rows is then always []). rows
+        is a list of (pet_id, pet_name, customer_id, owner_first, owner_last)
+        tuples - possibly empty, possibly a single match, possibly several.
+    """
+    pet_match = PET_MENTION.search(question)
+    if not pet_match:
+        pet_match = PET_BY_MENTION.search(question)
+    pet_name = pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+
+    if not pet_name and role in STAFF_ROLES:
+        pet_name = _bare_staff_pet_mention(question)
+
+    if not pet_name:
+        return None, []
+
+    owner_match = OWNER_MENTION.search(question)
+    owner_name = owner_match.group(1) if owner_match else None
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if role in STAFF_ROLES:
+                if owner_name:
+                    cur.execute("""
+                        SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
+                        FROM pets p
+                        JOIN customers c ON c.customer_id = p.customer_id
+                        WHERE p.pet_name ILIKE %s
+                          AND (c.first_name || ' ' || c.last_name) ILIKE %s
+                    """, (pet_name, f'%{owner_name}%'))
+                else:
+                    cur.execute("""
+                        SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
+                        FROM pets p
+                        JOIN customers c ON c.customer_id = p.customer_id
+                        WHERE p.pet_name ILIKE %s
+                    """, (pet_name,))
+            elif role == 'pet_owner' and customer_id:
+                cur.execute("""
+                    SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON c.customer_id = p.customer_id
+                    WHERE p.pet_name ILIKE %s AND p.customer_id = %s
+                """, (pet_name, customer_id))
+            else:
+                return pet_name, []
+
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    return pet_name, rows
+
+
 def resolve_pet_id(question: str, role: str, customer_id: str = None):
     """
     Try to figure out exactly which pet a question is about, by name (and
@@ -537,45 +650,17 @@ def resolve_pet_id(question: str, role: str, customer_id: str = None):
 
     Returns:
         str: a single pet_id if exactly one match is found, otherwise None
-        (caller should fall back to normal unscoped retrieval).
+        (caller should fall back to normal unscoped retrieval - or, for
+        rag_service.answer_question, check find_pet_candidates() itself to
+        tell an ambiguous match apart from no name at all, and ask which
+        pet is meant rather than guessing via unscoped retrieval).
     """
-    pet_match = PET_MENTION.search(question)
-    if not pet_match:
-        pet_match = PET_BY_MENTION.search(question)
-    pet_name = pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+    pet_name, rows = find_pet_candidates(question, role, customer_id)
 
     if not pet_name:
         if role == 'pet_owner' and customer_id:
             return _match_customer_pet_by_name(question, customer_id)
         return None
-
-    owner_match = OWNER_MENTION.search(question)
-    owner_name = owner_match.group(1) if owner_match else None
-
-    conn = get_raw_db_connection()
-    try:
-        with conn.cursor() as cur:
-            if role in STAFF_ROLES:
-                if owner_name:
-                    cur.execute("""
-                        SELECT p.pet_id FROM pets p
-                        JOIN customers c ON c.customer_id = p.customer_id
-                        WHERE p.pet_name ILIKE %s
-                          AND (c.first_name || ' ' || c.last_name) ILIKE %s
-                    """, (pet_name, f'%{owner_name}%'))
-                else:
-                    cur.execute("SELECT pet_id FROM pets WHERE pet_name ILIKE %s", (pet_name,))
-            elif role == 'pet_owner' and customer_id:
-                cur.execute(
-                    "SELECT pet_id FROM pets WHERE pet_name ILIKE %s AND customer_id = %s",
-                    (pet_name, customer_id)
-                )
-            else:
-                return None
-
-            rows = cur.fetchall()
-    finally:
-        conn.close()
 
     # Only resolve if unambiguous - if there are still multiple matches
     # (e.g. two "Max"s with no owner given, or owner name too vague),
@@ -785,7 +870,11 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
 
 
 def _looks_like_vaccine_question(question: str) -> bool:
-    return bool(re.search(r'\b(?:vaccines?|vaccinations?)\b|\bvaccine\b', question, re.IGNORECASE))
+    # "shots" is the common everyday word staff/owners actually type for
+    # vaccines ("is Max up to date with shots?") - without it, this whole
+    # class of question skips the exact-SQL vaccine handlers entirely and
+    # falls through to unscoped RAG.
+    return bool(re.search(r'\b(?:vaccines?|vaccinations?|shots?)\b', question, re.IGNORECASE))
 
 
 def _count_pets_by_name(name: str, role: str, customer_id: str = None) -> dict:

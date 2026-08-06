@@ -134,7 +134,7 @@ python app.py      # runs on http://localhost:5001
     
 > These credentials are only available after running the seed file.
 
-Every other pet owner account - seeded or created later by staff - has no usable password until the owner completes account setup themselves. There is no shared default password. On the pet owner login page, they choose **"Set Up Your Account"**, enter the email and phone number the clinic has on file for them, and are then prompted to choose their own password (see `POST /api/customer-auth/verify-identity` and `/set-password` in `server/src/routes/customerAuthRoutes.js`).
+Every other pet owner account — whether seeded or created later by staff — starts with no usable password; there is no shared default. To set one, the owner selects **"Set Up Your Account"** on the pet owner login page and confirms the email and phone number the clinic has on file (`POST /api/customer-auth/verify-identity`), then chooses a password (`/set-password`). Both routes live in `server/src/routes/customerAuthRoutes.js`.
 
 ---
 

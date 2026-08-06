@@ -15,6 +15,16 @@
 import pool from '../config/database.js';
 
 /**
+ * Find an active veterinarian by user_id - used to validate a pet owner's
+ * preferred-vet choice when self-booking (customerAppointmentController.js).
+ */
+export const getActiveVeterinarianById = async (userId) => {
+  const query = "SELECT user_id, first_name, last_name, specialization FROM users WHERE user_id = $1 AND role = 'veterinarian' AND is_active = true";
+  const result = await pool.query(query, [userId]);
+  return result.rows[0] || null;
+};
+
+/**
  * Find user by email (used for login)
  * Fetch user data by email
  * @param {string} email

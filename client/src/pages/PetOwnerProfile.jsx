@@ -1,9 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
-import { getMyPets, getPetLabReports, downloadPetLabReport } from '../services/customerPortalService';
+import { useNotification } from '../context/NotificationContext';
+import { getMyPets, getPetVaccinations, getPetLabReports, downloadPetLabReport } from '../services/customerPortalService';
 import PetOwnerAIWidget from '../components/PetOwnerAIWidget';
 import '../styles/PetOwnerProfile.css';
+
+const PREFERRED_CONTACT_OPTIONS = [
+  { value: 'phone', label: 'Phone' },
+  { value: 'email', label: 'Email' },
+  { value: 'sms', label: 'SMS' }
+];
+
+const detailsFormFromCustomer = (customer) => ({
+  alternate_phone: customer?.alternate_phone || '',
+  address: customer?.address || '',
+  city: customer?.city || '',
+  preferred_contact_method: customer?.preferred_contact_method || '',
+  emergency_contact: customer?.emergency_contact || '',
+  emergency_phone: customer?.emergency_phone || ''
+});
 
 const labReportIcon = (fileType) => (fileType === 'pdf' ? 'fa-file-pdf' : 'fa-file-image');
 
@@ -31,8 +47,14 @@ const genderIcon = (gender) => {
   return 'fa-question';
 };
 
+const isOverdue = (nextDueDate) => {
+  if (!nextDueDate) return false;
+  return new Date(nextDueDate) < new Date(new Date().toDateString());
+};
+
 const PetOwnerProfile = () => {
-  const { customer, logout } = useCustomerAuth();
+  const { customer, logout, updateProfile } = useCustomerAuth();
+  const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,7 +62,12 @@ const PetOwnerProfile = () => {
   const [petsLoading, setPetsLoading] = useState(true);
   const [petsError, setPetsError] = useState('');
   const [labReportsByPet, setLabReportsByPet] = useState({});
+  const [vaccinationsByPet, setVaccinationsByPet] = useState({});
   const [downloadingReportId, setDownloadingReportId] = useState(null);
+
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState(detailsFormFromCustomer(customer));
+  const [savingDetails, setSavingDetails] = useState(false);
 
   useEffect(() => {
     const loadPets = async () => {
@@ -61,6 +88,19 @@ const PetOwnerProfile = () => {
           })
         );
         setLabReportsByPet(Object.fromEntries(entries));
+
+        const vaccinationEntries = await Promise.all(
+          loadedPets.map(async (pet) => {
+            try {
+              const vaccinationResult = await getPetVaccinations(pet.pet_id);
+              return [pet.pet_id, vaccinationResult.vaccinations || []];
+            } catch {
+              // Non-fatal - the pet card just shows no vaccinations section.
+              return [pet.pet_id, []];
+            }
+          })
+        );
+        setVaccinationsByPet(Object.fromEntries(vaccinationEntries));
       } catch (err) {
         setPetsError(
           err.response?.data?.message || 'Unable to load your pets right now.'
@@ -87,6 +127,28 @@ const PetOwnerProfile = () => {
   const handleSignOut = async () => {
     await logout();
     navigate('/');
+  };
+
+  const handleStartEditDetails = () => {
+    setDetailsForm(detailsFormFromCustomer(customer));
+    setIsEditingDetails(true);
+  };
+
+  const handleCancelEditDetails = () => {
+    setIsEditingDetails(false);
+  };
+
+  const handleSaveDetails = async (e) => {
+    e.preventDefault();
+    setSavingDetails(true);
+    const result = await updateProfile(detailsForm);
+    setSavingDetails(false);
+    if (result.success) {
+      showSuccess('Profile updated successfully.');
+      setIsEditingDetails(false);
+    } else {
+      showError(result.message || 'Unable to update your profile right now.');
+    }
   };
 
   const navItem = (path, icon, label) => (
@@ -134,6 +196,7 @@ const PetOwnerProfile = () => {
 
           <nav className="po-profile-nav">
             {navItem('/pet-owner/profile', 'fa-user-circle', 'My Profile')}
+            {navItem('/pet-owner/appointments', 'fa-calendar-check', 'Appointments')}
             {navItem('/pet-owner/change-password', 'fa-lock', 'Change Password')}
           </nav>
 
@@ -150,19 +213,121 @@ const PetOwnerProfile = () => {
           </div>
 
           <section className="po-profile-card">
-            <h2 className="po-profile-section-title"><i className="fas fa-id-card"></i> My Details</h2>
-            <div className="po-profile-details-grid">
-              <div><label>Full Name</label><p>{customer?.first_name} {customer?.last_name}</p></div>
-              <div className="po-profile-detail-wide"><label>Email</label><p>{customer?.email || '—'}</p></div>
-              <div><label>Phone</label><p>{customer?.phone || '—'}</p></div>
-              <div><label>Alternate Phone</label><p>{customer?.alternate_phone || '—'}</p></div>
-              <div><label>Address</label><p>{customer?.address || '—'}</p></div>
-              <div><label>City</label><p>{customer?.city || '—'}</p></div>
-              <div><label>NIC</label><p>{customer?.nic || '—'}</p></div>
-              <div><label>Preferred Contact</label><p style={{ textTransform: 'capitalize' }}>{customer?.preferred_contact_method || '—'}</p></div>
-              <div><label>Emergency Contact</label><p>{customer?.emergency_contact || '—'}</p></div>
-              <div><label>Emergency Phone</label><p>{customer?.emergency_phone || '—'}</p></div>
+            <div className="po-profile-section-header">
+              <h2 className="po-profile-section-title"><i className="fas fa-id-card"></i> My Details</h2>
+              {!isEditingDetails && (
+                <button type="button" className="po-profile-edit-btn" onClick={handleStartEditDetails}>
+                  <i className="fas fa-pen"></i> Edit
+                </button>
+              )}
             </div>
+
+            {!isEditingDetails && (
+              <div className="po-profile-details-grid">
+                <div><label>Full Name</label><p>{customer?.first_name} {customer?.last_name}</p></div>
+                <div className="po-profile-detail-wide"><label>Email</label><p>{customer?.email || '—'}</p></div>
+                <div><label>Phone</label><p>{customer?.phone || '—'}</p></div>
+                <div><label>Alternate Phone</label><p>{customer?.alternate_phone || '—'}</p></div>
+                <div><label>Address</label><p>{customer?.address || '—'}</p></div>
+                <div><label>City</label><p>{customer?.city || '—'}</p></div>
+                <div><label>NIC</label><p>{customer?.nic || '—'}</p></div>
+                <div><label>Preferred Contact</label><p style={{ textTransform: 'capitalize' }}>{customer?.preferred_contact_method || '—'}</p></div>
+                <div><label>Emergency Contact</label><p>{customer?.emergency_contact || '—'}</p></div>
+                <div><label>Emergency Phone</label><p>{customer?.emergency_phone || '—'}</p></div>
+              </div>
+            )}
+
+            {isEditingDetails && (
+              <form onSubmit={handleSaveDetails} className="po-profile-edit-form">
+                <div className="po-profile-details-grid">
+                  <div><label>Full Name</label><p className="po-profile-readonly">{customer?.first_name} {customer?.last_name}</p></div>
+                  <div className="po-profile-detail-wide"><label>Email</label><p className="po-profile-readonly">{customer?.email || '—'}</p></div>
+                  <div><label>Phone</label><p className="po-profile-readonly">{customer?.phone || '—'}</p></div>
+                  <div><label>NIC</label><p className="po-profile-readonly">{customer?.nic || '—'}</p></div>
+
+                  <div>
+                    <label htmlFor="detail-alternate-phone">Alternate Phone</label>
+                    <input
+                      id="detail-alternate-phone"
+                      type="text"
+                      value={detailsForm.alternate_phone}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, alternate_phone: e.target.value })}
+                      placeholder="+94XXXXXXXXX"
+                      disabled={savingDetails}
+                    />
+                  </div>
+
+                  <div className="po-profile-detail-wide">
+                    <label htmlFor="detail-address">Address</label>
+                    <input
+                      id="detail-address"
+                      type="text"
+                      value={detailsForm.address}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, address: e.target.value })}
+                      disabled={savingDetails}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="detail-city">City</label>
+                    <input
+                      id="detail-city"
+                      type="text"
+                      value={detailsForm.city}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, city: e.target.value })}
+                      disabled={savingDetails}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="detail-preferred-contact">Preferred Contact</label>
+                    <select
+                      id="detail-preferred-contact"
+                      value={detailsForm.preferred_contact_method}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, preferred_contact_method: e.target.value })}
+                      disabled={savingDetails}
+                    >
+                      <option value="">Not set</option>
+                      {PREFERRED_CONTACT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="detail-emergency-contact">Emergency Contact</label>
+                    <input
+                      id="detail-emergency-contact"
+                      type="text"
+                      value={detailsForm.emergency_contact}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, emergency_contact: e.target.value })}
+                      disabled={savingDetails}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="detail-emergency-phone">Emergency Phone</label>
+                    <input
+                      id="detail-emergency-phone"
+                      type="text"
+                      value={detailsForm.emergency_phone}
+                      onChange={(e) => setDetailsForm({ ...detailsForm, emergency_phone: e.target.value })}
+                      placeholder="+94XXXXXXXXX"
+                      disabled={savingDetails}
+                    />
+                  </div>
+                </div>
+
+                <div className="po-profile-edit-actions">
+                  <button type="button" className="po-profile-edit-cancel" onClick={handleCancelEditDetails} disabled={savingDetails}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="po-profile-edit-save" disabled={savingDetails}>
+                    {savingDetails ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            )}
           </section>
 
           <section className="po-profile-card">
@@ -233,6 +398,38 @@ const PetOwnerProfile = () => {
                   {pet.special_needs && (
                     <div className="po-pet-note">
                       <i className="fas fa-notes-medical"></i> Special needs: {pet.special_needs}
+                    </div>
+                  )}
+
+                  {(vaccinationsByPet[pet.pet_id] || []).length > 0 && (
+                    <div className="po-pet-vaccinations">
+                      <h4 className="po-pet-vaccinations-title">
+                        <i className="fas fa-syringe"></i> Vaccinations
+                      </h4>
+                      {vaccinationsByPet[pet.pet_id].map((vax) => (
+                        <div key={vax.vaccination_id} className="po-vax-item">
+                          <div className="po-vax-item-header">
+                            <span className="po-vax-name">{vax.vaccine_name}</span>
+                            {isOverdue(vax.next_due_date) ? (
+                              <span className="po-vax-badge overdue">Overdue</span>
+                            ) : vax.next_due_date ? (
+                              <span className="po-vax-badge upcoming">Due {formatDate(vax.next_due_date)}</span>
+                            ) : (
+                              <span className="po-vax-badge done">Complete</span>
+                            )}
+                          </div>
+                          <p className="po-vax-meta">
+                            {vax.vaccine_type ? `${formatReportType(vax.vaccine_type)} · ` : ''}
+                            Given {formatDate(vax.vaccination_date)}
+                            {vax.administered_by_name ? ` by Dr. ${vax.administered_by_name}` : ''}
+                          </p>
+                          {vax.adverse_reaction && (
+                            <p className="po-vax-reaction">
+                              <i className="fas fa-exclamation-triangle"></i> Reaction noted{vax.reaction_details ? `: ${vax.reaction_details}` : ''}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
 

@@ -37,21 +37,18 @@ final class CustomerSession {
         Self.deleteCustomer()
     }
 
-    /// Called after a successful first-login password change so the session
-    /// reflects the cleared flag without needing a re-fetch from the server.
-    func customerDidChangePassword() {
-        guard let c = customer else { return }
-        let updated = Customer(
-            customerId: c.customerId,
-            firstName: c.firstName,
-            lastName: c.lastName,
-            email: c.email,
-            phone: c.phone,
-            city: c.city,
-            passwordMustChange: false
-        )
+    /// Replaces the stored customer (e.g. after a profile update).
+    func updateCustomer(_ updated: Customer) {
         customer = updated
         Self.saveCustomer(updated)
+    }
+
+    /// Clears the must-change-password flag after a successful first-login
+    /// password change without a full server re-fetch.
+    func customerDidChangePassword() {
+        guard var c = customer else { return }
+        c.passwordMustChange = false
+        updateCustomer(c)
     }
 
     // MARK: - Keychain (JWT token)

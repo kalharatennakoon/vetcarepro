@@ -1,66 +1,59 @@
-# Pet Owner Login + AI Assistant
+# VetCare Pro — Documentation
 
-Adds a separate pet-owner portal (email or phone as username, default
-password, forced change on first login) with its own AI Assistant window,
-scoped to the customer's own pets only. Fully independent from staff auth.
+Documentation for VetCare Pro, a veterinary clinic management platform built for Pro Pet Animal Hospital.
 
-## Setup
+New to the project? Read [`SCOPE.md`](SCOPE.md), then [`ARCHITECTURE.md`](ARCHITECTURE.md), then [`setup.md`](setup.md).
 
-1. **Run the migration** against your Postgres DB:
-   `database/migrations/add_customer_auth.sql`
-   This adds `password_hash`, `password_must_change`, `last_login` to
-   `customers`, and backfills every existing customer with the default
-   password below.
+---
 
-2. **Default password for all customers:** `VetCare@123`
-   Defined once in `server/src/utils/authUtils.js` as `DEFAULT_CUSTOMER_PASSWORD`
-   — change it there if you want a different default before running the
-   migration or creating new customers.
+## Contents
 
-3. Restart the server so the new routes/middleware load, and rebuild the client.
+### Foundations
 
-## How it connects
+| Document | Purpose |
+|---|---|
+| [`SCOPE.md`](SCOPE.md) | What the system covers, what it excludes and why, known gaps |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Services, request flow, auth boundary, design decisions |
+| [`setup.md`](setup.md) | Running all four services locally |
+| [`database-schema.md`](database-schema.md) | Table reference, relationships, migration procedure |
+| [`rbac.md`](rbac.md) | What each role can and cannot do |
 
-- `POST /api/customer-auth/login` — `{ identifier, password }`, identifier
-  matches `customers.email` OR `customers.phone`.
-- New customers created via `createCustomer()` automatically get the default
-  password + `password_must_change = true` — no manual step needed for staff.
-- `POST /api/ai/customer-chat` — pet-owner-scoped chat, `role: 'pet_owner'`
-  and `customerId` are set server-side from the authenticated session, never
-  trusted from the client.
-- Customer sessions use a separate JWT shape (`type: 'customer'`) and a
-  separate localStorage key (`customerToken`), so staff and pet-owner logins
-  can never collide, even in the same browser.
+### AI assistant
 
-## Flow
+| Document | Purpose |
+|---|---|
+| [`ai-assistant-requirements.md`](ai-assistant-requirements.md) | Requirements, expected outcomes, deferred work |
+| [`ai-assistant-problem-solution.md`](ai-assistant-problem-solution.md) | Problem framing, Double Diamond, MoSCoW prioritization |
+| [`how-the-ai-assistant-works.md`](how-the-ai-assistant-works.md) | End-to-end pipeline walkthrough |
+| [`rag-query-coverage.md`](rag-query-coverage.md) | Which questions bypass RAG for exact SQL |
+| [`ai-assistant-sample-questions.md`](ai-assistant-sample-questions.md) | Test and demo question set per role |
 
-`Welcome.jsx` → "Sign In — Pet Owner" → `PetOwnerLogin.jsx` →
-(if first login) `PetOwnerChangePassword.jsx` → `PetOwnerAIAssistant.jsx`
+### Analytics
 
-## Verified before delivery
+| Document | Purpose |
+|---|---|
+| [`ml-system-overview.md`](ml-system-overview.md) | Models, techniques, training and serving |
+| [`decision-support/`](decision-support/) | How to act on model output — one guide per model |
 
-- Real bcrypt hash/compare and JWT sign/verify round-tripped successfully
-  (not just code review) - confirmed a staff token is rejected by the
-  customer middleware and vice versa.
-- All new/edited files pass a syntax check individually.
-- Full `vite build` of the whole client succeeded (805 modules, 0 errors) -
-  catches any broken imports across files, not just per-file syntax.
-- ESLint clean except one finding also present on the existing
-  `AuthContext.jsx` (an accepted pattern in this codebase, not a new issue).
+### Reference
 
-## Not yet tested
+| Document | Purpose |
+|---|---|
+| [`api/`](api/) | REST API reference |
+| [`design/design-system.md`](design/design-system.md) | Tokens, typography, component library |
 
-No live Postgres instance was available in this environment, so the actual
-SQL queries (though modeled directly on your existing, working
-`customerModel.js` functions) have not been run against a real database.
-Run the migration and try one login end-to-end before relying on this in
-production.
+### Deliverables
 
-## Out of scope (flagging, not building)
+[`deliverables/`](deliverables/) holds the programme outputs: presentation materials and wireframes.
 
-- A general "change password" settings page for pet owners (only the forced
-  first-login flow exists) - existing pet owners can't set a new password
-  outside first login.
+---
 
-- A fuller pet-owner portal (My Pets list, Appointments, Profile) - this
-  delivery is scoped to what was asked: login + the AI Assistant window.
+## Conventions
+
+**Naming.** Cross-cutting foundation documents use `UPPERCASE.md`; topic documents use `lowercase-kebab.md`. Directories are lowercase.
+
+**Untracked paths.** `insights/` and `tests/*.json` are gitignored — working notes and raw test output stay local. Committed `.md` files inside `tests/` are tracked normally.
+
+**Source of truth.** Where a document describes behaviour, the code is authoritative. `api/` and `database-schema.md` are generated from route annotations and `schema.sql` respectively; regenerate rather than hand-edit them.
+
+**Not in this directory.** `PersonalContext/PROJECT_NOTES.md` holds private working notes and deployment planning. It is not a deliverable and is not published here.
