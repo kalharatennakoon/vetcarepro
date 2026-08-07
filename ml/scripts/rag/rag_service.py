@@ -432,6 +432,26 @@ def answer_question(
     if pending_intent and pending_intent.get('type') == 'general_qa_disambiguation':
         effective_question = pending_intent.get('original_question') or question
 
+    # Give try_structured_answer a second look, now with BOTH pieces it
+    # needed but couldn't have on the first call above: which pet (only
+    # resolvable from the mechanical "pet X whose owner is Y" phrase, since
+    # that's what disambiguated it) and what was actually asked (only
+    # available as effective_question, recovered just above - the mechanical
+    # phrase itself doesn't say "next appointment"/"vaccines"/whatever the
+    # original question asked). Without this, a structured pattern needing a
+    # disambiguated pet name - "when is <pet>'s next appointment" being the
+    # sharpest example, since appointments have no RAG fallback at all - can
+    # never fire post-disambiguation and silently degrades to unscoped
+    # retrieval over whatever chunk type happens to look semantically
+    # similar (e.g. an unrelated disease-case chunk), producing a fluent but
+    # wrong answer instead of the exact one this module exists to give.
+    if effective_question != question and resolved_pet_id:
+        structured = try_structured_answer(
+            effective_question, role=role, customer_id=customer_id, known_pet_id=resolved_pet_id
+        )
+        if structured is not None:
+            return structured
+
     chunks = retrieve_chunks(
         effective_question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
     )

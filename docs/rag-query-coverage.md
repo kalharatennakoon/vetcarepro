@@ -52,6 +52,7 @@ Read from `system_settings`. Checked first, before every other pattern in this l
 
 ### Appointments (staff)
 
+- Next appointment for a named pet — *"when is Lassie's next appointment?"*. If the name is ambiguous, the normal pet-disambiguation flow (see "Entity resolution" in [`how-the-ai-assistant-works.md`](how-the-ai-assistant-works.md)) asks which one first; this pattern is then re-tried with the resolved pet once the caller answers, since appointments have no RAG fallback to degrade to safely (unlike medical records/vaccinations, they're never ingested into `rag_chunks`).
 - Count by timeframe — *"how many appointments today?"*, *"…this month?"*
 - List by timeframe — *"what appointments do we have this week?"*
 - Specific day — *"any appointments on the 31st?"*, *"appointment on the 5th of next month"*
