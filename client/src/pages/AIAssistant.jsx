@@ -98,7 +98,7 @@ const AIAssistant = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const sendQuestion = async (question) => {
+  const sendQuestion = async (question, displayText) => {
     if (!question.trim() || loading) return;
 
     // Last few turns give the assistant enough context to keep filling in a
@@ -108,7 +108,7 @@ const AIAssistant = () => {
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
     setError('');
@@ -192,9 +192,9 @@ const AIAssistant = () => {
     ]);
   };
 
-  const handleOptionClick = (messageIndex, value) => {
+  const handleOptionClick = (messageIndex, opt) => {
     setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
-    sendQuestion(value);
+    sendQuestion(opt.value, opt.display);
   };
 
   const handleBackfill = async () => {
@@ -275,7 +275,7 @@ const AIAssistant = () => {
                       <button
                         key={j}
                         className="ai-option-btn"
-                        onClick={() => handleOptionClick(i, opt.value)}
+                        onClick={() => handleOptionClick(i, opt)}
                         disabled={loading}
                       >
                         {opt.label}

@@ -235,7 +235,9 @@ Present facts from the records; let the veterinarian draw clinical conclusions.
 3. Organize the summary clearly: overall pattern/timeline first, then flag anything that stands out \
 (recurring issues, allergies, adverse reactions, overdue follow-ups or vaccinations).
 4. Use clinical terminology appropriate for a veterinary professional audience.
-5. Keep it concise - a few short paragraphs or a bulleted list, not a re-statement of every record.
+5. Format for skimming: a short lead-in sentence at most, then "- " bullet points \
+grouped by topic (e.g. vaccinations, medical records, flagged issues) - not a \
+paragraph re-statement of every record.
 6. This clinic operates in Sri Lanka - always use metric units (kilograms, Celsius, centimeters). \
 Never use pounds, Fahrenheit, or inches.
 7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".

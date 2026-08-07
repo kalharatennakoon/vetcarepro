@@ -30,6 +30,24 @@ _IMPERIAL_ASIDE = re.compile(
 def _strip_imperial_units(text: str) -> str:
     return _IMPERIAL_ASIDE.sub('', text)
 
+
+# Asking for the paragraph-then-bullets shape inside the main generation
+# call - as a prose rule, repeated next to the question, even as a literal
+# fill-in-the-blank template - was never enough on its own: qwen2.5-coder:7b
+# kept relabeling the context's terse "field: value" chunk lines (see
+# chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
+# like "Vaccinations:"/"Medical Records:" regardless, because that one rule
+# was competing against several others (units, currency, clinical tone,
+# citation handling) in the same call. So the shape is now enforced by a
+# separate follow-up reshape call instead (see _reshape_explain_summarize
+# below) - this regex pair just decides whether that follow-up call runs.
+_EXPLAIN_INTENT = re.compile(r'\bexplain\b|\bwhy\b', re.IGNORECASE)
+_SUMMARIZE_INTENT = re.compile(r'\bsummar(?:y|ize|ise)\b', re.IGNORECASE)
+
+
+def _wants_paragraph_and_bullets(question: str) -> bool:
+    return bool(_EXPLAIN_INTENT.search(question) or _SUMMARIZE_INTENT.search(question))
+
 STAFF_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, a decision-support tool \
 for a veterinary clinic. You must follow these rules strictly:
 
@@ -39,23 +57,47 @@ If the context does not contain enough information to answer, say so plainly \
 2. You are NOT a veterinarian. Never state a diagnosis as fact. When discussing \
 medical matters, use phrasing like "based on the available records, this may \
 help the veterinarian review..." rather than definitive medical conclusions.
-3. Keep answers concise and clear, using clinical terminology as appropriate \
+3. Match the answer to what's actually being asked, not just the topic:
+   - If the question asks you to "explain" something (e.g. a pet's current health \
+condition, a result, why a recommendation was made), answer in two parts: a short \
+paragraph (2-4 sentences) that synthesizes the relevant facts from the Context into \
+an actual explanation - connecting the diagnosis, current status, and relevant \
+treatment/vaccination history into a coherent narrative - followed by a few key-point \
+bullets for the specific dates/values a reader would want to double-check.
+   - If the question asks you to "summarize" something, answer in two parts: a short \
+paragraph (1-2 sentences) giving the overall takeaway, followed by a few key-point \
+bullets for the facts that actually matter - omit anything routine or unremarkable \
+rather than restating every record.
+   - Either way, do NOT answer with grouped field-label lines or headings like \
+"Vaccinations:" / "Medical Records:" followed by one line per record - that is a \
+reformatted list, not an explanation or summary, even if each line is reworded from \
+the source. The paragraph always comes first and is never replaced by the bullets.
+   - For a plain factual question (a specific date, a status, a single value), just \
+answer it directly - no paragraph-plus-bullets needed.
+4. Keep answers concise and clear, using clinical terminology as appropriate \
 for a professional audience.
-4. Never invent record details, dates, medications, or dosages that are not in \
+5. Format for skimming, using lightweight markdown:
+   - If more than one pet or more than one topic/date is covered, use a short \
+"**Pet Name**" bold heading line before that pet's/topic's points.
+   - Use "- " bullet points for lists (vaccinations, medications, visit history, \
+findings, dates) instead of packing them into one paragraph.
+   - Leave a blank line between sections (e.g. between one pet's bullets and the \
+next pet's heading).
+6. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-5. For any single question, you are only ever given the small handful of records \
+7. For any single question, you are only ever given the small handful of records \
 that matched it best - never every record in the system that could be relevant, \
 even though the full dataset is ingested. If asked for a count, total, or complete \
 list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
 what you were given - say that you only see the top matches for this question and \
 the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
 an exact count.
-6. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+8. This clinic operates in Sri Lanka - always use metric units (kilograms for \
 weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
-7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+9. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
 "$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
@@ -85,7 +127,25 @@ term unexplained.
 4. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
 serious, say so factually and calmly, and point them to their veterinarian rather \
 than speculating about severity.
-5. Format for skimming, using lightweight markdown:
+5. Match the answer to what's actually being asked, not just the topic:
+   - If the question asks you to "explain" something (e.g. their pet's current \
+health condition, a result, why a recommendation was made), answer in two parts: a \
+short, plain-English paragraph (2-4 sentences) that weaves the relevant facts \
+together - connecting the diagnosis, current status, and relevant treatment/ \
+vaccination history into an actual explanation - followed by a few key-point \
+bullets for the specific dates/values a reader would want to double-check.
+   - If the question asks you to "summarize" something, answer in two parts: a \
+short paragraph (1-2 sentences) giving the overall takeaway, followed by a few \
+key-point bullets for the facts that actually matter - omit granular detail that \
+doesn't change the takeaway.
+   - Either way, do NOT answer with grouped field-label lines or headings like \
+"Vaccinations:" / "Medical Records:" followed by one line per record - that is a \
+reformatted list, not an explanation or summary, even if each line is reworded \
+from the source. The paragraph always comes first and is never replaced by the \
+bullets.
+   - For a plain factual question (a specific date, a status, a single value), just \
+answer it directly - no paragraph-plus-bullets needed.
+6. Format for skimming, using lightweight markdown:
    - If more than one pet or more than one topic/date is covered, use a short \
 "**Pet Name**" bold heading line before that pet's/topic's points.
    - Use "- " bullet points for lists (symptoms, medications, vaccines, visit \
@@ -96,21 +156,21 @@ history) instead of packing them into one paragraph.
 of plain prose outside of bullets.
    - Leave a blank line between sections (e.g. between one pet's bullets and the \
 next pet's heading).
-6. Never invent record details, dates, medications, or dosages that are not in \
+7. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-7. For any single question, you are only ever given the small handful of records \
+8. For any single question, you are only ever given the small handful of records \
 that matched it best - never every record in the system that could be relevant, \
 even though the full dataset is ingested. If asked for a count, total, or complete \
 list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
 what you were given - say that you only see the top matches for this question and \
 the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
 an exact count.
-8. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+9. This clinic operates in Sri Lanka - always use metric units (kilograms for \
 weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
-9. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+10. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
 "$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
@@ -175,6 +235,79 @@ number only. For example, write "29-36 kilograms", never "29-36 kilograms \
 as "Rs. X" - never "$", "USD", or "dollars".
 """
 
+# Asking for the paragraph-then-bullets shape inside the main system prompt -
+# even repeated right next to the question, even spelled out as a literal
+# fill-in-the-blank template - was not enough on its own: qwen2.5-coder:7b
+# kept relabeling the context's terse "field: value" chunk lines (see
+# chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
+# like "Vaccinations:"/"Medical Records:" regardless, because that one rule
+# was competing against several others (units, currency, clinical tone,
+# citation handling) in the same generation call. Splitting reformatting
+# into its own follow-up call, with nothing else for the model to juggle,
+# is far more reliable - this prompt's only job is the shape, and the facts
+# are already locked in from the first pass, so there's nothing left for it
+# to get wrong except the format.
+_RESHAPE_SYSTEM_PROMPT = """You are a text reformatter, not a clinical assistant - you do \
+not add, remove, or invent any fact. You will be given a draft answer that already contains \
+all the correct facts, and must rewrite it into exactly this shape:
+
+<a short paragraph of connected prose, 2-4 sentences, no heading>
+
+Key points:
+- <bullet 1>
+- <bullet 2>
+- <bullet 3, only if there is a genuinely distinct third point - omit otherwise>
+
+Rules:
+1. The paragraph is not optional and is never skipped, even when the draft itself is just a \
+list. The FIRST thing you write must be a full sentence of plain prose - never start your \
+answer with "Key points:" or with a bullet. If you find yourself about to write "Key points:" \
+as the very first line, stop and write the paragraph first instead.
+2. Exactly 2 or 3 bullets under "Key points:" - never more, and never fewer than 2 if the \
+draft contains at least two distinct facts.
+3. Never use any heading other than "Key points:" - drop any headings from the draft such as \
+"Vaccinations:", "Medical Records:", "Current Health:", or "Next Due Dates:" and fold their \
+content into the paragraph and bullets instead.
+4. Do not repeat the same fact in both the paragraph and the bullets.
+5. Keep every date, number, medication name, and unit exactly as written in the draft - do \
+not change, round, or convert them.
+6. Do not add any fact, caveat, or disclaimer that isn't already in the draft, and do not \
+drop any fact from the draft either - this is a reformat, not a rewrite of the content.
+
+Example:
+
+Draft answer:
+Vaccinations:
+DHPP (Core): Administered on 2024-01-05, next due on 2027-01-05
+Medical Records:
+Visit on 2024-01-05: DHPP vaccination, animal in good health
+
+Your output:
+Max is up to date on his core DHPP vaccination, given in January 2024 with no issues noted \
+at the visit.
+
+Key points:
+- DHPP (Core) administered 2024-01-05, next due 2027-01-05
+- Visit note: animal in good health
+"""
+
+
+def _reshape_explain_summarize(question: str, draft_answer: str) -> str:
+    user_prompt = f"""Original question: {question}
+
+Draft answer to reformat (already fact-checked - only its shape needs to change):
+{draft_answer}
+
+Rewrite it now in the required shape. Remember: the paragraph comes first, always - do not \
+start with "Key points:"."""
+    try:
+        return generate_answer(_RESHAPE_SYSTEM_PROMPT, user_prompt)
+    except OllamaError:
+        # Reformatting is a nice-to-have on top of an already-correct answer -
+        # if the follow-up call fails, showing the unshaped draft beats
+        # showing nothing.
+        return draft_answer
+
 
 def answer_question(
     question: str, role: str, customer_id: str = None, top_k: int = 5,
@@ -221,47 +354,76 @@ def answer_question(
     # retrieval isn't polluted by other pets sharing the same common name.
     resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
 
-    # A name that matched MORE THAN ONE pet is not the same as "no pet
-    # mentioned" - staff can see pets across every owner, so a common name
-    # like "Max" easily collides. Silently falling through to unscoped,
+    # A name that matched MORE THAN ONE pet - or, just as dangerously, ZERO
+    # pets - is not the same as "no pet mentioned". Staff can see pets across
+    # every owner, so a common name like "Max" easily collides; a misspelled
+    # or nonexistent name (e.g. "Luke" when no such pet exists) is just as
+    # bad if silently ignored. Either way, falling through to unscoped,
     # clinic-wide retrieval here would let semantic search grab a completely
-    # unrelated pet's (or several pets') records and present them as if they
-    # were about the one pet asked about - ask which one is meant instead of
-    # guessing, the same "ask rather than guess" discipline action_intent.py
-    # already uses for write-actions.
-    if resolved_pet_id is None and role in STAFF_ROLES:
+    # unrelated pet's (or several pets') records and hand them to the model
+    # as "Context" for a question that names a specific pet - the model has
+    # no way to know those records aren't about the pet asked about, and
+    # will confidently present someone else's diagnosis as if it were
+    # "Luke's". Ask/say so instead of guessing, the same "ask rather than
+    # guess" discipline action_intent.py already uses for write-actions.
+    if resolved_pet_id is None and role in (*STAFF_ROLES, 'pet_owner'):
         pet_name, candidates = find_pet_candidates(question, role=role, customer_id=customer_id)
-        if pet_name and len(candidates) > 1:
+        if pet_name and not candidates:
+            return {
+                'answer': (
+                    f'I couldn\'t find a pet named "{pet_name}"'
+                    + (' in the system' if role in STAFF_ROLES else ' in your account')
+                    + ' - please double-check the spelling and try again.'
+                ),
+                'sources': [],
+                'chunks_used': 0,
+                'structured': True
+            }
+        if pet_name and len(candidates) > 1 and role in STAFF_ROLES:
             listing = '\n'.join(f'- {r[1]} (owner: {r[3]} {r[4]})' for r in candidates)
-            # "pet <Name> whose owner is <Owner>" - not just any rephrasing:
-            # it has to actually round-trip through resolve_pet_id's own
-            # extraction patterns (PET_MENTION requires the literal "pet "
-            # trigger word; OWNER_MENTION picks up "owner is ..." after it).
-            # A phrasing like "Max whose owner is ..." with no "pet"/"of"/
-            # "for"/"about" trigger or possessive "'s" would silently fail
-            # to resolve on the follow-up turn, right back to this same
-            # ambiguity - or worse, back to unscoped retrieval.
-            example = f'pet {pet_name} whose owner is {candidates[0][3]} {candidates[0][4]}'
             return {
                 'answer': (
                     f'There are {len(candidates)} pets named "{pet_name}" in the system - '
-                    f'which one do you mean?\n{listing}\n\n'
-                    f'Ask again naming the owner, e.g. "{example}".'
+                    f'which one do you mean?\n{listing}'
                 ),
                 'sources': [],
                 'chunks_used': 0,
                 'options': [
                     {
                         'label': f'{r[1]} ({r[3]} {r[4]})',
-                        'value': f'pet {r[1]} whose owner is {r[3]} {r[4]}'
+                        # "pet <Name> whose owner is <Owner>" - not just any
+                        # rephrasing: it has to actually round-trip through
+                        # resolve_pet_id's own extraction patterns
+                        # (PET_MENTION requires the literal "pet " trigger
+                        # word; OWNER_MENTION picks up "owner is ..." after
+                        # it). This is what actually gets sent to the
+                        # backend when the option is picked - 'display' is
+                        # what the chat bubble shows the user instead.
+                        'value': f'pet {r[1]} whose owner is {r[3]} {r[4]}',
+                        'display': f'{r[3]} {r[4]}'
                     }
                     for r in candidates
                 ],
+                'pending_intent': {'type': 'general_qa_disambiguation', 'original_question': question},
                 'structured': True
             }
 
+    # The turn that actually resolves a pet ("pet Max whose owner is
+    # Nishantha Rajapaksa") is a mechanical resolution phrase, not a real
+    # question - it carries none of the original "explain"/"summarize"/
+    # whatever framing the user actually asked with. Retrieving and
+    # generating against that phrase verbatim answers a different,
+    # contentless question ("who is this pet") instead of the one the user
+    # meant. Recover the real question from pending_intent (round-tripped by
+    # the client the same way action_intent.py's slot-filling does) so
+    # retrieval, generation, and the explain/summarize reshape below all see
+    # what the user actually asked.
+    effective_question = question
+    if pending_intent and pending_intent.get('type') == 'general_qa_disambiguation':
+        effective_question = pending_intent.get('original_question') or question
+
     chunks = retrieve_chunks(
-        question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
+        effective_question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
     )
 
     # Staff/owner answers are grounded in clinic records - with nothing
@@ -304,7 +466,7 @@ def answer_question(
     user_prompt = f"""Context:
 {context_block}
 
-Question: {question}
+Question: {effective_question}
 
 {citation_instruction}"""
 
@@ -326,6 +488,11 @@ Question: {question}
         }
 
     answer_text = normalize_currency(_strip_imperial_units(answer_text))
+
+    if _wants_paragraph_and_bullets(effective_question):
+        answer_text = normalize_currency(
+            _strip_imperial_units(_reshape_explain_summarize(effective_question, answer_text))
+        )
 
     return {
         'answer': answer_text,

@@ -802,6 +802,14 @@ class DiseasePredictionModel(BaseMLModel):
             merged['contagious_rate'] = merged['contagious_cases'] / merged['disease_cases'].replace(0, 1)
             last_date = merged['ds'].max()
 
+            # Anchor forecasts on the next calendar month from today, not on
+            # the last training month — training data can lag behind the
+            # current date, which would otherwise surface stale months.
+            today = pd.Timestamp(datetime.now().date())
+            next_month_start = (today.replace(day=1) + pd.DateOffset(months=1))
+            months_gap = max(0, (next_month_start.year - last_date.year) * 12 + (next_month_start.month - last_date.month))
+            total_periods = periods_months + months_gap
+
             # ============================================================
             # FORECAST 1: Disease case volume (Prophet + appointment regressor)
             # ============================================================
@@ -813,7 +821,7 @@ class DiseasePredictionModel(BaseMLModel):
             train_df = merged[['ds', 'disease_cases', 'appointment_count']].rename(columns={'disease_cases': 'y'})
             model.fit(train_df)
 
-            future = model.make_future_dataframe(periods=periods_months, freq='MS')
+            future = model.make_future_dataframe(periods=total_periods, freq='MS')
             if has_appt:
                 last_appt = float(merged['appointment_count'].tail(3).mean())
                 appt_trend = float((merged['appointment_count'].tail(3).mean() - merged['appointment_count'].head(3).mean()) / max(len(merged) - 3, 1))
@@ -829,7 +837,7 @@ class DiseasePredictionModel(BaseMLModel):
                 future['appointment_count'] = future_appt_vals
 
             forecast = model.predict(future)
-            future_fc = forecast[forecast['ds'] > last_date].copy()
+            future_fc = forecast[forecast['ds'] >= next_month_start].head(periods_months).copy()
 
             predictions = []
             for _, row in future_fc.iterrows():
@@ -860,9 +868,9 @@ class DiseasePredictionModel(BaseMLModel):
 
             ob_model = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=0)
             ob_model.fit(merged[['ds', 'activity_score']].rename(columns={'activity_score': 'y'}))
-            ob_future = ob_model.make_future_dataframe(periods=periods_months, freq='MS')
+            ob_future = ob_model.make_future_dataframe(periods=total_periods, freq='MS')
             ob_fc = ob_model.predict(ob_future)
-            ob_future_fc = ob_fc[ob_fc['ds'] > last_date]
+            ob_future_fc = ob_fc[ob_fc['ds'] >= next_month_start].head(periods_months)
 
             activity_forecast = []
             for _, row in ob_future_fc.iterrows():
@@ -902,10 +910,12 @@ class DiseasePredictionModel(BaseMLModel):
                         if len(cat_data) >= 3:
                             cm = Prophet(yearly_seasonality=True, weekly_seasonality=False, daily_seasonality=False, uncertainty_samples=0)
                             cm.fit(cat_data)
-                            cp = cm.predict(cm.make_future_dataframe(periods=periods_months, freq='MS'))
+                            cat_last_date = cat_data['ds'].max()
+                            cat_months_gap = max(0, (next_month_start.year - cat_last_date.year) * 12 + (next_month_start.month - cat_last_date.month))
+                            cp = cm.predict(cm.make_future_dataframe(periods=periods_months + cat_months_gap, freq='MS'))
                             category_trend[cat] = [
                                 {'month': r['ds'].strftime('%Y-%m'), 'predicted': max(0, round(float(r['yhat'])))}
-                                for _, r in cp[cp['ds'] > last_date].iterrows()
+                                for _, r in cp[cp['ds'] >= next_month_start].head(periods_months).iterrows()
                             ]
             except Exception:
                 pass
