@@ -158,7 +158,6 @@ Honest limitations of the system as it stands.
 | Appointment capacity is a stand-in | Concurrency is a row count, not veterinarian availability | `MAX_CONCURRENT_APPOINTMENTS = 3`; genuine per-vet scheduling is not implemented |
 | Uploads stored on local disk | No redundancy; lost with the machine | `server/uploads/`, gitignored |
 | `system_settings` hours and `appointmentRules.js` are unsynced | The assistant can quote hours the booking flow doesn't actually honor | `structured_query.py`'s `_clinic_hours` reads `business_hours_start`/`business_hours_end` from `system_settings`; `server/src/utils/appointmentRules.js` hardcodes its own copy of the same fact for booking enforcement. No code path keeps them in sync — changing one without the other reintroduces the mismatch |
-| Stale staff FAQ content | The assistant can state clinic policy that is no longer true | `STAFF_FAQS` entry `staff-002` still describes a default pet-owner password; the actual flow is self-service setup |
 
 ---
 

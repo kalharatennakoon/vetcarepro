@@ -4,9 +4,9 @@ Programme outputs for the AI Launchpad submission.
 
 | Directory | Contents |
 |---|---|
-| [`presentation/`](presentation/) | Final presentation materials |
-| [`wireframes/`](wireframes/) | Low-fidelity wireframes |
 | [`diagrams/`](diagrams/) | Use-case and data-flow diagrams |
+
+Low-fidelity wireframes live separately, in [`../wireframes/`](../wireframes/) (`mobile-wireframes.pdf`, `web-wireframes.pdf`) — not in a `wireframes/` subdirectory here. The final presentation is not yet committed to this repository.
 
 High-fidelity screen designs live in [`../design/`](../design/) alongside the [design system](../design/design-system.md).
 
@@ -20,7 +20,7 @@ Deliverables are documentation, wireframes, and presentation materials. **The so
 
 ## Wireframe conventions
 
-The low-fidelity set follows a strict convention, applied consistently so that reviewers read structure rather than aesthetics:
+These conventions govern the low-fidelity PDFs in [`../wireframes/`](../wireframes/) — documented here alongside the other deliverable conventions even though the files themselves are tracked in that separate directory. The set follows a strict convention, applied consistently so that reviewers read structure rather than aesthetics:
 
 - Black and white only
 - Bracketed placeholders — `[Pet Name]`, `[Date]` — never sample data

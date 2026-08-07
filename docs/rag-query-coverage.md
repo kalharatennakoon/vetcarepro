@@ -93,7 +93,7 @@ Shared timeframe vocabulary across appointments, disease cases, and billing: tod
 
 Clinic info is open to every role, including unauthenticated guests.
 
-Inventory, disease case, and the staff/name-based billing and appointment patterns above are **staff-only** — administrator, veterinarian, or receptionist. (Medical-record detail is further restricted within staff: receptionist gets an explicit redirect rather than the record content, matching the `vetOrAdmin` boundary elsewhere in the app.)
+Inventory, disease case, and the staff/name-based billing and appointment patterns above are **staff-only** — administrator, veterinarian, or receptionist. (Medical-record and disease-case detail is further restricted within staff: `_clinical_detail_redirect()` gives receptionist an explicit redirect rather than the record content, for both, matching the `vetOrAdmin` boundary elsewhere in the app.)
 
 A pet owner asking a staff-only pattern does not receive an error. The handler declines to claim the question and it falls through to the next candidate handler, and ultimately to normal retrieval, which is already scoped to that owner's own records. The owner gets an answer about their own data, or none, but never clinic-wide operational figures — **except** for the pet-owner self-service patterns above (their own appointments and their own billing balance), which this layer answers directly and exactly, scoped to their own `customer_id`.
 
