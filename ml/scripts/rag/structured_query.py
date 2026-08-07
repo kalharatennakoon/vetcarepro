@@ -449,6 +449,7 @@ _CLINIC_ANCHOR = r'(?:your|the\s+clinic\'?s?|clinic\'?s?|vetcare\'?s?)'
 
 CLINIC_HOURS = re.compile(
     rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+)?hours\b|'
+    r'\b(?:business|opening|working)\s+hours\b|'  # unanchored: these compound forms are unambiguous on their own
     r'\bwhat\s+time\b.*\b(?:do\s+you|does\s+the\s+clinic|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bwhen\s+(?:are\s+you|do\s+you|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bare\s+you\s+open\b|'
