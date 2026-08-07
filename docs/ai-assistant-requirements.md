@@ -74,3 +74,5 @@ Carried in the Could Have tier of [`ai-assistant-problem-solution.md`](ai-assist
 - Voice input
 - Multi-turn conversational memory beyond the current `pending_intent` slot-filling
 - Push notifications on mobile for appointment reminders and vaccination due dates
+
+> **Delivered since the tiers above were drafted:** clinic hours/location/contact lookup, read live from `system_settings` and open to every role including guests, and pet-owner self-service (their own upcoming appointments, their own billing balance) — both now in `structured_query.py`. Neither was an explicit Could Have item, but both closed the same "assistant can't answer a question its own data already holds the answer to" gap this section otherwise tracks. See [`rag-query-coverage.md`](rag-query-coverage.md) for coverage.

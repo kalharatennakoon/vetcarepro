@@ -72,7 +72,7 @@ Cardinality in brief: a customer owns many pets; a pet has many medical records,
 
 **`rag_chunks`** — the vector store. Holds embedded content with `pet_id` and `customer_id` for access scoping, and a `source_type` discriminator. Unique on `(source_type, source_id)` so ingestion can upsert idempotently. Retrieval filters on these columns in SQL, which is where the assistant's data boundaries are actually enforced.
 
-**`system_settings`** — created and seeded, but **no application code currently reads from it.** Clinic policy is presently held in code and in static FAQ text. Treat it as reserved rather than live.
+**`system_settings`** — read by the AI assistant: `ml/scripts/rag/structured_query.py`'s `_get_clinic_settings()` queries eleven keys (clinic name/address/phone/mobile/email/website, business hours, working days) to answer clinic-info questions for every role, including guests. Not the source of truth for booking enforcement, though — `server/src/utils/appointmentRules.js` hardcodes its own copy of the opening/closing hours for that, with no code path keeping the two in sync (see [`SCOPE.md`](SCOPE.md) §5). Fee-related keys (e.g. `consultation_fee_default`) remain unread; the assistant's price estimates average historical `billing` rows instead.
 
 **`audit_logs`** — records significant actions with the acting user.
 

@@ -164,14 +164,23 @@ server: aiRoutes.js → aiController.js
     The client never states who it is.
     │
     ▼  aiService.js
-ml: POST /api/ml/rag/chat → rag_service.answer_question()
+ml: POST /api/ml/rag/chat
+    Live-model gates (staff only) for outbreak risk, disease forecast,
+    revenue forecast, and reorder suggestions short-circuit here if matched.
+    │
+    ▼
+    rag_service.answer_question()
 ```
 
 Because the backend derives role and customer identity from the token rather than the request body, a client cannot widen its own data access by claiming a different role.
 
+### Live-model gates before the pipeline
+
+Before `rag_service.py` is reached at all, `ml/app.py`'s `/api/ml/rag/chat` route regex-matches the raw question against four live-model question shapes — disease outbreak risk, disease trend forecast, revenue forecast, inventory reorder suggestions — and, for staff roles, answers directly from the corresponding trained model (`disease_prediction.py` / `sales_forecasting.py` / `inventory_forecasting.py`). These are live computations, never ingested into `rag_chunks`, so they're intercepted here rather than left to fall through to retrieval and get stitched from unrelated chunks. Guest and pet-owner questions matching the same phrasing skip these gates and reach the pipeline below instead, since for those roles the question is ordinary general-knowledge/FAQ territory, not a request for the clinic's own live model.
+
 ### Routing inside `rag_service.py`
 
-An incoming question is offered to four handlers in a deliberate order. The first that claims it wins; ordering matters because earlier handlers are more specific.
+An incoming question is offered to five handlers in a deliberate order. The first that claims it wins; ordering matters because earlier handlers are more specific.
 
 **1. `action_intent.py` — write intents**
 
@@ -185,11 +194,15 @@ Handles requests needing a pet's *complete* record set rather than a retrieval s
 
 Restricted to `CLINICAL_STAFF_ROLES` (admin and veterinarian), matching the `vetOrAdmin` boundary elsewhere. Nothing here saves a medical record or sends an email without review.
 
-**3. `structured_query.py` — exact answers**
+**3. `pet_health_intent.py` — pet health risk**
 
-Answers counting and listing questions ("how many appointments today?") with deterministic SQL, bypassing embeddings entirely.
+An individual pet's disease-recurrence/cancer risk, and clinic-wide pandemic risk, computed live by `PetHealthPredictor` — same "live model, not a chunk sample" reasoning as the pre-pipeline gates above, just resolved inside `rag_service.py` so it can reuse the shared pet-resolution machinery. Admin-only (`PET_HEALTH_ADMIN_ROLES`); returns `None` for any other role so the question falls through.
 
-**4. `retrieval.py` — semantic search**
+**4. `structured_query.py` — exact answers**
+
+Answers counting and listing questions ("how many appointments today?"), clinic info (hours/location/contact — every role including guests), and pet-owner self-service (their own appointments, their own billing balance) with deterministic SQL, bypassing embeddings entirely.
+
+**5. `retrieval.py` — semantic search**
 
 pgvector similarity search over `rag_chunks`, then a grounded generation call with source citations.
 
@@ -225,7 +238,7 @@ Guest retrieval additionally applies a relevance threshold, so a question with n
 
 ### Vector store
 
-Clinic data is chunked and embedded into the `rag_chunks` table (`nomic-embed-text`, 768 dimensions) via `pgvector`. Rows are keyed on `(source_type, source_id)` with upsert semantics, so re-ingestion is idempotent. Ingestion is triggered by admin-only endpoints under `/api/ai/ingest/`.
+Clinic data is chunked and embedded into the `rag_chunks` table (`nomic-embed-text`, 768 dimensions) via `pgvector`. Rows are keyed on `(source_type, source_id)` with upsert semantics, so re-ingestion is idempotent. Admin-only endpoints under `/api/ai/ingest/` remain available for a bulk backfill or after editing static content like `faq_data.py`, but per-record ingestion is otherwise automatic and event-driven: a record's Node controller re-ingests it on create/update, calls `deleteChunk(source_type, source_id)` on delete (there's no FK from `rag_chunks` to `medical_records`/`disease_cases`/`lab_reports`/`vaccinations` to do this automatically), and calls `reingestPet(petId)` when a pet's name/species/breed changes (chunk text embeds those fields at ingestion time).
 
 ### Localization constraints
 

@@ -19,9 +19,12 @@ Client
 Backend  aiRoutes.js → aiController.js
         │  Verifies the token, derives role and customerId
         ▼  aiService.js
-ML       POST /api/ml/rag/chat → rag_service.answer_question()
+ML       POST /api/ml/rag/chat
+        │  live-model gates (staff only) — outbreak risk, disease forecast,
+        │  revenue forecast, reorder suggestions; short-circuits below if matched
+        ▼  rag_service.answer_question()
         │
-        ▼  four handlers, first match wins
+        ▼  five handlers, first match wins
 Ollama   embeddings + generation
 ```
 
@@ -39,7 +42,9 @@ This ordering is the reason a client cannot widen its own access. A modified req
 
 ## 3. Routing inside `rag_service.py`
 
-The question is offered to four handlers in a fixed order. The first that claims it produces the answer. Order runs most-specific to most-general, so a narrower handler is never pre-empted by a broader one.
+Before `rag_service.py` is even reached, `ml/app.py`'s `/api/ml/rag/chat` route itself regex-matches the raw question against four live-model question shapes: disease outbreak risk, disease trend forecast, revenue forecast, and inventory reorder suggestions. For staff roles, a match answers directly from the corresponding trained model (`disease_prediction.py` / `sales_forecasting.py` / `inventory_forecasting.py`) via `explain_ml_output` and returns immediately — `rag_service.answer_question()` is never called for that request. These are live computations, not something ever ingested into `rag_chunks`, so routing them through retrieval would mean stitching an answer from unrelated chunks instead of the real model. Guest and pet-owner questions matching the same phrasing (e.g. "what should I do during a dog disease outbreak?") deliberately skip these gates and reach the normal pipeline below instead — for those roles it's an ordinary general-knowledge or FAQ question, not a request for the clinic's own live risk model.
+
+Once inside `rag_service.py`, the question is offered to five handlers in a fixed order. The first that claims it produces the answer. Order runs most-specific to most-general, so a narrower handler is never pre-empted by a broader one.
 
 ### Handler 1 — write intents (`action_intent.py`)
 
@@ -64,11 +69,17 @@ These cannot use retrieval. Retrieval returns a sample, and a "full history" ass
 
 Restricted to administrators and veterinarians, matching the clinical boundary applied everywhere else. Generated content is a draft: nothing is saved as a medical record and no email is sent without explicit review.
 
-### Handler 3 — structured queries (`structured_query.py`)
+### Handler 3 — pet health risk (`pet_health_intent.py`)
 
-Answers counting and listing questions with deterministic SQL, bypassing embeddings entirely. See [`rag-query-coverage.md`](rag-query-coverage.md) for the covered patterns.
+Handles an individual pet's disease-recurrence/cancer risk, and clinic-wide pandemic risk — computed live by `PetHealthPredictor`, the same "live model, not a text sample" reasoning as the pre-pipeline gates in §3's opening paragraph. This one runs inside `rag_service.py` rather than `ml/app.py` because it needs the resolved-pet-name machinery the other handlers share, not because the underlying computation is any less live.
 
-### Handler 4 — retrieval (`retrieval.py`)
+Admin-only (`PET_HEALTH_ADMIN_ROLES`). The module gates internally and returns `None` for any other role, so the question falls through to the next handler rather than erroring.
+
+### Handler 4 — structured queries (`structured_query.py`)
+
+Answers counting and listing questions, clinic info (hours/location/contact — open to every role including guests), and pet-owner self-service (their own upcoming appointments, their own billing balance) with deterministic SQL, bypassing embeddings entirely. See [`rag-query-coverage.md`](rag-query-coverage.md) for the covered patterns.
+
+### Handler 5 — retrieval (`retrieval.py`)
 
 The general path. Embeds the question, runs a similarity search scoped to the caller, and generates an answer grounded in what came back.
 
@@ -152,7 +163,13 @@ Multi-turn slot filling round-trips through the client. When a slot is missing, 
 
 Clinic data becomes retrievable through `ingest.py` and `chunking.py`: rows are converted to text, embedded with `nomic-embed-text` (768 dimensions), and written to `rag_chunks` with `pet_id`, `customer_id`, and `source_type` for scoping.
 
-Rows are keyed on `(source_type, source_id)` and upserted, so re-ingestion is idempotent. Triggered by administrators through `/api/ai/ingest/`.
+Rows are keyed on `(source_type, source_id)` and upserted, so re-ingestion is idempotent. Kept in sync with the source tables through a full lifecycle, not a one-off admin action:
+
+- **Create/update** — the record's Node controller calls the matching `ingest*` wrapper in `server/src/services/aiService.js` right after the write (e.g. saving a medical record re-ingests just that record).
+- **Delete** — the delete handler calls `deleteChunk(source_type, source_id)`. `rag_chunks` has no foreign key to `medical_records`/`disease_cases`/`lab_reports`/`vaccinations` (only to `pets`/`customers`, which cascade automatically), so without this call a deleted record's chunk stays retrievable and the assistant keeps citing data that no longer exists.
+- **Pet identity change** — `updatePetById` calls `reingestPet(petId)` whenever a pet's name/species/breed changes, since chunk text embeds those fields at ingestion time and won't otherwise pick up the new value.
+
+`/api/ai/ingest/` (backfill-all and per-type) remains available as an admin-triggered manual action — for a fresh clone, a bulk backfill, or after directly editing static content like `faq_data.py`, which has no create/update/delete event of its own to hook into.
 
 Source types: `medical_record`, `disease_case`, `lab_report`, `vaccination`, `faq`, `staff_faq`.
 
@@ -170,5 +187,7 @@ Source types: `medical_record`, `disease_case`, `lab_report`, `vaccination`, `fa
 | No chunks retrieved (guest) | Falls through to general knowledge without a context block |
 | Ambiguous pet name | Asks which pet is meant, offering candidates |
 | Missing slot in a write intent | Asks for the missing detail |
+| Record deleted (medical record, disease case, lab report, vaccination) | `deleteChunk` removes the corresponding `rag_chunks` row in the same request, so the assistant stops citing it immediately rather than on the next backfill |
+| Pet renamed (or species/breed changed) | `reingestPet` re-embeds every chunk for that pet in the same request, so the assistant picks up the new name rather than continuing to cite the old one until a manual backfill |
 
 Note the asymmetry in the empty-retrieval cases. Staff and owner answers must be grounded in records, so nothing retrieved means nothing to say. Guest answers draw on general pet-care knowledge, so an unmatched FAQ is not a dead end.

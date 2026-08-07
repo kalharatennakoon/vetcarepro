@@ -41,10 +41,19 @@ New to the project? Read [`SCOPE.md`](SCOPE.md), then [`ARCHITECTURE.md`](ARCHIT
 |---|---|
 | [`api/`](api/) | REST API reference |
 | [`design/design-system.md`](design/design-system.md) | Tokens, typography, component library |
+| [`design/`](design/) | Also holds four screen-design PDFs: `ios-ui.pdf`, `web-ui.pdf`, `ui-style-reference.pdf`, `ui-style-combined.pdf` |
 
 ### Deliverables
 
-[`deliverables/`](deliverables/) holds the programme outputs: presentation materials and wireframes.
+[`deliverables/`](deliverables/) holds architecture and data-flow diagrams (`diagrams/`). Wireframes live separately in [`wireframes/`](wireframes/) (`mobile-wireframes.pdf`, `web-wireframes.pdf`); the final presentation is not yet committed to this repository.
+
+### Other
+
+| Path | Purpose |
+|---|---|
+| [`images/`](images/) | Diagrams and screenshots referenced from documentation |
+| [`tests/`](tests/) | Manual test procedures; raw `*.json` output is gitignored (see Conventions) |
+| `insights/` | Working notes; fully gitignored (see Conventions) |
 
 ---
 

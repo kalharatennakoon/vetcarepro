@@ -157,7 +157,7 @@ Honest limitations of the system as it stands.
 | Hard-coded iOS base URL | App cannot reach any other environment unmodified | `APIConfig.baseURL` points at a development machine hostname |
 | Appointment capacity is a stand-in | Concurrency is a row count, not veterinarian availability | `MAX_CONCURRENT_APPOINTMENTS = 3`; genuine per-vet scheduling is not implemented |
 | Uploads stored on local disk | No redundancy; lost with the machine | `server/uploads/`, gitignored |
-| `system_settings` unused | Clinic policy is held in code and static text, not configuration | Table is created and seeded, but no code reads it |
+| `system_settings` hours and `appointmentRules.js` are unsynced | The assistant can quote hours the booking flow doesn't actually honor | `structured_query.py`'s `_clinic_hours` reads `business_hours_start`/`business_hours_end` from `system_settings`; `server/src/utils/appointmentRules.js` hardcodes its own copy of the same fact for booking enforcement. No code path keeps them in sync — changing one without the other reintroduces the mismatch |
 | Stale staff FAQ content | The assistant can state clinic policy that is no longer true | `STAFF_FAQS` entry `staff-002` still describes a default pet-owner password; the actual flow is self-service setup |
 
 ---
@@ -178,5 +178,5 @@ Programme deliverables are documentation, wireframes, and presentation materials
 - Single clinic, single physical site
 - Staff operate on workstations with reliable local network access
 - Pet owners have email and a mobile phone number on file, enabling identity verification at account setup
-- Clinic hours and fee structure change rarely — currently rare enough that they are held in code and static FAQ text rather than read from `system_settings` (see §5)
+- Clinic hours, location, and contact details change rarely, which is why the AI assistant reads them live from `system_settings` (`structured_query.py`'s `_clinic_hours`/`_clinic_location`/`_clinic_contact`) rather than static FAQ text — but booking enforcement (`appointmentRules.js`) still hardcodes its own copy of the hours, so the two must be kept in sync by hand (see §5). Fee structure remains code-derived: the assistant's price-estimate handler averages historical `billing` rows rather than reading `system_settings.consultation_fee_default`
 - A machine capable of running a 7B-parameter model locally is available to host the ML service

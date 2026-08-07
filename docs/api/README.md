@@ -253,7 +253,7 @@ _Routes in this module are not annotated; see the source file._
 | `POST` | `/api/ai/actions/confirm` | Execute a write action the assistant proposed (book/reschedule/ cancel an appointment, send a reminder, register a customer, add a pet, or - admin only - register a new staff member) after explicit staff confirmation | Private (admin, veterinarian, receptionist) - register_staff is |
 | `GET` | `/api/ai/health` | Check AI assistant (Ollama/RAG) health | Private (staff) |
 | `POST` | `/api/ai/ingest/medical-records` | Backfill the vector store from all existing medical records | Private (Admin only) |
-| `POST` | `/api/ai/ingest/all` | Backfill every RAG source type (medical records, disease cases, lab reports, FAQs) | Private (Admin only) |
+| `POST` | `/api/ai/ingest/all` | Backfill every RAG source type (medical records, disease cases, lab reports, vaccinations, FAQs, staff FAQs) | Private (Admin only) |
 | `POST` | `/api/ai/explain` | Explain a raw ML model output (outbreak risk, sales/inventory forecast) in plain language | Private (staff) |
 
 ### Email — `/api/email`
@@ -283,6 +283,8 @@ _Routes in this module are not annotated; see the source file._
 **`/api/ai/actions/confirm`** executes a write action the assistant proposed. The assistant itself never writes; it returns a proposal that this endpoint applies after explicit user confirmation. `register_staff` is further restricted to administrators inside the controller.
 
 **`/api/ai/ingest/*`** rebuilds the vector store and is administrator-only. Ingestion is idempotent.
+
+**Vector-store lifecycle beyond `/api/ai/ingest/*`** — most `rag_chunks` writes aren't a client-callable route at all; they're a side effect of other Node routes. `server/src/services/aiService.js` calls the Flask ML service directly (never exposed under `/api/ai`, same internal-only pattern as the rest of `/api/ml/*`): `POST /api/ml/rag/chunks/delete` fires from the medical-record, disease-case, lab-report, and vaccination delete handlers so a deleted record's chunk doesn't stay retrievable; `POST /api/ml/rag/ingest/pet` fires from `PUT /api/pets/:id` when a pet's name/species/breed changes, so its chunks pick up the new value instead of citing the old one until the next manual backfill.
 
 **Pet-owner appointment routes** enforce the constraints in `server/src/utils/appointmentRules.js` — clinic open days, 30-minute slots between 09:00 and 18:30, three concurrent appointments per slot, and a 48-hour minimum lead time on create, reschedule, and cancel. Staff routes are not bound by the lead-time rule.
 

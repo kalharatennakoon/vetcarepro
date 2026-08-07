@@ -17,6 +17,8 @@ Role restrictions are declared in two places:
 
 A third enforcement point applies to the AI assistant: `ml/scripts/rag/retrieval.py` filters retrievable content by role in SQL, so the assistant cannot surface data the interface would refuse. See [`how-the-ai-assistant-works.md`](how-the-ai-assistant-works.md) §6.
 
+A fourth enforcement point sits alongside it, not inside it: `ml/scripts/rag/structured_query.py` answers exact-SQL questions (counts, clinic info, appointments, billing) without ever going through `retrieval.py`, so it gates access itself rather than inheriting the third point's filtering. It redirects receptionist questions about clinical detail (`_clinical_detail_redirect()`) rather than answering them, and its staff-only handler branches (inventory, disease cases, staff-named billing/appointment lookups) simply decline to claim a pet-owner's question, falling through to the owner's own scoped handlers or retrieval instead of clinic-wide data.
+
 Middleware shorthands in `server/src/middleware/roleCheck.js`: `adminOnly`, `vetOrAdmin`, `adminOrReceptionist`, `staffOnly`.
 
 ---

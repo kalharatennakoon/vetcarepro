@@ -16,6 +16,14 @@ These patterns route to hand-written SQL instead. The result is exact by constru
 
 ## Coverage
 
+### Clinic info
+
+Read from `system_settings`. Checked first, before every other pattern in this layer, and open to **every role including guest** — the only category here that is not staff- or owner-scoped.
+
+- Hours — *"what time do you open?"*, *"what are your business hours?"*, *"are you open on Sundays?"*
+- Location — *"where are you located?"*, *"what's the clinic address?"*
+- Contact — *"what's your phone number?"*, *"how do I contact the clinic?"*, *"what's your email address?"*
+
 ### Pets
 
 - Count pets by name — *"how many pets are named Max?"*
@@ -34,6 +42,7 @@ These patterns route to hand-written SQL instead. The result is exact by constru
 
 - List vaccinations for a pet — *"what vaccines has pet Max had?"*
 - Count vaccinations for a pet — *"how many vaccines has Max received?"*
+- Last/most-recent vaccination, and "up to date" status checks — *"when was Max last vaccinated?"*, *"is Max up to date on shots?"*
 
 ### Inventory
 
@@ -41,9 +50,13 @@ These patterns route to hand-written SQL instead. The result is exact by constru
 - Out of stock items — *"what's out of stock?"*
 - Expiring items — *"what's expiring in the next 30 days?"*
 
-### Appointments
+### Appointments (staff)
 
 - Count by timeframe — *"how many appointments today?"*, *"…this month?"*
+- List by timeframe — *"what appointments do we have this week?"*
+- Specific day — *"any appointments on the 31st?"*, *"appointment on the 5th of next month"*
+- Relative weekday — *"any appointments next Friday?"*, *"what's on this Monday"*
+- Any other named date not matched by the patterns above (e.g. *"appointments on July 31st, 2026"*) falls back to LLM date-extraction: the model only normalizes the date string to `YYYY-MM-DD`, then a real SQL lookup answers from it — never an LLM-generated appointment list.
 - Count no-shows — *"how many no-shows this month?"*
 - Count by veterinarian — *"how many appointments does Dr. Silva have?"*
 - Count by status — *"how many appointments are cancelled?"*
@@ -54,11 +67,23 @@ These patterns route to hand-written SQL instead. The result is exact by constru
 - Count by category — *"how many infectious cases?"*
 - Count by severity — *"how many critical cases this month?"*
 
-### Billing
+### Billing (staff)
 
 - Unpaid bills — *"how many unpaid bills are there?"*
 - Revenue by timeframe — *"what's the total revenue this month?"*
 - Count by payment method — *"how many bills were paid by cash?"*
+- Balance owed by customer name — *"what does John Doe owe?"*, *"outstanding balance for Jane Doe"*
+- Payment status by customer name — *"has John Doe paid?"*, *"payment status for Jane Doe"*
+- Historical price estimate by appointment type — *"how much does a checkup cost?"*, averaged from past `billing` rows, never a guaranteed quote
+
+### Pet-owner self-service
+
+Scoped to the caller's own `customer_id` directly — no name lookup, so there's no ambiguity to resolve the way there is for the staff/name-based billing patterns above.
+
+- Next upcoming appointment, optionally narrowed to a named pet of theirs — *"when is my next appointment?"*, *"when is Max's next appointment?"*
+- Own appointments by timeframe, including single-day yes/no phrasing — *"what appointments do I have this week?"*, *"do I have an appointment tomorrow?"* (timeframe is checked before "next appointment", so a named timeframe always wins over the general next-appointment answer)
+- Own outstanding balance — *"how much do I owe?"*, *"what's my balance?"*
+- Own payment status — *"have I paid?"*, *"is my bill paid?"*
 
 Shared timeframe vocabulary across appointments, disease cases, and billing: today, yesterday, tomorrow, last week, this week, last month, this month, this year.
 
@@ -66,9 +91,11 @@ Shared timeframe vocabulary across appointments, disease cases, and billing: tod
 
 ## Access restrictions
 
-Inventory, appointment, disease case, and billing queries are **staff-only** — administrator, veterinarian, or receptionist.
+Clinic info is open to every role, including unauthenticated guests.
 
-A pet owner asking one of these does not receive an error. The handler declines to claim the question and it falls through to normal retrieval, which is already scoped to that owner's own records. The owner gets an answer about their own data, or none, but never clinic-wide operational figures.
+Inventory, disease case, and the staff/name-based billing and appointment patterns above are **staff-only** — administrator, veterinarian, or receptionist. (Medical-record detail is further restricted within staff: receptionist gets an explicit redirect rather than the record content, matching the `vetOrAdmin` boundary elsewhere in the app.)
+
+A pet owner asking a staff-only pattern does not receive an error. The handler declines to claim the question and it falls through to the next candidate handler, and ultimately to normal retrieval, which is already scoped to that owner's own records. The owner gets an answer about their own data, or none, but never clinic-wide operational figures — **except** for the pet-owner self-service patterns above (their own appointments and their own billing balance), which this layer answers directly and exactly, scoped to their own `customer_id`.
 
 ---
 

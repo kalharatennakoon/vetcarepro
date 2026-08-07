@@ -288,9 +288,11 @@ STAFF_FAQS = [
         'answer': (
             'Add the customer first from the Customers section, then add '
             'their pet(s) from the Pets section (or directly from the '
-            'customer\'s profile). New pet-owner portal accounts are '
-            'automatically given the default password and must change it on '
-            'first login.'
+            'customer\'s profile). There is no default portal password to '
+            'hand out - the customer sets their own the first time they log '
+            'in, from the login page\'s "Set Up Your Account" option, by '
+            'confirming the email and phone number the clinic has on file '
+            'and then choosing a password themselves.'
         ),
     },
     {
