@@ -1,12 +1,8 @@
 /**
  * AI Controller (RAG Assistant)
- * Exposes the AI assistant to authenticated staff, and a restricted
- * public/guest endpoint for general (non-clinic-data) questions.
- *
- * NOTE: "Pet Owner" mode is intentionally not exposed yet - the `users`
- * table only supports staff roles (admin/veterinarian/receptionist);
- * `customers` currently has no login/auth. Add that once customer
- * authentication exists (also needed for the mobile app's Owner mode).
+ * Exposes the AI assistant to authenticated staff (staffChat), authenticated
+ * pet owners scoped to their own records (customerChat), and a restricted
+ * public/guest endpoint for general (non-clinic-data) questions (publicChat).
  */
 
 import * as aiService from '../services/aiService.js';

@@ -23,7 +23,7 @@ from scripts.rag.pet_health_intent import try_pet_health_intent
 # an imperial unit word, so it won't touch unrelated parens (e.g. a plain-
 # language term explanation).
 _IMPERIAL_ASIDE = re.compile(
-    r'\s*\([^()]*\d[^()]*(?:lbs?\.?|pounds?|°\s?F(?:ahrenheit)?|fahrenheit|inch(?:es)?)\b[^()]*\)',
+    r'\s*\([^()]*\d[^()]*(?:lbs?\.?|pounds?|°\s?F(?:ahrenheit)?|fahrenheit|(?<=\d)\s?F\b|inch(?:es)?)\b[^()]*\)',
     re.IGNORECASE
 )
 
@@ -497,12 +497,23 @@ Question: {effective_question}
             'error': True
         }
 
-    answer_text = normalize_currency(_strip_imperial_units(answer_text))
+    # normalize_currency assumes any "$"/"USD"/"dollars" figure is really an
+    # LKR amount the model mislabeled - true for clinic data (billing/pricing
+    # fields are always LKR at the source), but not for a guest's ungrounded
+    # general-knowledge answer (no FAQ chunk matched), where a dollar figure
+    # is more likely a genuine foreign reference amount. Relabeling that
+    # preserves the digits and only swaps the currency word would misrepresent
+    # the value by ~300x, so skip normalization in that specific case.
+    is_guest_ungrounded = role == 'guest' and not chunks
+
+    def _normalize(text: str) -> str:
+        text = _strip_imperial_units(text)
+        return text if is_guest_ungrounded else normalize_currency(text)
+
+    answer_text = _normalize(answer_text)
 
     if _wants_paragraph_and_bullets(effective_question):
-        answer_text = normalize_currency(
-            _strip_imperial_units(_reshape_explain_summarize(effective_question, answer_text))
-        )
+        answer_text = _normalize(_reshape_explain_summarize(effective_question, answer_text))
 
     return {
         'answer': answer_text,

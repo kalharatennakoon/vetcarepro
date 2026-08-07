@@ -19,7 +19,7 @@ import {
 import { getCustomerById } from '../models/customerModel.js';
 import { deleteImageFile } from '../config/multer.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
-import { ingestVaccination } from '../services/aiService.js';
+import { ingestVaccination, reingestPet, deleteChunk } from '../services/aiService.js';
 
 /**
  * Pet Controller
@@ -167,6 +167,17 @@ export const updatePetById = async (req, res) => {
       petData,
       req.user.user_id
     );
+
+    // Chunk content embeds pet_name/species/breed at ingestion time (see
+    // ml/scripts/rag/chunking.py) - re-embed this pet's records so the
+    // assistant doesn't keep citing them by the old name.
+    if (
+      (petData.pet_name && petData.pet_name !== existingPet.pet_name) ||
+      (petData.species && petData.species !== existingPet.species) ||
+      (petData.breed !== undefined && petData.breed !== existingPet.breed)
+    ) {
+      reingestPet(id).catch(() => {});
+    }
 
     res.status(200).json({
       status: 'success',
@@ -465,6 +476,7 @@ export const deletePetVaccination = async (req, res) => {
     if (!vaccination) {
       return res.status(404).json({ status: 'error', message: 'Vaccination record not found' });
     }
+    deleteChunk('vaccination', vaccinationId).catch(() => {});
 
     res.status(200).json({
       status: 'success',

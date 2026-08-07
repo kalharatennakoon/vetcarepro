@@ -14,7 +14,7 @@ import {
   addFollowupRecord
 } from '../models/diseaseCaseModel.js';
 
-import { ingestDiseaseCase } from '../services/aiService.js';
+import { ingestDiseaseCase, deleteChunk } from '../services/aiService.js';
 
 /**
  * Disease Case Controller
@@ -289,6 +289,7 @@ export const removeDiseaseCase = async (req, res) => {
     });
 
     await deleteDiseaseCase(id);
+    deleteChunk('disease_case', id).catch(() => {});
 
     res.status(200).json({
       status: 'success',

@@ -5,7 +5,7 @@ Runs fully locally -> no API keys, no per-token cost.
 
 Requires Ollama running locally (default http://localhost:11434) with:
     ollama pull nomic-embed-text
-    ollama pull gemma4:e4b
+    ollama pull qwen2.5-coder:7b
 """
 
 import os

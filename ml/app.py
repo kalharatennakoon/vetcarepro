@@ -1379,6 +1379,46 @@ def rag_ingest_all():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ml/rag/ingest/pet', methods=['POST'])
+def rag_ingest_pet():
+    """
+    Re-ingest every chunk belonging to a single pet (medical records, disease
+    cases, lab reports, vaccinations). Call after a pet's name/species/breed
+    changes, since chunk text embeds those fields at ingestion time.
+    Body: { "pet_id": "PET-0001" }
+    """
+    try:
+        from scripts.rag.ingest import reingest_pet
+        data = request.get_json(force=True)
+        pet_id = data.get('pet_id')
+        if not pet_id:
+            return jsonify({'success': False, 'error': 'pet_id is required'}), 400
+        result = reingest_pet(pet_id)
+        return jsonify({'success': True, 'results': result}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/chunks/delete', methods=['POST'])
+def rag_delete_chunk():
+    """
+    Remove a single rag_chunks row so the assistant stops citing deleted data.
+    Call this from a record's delete handler.
+    Body: { "source_type": "medical_record", "source_id": "123" }
+    """
+    try:
+        from scripts.rag.ingest import delete_chunk
+        data = request.get_json(force=True)
+        source_type = data.get('source_type')
+        source_id = data.get('source_id')
+        if not source_type or source_id is None:
+            return jsonify({'success': False, 'error': 'source_type and source_id are required'}), 400
+        deleted = delete_chunk(source_type, source_id)
+        return jsonify({'success': True, 'deleted': deleted}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/rag/explain', methods=['POST'])
 def rag_explain():
     """
@@ -1464,7 +1504,14 @@ def rag_chat():
         # hallucinate an answer stitched from tangentially-related
         # vaccination/FAQ chunks instead of a real assessment. Route these
         # to the actual model + explain feature instead.
-        if re.search(r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE):
+        # Staff-only gate: guests/owners asking a general "what do I do
+        # during a disease outbreak" question are asking a legitimate
+        # general-knowledge question the guest/owner pipeline already
+        # handles - only intercept this phrasing for staff, who mean the
+        # clinic's own live risk model.
+        if role in ('admin', 'veterinarian', 'receptionist') and re.search(
+            r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE
+        ):
             if role not in ('admin', 'veterinarian'):
                 return jsonify({
                     'success': True,
@@ -1509,7 +1556,7 @@ def rag_chat():
         # from unrelated pet medical records instead. Checked after the
         # outbreak-risk block on purpose - "disease outbreak trend" should
         # still hit that block above, not this one.
-        if re.search(
+        if role in ('admin', 'veterinarian', 'receptionist') and re.search(
             r'\bdiseases?\b.*\b(?:predict(?:ed|ion)?|forecast(?:ed)?|trend)\b|'
             r'\b(?:predict(?:ed|ion)?|forecast(?:ed)?)\b.*\bdiseases?\b',
             question, re.IGNORECASE

@@ -10,7 +10,7 @@ import {
   getMedicalRecordCount
 } from '../models/medicalRecordModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
-import { ingestMedicalRecord } from '../services/aiService.js';
+import { ingestMedicalRecord, deleteChunk } from '../services/aiService.js';
 
 /**
  * Medical Record Controller
@@ -205,6 +205,7 @@ export const deleteMedicalRecordById = async (req, res) => {
     });
 
     await deleteMedicalRecord(parseInt(id));
+    deleteChunk('medical_record', id).catch(() => {});
 
     res.status(200).json({
       status: 'success',

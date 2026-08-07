@@ -405,6 +405,40 @@ def _bare_staff_pet_mention(question: str):
 
 
 # ============================================================
+# Clinic info (hours, location, contact) - public, no role restriction.
+# system_settings holds this (seed.sql), but nothing previously read it in
+# the RAG layer, so "what time do you open?" / "where are you located?" /
+# "what's your phone number?" - the most common guest/receptionist
+# questions - had no way to be answered. Exact SQL, same reasoning as every
+# other structured handler in this file: these are facts, not something to
+# leave to semantic retrieval or the LLM to guess/hallucinate.
+# ============================================================
+
+CLINIC_HOURS = re.compile(
+    r'\b(?:business\s+|opening\s+|working\s+)?hours\b|'
+    r'\bwhat\s+time\b.*\b(?:open|close|closing)\b|'
+    r'\bwhen\s+(?:are\s+you|do\s+you|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
+    r'\bare\s+you\s+open\b|\bwhat\s+days\b.*\bopen\b',
+    re.IGNORECASE
+)
+
+CLINIC_LOCATION = re.compile(
+    r'\bwhere\s+(?:are\s+you|is\s+the\s+clinic|is\s+vetcare)\b|'
+    r'\b(?:clinic\'?s?\s+)?(?:address|location)\b',
+    re.IGNORECASE
+)
+
+CLINIC_CONTACT = re.compile(
+    r'\b(?:phone|contact|mobile)\s+number\b|'
+    r'\bhow\s+(?:do\s+i|can\s+i)\s+contact\b|'
+    r'\byour\s+(?:phone|email)\b|'
+    r'\bemail\s+address\b|'
+    r'\b(?:clinic\'?s?\s+)?website\b',
+    re.IGNORECASE
+)
+
+
+# ============================================================
 # Inventory
 # ============================================================
 
@@ -483,6 +517,24 @@ APPT_RELATIVE_WEEKDAY = re.compile(
     re.IGNORECASE
 )
 
+# Pet-owner (first-person) equivalents of the staff appointment patterns
+# above - "when is Max's next appointment?", "do I have an appointment
+# tomorrow?". Scoped to the caller's own customer_id, never a name lookup.
+OWNER_NEXT_APPOINTMENT = re.compile(
+    r'\b(?:when(?:\'s|\s+is)|what(?:\'s|\s+is))\b.*\bnext\b.*\bappointment|'
+    r'\bnext\s+appointment\b|'
+    r'\b(?:do\s+i|does\s+my\s+pet)\s+have\s+(?:an?\s+)?(?:upcoming\s+)?appointment|'
+    r'\bupcoming\s+appointments?\b',
+    re.IGNORECASE
+)
+
+# Matches: "what appointments do I have this week?", "my appointments this month"
+OWNER_APPOINTMENTS_TIMEFRAME = re.compile(
+    r'\b(?:my|our)\b.*\bappointments?\b.*\b' + TIMEFRAME_WORDS + r'\b|'
+    r'\bappointments?\b.*\bdo\s+i\s+have\b.*\b' + TIMEFRAME_WORDS + r'\b',
+    re.IGNORECASE
+)
+
 
 # ============================================================
 # Disease cases
@@ -547,6 +599,22 @@ BILLING_PAYMENT_STATUS_BY_CUSTOMER = re.compile(
     r'\bhas\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+paid\b|'
     r'payment\s+status\s+(?:for|of)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)\b|'
     r"\bis\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)'s\s+bill\s+paid\b",
+    re.IGNORECASE
+)
+
+# Pet-owner (first-person) equivalents of the staff billing patterns above -
+# "how much do I owe?", "have I paid my last bill?". Scoped to the caller's
+# own customer_id, never a name lookup (unlike the staff versions, which
+# must resolve an ambiguous customer name first).
+OWNER_BALANCE = re.compile(
+    r'\bhow\s+much\s+do\s+i\s+owe\b|\bwhat\s+do\s+i\s+owe\b|'
+    r'\bmy\s+(?:outstanding\s+)?balance\b|\bdo\s+i\s+owe\s+anything\b',
+    re.IGNORECASE
+)
+
+# Matches: "have I paid?", "is my bill paid?", "what's my payment status"
+OWNER_PAYMENT_STATUS = re.compile(
+    r'\bhave\s+i\s+paid\b|\bis\s+my\s+bill\s+paid\b|\bmy\s+payment\s+status\b',
     re.IGNORECASE
 )
 
@@ -714,6 +782,16 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         dict (same shape as rag_service.answer_question's return) if matched,
         otherwise None (caller should fall back to normal RAG retrieval).
     """
+    # Clinic hours/location/contact are public facts, available to every
+    # role (including guest) - checked first since they're unambiguous and
+    # never need pet/customer resolution.
+    if CLINIC_HOURS.search(question):
+        return _clinic_hours()
+    if CLINIC_LOCATION.search(question):
+        return _clinic_location()
+    if CLINIC_CONTACT.search(question):
+        return _clinic_contact()
+
     match = COUNT_PETS_BY_NAME.search(question)
     if match:
         return _count_pets_by_name(match.group(1), role, customer_id)
@@ -831,6 +909,21 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
             if extracted_date:
                 return _list_appointments_on_date(extracted_date)
 
+    # --- Appointments (pet owner: own appointments only) ---
+    elif role == 'pet_owner' and customer_id:
+        # If a specific pet is named ("when is Max's next appointment"),
+        # narrow to just that pet - resolve_pet_id is already bounded to
+        # this owner's own pets, so no cross-owner ambiguity risk here.
+        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+
+        if OWNER_NEXT_APPOINTMENT.search(question):
+            return _owner_next_appointment(customer_id, pet_id=resolved_pet_id)
+
+        match = OWNER_APPOINTMENTS_TIMEFRAME.search(question)
+        timeframe = _first_group(match)
+        if timeframe:
+            return _owner_appointments_timeframe(customer_id, timeframe)
+
     # --- Disease cases (clinical staff only - receptionist is fully
     # blocked from disease-case data in the regular app too, see
     # roleCheck.js's vetOrAdmin on diseaseCaseRoutes.js) ---
@@ -886,7 +979,108 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         if customer_name:
             return _customer_balance(customer_name)
 
+    # --- Billing (pet owner: own bills only) ---
+    elif role == 'pet_owner' and customer_id:
+        if OWNER_PAYMENT_STATUS.search(question):
+            return _owner_payment_status(customer_id)
+        if OWNER_BALANCE.search(question):
+            return _owner_balance(customer_id)
+
     return None
+
+
+_CLINIC_SETTING_KEYS = [
+    'clinic_name', 'clinic_address', 'clinic_phone', 'clinic_mobile', 'clinic_email',
+    'clinic_website', 'business_hours_start', 'business_hours_end',
+    'lunch_break_start', 'lunch_break_end', 'working_days'
+]
+
+
+def _get_clinic_settings() -> dict:
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT setting_key, setting_value FROM system_settings WHERE setting_key = ANY(%s)",
+                (_CLINIC_SETTING_KEYS,)
+            )
+            return dict(cur.fetchall())
+    finally:
+        conn.close()
+
+
+def _clinic_hours() -> dict:
+    settings = _get_clinic_settings()
+    if not settings.get('business_hours_start') or not settings.get('business_hours_end'):
+        return {
+            'answer': "I don't have the clinic's business hours on file - please check with the clinic directly.",
+            'sources': [], 'chunks_used': 0, 'structured': True
+        }
+
+    clinic_name = settings.get('clinic_name', 'The clinic')
+    days = settings.get('working_days', '').replace(',', ', ')
+    answer = f"{clinic_name} is open"
+    if days:
+        answer += f" {days}"
+    answer += f", {settings['business_hours_start']} to {settings['business_hours_end']}"
+    if settings.get('lunch_break_start') and settings.get('lunch_break_end'):
+        answer += f" (closed for lunch {settings['lunch_break_start']} to {settings['lunch_break_end']})"
+    answer += '.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'clinic_settings', 'source_id': 'business_hours', 'metadata': {}}],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _clinic_location() -> dict:
+    settings = _get_clinic_settings()
+    if not settings.get('clinic_address'):
+        return {
+            'answer': "I don't have the clinic's address on file - please check with the clinic directly.",
+            'sources': [], 'chunks_used': 0, 'structured': True
+        }
+
+    clinic_name = settings.get('clinic_name', 'The clinic')
+    answer = f"{clinic_name} is located at {settings['clinic_address']}."
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'clinic_settings', 'source_id': 'clinic_address', 'metadata': {}}],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _clinic_contact() -> dict:
+    settings = _get_clinic_settings()
+    parts = []
+    if settings.get('clinic_phone'):
+        parts.append(f"phone {settings['clinic_phone']}")
+    if settings.get('clinic_mobile'):
+        parts.append(f"mobile {settings['clinic_mobile']}")
+    if settings.get('clinic_email'):
+        parts.append(f"email {settings['clinic_email']}")
+    if settings.get('clinic_website'):
+        parts.append(f"website {settings['clinic_website']}")
+
+    if not parts:
+        return {
+            'answer': "I don't have the clinic's contact details on file - please check with the clinic directly.",
+            'sources': [], 'chunks_used': 0, 'structured': True
+        }
+
+    clinic_name = settings.get('clinic_name', 'the clinic')
+    answer = f"You can reach {clinic_name} at " + ', '.join(parts) + '.'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'clinic_settings', 'source_id': 'clinic_contact', 'metadata': {}}],
+        'chunks_used': 0,
+        'structured': True
+    }
 
 
 def _looks_like_vaccine_question(question: str) -> bool:
@@ -1374,6 +1568,115 @@ def _list_appointments_on_date(target_date: date) -> dict:
     }
 
 
+def _owner_next_appointment(customer_id: str, pet_id: str = None) -> dict:
+    """The pet-owner-facing "when is my/Max's next appointment" lookup -
+    scoped to customer_id directly (already authenticated), never a name
+    lookup like the staff equivalents above."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                       a.reason, p.pet_name, u.first_name, u.last_name
+                FROM appointments a
+                JOIN pets p ON p.pet_id = a.pet_id
+                LEFT JOIN users u ON u.user_id = a.veterinarian_id
+                WHERE a.customer_id = %s
+                  AND a.appointment_date >= CURRENT_DATE
+                  AND a.status NOT IN ('cancelled', 'completed', 'no_show')
+            """
+            params = [customer_id]
+            if pet_id:
+                query += " AND a.pet_id = %s"
+                params.append(pet_id)
+            query += " ORDER BY a.appointment_date, a.appointment_time LIMIT 5"
+
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': 'You have no upcoming appointments scheduled.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    appt_id, appt_date, appt_time, status, reason, pet_name, vet_first, vet_last = rows[0]
+    vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
+    answer = f'Your next appointment is on {appt_date} at {appt_time} for {pet_name}{vet_str} ({status}) - {reason}.'
+
+    if len(rows) > 1:
+        more = '\n- '.join(
+            f'{r[1]} {r[2]} - {r[5]}' + (f' with Dr. {r[6]} {r[7]}' if r[6] else '') + f' ({r[3]}) - {r[4]}'
+            for r in rows[1:]
+        )
+        answer += f'\n\nOther upcoming appointments:\n- {more}'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[3]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _owner_appointments_timeframe(customer_id: str, timeframe: str) -> dict:
+    """Listing counterpart to _owner_next_appointment for "what appointments
+    do I have this week" style questions - same scoping (customer_id, no
+    name lookup) as _owner_next_appointment above."""
+    start, end = _resolve_timeframe(timeframe)
+    if start is None:
+        return {'answer': f'I could not resolve the timeframe "{timeframe}".', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                       a.reason, p.pet_name, u.first_name, u.last_name
+                FROM appointments a
+                JOIN pets p ON p.pet_id = a.pet_id
+                LEFT JOIN users u ON u.user_id = a.veterinarian_id
+                WHERE a.customer_id = %s AND a.appointment_date BETWEEN %s AND %s
+                ORDER BY a.appointment_date, a.appointment_time
+            """, (customer_id, start, end))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': f'You have no appointments {_normalize_timeframe(timeframe)}.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    items = []
+    sources = []
+    for appt_id, appt_date, appt_time, status, reason, pet_name, vet_first, vet_last in rows:
+        vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
+        items.append(f'{appt_date} {appt_time} - {pet_name}{vet_str}, {status} - {reason}')
+        sources.append({'source_type': 'appointment', 'source_id': appt_id, 'metadata': {'status': status}})
+
+    count = len(rows)
+    listing = '\n- '.join(items)
+    answer = (
+        f'You have {count} appointment{"s" if count != 1 else ""} '
+        f'{_normalize_timeframe(timeframe)}:\n- {listing}'
+    )
+
+    return {
+        'answer': answer,
+        'sources': sources,
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
 def _count_no_shows(timeframe: str = None) -> dict:
     conn = get_raw_db_connection()
     try:
@@ -1724,6 +2027,88 @@ def _customer_payment_status(customer_name: str) -> dict:
         for _, bill_number, payment_status, _, balance_amount, bill_date in rows
     ]
     answer = f'Payment status for {full_name}:\n- ' + '\n- '.join(items)
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1], 'payment_status': r[2]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _owner_balance(customer_id: str) -> dict:
+    """The pet-owner-facing "how much do I owe" lookup - same query as
+    _customer_balance above, but scoped to customer_id directly since the
+    caller is already authenticated (no name lookup/ambiguity to resolve)."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT bill_id, bill_number, balance_amount, due_date
+                FROM billing
+                WHERE customer_id = %s AND payment_status != 'fully_paid'
+                ORDER BY due_date ASC NULLS LAST
+            """, (customer_id,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': 'You have no outstanding balance - all your bills are fully paid.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    total_owed = sum(r[2] for r in rows)
+    listing = ', '.join(
+        f'{r[1]} (Rs. {r[2]:.2f}{", due " + str(r[3]) if r[3] else ""})' for r in rows
+    )
+    answer = (
+        f'You owe Rs. {total_owed:.2f} in total across {len(rows)} unpaid bill'
+        f'{"s" if len(rows) != 1 else ""}: {listing}.'
+    )
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _owner_payment_status(customer_id: str) -> dict:
+    """Per-bill payment status for the caller's own account - pet-owner
+    equivalent of _customer_payment_status above, scoped to customer_id
+    directly rather than a name lookup."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT bill_id, bill_number, payment_status, total_amount, balance_amount, bill_date
+                FROM billing
+                WHERE customer_id = %s
+                ORDER BY bill_date DESC
+            """, (customer_id,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': 'You have no bills on record.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    items = [
+        f'{bill_number} ({bill_date}): {payment_status.replace("_", " ")}'
+        + (f', balance Rs. {balance_amount:.2f}' if balance_amount and float(balance_amount) > 0 else '')
+        for _, bill_number, payment_status, _, balance_amount, bill_date in rows
+    ]
+    answer = 'Your payment status:\n- ' + '\n- '.join(items)
 
     return {
         'answer': answer,

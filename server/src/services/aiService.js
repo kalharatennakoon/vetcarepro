@@ -120,6 +120,41 @@ const ingestVaccination = async (vaccinationId = null) => {
 };
 
 /**
+ * Re-ingest every chunk belonging to a single pet (medical records, disease
+ * cases, lab reports, vaccinations). Call after a pet's name/species/breed
+ * changes, since chunk text embeds those fields at ingestion time.
+ */
+const reingestPet = async (petId) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/ingest/pet', { pet_id: petId });
+    return response.data;
+  } catch (error) {
+    console.error('RAG pet re-ingestion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Remove a single rag_chunks row so the assistant stops citing deleted data.
+ * Call this from a record's delete handler (medical record, disease case,
+ * lab report, vaccination).
+ */
+const deleteChunk = async (sourceType, sourceId) => {
+  try {
+    const response = await aiClient.post('/api/ml/rag/chunks/delete', {
+      source_type: sourceType,
+      source_id: sourceId
+    });
+    return response.data;
+  } catch (error) {
+    // Same non-fatal reasoning as ingestion failures - a delete's main
+    // effect (removing the DB row) shouldn't be blocked by RAG being down.
+    console.error('RAG chunk deletion failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * (Re)ingest the static FAQ / care-instruction content.
  */
 const ingestFaqs = async () => {
@@ -171,6 +206,8 @@ export {
   ingestDiseaseCase,
   ingestLabReport,
   ingestVaccination,
+  reingestPet,
+  deleteChunk,
   ingestFaqs,
   ingestAll,
   explainMlOutput

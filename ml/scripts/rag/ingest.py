@@ -49,6 +49,29 @@ def _to_jsonb(d: dict) -> str:
     return json.dumps(d)
 
 
+def delete_chunk(source_type: str, source_id) -> bool:
+    """
+    Remove a single rag_chunks row, keyed on (source_type, source_id).
+
+    Call this from a record's delete handler so the assistant stops citing
+    data that no longer exists in the app (rag_chunks has no FK to
+    medical_records/disease_cases/lab_reports/vaccinations, so nothing does
+    this automatically the way pet/customer deletion cascades do).
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM rag_chunks WHERE source_type = %s AND source_id = %s",
+                (source_type, str(source_id))
+            )
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
+
+
 def ingest_medical_records(record_id: int = None) -> dict:
     """
     Ingest medical records into rag_chunks.
@@ -273,6 +296,44 @@ def ingest_staff_faqs() -> dict:
 
     finally:
         conn.close()
+
+
+def reingest_pet(pet_id: str) -> dict:
+    """
+    Re-ingest every chunk belonging to a single pet across all source types.
+
+    Chunk content embeds pet_name at ingestion time (see chunking.py), so
+    renaming a pet leaves its old name baked into existing chunks until
+    they're re-embedded. Call this after a pet's name changes (or any other
+    field the chunk text includes, e.g. species/breed).
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT record_id FROM medical_records WHERE pet_id = %s", (pet_id,))
+            record_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT case_id FROM disease_cases WHERE pet_id = %s", (pet_id,))
+            case_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT report_id FROM lab_reports WHERE pet_id = %s", (pet_id,))
+            report_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT vaccination_id FROM vaccinations WHERE pet_id = %s", (pet_id,))
+            vaccination_ids = [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    def _summarize(results):
+        return {
+            'ingested': sum(r['ingested'] for r in results),
+            'failed': sum(r['failed'] for r in results),
+            'errors': [e for r in results for e in r['errors']]
+        }
+
+    return {
+        'medical_records': _summarize([ingest_medical_records(record_id=rid) for rid in record_ids]),
+        'disease_cases': _summarize([ingest_disease_cases(case_id=cid) for cid in case_ids]),
+        'lab_reports': _summarize([ingest_lab_reports(report_id=rid) for rid in report_ids]),
+        'vaccinations': _summarize([ingest_vaccinations(vaccination_id=vid) for vid in vaccination_ids]),
+    }
 
 
 def ingest_all() -> dict:

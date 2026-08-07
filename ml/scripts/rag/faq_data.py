@@ -254,9 +254,11 @@ FAQS = [
         'category': 'platform',
         'question': 'Is VetCare Pro available on mobile?',
         'answer': (
-            'Yes - VetCare Pro has an iOS/Android app alongside the web '
-            'platform, so pet owners and the public can check pet records, '
-            'book appointments, and use the AI assistant on the go.'
+            'Yes - VetCare Pro has an iOS app for pet owners and the public '
+            'alongside the web platform, so you can check pet records, book '
+            'appointments, and use the AI assistant on the go. There is no '
+            'Android app at this time. Clinic staff use the web platform '
+            'only.'
         ),
     },
 ]

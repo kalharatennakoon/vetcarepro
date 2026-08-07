@@ -13,7 +13,7 @@ import { getPetById } from '../models/petModel.js';
 import { sendLabReportEmail } from '../services/emailService.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 
-import { ingestLabReport } from '../services/aiService.js';
+import { ingestLabReport, deleteChunk } from '../services/aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -194,6 +194,7 @@ export const removeLabReport = async (req, res) => {
     if (fs.existsSync(filePath)) {
       try { fs.unlinkSync(filePath); } catch (_) {}
     }
+    deleteChunk('lab_report', reportId).catch(() => {});
 
     await logAuditEntry({
       userId: req.user.user_id,
