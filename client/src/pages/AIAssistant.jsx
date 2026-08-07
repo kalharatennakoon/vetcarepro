@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { askAssistant, confirmAiAction, backfillAll } from '../services/aiService';
+import { askAssistant, confirmAiAction } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
@@ -81,7 +81,6 @@ const AIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [backfilling, setBackfilling] = useState(false);
   // Round-trips an in-progress write-action proposal (book/reschedule/cancel
   // an appointment, a reminder, or intake) across turns - there's no
   // server-side conversation session, so this (plus recent message history)
@@ -197,30 +196,6 @@ const AIAssistant = () => {
     sendQuestion(opt.value, opt.display);
   };
 
-  const handleBackfill = async () => {
-    setBackfilling(true);
-    setError('');
-    try {
-      const result = await backfillAll();
-      const summary = Object.entries(result.results || {})
-        .map(([source, r]) => `${source}: ${r.ingested} ingested${r.failed ? `, ${r.failed} failed` : ''}`)
-        .join(' · ');
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `Knowledge base updated. ${summary}`,
-          sources: [],
-          intro: true
-        }
-      ]);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update the knowledge base.');
-    } finally {
-      setBackfilling(false);
-    }
-  };
-
   return (
     <Layout>
       <div className="ai-assistant-page">
@@ -235,15 +210,6 @@ const AIAssistant = () => {
                   : 'Decision-support only — always confirm medical decisions with a veterinarian.'}
             </p>
           </div>
-          {user?.role === 'admin' && (
-            <button
-              className="ai-assistant-backfill-btn"
-              onClick={handleBackfill}
-              disabled={backfilling}
-            >
-              {backfilling ? 'Updating...' : 'Refresh knowledge base'}
-            </button>
-          )}
         </div>
 
         <div className="ai-assistant-chat">

@@ -88,15 +88,6 @@ export const backfillMedicalRecords = async () => {
 };
 
 /**
- * Backfill every RAG source type in one call (medical records, disease
- * cases, lab reports, FAQs) - Admin only, one-off / maintenance action.
- */
-export const backfillAll = async () => {
-  const response = await axios.post(`${API_URL}/ai/ingest/all`, {}, getAuthHeaders());
-  return response.data;
-};
-
-/**
  * Explain a raw ML model output (outbreak risk, sales forecast, inventory
  * forecast) in plain language.
  * @param {string} outputType - e.g. 'outbreak_risk', 'sales_forecast', 'inventory_forecast'

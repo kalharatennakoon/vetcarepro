@@ -29,7 +29,9 @@ import re
 
 from config.db_connection import get_raw_db_connection
 from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
-from scripts.rag.structured_query import CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name
+from scripts.rag.structured_query import (
+    CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name, _first_non_stopword_match
+)
 from scripts.rag.action_intent import _find_pet_by_name
 
 
@@ -40,10 +42,11 @@ def _extract_pet_name(question: str):
     returns a single pet_id or None, discarding the candidates - which we
     need to offer as clickable options instead of asking the vet to type
     the owner's name from memory)."""
-    pet_match = PET_MENTION.search(question)
-    if not pet_match:
-        pet_match = PET_BY_MENTION.search(question)
-    return pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+    return (
+        _first_non_stopword_match(PET_MENTION, question)
+        or _first_non_stopword_match(PET_BY_MENTION, question)
+        or _first_possessive_pet_name(question)
+    )
 
 
 def _owner_options(pet_rows) -> list:

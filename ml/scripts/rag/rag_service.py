@@ -13,6 +13,7 @@ from scripts.rag.ollama_client import generate_answer, normalize_currency, Ollam
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, find_pet_candidates, STAFF_ROLES
 from scripts.rag.action_intent import try_action_intent
 from scripts.rag.clinical_tools import try_clinical_tool
+from scripts.rag.pet_health_intent import try_pet_health_intent
 
 # Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
 # doesn't reliably drop the imperial aside it's used to seeing in training
@@ -344,6 +345,15 @@ def answer_question(
     if clinical_result is not None:
         return clinical_result
 
+    # Pet disease-recurrence risk, cancer risk, and clinic-wide pandemic risk
+    # are live PetHealthPredictor computations, never ingested into
+    # rag_chunks - checked next, same "live model, not RAG" reasoning as the
+    # clinical tools above. Admin-only; the module itself gates on
+    # PET_HEALTH_ADMIN_ROLES and returns None otherwise.
+    pet_health_result = try_pet_health_intent(question, role=role, history=history, pending_intent=pending_intent)
+    if pet_health_result is not None:
+        return pet_health_result
+
     # Counting/listing questions ("how many pets are named X") are unreliable
     # with pure semantic retrieval - answer them exactly via SQL when we can.
     structured = try_structured_answer(question, role=role, customer_id=customer_id)
@@ -510,14 +520,18 @@ Question: {effective_question}
 
 EXPLAIN_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant. You will be given \
 the raw output of one of the clinic's existing machine learning models (disease \
-outbreak risk, sales forecasting, or inventory demand forecasting). Your job is to \
-explain that output in clear, plain language for clinic staff.
+outbreak risk, individual pet disease/cancer risk, clinic-wide pandemic risk, sales \
+forecasting, or inventory demand forecasting). Your job is to explain that output in \
+clear, plain language for clinic staff.
 
 Rules:
 1. Base your explanation ONLY on the numbers/fields given to you. Do not invent \
 figures that are not present.
 2. Do not present the model's output as a certainty - use language like "the model \
-estimates" or "based on current trends".
+estimates" or "based on current trends". This applies doubly to individual pet \
+disease/cancer risk figures: these are statistical estimates from breed/age/history \
+data, never a diagnosis - make that explicit rather than stating a pet "has" or \
+"will get" a condition.
 3. Keep it concise: 2-4 sentences, plain English, no jargon unless you also explain it.
 4. If the data looks incomplete or you can't make sense of it, say so rather than \
 guessing.

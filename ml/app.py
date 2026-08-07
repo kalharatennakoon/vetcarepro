@@ -8,6 +8,9 @@ from flask_cors import CORS
 import os
 import glob
 import re
+import time
+from datetime import datetime
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
 # DB connection for retraining check
@@ -184,6 +187,83 @@ def load_inventory_model():
         return False
 
 
+# ===========================================================================
+# TRAINING - shared by the manual "Retrain" buttons (POST /api/ml/*/train)
+# and the daily 9AM scheduled retrain below, so both paths train the exact
+# same way and update the same module-level globals in place.
+# ===========================================================================
+
+def _run_disease_training():
+    from scripts.disease_prediction import DiseasePredictionModel
+    global disease_model
+    disease_model = DiseasePredictionModel()
+    return disease_model.train()
+
+
+def _run_sales_training():
+    from scripts.sales_forecasting import SalesForecastingModel
+    global sales_model
+    sales_model = SalesForecastingModel()
+    return sales_model.train()
+
+
+def _run_inventory_training():
+    from scripts.inventory_forecasting import InventoryForecastingModel
+    global inventory_model
+    inventory_model = InventoryForecastingModel()
+    return inventory_model.train()
+
+
+def _scheduled_retrain_all_models():
+    """
+    Runs daily at 09:00 Asia/Colombo (see scheduler setup below). Retrains
+    all 3 models back-to-back, independently - one model failing to train
+    (e.g. not enough new data) shouldn't stop the other two from retraining.
+    This calls the training classes directly rather than hitting the
+    /api/ml/*/train HTTP routes, so it isn't subject to the 30s timeout
+    server/src/services/mlService.js applies to the manual-button path.
+    """
+    print(f"\n[Scheduled Retrain] Starting daily model retrain ({datetime.now().isoformat()})")
+    for label, train_fn in (
+        ('disease prediction', _run_disease_training),
+        ('sales forecasting', _run_sales_training),
+        ('inventory forecasting', _run_inventory_training),
+    ):
+        started = time.time()
+        try:
+            train_fn()
+            print(f"[Scheduled Retrain] {label} model retrained OK in {time.time() - started:.1f}s")
+        except Exception as e:
+            print(f"[Scheduled Retrain] {label} model retrain FAILED after {time.time() - started:.1f}s: {e}")
+    print(f"[Scheduled Retrain] Daily retrain finished ({datetime.now().isoformat()})\n")
+
+
+def _scheduled_rag_ingest_all():
+    """
+    Runs 3x/day at 09:00, 13:00, and 17:00 Asia/Colombo (see scheduler setup
+    below) - replaces the admin "Refresh knowledge base" button, which has
+    been removed from the UI in favor of this automatic schedule. Calls
+    ingest_all() directly (same function the removed button's
+    /api/ml/rag/ingest/all route called) rather than going through Flask/
+    Node, so it isn't subject to any HTTP timeout.
+
+    ingest_all() re-embeds every row from every source table on each call
+    (there's no "only what changed since last run" filter - see
+    scripts/rag/ingest.py), so this is real, non-trivial work: one Ollama
+    embedding call per row. Logged the same way as the retrain job so a slow
+    or failing run is visible in the server log.
+    """
+    from scripts.rag.ingest import ingest_all
+
+    print(f"\n[Scheduled Ingest] Starting knowledge base refresh ({datetime.now().isoformat()})")
+    started = time.time()
+    try:
+        results = ingest_all()
+        print(f"[Scheduled Ingest] Done in {time.time() - started:.1f}s: {results}")
+    except Exception as e:
+        print(f"[Scheduled Ingest] FAILED after {time.time() - started:.1f}s: {e}")
+
+
 # Load models at startup
 print("\n" + "=" * 60)
 print("  VetCare Pro ML Service - Starting Up")
@@ -192,6 +272,45 @@ load_disease_model()
 load_sales_model()
 load_inventory_model()
 print("=" * 60 + "\n")
+
+# Flask's debug reloader (active whenever FLASK_DEBUG=True, the default -
+# see .env.example) re-executes this whole module in a child process and
+# only sets WERKZEUG_RUN_MAIN there, keeping the original watcher process
+# unmarked. Registering the scheduler unconditionally would start it in
+# both processes - only the child actually serves requests, so gate on that
+# marker; outside debug mode there's no reloader/second process at all, so
+# app.config['DEBUG'] being False is enough on its own.
+if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.config['DEBUG']:
+    _scheduler = BackgroundScheduler(timezone='Asia/Colombo')
+    _scheduler.add_job(
+        _scheduled_retrain_all_models, 'cron', hour=9, minute=0,
+        id='daily_model_retrain', replace_existing=True
+    )
+    # Offset the 9AM slot 30 minutes past the model retrain (9:30 instead of
+    # 9:00 sharp) so the two scheduled jobs don't compete for CPU/DB/Ollama
+    # at the same moment - ingest_all() re-embeds every row on every run
+    # (see _scheduled_rag_ingest_all's docstring), and the retrain job is
+    # doing its own DB-heavy Prophet/RandomForest fits right at 9:00.
+    # Three separate jobs, not one cron trigger with hour='9,13,17' - cron
+    # fields are independent, not paired positionally, so a single trigger
+    # with hour='9,13,17', minute='30,0,0' would fire at the cross product
+    # of both fields (6 times/day: 9:00, 9:30, 13:00, 13:30, 17:00, 17:30),
+    # not the 3 intended times.
+    _scheduler.add_job(
+        _scheduled_rag_ingest_all, 'cron', hour=9, minute=30,
+        id='rag_ingest_all_morning', replace_existing=True
+    )
+    _scheduler.add_job(
+        _scheduled_rag_ingest_all, 'cron', hour=13, minute=0,
+        id='rag_ingest_all_afternoon', replace_existing=True
+    )
+    _scheduler.add_job(
+        _scheduled_rag_ingest_all, 'cron', hour=17, minute=0,
+        id='rag_ingest_all_evening', replace_existing=True
+    )
+    _scheduler.start()
+    print("[Scheduler] Daily model retrain scheduled for 09:00 Asia/Colombo")
+    print("[Scheduler] Knowledge base refresh scheduled for 09:30, 13:00, 17:00 Asia/Colombo\n")
 
 
 # ===========================================================================
@@ -599,16 +718,10 @@ def get_pandemic_risk():
 
 @app.route('/api/ml/disease/train', methods=['POST'])
 def train_disease_model():
-    """Train or retrain the disease prediction model"""
+    """Train or retrain the disease prediction model (admin-triggered, via the Retrain button)"""
     try:
-        from scripts.disease_prediction import DiseasePredictionModel
-
-        global disease_model
-
         print("\n🚀 Starting disease prediction model training...")
-        disease_model = DiseasePredictionModel()
-        results = disease_model.train()
-
+        results = _run_disease_training()
         print("✓ Training complete!")
 
         return jsonify({
@@ -657,16 +770,10 @@ def forecast_disease_trends():
 
 @app.route('/api/ml/sales/train', methods=['POST'])
 def train_sales_model():
-    """Train or retrain the sales forecasting model"""
+    """Train or retrain the sales forecasting model (admin-triggered, via the Retrain button)"""
     try:
-        from scripts.sales_forecasting import SalesForecastingModel
-
-        global sales_model
-
         print("\n🚀 Starting sales forecasting model training...")
-        sales_model = SalesForecastingModel()
-        results = sales_model.train()
-
+        results = _run_sales_training()
         print("✓ Sales model training complete!")
 
         return jsonify({
@@ -855,16 +962,10 @@ def get_top_revenue_services():
 
 @app.route('/api/ml/inventory/train', methods=['POST'])
 def train_inventory_model():
-    """Train or retrain the inventory forecasting model"""
+    """Train or retrain the inventory forecasting model (admin-triggered, via the Retrain button)"""
     try:
-        from scripts.inventory_forecasting import InventoryForecastingModel
-
-        global inventory_model
-
         print("\n🚀 Starting inventory forecasting model training...")
-        inventory_model = InventoryForecastingModel()
-        results = inventory_model.train()
-
+        results = _run_inventory_training()
         print("✓ Inventory model training complete!")
 
         return jsonify({
@@ -1301,6 +1402,34 @@ def rag_explain():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def _extract_time_horizon(question, unit='days', default=30, minimum=7, maximum=365):
+    """
+    Picks a "next N days/weeks/months/years" time horizon out of a chat
+    question for the live-model chat intents below, converts it to the
+    caller's target unit (days for sales/inventory, months for the disease
+    trend forecast - each model takes a different unit), and clamps to
+    [minimum, maximum] to match that model's own route-level clamp (e.g.
+    "for the next 18 months" -> ~547 days -> clamped to 365 for inventory,
+    matching /api/ml/inventory/forecast's own clamp; "next 5 years" -> 60
+    months -> matches /api/ml/disease/forecast's clamp of 1-60).
+    Returns (value, was_clamped) so the caller can note in the answer when
+    the requested period got capped rather than silently answering a
+    different window than what was asked for.
+    """
+    match = re.search(r'\bnext\s+(\d+)\s*(day|week|month|year)s?\b', question, re.IGNORECASE)
+    if not match:
+        return default, False
+    count = int(match.group(1))
+    src_unit = match.group(2).lower()
+    per_unit = (
+        {'day': 1 / 30, 'week': 7 / 30, 'month': 1, 'year': 12} if unit == 'months'
+        else {'day': 1, 'week': 7, 'month': 30, 'year': 365}
+    )
+    requested = max(round(count * per_unit[src_unit]), 1)
+    clamped = max(minimum, min(requested, maximum))
+    return clamped, clamped != requested
+
+
 @app.route('/api/ml/rag/chat', methods=['POST'])
 def rag_chat():
     """
@@ -1369,6 +1498,75 @@ def rag_chat():
                 'chunks_used': 0
             }), 200
 
+        # "Disease prediction/forecast for the next N months/years" is a
+        # distinct live-model computation from outbreak risk above -
+        # forecast_disease_trends() is a genuine forward-looking Prophet
+        # forecast (predictions per period, trend direction, pandemic risk
+        # index), not a current risk-level snapshot. Never ingested into
+        # rag_chunks, same reasoning as everywhere else in this block: fell
+        # through to plain RAG retrieval before this existed, which had
+        # nothing relevant to retrieve and hallucinated an answer stitched
+        # from unrelated pet medical records instead. Checked after the
+        # outbreak-risk block on purpose - "disease outbreak trend" should
+        # still hit that block above, not this one.
+        if re.search(
+            r'\bdiseases?\b.*\b(?:predict(?:ed|ion)?|forecast(?:ed)?|trend)\b|'
+            r'\b(?:predict(?:ed|ion)?|forecast(?:ed)?)\b.*\bdiseases?\b',
+            question, re.IGNORECASE
+        ):
+            if role not in ('admin', 'veterinarian'):
+                return jsonify({
+                    'success': True,
+                    'answer': (
+                        "Disease trend forecasts aren't available through this "
+                        "assistant for your role - check the Analytics page, "
+                        "or ask a veterinarian or admin."
+                    ),
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            if not disease_model:
+                return jsonify({
+                    'success': True,
+                    'answer': "The disease prediction model isn't loaded right now - please try again shortly.",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            months, was_clamped = _extract_time_horizon(question, unit='months', default=12, minimum=1, maximum=60)
+            trends = disease_model.forecast_disease_trends(periods_months=months)
+            if 'error' in trends:
+                return jsonify({
+                    'success': True,
+                    'answer': f"Couldn't generate a disease trend forecast right now: {trends['error']}",
+                    'sources': [],
+                    'chunks_used': 0
+                }), 200
+
+            # 'predictions', 'activity_forecast' (one row per forecasted
+            # month each - up to 60 rows at the max horizon) and
+            # 'category_trend' (one list per disease category) are the
+            # detailed series behind the summary fields (trend_direction,
+            # peak_month, totals, pandemic_risk, etc.) - same "don't bloat
+            # the prompt" reasoning as daily_forecast/sufficient_stock above.
+            condensed_trends = {
+                k: v for k, v in trends.items()
+                if k not in ('predictions', 'activity_forecast', 'category_trend')
+            }
+            explanation = explain_ml_output('disease_trend_forecast', condensed_trends)
+            if was_clamped:
+                explanation += (
+                    f"\n\n(Note: the disease prediction model forecasts up to 60 months ahead, so this "
+                    f"reflects a {months}-month window rather than the full period you asked about.)"
+                )
+            return jsonify({
+                'success': True,
+                'answer': explanation,
+                'sources': [{'source_type': 'disease_trend_forecast_model', 'source_id': 'current', 'metadata': {}}],
+                'chunks_used': 0
+            }), 200
+
         # "Forecast/predict revenue" is the same shape of problem as outbreak
         # risk above - a live model computation, never ingested into
         # rag_chunks. Distinct from BILLING_REVENUE_TIMEFRAME in
@@ -1376,7 +1574,8 @@ def rag_chat():
         # real billing rows via SQL - this is a genuine forward-looking
         # prediction, so it needs the trained sales model, not a query.
         if re.search(
-            r'\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b.*\b(?:revenue|sales|income)\b',
+            r'\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b.*\b(?:revenue|sales|income)\b|'
+            r'\b(?:revenue|sales|income)\b.*\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b',
             question, re.IGNORECASE
         ):
             if role not in ('admin', 'veterinarian'):
@@ -1398,7 +1597,8 @@ def rag_chat():
                     'chunks_used': 0
                 }), 200
 
-            forecast = sales_model.forecast_revenue(periods=90)
+            days, was_clamped = _extract_time_horizon(question, unit='days', default=90)
+            forecast = sales_model.forecast_revenue(periods=days)
             if 'error' in forecast:
                 return jsonify({
                     'success': True,
@@ -1407,7 +1607,7 @@ def rag_chat():
                     'chunks_used': 0
                 }), 200
 
-            # forecast_revenue's 'daily_forecast' is ~90 individual rows -
+            # forecast_revenue's 'daily_forecast' is ~90+ individual rows -
             # far more detail than a chat explanation needs and large enough
             # to bloat the local model's prompt for no benefit; the monthly
             # rollup is what a plain-language summary should be grounded in.
@@ -1415,6 +1615,11 @@ def rag_chat():
                 k: v for k, v in forecast.items() if k != 'daily_forecast'
             }
             explanation = explain_ml_output('sales_forecast', condensed_forecast)
+            if was_clamped:
+                explanation += (
+                    f"\n\n(Note: the sales model forecasts up to 365 days ahead, so this reflects "
+                    f"a {days}-day window rather than the full period you asked about.)"
+                )
             return jsonify({
                 'success': True,
                 'answer': explanation,
@@ -1430,7 +1635,8 @@ def rag_chat():
         if re.search(
             r'\b(?:reorder|restock)\b.*\b(?:suggest|recommend|predict|forecast|need)\b|'
             r'\bwhat\s+(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?reorder\b|'
-            r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b',
+            r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b|'
+            r'\b(?:inventory|stock)\s+demand\b',
             question, re.IGNORECASE
         ):
             if role not in ('admin', 'veterinarian'):
@@ -1452,7 +1658,8 @@ def rag_chat():
                     'chunks_used': 0
                 }), 200
 
-            recommendations = inventory_model.get_reorder_recommendations(days=30)
+            days, was_clamped = _extract_time_horizon(question, unit='days', default=30)
+            recommendations = inventory_model.get_reorder_recommendations(days=days)
             if 'error' in recommendations:
                 return jsonify({
                     'success': True,
@@ -1468,6 +1675,11 @@ def rag_chat():
                 k: v for k, v in recommendations.items() if k != 'sufficient_stock'
             }
             explanation = explain_ml_output('inventory_forecast', condensed_recommendations)
+            if was_clamped:
+                explanation += (
+                    f"\n\n(Note: the inventory model forecasts up to 365 days ahead, so this reflects "
+                    f"a {days}-day window rather than the full period you asked about.)"
+                )
             return jsonify({
                 'success': True,
                 'answer': explanation,
