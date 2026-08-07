@@ -1,15 +1,38 @@
 """
 Structured Query Fallback
-RAG (semantic retrieval + generation) is a poor fit for counting/aggregate
-questions - it only ever sees a small sample of chunks (top_k), so asking
-"how many pets are named X" gets answered from a handful of unrelated text
-snippets, which the LLM then has to guess a number from. That produces
-exactly the kind of confidently-wrong answer this module exists to prevent.
+RAG (semantic retrieval + generation) is a poor fit for exact-fact questions
+- it only ever sees a small sample of chunks (top_k), so asking "how many
+pets are named X" gets answered from a handful of unrelated text snippets,
+which the LLM then has to guess a number from. That produces exactly the
+kind of confidently-wrong answer this module exists to prevent.
 
-This module detects a small set of common count/list question patterns and
-answers them with an exact SQL query instead, bypassing embeddings/retrieval
-entirely. Add more patterns here as you notice more RAG "hallucinated count"
-failures in testing.
+This module detects question patterns with a knowable exact answer and
+resolves them with real SQL instead, bypassing embeddings/retrieval
+entirely. Coverage has grown well past the original "counts" scope:
+  - Counts/lists: pets, staff, appointments, disease cases, inventory
+  - Clinic info: hours/location/contact from system_settings - public,
+    every role including guest (checked first in try_structured_answer())
+  - Pet-owner self-service: a caller's own upcoming appointments and
+    billing balance, scoped to customer_id directly (no name-lookup
+    ambiguity, unlike the staff equivalents which resolve a typed name)
+  - Billing: unpaid totals, payment status, historical price estimates
+  - Timeframe/relative-date resolution (_resolve_timeframe,
+    _resolve_relative_weekday, _resolve_specific_day, _extract_date_via_llm)
+  - Pet-name resolution (resolve_pet_id, find_pet_candidates and their
+    helpers) - shared, not just used internally here
+
+Other rag/ modules import from this file rather than duplicating pet
+resolution or role constants: action_intent.py imports STAFF_ROLES,
+APPT_TYPE_WORDS, the weekday/date helpers; clinical_tools.py imports
+CLINICAL_STAFF_ROLES and the pet-name-matching helpers; rag_service.py
+imports try_structured_answer, resolve_pet_id, find_pet_candidates,
+STAFF_ROLES. This module must NOT import back from action_intent.py or
+clinical_tools.py (action_intent.py already imports from here, and
+clinical_tools.py imports from action_intent.py) - doing so would create a
+circular import.
+
+Add more patterns/handlers here as you notice more RAG "hallucinated
+answer" failures in testing.
 """
 
 import re
@@ -414,26 +437,36 @@ def _bare_staff_pet_mention(question: str):
 # leave to semantic retrieval or the LLM to guess/hallucinate.
 # ============================================================
 
+# All three patterns below require an explicit clinic anchor ("your",
+# "the clinic('s)", "clinic('s)", or "VetCare('s)") rather than matching the
+# bare words alone. Without it, "hours"/"address"/"phone number" also match
+# a huge class of customer-data questions ("What is Nishantha Rajapaksa's
+# phone number?", "within 48 hours of the appointment", "how many
+# appointment hours does Dr. Silva have?") - those must fall through to the
+# normal per-customer/per-pet handlers (or RAG), not get answered with the
+# clinic's own details.
+_CLINIC_ANCHOR = r'(?:your|the\s+clinic\'?s?|clinic\'?s?|vetcare\'?s?)'
+
 CLINIC_HOURS = re.compile(
-    r'\b(?:business\s+|opening\s+|working\s+)?hours\b|'
-    r'\bwhat\s+time\b.*\b(?:open|close|closing)\b|'
+    rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+)?hours\b|'
+    r'\bwhat\s+time\b.*\b(?:do\s+you|does\s+the\s+clinic|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bwhen\s+(?:are\s+you|do\s+you|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
-    r'\bare\s+you\s+open\b|\bwhat\s+days\b.*\bopen\b',
+    r'\bare\s+you\s+open\b|'
+    r'\bwhat\s+days\s+(?:are\s+you|is\s+the\s+clinic)\s+open\b',
     re.IGNORECASE
 )
 
 CLINIC_LOCATION = re.compile(
     r'\bwhere\s+(?:are\s+you|is\s+the\s+clinic|is\s+vetcare)\b|'
-    r'\b(?:clinic\'?s?\s+)?(?:address|location)\b',
+    rf'\b{_CLINIC_ANCHOR}\s+(?:address|location)\b',
     re.IGNORECASE
 )
 
 CLINIC_CONTACT = re.compile(
-    r'\b(?:phone|contact|mobile)\s+number\b|'
-    r'\bhow\s+(?:do\s+i|can\s+i)\s+contact\b|'
-    r'\byour\s+(?:phone|email)\b|'
-    r'\bemail\s+address\b|'
-    r'\b(?:clinic\'?s?\s+)?website\b',
+    rf'\b{_CLINIC_ANCHOR}\s+(?:phone|contact|mobile)\s+number\b|'
+    r'\bhow\s+(?:do\s+i|can\s+i)\s+contact\s+(?:you|the\s+clinic|vetcare)\b|'
+    rf'\b{_CLINIC_ANCHOR}\s+(?:phone|email|contact)\b|'
+    rf'\b{_CLINIC_ANCHOR}\s+website\b',
     re.IGNORECASE
 )
 
@@ -528,10 +561,15 @@ OWNER_NEXT_APPOINTMENT = re.compile(
     re.IGNORECASE
 )
 
-# Matches: "what appointments do I have this week?", "my appointments this month"
+# Matches: "what appointments do I have this week?", "my appointments this
+# month", AND "do I have an appointment tomorrow?" (this word order - "do i
+# have" before "appointment" - is the natural phrasing for a single-day
+# yes/no check, so it needs its own alternative rather than only the
+# "appointments ... do i have ... <timeframe>" listing order above it).
 OWNER_APPOINTMENTS_TIMEFRAME = re.compile(
     r'\b(?:my|our)\b.*\bappointments?\b.*\b' + TIMEFRAME_WORDS + r'\b|'
-    r'\bappointments?\b.*\bdo\s+i\s+have\b.*\b' + TIMEFRAME_WORDS + r'\b',
+    r'\bappointments?\b.*\bdo\s+i\s+have\b.*\b' + TIMEFRAME_WORDS + r'\b|'
+    r'\bdo\s+i\s+have\b.*\bappointments?\b.*\b' + TIMEFRAME_WORDS + r'\b',
     re.IGNORECASE
 )
 
@@ -911,18 +949,25 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
 
     # --- Appointments (pet owner: own appointments only) ---
     elif role == 'pet_owner' and customer_id:
-        # If a specific pet is named ("when is Max's next appointment"),
-        # narrow to just that pet - resolve_pet_id is already bounded to
-        # this owner's own pets, so no cross-owner ambiguity risk here.
-        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
-
-        if OWNER_NEXT_APPOINTMENT.search(question):
-            return _owner_next_appointment(customer_id, pet_id=resolved_pet_id)
-
+        # Timeframe checked BEFORE next-appointment: "do I have an
+        # appointment tomorrow?" matches OWNER_NEXT_APPOINTMENT's bare
+        # "do i have ... appointment" alternative too, and next-appointment
+        # ignores the "tomorrow" word entirely - it would answer with the
+        # owner's overall next appointment (possibly weeks away) instead of
+        # a yes/no about tomorrow specifically. A named timeframe is always
+        # the more specific question, so it wins.
         match = OWNER_APPOINTMENTS_TIMEFRAME.search(question)
         timeframe = _first_group(match)
         if timeframe:
             return _owner_appointments_timeframe(customer_id, timeframe)
+
+        if OWNER_NEXT_APPOINTMENT.search(question):
+            # If a specific pet is named ("when is Max's next
+            # appointment"), narrow to just that pet - resolve_pet_id is
+            # already bounded to this owner's own pets, so no cross-owner
+            # ambiguity risk here.
+            resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+            return _owner_next_appointment(customer_id, pet_id=resolved_pet_id)
 
     # --- Disease cases (clinical staff only - receptionist is fully
     # blocked from disease-case data in the regular app too, see
@@ -991,8 +1036,7 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
 
 _CLINIC_SETTING_KEYS = [
     'clinic_name', 'clinic_address', 'clinic_phone', 'clinic_mobile', 'clinic_email',
-    'clinic_website', 'business_hours_start', 'business_hours_end',
-    'lunch_break_start', 'lunch_break_end', 'working_days'
+    'clinic_website', 'business_hours_start', 'business_hours_end', 'working_days'
 ]
 
 
@@ -1010,6 +1054,14 @@ def _get_clinic_settings() -> dict:
 
 
 def _clinic_hours() -> dict:
+    # Deliberately doesn't mention lunch_break_start/end even though it's in
+    # _CLINIC_SETTING_KEYS - server/src/utils/appointmentRules.js (the code
+    # that actually enforces bookable slots) has no lunch-break concept at
+    # all, so stating "closed for lunch" here would be the exact bug this
+    # function exists to avoid: telling a customer something the booking
+    # flow doesn't actually honor. Also see the business_hours_start/end
+    # comments in database/seed.sql for the more direct version of that bug
+    # (08:00-18:00 seeded vs. the real 09:00-18:30 enforced).
     settings = _get_clinic_settings()
     if not settings.get('business_hours_start') or not settings.get('business_hours_end'):
         return {
@@ -1022,10 +1074,7 @@ def _clinic_hours() -> dict:
     answer = f"{clinic_name} is open"
     if days:
         answer += f" {days}"
-    answer += f", {settings['business_hours_start']} to {settings['business_hours_end']}"
-    if settings.get('lunch_break_start') and settings.get('lunch_break_end'):
-        answer += f" (closed for lunch {settings['lunch_break_start']} to {settings['lunch_break_end']})"
-    answer += '.'
+    answer += f", {settings['business_hours_start']} to {settings['business_hours_end']}."
 
     return {
         'answer': answer,
@@ -1946,11 +1995,15 @@ def _customer_balance(customer_name: str) -> dict:
             customer_id, first_name, last_name = customer_rows[0]
             full_name = f'{first_name} {last_name}'
 
+            # payment_status is one of unpaid/partially_paid/fully_paid/
+            # overdue/refunded (schema.sql) - excluding only 'fully_paid'
+            # would also list refunded bills as still owed, which is wrong:
+            # a refund means the customer no longer owes that amount.
             cur.execute(
                 """
                 SELECT bill_id, bill_number, balance_amount, due_date
                 FROM billing
-                WHERE customer_id = %s AND payment_status != 'fully_paid'
+                WHERE customer_id = %s AND payment_status IN ('unpaid', 'partially_paid', 'overdue')
                 ORDER BY due_date ASC NULLS LAST
                 """,
                 (customer_id,)
@@ -2043,10 +2096,12 @@ def _owner_balance(customer_id: str) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
+            # See _customer_balance's comment above on why 'refunded' must
+            # be excluded, not just 'fully_paid'.
             cur.execute("""
                 SELECT bill_id, bill_number, balance_amount, due_date
                 FROM billing
-                WHERE customer_id = %s AND payment_status != 'fully_paid'
+                WHERE customer_id = %s AND payment_status IN ('unpaid', 'partially_paid', 'overdue')
                 ORDER BY due_date ASC NULLS LAST
             """, (customer_id,))
             rows = cur.fetchall()

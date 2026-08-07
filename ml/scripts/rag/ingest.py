@@ -1,11 +1,28 @@
 """
 RAG Ingestion
 Pulls source records from Postgres, converts them to text chunks, embeds them
-via Ollama, and upserts into rag_chunks.
+via Ollama, and upserts into rag_chunks. Covers six source types: medical
+records, disease cases, lab reports, vaccinations, public FAQs, and staff FAQs.
 
-Start scope: medical_records only (proves the embed -> store -> retrieve loop).
-Extend with more source_types (disease_cases, lab_reports, faqs, ...) by adding
-a loader + chunker and a new ingest_* function below.
+Full chunk lifecycle a new source_type must follow:
+  - CREATE/UPDATE: call the matching ingest_*(id) after the write, from the
+    Node controller (see server/src/services/aiService.js's ingest* wrappers
+    and their call sites). Upsert-by-(source_type, source_id) makes this
+    idempotent, so re-ingesting on every update is safe and cheap.
+  - DELETE: call delete_chunk(source_type, source_id) from the delete
+    handler. rag_chunks has no FK to medical_records/disease_cases/
+    lab_reports/vaccinations (only to pets/customers, which cascade on
+    their own delete), so nothing removes a chunk automatically - skipping
+    this step leaves the assistant citing data that no longer exists.
+  - RENAME/FIELD CHANGE: if the chunk text embeds a mutable field from a
+    joined table (e.g. chunk_medical_record embeds pets.pet_name), a rename
+    of that field elsewhere doesn't update already-ingested chunks - see
+    reingest_pet() for the pattern (re-run every ingest_*(id) for a given
+    pet after its name/species/breed changes).
+
+Add a new source_type by adding a loader + chunker (chunking.py) and a new
+ingest_*() function below, then wiring create/update/delete call sites in
+the Node layer per the lifecycle above.
 """
 
 import sys
