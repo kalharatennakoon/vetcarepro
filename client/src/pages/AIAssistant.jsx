@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { askAssistant, confirmAiAction, backfillAll } from '../services/aiService';
+import { askAssistant, confirmAiAction } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
@@ -81,7 +81,6 @@ const AIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [backfilling, setBackfilling] = useState(false);
   // Round-trips an in-progress write-action proposal (book/reschedule/cancel
   // an appointment, a reminder, or intake) across turns - there's no
   // server-side conversation session, so this (plus recent message history)
@@ -98,7 +97,7 @@ const AIAssistant = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  const sendQuestion = async (question) => {
+  const sendQuestion = async (question, displayText) => {
     if (!question.trim() || loading) return;
 
     // Last few turns give the assistant enough context to keep filling in a
@@ -108,7 +107,7 @@ const AIAssistant = () => {
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
     setError('');
@@ -192,33 +191,9 @@ const AIAssistant = () => {
     ]);
   };
 
-  const handleOptionClick = (messageIndex, value) => {
+  const handleOptionClick = (messageIndex, opt) => {
     setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
-    sendQuestion(value);
-  };
-
-  const handleBackfill = async () => {
-    setBackfilling(true);
-    setError('');
-    try {
-      const result = await backfillAll();
-      const summary = Object.entries(result.results || {})
-        .map(([source, r]) => `${source}: ${r.ingested} ingested${r.failed ? `, ${r.failed} failed` : ''}`)
-        .join(' · ');
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `Knowledge base updated. ${summary}`,
-          sources: [],
-          intro: true
-        }
-      ]);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update the knowledge base.');
-    } finally {
-      setBackfilling(false);
-    }
+    sendQuestion(opt.value, opt.display);
   };
 
   return (
@@ -235,15 +210,6 @@ const AIAssistant = () => {
                   : 'Decision-support only — always confirm medical decisions with a veterinarian.'}
             </p>
           </div>
-          {user?.role === 'admin' && (
-            <button
-              className="ai-assistant-backfill-btn"
-              onClick={handleBackfill}
-              disabled={backfilling}
-            >
-              {backfilling ? 'Updating...' : 'Refresh knowledge base'}
-            </button>
-          )}
         </div>
 
         <div className="ai-assistant-chat">
@@ -275,7 +241,7 @@ const AIAssistant = () => {
                       <button
                         key={j}
                         className="ai-option-btn"
-                        onClick={() => handleOptionClick(i, opt.value)}
+                        onClick={() => handleOptionClick(i, opt)}
                         disabled={loading}
                       >
                         {opt.label}

@@ -28,22 +28,6 @@
   margin-top: 0.25rem;
 }
 
-.ai-assistant-backfill-btn {
-  background: #eef2ff;
-  color: #4338ca;
-  border: 1px solid #c7d2fe;
-  border-radius: 8px;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.ai-assistant-backfill-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .ai-assistant-chat {
   background: #fff;
   border: 1px solid #e5e7eb;

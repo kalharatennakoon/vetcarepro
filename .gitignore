@@ -61,3 +61,6 @@ docs/tests/*.json
 .tmp/
 *.jsx.bak
 *.bak
+
+# ── Local task tracking ──────────────────────────────────────────────────────
+TODO.md

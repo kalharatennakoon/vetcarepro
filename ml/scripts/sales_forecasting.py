@@ -492,12 +492,19 @@ class SalesForecastingModel(BaseMLModel):
             return self._fallback_forecast(periods)
 
         try:
-            future = self.prophet_model.make_future_dataframe(periods=periods, freq=freq)
+            last_train_date = self.prophet_model.history['ds'].max()
+
+            # Anchor forecasts on the next calendar month from today, not on
+            # the last training date — training data can lag behind the
+            # current date, which would otherwise surface stale months.
+            today = pd.Timestamp(datetime.now().date())
+            next_month_start = (today.replace(day=1) + pd.DateOffset(months=1))
+            gap_days = max(0, (next_month_start - last_train_date).days)
+
+            future = self.prophet_model.make_future_dataframe(periods=periods + gap_days, freq=freq)
             forecast = self.prophet_model.predict(future)
 
-            # Get only future dates (after the last training date)
-            last_train_date = self.prophet_model.history['ds'].max()
-            future_forecast = forecast[forecast['ds'] > last_train_date].head(periods)
+            future_forecast = forecast[forecast['ds'] >= next_month_start].head(periods)
 
             result = []
             for _, row in future_forecast.iterrows():

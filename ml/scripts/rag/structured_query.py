@@ -287,26 +287,45 @@ PET_BY_MENTION = re.compile(r'\b(?:of|for|about)\s+[\'"]?([A-Za-z]+)[\'"]?', re.
 # since there's no "pet"/"of"/"for"/"about" trigger word immediately before
 # the name. Used as a last-resort fallback. Case-insensitive so a lowercase-
 # typed name (e.g. "loki's" from someone not bothering to capitalize) still
-# resolves - a false positive here is harmless anyway (the SQL lookup in
-# resolve_pet_id() below simply returns zero rows for a non-pet-name word and
-# falls through to normal unscoped retrieval).
+# resolves.
 PET_POSSESSIVE_MENTION = re.compile(r"\b([A-Za-z][a-zA-Z]*)'s\b")
 
-# Sentence-initial contractions ("What's", "How's", ...) are capitalized too
-# and would otherwise be picked up as a false "pet name" before the real one
-# later in the sentence - skip these when scanning possessive matches.
-_POSSESSIVE_STOPWORDS = {
+# Common function/time words that can land in PET_BY_MENTION's "of/for/about
+# X" capture group or PET_POSSESSIVE_MENTION's "X's" capture group when the
+# question has nothing to do with a specific pet at all - e.g. "inventory
+# demand for the next 18 months" would otherwise capture "the" as a pet
+# name, and "what's next month's revenue" would capture "month". This used
+# to be harmless (a bad extraction just meant zero SQL rows and a silent
+# fall-through to unscoped retrieval), but rag_service.answer_question now
+# returns a hard "I couldn't find a pet named ..." error whenever an
+# extracted name matches zero pets, so a bad extraction here is a visible,
+# confusing bug instead of a no-op - filter it out before it ever reaches
+# the DB lookup.
+_PET_NAME_STOPWORDS = {
+    'the', 'a', 'an', 'this', 'that', 'these', 'those',
+    'my', 'our', 'your', 'his', 'her', 'its', 'their',
+    'next', 'last', 'coming', 'upcoming', 'past', 'current',
     'what', 'how', 'where', 'who', 'when', 'why',
-    'it', 'that', 'this', 'there', 'here', 'he', 'she'
+    'it', 'there', 'here', 'he', 'she', 'they', 'we', 'you', 'i',
+    'month', 'months', 'day', 'days', 'week', 'weeks', 'year', 'years',
 }
 
 
-def _first_possessive_pet_name(question: str):
-    for match in PET_POSSESSIVE_MENTION.finditer(question):
+def _first_non_stopword_match(pattern, text: str):
+    """Like pattern.search(text).group(1), but skips over any match whose
+    captured group is a common function/time word rather than a plausible
+    pet name, and keeps scanning for a later match instead of giving up -
+    e.g. "for the vaccination history of Max" should still resolve to "Max"
+    even though "for the" is tried (and rejected) first."""
+    for match in pattern.finditer(text):
         candidate = match.group(1)
-        if candidate.lower() not in _POSSESSIVE_STOPWORDS:
+        if candidate.lower() not in _PET_NAME_STOPWORDS:
             return candidate
     return None
+
+
+def _first_possessive_pet_name(question: str):
+    return _first_non_stopword_match(PET_POSSESSIVE_MENTION, question)
 
 
 def _match_customer_pet_by_name(question: str, customer_id: str):
@@ -587,10 +606,11 @@ def find_pet_candidates(question: str, role: str, customer_id: str = None):
         is a list of (pet_id, pet_name, customer_id, owner_first, owner_last)
         tuples - possibly empty, possibly a single match, possibly several.
     """
-    pet_match = PET_MENTION.search(question)
-    if not pet_match:
-        pet_match = PET_BY_MENTION.search(question)
-    pet_name = pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+    pet_name = (
+        _first_non_stopword_match(PET_MENTION, question)
+        or _first_non_stopword_match(PET_BY_MENTION, question)
+        or _first_possessive_pet_name(question)
+    )
 
     if not pet_name and role in STAFF_ROLES:
         pet_name = _bare_staff_pet_mention(question)

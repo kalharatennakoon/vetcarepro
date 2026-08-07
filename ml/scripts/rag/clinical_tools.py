@@ -29,7 +29,9 @@ import re
 
 from config.db_connection import get_raw_db_connection
 from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
-from scripts.rag.structured_query import CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name
+from scripts.rag.structured_query import (
+    CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name, _first_non_stopword_match
+)
 from scripts.rag.action_intent import _find_pet_by_name
 
 
@@ -40,10 +42,11 @@ def _extract_pet_name(question: str):
     returns a single pet_id or None, discarding the candidates - which we
     need to offer as clickable options instead of asking the vet to type
     the owner's name from memory)."""
-    pet_match = PET_MENTION.search(question)
-    if not pet_match:
-        pet_match = PET_BY_MENTION.search(question)
-    return pet_match.group(1) if pet_match else _first_possessive_pet_name(question)
+    return (
+        _first_non_stopword_match(PET_MENTION, question)
+        or _first_non_stopword_match(PET_BY_MENTION, question)
+        or _first_possessive_pet_name(question)
+    )
 
 
 def _owner_options(pet_rows) -> list:
@@ -235,7 +238,9 @@ Present facts from the records; let the veterinarian draw clinical conclusions.
 3. Organize the summary clearly: overall pattern/timeline first, then flag anything that stands out \
 (recurring issues, allergies, adverse reactions, overdue follow-ups or vaccinations).
 4. Use clinical terminology appropriate for a veterinary professional audience.
-5. Keep it concise - a few short paragraphs or a bulleted list, not a re-statement of every record.
+5. Format for skimming: a short lead-in sentence at most, then "- " bullet points \
+grouped by topic (e.g. vaccinations, medical records, flagged issues) - not a \
+paragraph re-statement of every record.
 6. This clinic operates in Sri Lanka - always use metric units (kilograms, Celsius, centimeters). \
 Never use pounds, Fahrenheit, or inches.
 7. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
