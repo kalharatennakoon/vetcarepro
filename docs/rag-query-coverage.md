@@ -94,15 +94,19 @@ Shared timeframe vocabulary across appointments, disease cases, and billing: tod
 
 Implemented in `ml/scripts/rag/chart_intent.py`, which runs immediately *before* `try_structured_answer()` — see [`how-the-ai-assistant-works.md`](how-the-ai-assistant-works.md) for why that ordering is load-bearing. Same deterministic-SQL principle as everything above: the model never produces chart data.
 
-A chart is returned as a `chart` key alongside the usual answer sentence, and the web client renders it as a bar chart. **Web-only** — the iOS client ignores the key.
+A chart is returned as a `chart` key alongside the usual answer sentence, and the web client renders it as a bar or pie chart per `chart.type`. **Web-only** — the iOS client ignores the key.
 
 ### Explicit trigger only
 
-A chart is produced **only** when the question contains one of: chart, graph, plot, visualize/visualise, visualization/visualisation.
+A chart is produced **only** when the question contains one of: chart, graph, plot, visualize/visualise, visualization/visualisation, pie.
 
 This is the whole design. A plain data question keeps its plain answer — *"what's our revenue this month?"* returns the one-line billing total, and only *"graph revenue by month"* returns a chart. Inferring that a question "looks chart-shaped" would put a visualization in front of someone who asked for a number, and there is no reliable signal for that intent other than the word itself.
 
 The same rule is what makes the ordering safe. Because the chart layer claims nothing without a trigger word, placing it ahead of the structured layer cannot steal a plain question from it.
+
+### Chart type: bar vs pie
+
+Independent of *which* category matched below — bar is the default, and the word *"pie"* anywhere in the question (itself one of the trigger words above) switches the same query's result into a pie instead, e.g. *"pie chart of appointments by status"*. The two-series stock-vs-reorder-level chart is the one category a pie can't fully represent — the client falls back to just the first series (current stock) rather than refusing the request.
 
 ### Categories
 

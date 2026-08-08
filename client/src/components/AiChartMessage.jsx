@@ -1,6 +1,8 @@
 import {
   BarChart,
   Bar,
+  PieChart,
+  Pie,
   Cell,
   XAxis,
   YAxis,
@@ -17,13 +19,21 @@ import {
  * for guest or pet-owner roles, so this component is only ever reached from
  * the staff assistant page.
  *
- * Two rendering modes, chosen by the payload's `multi_color` flag:
+ * `chart.type` picks the shape - 'bar' (default) or 'pie', set server-side
+ * from the question's wording, not this component's choice to make.
+ *
+ * Two bar rendering modes, chosen by the payload's `multi_color` flag:
  *   true  - one bar per row, each its own colour. Used for categorical
  *           breakdowns (status/category/severity) where every bar is a
  *           different thing and there is only one series.
  *   false - one bar per entry in `series`, coloured by series. Used for time
  *           series and for the two-series stock-vs-reorder comparison, where
  *           a per-bar colour would imply a distinction that isn't there.
+ *
+ * A pie only has room for one value per slice, so it always uses series[0]
+ * regardless of multi_color/how many series the payload carries - the rare
+ * two-series payload (stock vs reorder level) just loses its second series
+ * rather than the request being refused.
  */
 
 // Same flavour as the COLORS array in pages/Reports.jsx, trimmed to the number
@@ -50,8 +60,40 @@ const formatValue = (value) =>
 function AiChartMessage({ chart }) {
   if (!chart || !Array.isArray(chart.data) || chart.data.length === 0) return null;
 
-  const { title, data, series = [], multi_color: multiColor } = chart;
+  const { title, data, series = [], multi_color: multiColor, type } = chart;
   if (series.length === 0) return null;
+
+  if (type === 'pie') {
+    const valueKey = series[0].key;
+    return (
+      <div className="ai-message-chart">
+        {title && <div className="ai-message-chart-title">{title}</div>}
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey={valueKey}
+              nameKey="label"
+              cx="50%"
+              cy="50%"
+              outerRadius={95}
+              label={({ label }) => truncate(label)}
+              labelLine={{ strokeWidth: 1 }}
+            >
+              {data.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip formatter={formatValue} />
+            <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
   const crowded = data.length > CROWDED_LABEL_THRESHOLD;
 

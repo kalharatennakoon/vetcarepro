@@ -1,8 +1,11 @@
 """
 Chart Intent
 
-Turns an explicit "chart/graph/plot this" request into a small bar-chart
-payload the web client renders with recharts, instead of a sentence.
+Turns an explicit "chart/graph/plot this" request into a small bar- or
+pie-chart payload the web client renders with recharts, instead of a
+sentence. Bar is the default; "pie" anywhere in the question (see
+CHART_TYPE_PIE) switches the same data into a pie instead - chart *type* is
+independent of chart *category* (which data gets charted).
 
 Two rules shape everything here:
 
@@ -54,9 +57,20 @@ SECONDARY_COLOR = '#fa709a'
 # a picture - not "show"/"list"/"break down", which are how someone asks for
 # the same data as text.
 CHART_TRIGGER = re.compile(
-    r'\b(?:chart|graph|plot|visuali[sz]e|visuali[sz]ations?|visuali[sz]ation)\b',
+    r'\b(?:chart|graph|plot|visuali[sz]e|visuali[sz]ations?|visuali[sz]ation|pie)\b',
     re.IGNORECASE
 )
+
+# Chart *type*, independent of which category matched above. "pie" is the
+# only word that unambiguously requests a pie chart in this domain; anything
+# else (including a bare "chart"/"graph") keeps the long-standing bar-chart
+# default. Deliberately also part of CHART_TRIGGER above, so "pie chart of
+# disease cases by category" doesn't need a second trigger word.
+CHART_TYPE_PIE = re.compile(r'\bpie\b', re.IGNORECASE)
+
+
+def _requested_chart_type(question: str) -> str:
+    return 'pie' if CHART_TYPE_PIE.search(question) else 'bar'
 
 # Category patterns, checked most-specific-first in try_chart_intent below.
 # Each is written both ways round ("disease cases by category" / "category of
@@ -158,7 +172,9 @@ def _normalize_status(raw: str) -> str:
     return _STATUS_ALIASES.get(value, value)
 
 
-def _chart_result(answer: str, title: str, data: list, series: list, multi_color: bool) -> dict:
+def _chart_result(
+    answer: str, title: str, data: list, series: list, multi_color: bool, chart_type: str = 'bar'
+) -> dict:
     """Assemble the structured_query.py-shaped dict, plus the `chart` key."""
     return {
         'answer': answer,
@@ -166,7 +182,7 @@ def _chart_result(answer: str, title: str, data: list, series: list, multi_color
         'chunks_used': 0,
         'structured': True,
         'chart': {
-            'type': 'bar',
+            'type': chart_type,
             'title': title,
             'data': data,
             'series': series,
@@ -202,7 +218,7 @@ def _query(sql: str, params: tuple = ()) -> list:
 # Category handlers
 # ---------------------------------------------------------------------------
 
-def _chart_disease_by_category() -> dict:
+def _chart_disease_by_category(chart_type: str = 'bar') -> dict:
     rows = _query("""
         SELECT disease_category, COUNT(*)
         FROM disease_cases
@@ -221,10 +237,11 @@ def _chart_disease_by_category() -> dict:
         data=data,
         series=[{'key': 'count', 'name': 'Cases', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_disease_by_severity() -> dict:
+def _chart_disease_by_severity(chart_type: str = 'bar') -> dict:
     rows = _query("""
         SELECT severity, COUNT(*)
         FROM disease_cases
@@ -249,10 +266,11 @@ def _chart_disease_by_severity() -> dict:
         data=data,
         series=[{'key': 'count', 'name': 'Cases', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_appointments_by_status(question: str, role: str, user_id: str = None) -> dict:
+def _chart_appointments_by_status(question: str, role: str, user_id: str = None, chart_type: str = 'bar') -> dict:
     timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
     start = end = None
     scope = ''
@@ -296,10 +314,11 @@ def _chart_appointments_by_status(question: str, role: str, user_id: str = None)
         data=data,
         series=[{'key': 'count', 'name': 'Appointments', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_appointments_over_time(question: str, role: str, user_id: str = None) -> dict:
+def _chart_appointments_over_time(question: str, role: str, user_id: str = None, chart_type: str = 'bar') -> dict:
     timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
     raw_timeframe = timeframe_match.group(0) if timeframe_match else 'this month'
     start, end = _resolve_timeframe(raw_timeframe)
@@ -381,10 +400,11 @@ def _chart_appointments_over_time(question: str, role: str, user_id: str = None)
         data=data,
         series=[{'key': 'count', 'name': 'Appointments', 'color': PRIMARY_COLOR}],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
-def _chart_inventory_levels() -> dict:
+def _chart_inventory_levels(chart_type: str = 'bar') -> dict:
     # Closest to (or already below) reorder level first - the items someone
     # asking to "see stock levels" actually needs to act on. Ordering by raw
     # quantity would just surface whatever happens to be stocked in small
@@ -404,6 +424,9 @@ def _chart_inventory_levels() -> dict:
         for r in rows
     ]
     below = sum(1 for d in data if d['quantity'] <= d['reorder_level'])
+    # A pie has room for one value per slice, not a two-series comparison -
+    # the web client falls back to the first series (current stock) and
+    # drops reorder_level rather than refusing the request outright.
     return _chart_result(
         answer=(
             f'Here are the {len(data)} items closest to their reorder level '
@@ -416,10 +439,11 @@ def _chart_inventory_levels() -> dict:
             {'key': 'reorder_level', 'name': 'Reorder Level', 'color': SECONDARY_COLOR},
         ],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
-def _chart_revenue_by_month(question: str) -> dict:
+def _chart_revenue_by_month(question: str, chart_type: str = 'bar') -> dict:
     months = DEFAULT_MONTHS_BACK
     match = MONTHS_BACK.search(question)
     if match:
@@ -467,6 +491,7 @@ def _chart_revenue_by_month(question: str) -> dict:
         data=data,
         series=[{'key': 'revenue', 'name': 'Revenue (Rs.)', 'color': PRIMARY_COLOR}],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
@@ -477,7 +502,7 @@ def _chart_revenue_by_month(question: str) -> dict:
 def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
     """
     Detect an explicit request to chart clinic data and answer it with a
-    bar-chart payload.
+    bar- or pie-chart payload (see _requested_chart_type).
 
     user_id scopes "my"/"mine" appointment charts to that veterinarian's own
     appointments (see SELF_SCOPE) - None for roles/questions where it's
@@ -504,32 +529,34 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
     if role not in STAFF_ROLES:
         return None
 
+    chart_type = _requested_chart_type(question)
+
     # Most-specific first: the disease patterns require their own noun, the
     # appointment status pattern is narrower than the over-time one, and the
     # bare-noun inventory/revenue patterns come last.
     if DISEASE_BY_CATEGORY.search(question):
         if role not in CLINICAL_STAFF_ROLES:
             return _clinical_detail_redirect()
-        return _chart_disease_by_category()
+        return _chart_disease_by_category(chart_type=chart_type)
 
     if DISEASE_BY_SEVERITY.search(question):
         if role not in CLINICAL_STAFF_ROLES:
             return _clinical_detail_redirect()
-        return _chart_disease_by_severity()
+        return _chart_disease_by_severity(chart_type=chart_type)
 
     if APPOINTMENTS_BY_STATUS.search(question):
-        return _chart_appointments_by_status(question, role=role, user_id=user_id)
+        return _chart_appointments_by_status(question, role=role, user_id=user_id, chart_type=chart_type)
 
     if APPOINTMENTS_OVER_TIME.search(question):
         if APPOINTMENTS_UNSUPPORTED_BREAKDOWN.search(question):
             return None
-        return _chart_appointments_over_time(question, role=role, user_id=user_id)
+        return _chart_appointments_over_time(question, role=role, user_id=user_id, chart_type=chart_type)
 
     if INVENTORY_LEVELS.search(question):
-        return _chart_inventory_levels()
+        return _chart_inventory_levels(chart_type=chart_type)
 
     if REVENUE_BY_MONTH.search(question):
-        return _chart_revenue_by_month(question)
+        return _chart_revenue_by_month(question, chart_type=chart_type)
 
     # Trigger word present but nothing recognizable to chart ("graph the
     # weather"). Fall through rather than guessing at a category - the rest
