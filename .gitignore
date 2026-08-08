@@ -64,3 +64,6 @@ docs/tests/*.json
 
 # ── Local task tracking ──────────────────────────────────────────────────────
 TODO.md
+
+# ── Graphify (regenerable code knowledge graph) ────────────────────────────────
+graphify-out/
