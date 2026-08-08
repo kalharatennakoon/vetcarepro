@@ -1478,11 +1478,12 @@ def rag_chat():
         "question": "Summarize Bella's medical history",
         "role": "veterinarian" | "receptionist" | "admin" | "pet_owner" | "guest",
         "customer_id": "CUST-0001",  # required when role == "pet_owner"
+        "user_id": "USR-0001",       # staff only - enables "my"/"mine" appointment charts
         "history": [{"role": "user"|"assistant", "content": "..."}, ...],  # optional, staff write-actions only
         "pending_intent": {"type": "book_appointment", "slots": {...}}     # optional, echoed back mid-flow
     }
-    NOTE: role/customer_id must be derived from the authenticated user on the
-    Node backend, never trusted from an unauthenticated client directly.
+    NOTE: role/customer_id/user_id must be derived from the authenticated user on
+    the Node backend, never trusted from an unauthenticated client directly.
     """
     try:
         from scripts.rag.rag_service import answer_question, explain_ml_output
@@ -1491,6 +1492,7 @@ def rag_chat():
         question = (data.get('question') or '').strip()
         role = data.get('role', 'guest')
         customer_id = data.get('customer_id')
+        user_id = data.get('user_id')
         history = data.get('history')
         pending_intent = data.get('pending_intent')
 
@@ -1735,7 +1737,7 @@ def rag_chat():
             }), 200
 
         result = answer_question(
-            question, role=role, customer_id=customer_id,
+            question, role=role, customer_id=customer_id, user_id=user_id,
             history=history, pending_intent=pending_intent
         )
         return jsonify({'success': True, **result}), 200

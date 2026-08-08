@@ -24,7 +24,7 @@ const Appointments = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedVet] = useState('');
+  const [selectedVet, setSelectedVet] = useState('');
   const [lastSearchQuery, setLastSearchQuery] = useState('');
   const [lastFilterStatus, setLastFilterStatus] = useState('');
   const [lastSelectedVet, setLastSelectedVet] = useState('');
@@ -51,6 +51,11 @@ const Appointments = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
   const canCreateBilling = user?.role === 'admin' || user?.role === 'receptionist';
+  // Admin/receptionist manage the whole schedule; a veterinarian may only
+  // start an appointment that's assigned to them.
+  const canStartAppointment = (appointment) =>
+    user?.role === 'admin' || user?.role === 'receptionist' ||
+    (user?.role === 'veterinarian' && appointment.veterinarian_id === user.user_id);
 
   const openEmailApptModal = (appointmentId) => {
     setPendingEmailApptId(appointmentId);
@@ -269,7 +274,7 @@ const Appointments = () => {
         showSuccess(newStatus === 'completed' ? 'Appointment completed successfully' : `Appointment ${newStatus.replace('_', ' ')}`);
       }
     } catch (err) {
-      showError('Failed to update appointment status');
+      showError(err.response?.data?.message || 'Failed to update appointment status');
       console.error(err);
     }
   };
@@ -610,6 +615,29 @@ const Appointments = () => {
               </div>
             </div>
 
+            {/* My Appointments - veterinarian only, filters to appointments assigned to them */}
+            {user?.role === 'veterinarian' && (
+              <div style={styles.filterGroup}>
+                <button
+                  onClick={() => setSelectedVet(selectedVet ? '' : String(user.user_id))}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    border: selectedVet ? '1px solid #3B82F6' : '1px solid #d1d5db',
+                    backgroundColor: selectedVet ? '#3B82F6' : 'white',
+                    color: selectedVet ? 'white' : '#374151',
+                  }}
+                  title="Show only appointments assigned to you"
+                >
+                  <i className="fas fa-user-md" style={{ marginRight: '0.4rem' }}></i>
+                  My Appointments
+                </button>
+              </div>
+            )}
+
             {/* View Toggle */}
             <div style={styles.viewToggle}>
               <button
@@ -636,9 +664,20 @@ const Appointments = () => {
           </div>
 
           {/* Active Filters Display */}
-          {(filterStatus || searchQuery || filterDate) && (
+          {(filterStatus || searchQuery || filterDate || selectedVet) && (
             <div style={styles.activeFilters}>
               <span style={styles.activeFiltersLabel}>Active filters:</span>
+              {selectedVet && (
+                <span style={styles.filterPill}>
+                  My Appointments
+                  <button
+                    onClick={() => setSelectedVet('')}
+                    style={styles.filterPillClose}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </span>
+              )}
               {filterStatus && (
                 <span style={styles.filterPill}>
                   Status: {filterStatus}
@@ -677,6 +716,7 @@ const Appointments = () => {
                   setFilterStatus('');
                   setSearchQuery('');
                   setFilterDate('');
+                  setSelectedVet('');
                 }
 }
                 style={styles.clearAllButton}
@@ -790,6 +830,12 @@ const Appointments = () => {
                               <div style={styles.appointmentCardSubtitle}>
                                 {apt.customer_first_name} {apt.customer_last_name}
                               </div>
+                              {apt.veterinarian_name && (
+                                <div style={styles.appointmentCardVet}>
+                                  <i className="fas fa-user-md" style={{ marginRight: '3px' }}></i>
+                                  Dr. {apt.veterinarian_name}
+                                </div>
+                              )}
                             </div>
                           ))}
                           {day.appointments.length > 3 && (
@@ -916,7 +962,7 @@ const Appointments = () => {
                         </div>
 
                         <div style={styles.cardFooter}>
-                          {user?.role !== 'veterinarian' && appointment.status === 'confirmed' && (
+                          {canStartAppointment(appointment) && appointment.status === 'confirmed' && (
                             <button onClick={() => {
                               if (!appointment.veterinarian_id) {
                                 showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
@@ -1038,7 +1084,7 @@ const Appointments = () => {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                    {user?.role !== 'veterinarian' && apptDetailModal.status === 'confirmed' && (
+                    {canStartAppointment(apptDetailModal) && apptDetailModal.status === 'confirmed' && (
                       <button
                         onClick={() => {
                           if (!apptDetailModal.veterinarian_id) {
@@ -2014,6 +2060,13 @@ const styles = {
   appointmentCardSubtitle: {
     fontSize: '0.625rem',
     color: '#6b7280',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  appointmentCardVet: {
+    fontSize: '0.625rem',
+    color: '#3b82f6',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

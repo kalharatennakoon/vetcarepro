@@ -79,7 +79,7 @@ struct ProfileView: View {
                 profileDivider
                 ProfileRow(label: "Email", value: c.email ?? "—")
                 profileDivider
-                ProfileRow(label: "Phone", value: c.phone)
+                ProfileRow(label: "Phone", value: formatPhone(c.phone))
                 if let nic = c.nic, !nic.isEmpty {
                     profileDivider
                     ProfileRow(label: "NIC", value: nic)
@@ -109,7 +109,7 @@ struct ProfileView: View {
                 .padding(.bottom, 14)
 
             if let c = session.customer {
-                ProfileRow(label: "Alternate Phone",   value: c.alternatePhone ?? "—")
+                ProfileRow(label: "Alternate Phone",   value: formatPhone(c.alternatePhone))
                 profileDivider
                 ProfileRow(label: "Address",           value: c.address ?? "—")
                 profileDivider
@@ -119,7 +119,7 @@ struct ProfileView: View {
                 profileDivider
                 ProfileRow(label: "Emergency Contact", value: c.emergencyContact ?? "—")
                 profileDivider
-                ProfileRow(label: "Emergency Phone",   value: c.emergencyPhone ?? "—")
+                ProfileRow(label: "Emergency Phone",   value: formatPhone(c.emergencyPhone))
             }
         }
         .padding(16)
@@ -134,6 +134,28 @@ struct ProfileView: View {
     private var profileDivider: some View {
         Divider().padding(.vertical, 8)
     }
+}
+
+// MARK: - Phone helpers
+
+// +94771234567 → "+94 77 123 4567", 0771234567 → "077 123 4567", nil/empty → "—"
+private func formatPhone(_ raw: String?) -> String {
+    guard let raw = raw, !raw.isEmpty else { return "—" }
+    let digits = raw.filter { $0.isNumber }
+    if raw.hasPrefix("+94"), digits.count == 11 {
+        let d = Array(digits)
+        return "+94 \(String(d[2...3])) \(String(d[4...6])) \(String(d[7...10]))"
+    }
+    if raw.hasPrefix("0"), digits.count == 10 {
+        let d = Array(digits)
+        return "\(String(d[0...2])) \(String(d[3...5])) \(String(d[6...9]))"
+    }
+    return raw
+}
+
+// Removes display-only spaces before sending to the backend.
+private func stripPhoneFormatting(_ s: String) -> String {
+    s.filter { !$0.isWhitespace }
 }
 
 // MARK: - ProfileRow
@@ -232,12 +254,12 @@ struct EditProfileView: View {
 
     private func prefill() {
         guard let c = session.customer else { return }
-        alternatePhone         = c.alternatePhone ?? ""
+        alternatePhone         = c.alternatePhone.map { formatPhone($0) } ?? ""
         address                = c.address ?? ""
         city                   = c.city ?? ""
         preferredContactMethod = c.preferredContactMethod ?? ""
         emergencyContact       = c.emergencyContact ?? ""
-        emergencyPhone         = c.emergencyPhone ?? ""
+        emergencyPhone         = c.emergencyPhone.map { formatPhone($0) } ?? ""
     }
 
     private func save() async {
@@ -249,12 +271,12 @@ struct EditProfileView: View {
         do {
             let updated = try await CustomerAuthService().updateProfile(
                 UpdateProfileRequest(
-                    alternatePhone:         trim(alternatePhone),
+                    alternatePhone:         trim(stripPhoneFormatting(alternatePhone)),
                     address:                trim(address),
                     city:                   trim(city),
                     preferredContactMethod: preferredContactMethod.isEmpty ? nil : preferredContactMethod,
                     emergencyContact:       trim(emergencyContact),
-                    emergencyPhone:         trim(emergencyPhone)
+                    emergencyPhone:         trim(stripPhoneFormatting(emergencyPhone))
                 ),
                 token: token
             )

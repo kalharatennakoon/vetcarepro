@@ -331,7 +331,36 @@ _PET_NAME_STOPWORDS = {
     'what', 'how', 'where', 'who', 'when', 'why',
     'it', 'there', 'here', 'he', 'she', 'they', 'we', 'you', 'i',
     'month', 'months', 'day', 'days', 'week', 'weeks', 'year', 'years',
+    # "my pet's medical records" makes PET_POSSESSIVE_MENTION capture the
+    # literal word "pet" - skipping it lets the scan continue to a real name
+    # later in the same question ("my pet's vaccination history for Max").
+    'pet', 'pets',
 }
+
+
+def _names_a_pet_explicitly(question: str, pet_name: str) -> bool:
+    """
+    Whether `pet_name` was capitalized where it appears in `question`, i.e.
+    the asker actually wrote a name rather than ordinary lowercase English
+    that the extraction patterns happened to capture.
+
+    The patterns above are deliberately permissive, and the word "pet" shows
+    up constantly in general pet-care questions that name no pet at all -
+    "what counts as a pet emergency", "how do I care for my pet after
+    surgery", "how often should my pet see a veterinarian" all put a plain
+    lowercase word right after "pet". Capitalization is what separates those
+    from "my pet Max is limping".
+
+    This only gates the hard "I couldn't find a pet named X" error in
+    find_pet_candidates - a lowercase name that DOES match a real pet still
+    resolves normally (the lookup is ILIKE), so requiring a capital here
+    costs nothing for genuine names. The one thing it gives up is erroring
+    on a lowercase misspelling of a nonexistent pet ("luke"), which falls
+    through to unscoped retrieval instead - the same harmless no-op this
+    module had before the error existed, and far better than telling someone
+    asking about a pet emergency that they have no pet named "emergency".
+    """
+    return bool(re.search(rf'\b{re.escape(pet_name)}\b', question)) and pet_name[:1].isupper()
 
 
 def _first_non_stopword_match(pattern, text: str):
@@ -551,10 +580,12 @@ APPT_RELATIVE_WEEKDAY = re.compile(
     re.IGNORECASE
 )
 
-# Pet-owner (first-person) equivalents of the staff appointment patterns
-# above - "when is Max's next appointment?", "do I have an appointment
-# tomorrow?". Scoped to the caller's own customer_id, never a name lookup.
-OWNER_NEXT_APPOINTMENT = re.compile(
+# "When is <pet>'s next appointment?" shape - role-agnostic wording, so it's
+# shared by two different callers below: the pet-owner branch (no name
+# needed - "my"/implicit own pet, scoped to customer_id) and the staff
+# branch (a named pet, resolved clinic-wide by resolve_pet_id like the
+# medical-record/vaccine patterns above it).
+NEXT_APPOINTMENT_MENTION = re.compile(
     r'\b(?:when(?:\'s|\s+is)|what(?:\'s|\s+is))\b.*\bnext\b.*\bappointment|'
     r'\bnext\s+appointment\b|'
     r'\b(?:do\s+i|does\s+my\s+pet)\s+have\s+(?:an?\s+)?(?:upcoming\s+)?appointment|'
@@ -761,6 +792,13 @@ def find_pet_candidates(question: str, role: str, customer_id: str = None):
     finally:
         conn.close()
 
+    # A permissive extraction that matched nothing AND was never capitalized
+    # is almost certainly not a name at all ("a pet emergency", "my pet after
+    # surgery") - report it as "no pet mentioned" so the caller falls through
+    # to normal retrieval instead of raising the hard "no pet named X" error.
+    if not rows and not _names_a_pet_explicitly(question, pet_name):
+        return None, []
+
     return pet_name, rows
 
 
@@ -812,10 +850,20 @@ def _clinical_detail_redirect() -> dict:
     }
 
 
-def try_structured_answer(question: str, role: str, customer_id: str = None) -> dict:
+def try_structured_answer(question: str, role: str, customer_id: str = None, known_pet_id: str = None) -> dict:
     """
     Check if `question` matches a known structured-query pattern. If so,
     run an exact SQL query and return a grounded answer immediately.
+
+    Args:
+        known_pet_id: pass this when the caller has already resolved which
+            pet is meant (e.g. rag_service.answer_question's second pass
+            after a pet-disambiguation round-trip - see the comment there).
+            When given, the pet-scoped block below uses it directly instead
+            of re-extracting a name from `question` - this matters because
+            on that round-trip `question` is the mechanical "pet X whose
+            owner is Y" resolution phrase, which contains no pet name this
+            module's own extraction patterns would find on a second call.
 
     Returns:
         dict (same shape as rag_service.answer_question's return) if matched,
@@ -852,32 +900,40 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         else: # vets, doctors, veterinarians
             return _count_staff_by_role('veterinarian')
 
-    # For any query that might be about a specific pet (records, vaccinations, etc.),
-    # try to resolve the pet_id first. This is the most specific action and should
-    # be prioritized over broader matches like searching by customer name.
+    # For any query that might be about a specific pet (records, vaccinations,
+    # next appointment, etc.), try to resolve the pet_id first. This is the
+    # most specific action and should be prioritized over broader matches
+    # like searching by customer name.
     is_pet_record_query = LIST_RECORDS_BY_PET.search(question)
     is_vaccine_query = _looks_like_vaccine_question(question)
+    # Staff-only here: pet_owner's "next appointment" is handled by the
+    # dedicated owner branch further down (implicitly their own pet, scoped
+    # to customer_id - no name resolution needed the way staff's is).
+    is_next_appointment_query = role in STAFF_ROLES and NEXT_APPOINTMENT_MENTION.search(question)
 
-    if is_pet_record_query or is_vaccine_query:
+    if is_pet_record_query or is_vaccine_query or is_next_appointment_query:
         # Receptionist doesn't get medical-record detail (matches the
-        # backend/UI block elsewhere) - vaccinations are still fine, those
-        # fall through to the branches below unaffected.
+        # backend/UI block elsewhere) - vaccinations and appointments are
+        # still fine, those fall through to the branches below unaffected.
         if is_pet_record_query and role == 'receptionist':
             return _clinical_detail_redirect()
 
-        resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
-        if resolved_pet_id:
+        pet_id = known_pet_id or resolve_pet_id(question, role=role, customer_id=customer_id)
+        if pet_id:
             # Now, check which type of query it was.
             if is_pet_record_query:
-                return _list_records_by_pet(resolved_pet_id, role, customer_id)
+                return _list_records_by_pet(pet_id, role, customer_id)
 
             if is_vaccine_query:
                 if LAST_VACCINATION.search(question):
-                    return _last_vaccination_for_pet(resolved_pet_id, role, customer_id)
+                    return _last_vaccination_for_pet(pet_id, role, customer_id)
                 if LIST_VACCINATIONS.search(question):
-                    return _list_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+                    return _list_vaccinations_for_pet(pet_id, role, customer_id)
                 if COUNT_VACCINATIONS.search(question):
-                    return _count_vaccinations_for_pet(resolved_pet_id, role, customer_id)
+                    return _count_vaccinations_for_pet(pet_id, role, customer_id)
+
+            if is_next_appointment_query:
+                return _next_appointment_for_pet(pet_id)
 
     # Check for listing all records for a customer's pets (less specific, so it runs after pet resolution)
     match = LIST_RECORDS_BY_CUSTOMER.search(question)
@@ -951,7 +1007,7 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
     # --- Appointments (pet owner: own appointments only) ---
     elif role == 'pet_owner' and customer_id:
         # Timeframe checked BEFORE next-appointment: "do I have an
-        # appointment tomorrow?" matches OWNER_NEXT_APPOINTMENT's bare
+        # appointment tomorrow?" matches NEXT_APPOINTMENT_MENTION's bare
         # "do i have ... appointment" alternative too, and next-appointment
         # ignores the "tomorrow" word entirely - it would answer with the
         # owner's overall next appointment (possibly weeks away) instead of
@@ -962,7 +1018,7 @@ def try_structured_answer(question: str, role: str, customer_id: str = None) -> 
         if timeframe:
             return _owner_appointments_timeframe(customer_id, timeframe)
 
-        if OWNER_NEXT_APPOINTMENT.search(question):
+        if NEXT_APPOINTMENT_MENTION.search(question):
             # If a specific pet is named ("when is Max's next
             # appointment"), narrow to just that pet - resolve_pet_id is
             # already bounded to this owner's own pets, so no cross-owner
@@ -1613,6 +1669,64 @@ def _list_appointments_on_date(target_date: date) -> dict:
     return {
         'answer': answer,
         'sources': sources,
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _next_appointment_for_pet(pet_id: str) -> dict:
+    """Staff-facing "when is <pet>'s next appointment" - clinic-wide (no
+    customer_id scoping, unlike _owner_next_appointment below), for a pet
+    already resolved to a single pet_id by resolve_pet_id() or, after a
+    disambiguation round-trip, passed in as try_structured_answer's
+    known_pet_id. Includes the owner's name in the answer since staff (unlike
+    an owner asking about their own pet) need that context to confirm they
+    have the right animal."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                       a.reason, p.pet_name, c.first_name, c.last_name, u.first_name, u.last_name
+                FROM appointments a
+                JOIN pets p ON p.pet_id = a.pet_id
+                JOIN customers c ON c.customer_id = a.customer_id
+                LEFT JOIN users u ON u.user_id = a.veterinarian_id
+                WHERE a.pet_id = %s
+                  AND a.appointment_date >= CURRENT_DATE
+                  AND a.status NOT IN ('cancelled', 'completed', 'no_show')
+                ORDER BY a.appointment_date, a.appointment_time
+                LIMIT 5
+            """, (pet_id,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': 'There are no upcoming appointments on file for this pet.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last = rows[0]
+    vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
+    answer = (
+        f"{pet_name}'s next appointment is on {appt_date} at {appt_time}{vet_str} "
+        f"({status}) - {reason}. Owner: {cust_first} {cust_last}."
+    )
+
+    if len(rows) > 1:
+        more = '\n- '.join(
+            f'{r[1]} {r[2]}' + (f' with Dr. {r[8]} {r[9]}' if r[8] else '') + f' ({r[3]}) - {r[4]}'
+            for r in rows[1:]
+        )
+        answer += f'\n\nOther upcoming appointments:\n- {more}'
+
+    return {
+        'answer': answer,
+        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[3]}} for r in rows],
         'chunks_used': 0,
         'structured': True
     }

@@ -14,6 +14,7 @@ from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, 
 from scripts.rag.action_intent import try_action_intent
 from scripts.rag.clinical_tools import try_clinical_tool
 from scripts.rag.pet_health_intent import try_pet_health_intent
+from scripts.rag.chart_intent import try_chart_intent
 
 # Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
 # doesn't reliably drop the imperial aside it's used to seeing in training
@@ -311,7 +312,7 @@ start with "Key points:"."""
 
 
 def answer_question(
-    question: str, role: str, customer_id: str = None, top_k: int = 5,
+    question: str, role: str, customer_id: str = None, user_id: str = None, top_k: int = 5,
     history=None, pending_intent: dict = None
 ) -> dict:
     """
@@ -353,6 +354,21 @@ def answer_question(
     pet_health_result = try_pet_health_intent(question, role=role, history=history, pending_intent=pending_intent)
     if pet_health_result is not None:
         return pet_health_result
+
+    # Explicit "chart/graph/plot this" requests are checked BEFORE the plain
+    # structured-query layer below, not after. Chart questions share their
+    # nouns with patterns already covered there - "graph revenue by month"
+    # contains the same "revenue" that BILLING_REVENUE_TIMEFRAME matches,
+    # "chart appointments by status" the same "appointments ... status" as the
+    # count-by-status pattern - and try_structured_answer has no notion of the
+    # chart keyword, so whichever runs first claims the question outright.
+    # Running it second would mean a chart request silently answered as a
+    # one-line sentence. The reverse can't happen: try_chart_intent returns
+    # None unless a trigger word is present, so a plain data question still
+    # reaches the structured layer untouched.
+    chart = try_chart_intent(question, role=role, user_id=user_id)
+    if chart is not None:
+        return chart
 
     # Counting/listing questions ("how many pets are named X") are unreliable
     # with pure semantic retrieval - answer them exactly via SQL when we can.
@@ -431,6 +447,26 @@ def answer_question(
     effective_question = question
     if pending_intent and pending_intent.get('type') == 'general_qa_disambiguation':
         effective_question = pending_intent.get('original_question') or question
+
+    # Give try_structured_answer a second look, now with BOTH pieces it
+    # needed but couldn't have on the first call above: which pet (only
+    # resolvable from the mechanical "pet X whose owner is Y" phrase, since
+    # that's what disambiguated it) and what was actually asked (only
+    # available as effective_question, recovered just above - the mechanical
+    # phrase itself doesn't say "next appointment"/"vaccines"/whatever the
+    # original question asked). Without this, a structured pattern needing a
+    # disambiguated pet name - "when is <pet>'s next appointment" being the
+    # sharpest example, since appointments have no RAG fallback at all - can
+    # never fire post-disambiguation and silently degrades to unscoped
+    # retrieval over whatever chunk type happens to look semantically
+    # similar (e.g. an unrelated disease-case chunk), producing a fluent but
+    # wrong answer instead of the exact one this module exists to give.
+    if effective_question != question and resolved_pet_id:
+        structured = try_structured_answer(
+            effective_question, role=role, customer_id=customer_id, known_pet_id=resolved_pet_id
+        )
+        if structured is not None:
+            return structured
 
     chunks = retrieve_chunks(
         effective_question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id

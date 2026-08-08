@@ -33,9 +33,18 @@ CREATE TABLE IF NOT EXISTS rag_chunks (
 
 -- Vector similarity search index (cosine distance, matches the query pattern
 -- used in retrieval.py: ORDER BY embedding <=> $1)
+--
+-- HNSW, not ivfflat. ivfflat assigns rows to a fixed set of k-means lists
+-- built from whatever data exists AT INDEX CREATION TIME - and this migration
+-- necessarily runs against an empty table, so those centroids are meaningless
+-- and rows land in effectively arbitrary lists. With the default
+-- ivfflat.probes = 1 only one list is scanned, so a query could return the
+-- wrong nearest neighbours or, when it picked an empty list, no rows at all
+-- (see fix_rag_vector_index.sql). HNSW builds its graph incrementally as rows
+-- are inserted, so it has no equivalent empty-table failure mode and gives
+-- near-exact recall on the default ef_search.
 CREATE INDEX IF NOT EXISTS idx_rag_chunks_embedding
-  ON rag_chunks USING ivfflat (embedding vector_cosine_ops)
-  WITH (lists = 100);
+  ON rag_chunks USING hnsw (embedding vector_cosine_ops);
 
 -- Fast lookups for re-ingestion (upsert-by-source) and scoped retrieval
 CREATE UNIQUE INDEX IF NOT EXISTS idx_rag_chunks_source

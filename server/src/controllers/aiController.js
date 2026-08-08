@@ -20,6 +20,7 @@ import { createPet, getPetById } from '../models/petModel.js';
 import { createUser, emailExists as staffEmailExists } from '../models/userModel.js';
 import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { isClinicOpenDay } from '../utils/appointmentRules.js';
 import { sendAppointmentReminder, sendCustomEmail } from '../services/emailService.js';
 
 const VALID_STAFF_ROLES = ['admin', 'veterinarian', 'receptionist'];
@@ -62,6 +63,7 @@ const staffChat = async (req, res) => {
     const result = await aiService.askAssistant({
       question,
       role: req.user.role, // enforced server-side from the authenticated user, never trusted from the client
+      userId: req.user.user_id, // enables "my"/"mine" appointment charts to scope to this vet
       history,
       pendingIntent: pending_intent
     });
@@ -120,6 +122,14 @@ const confirmAction = async (req, res) => {
 };
 
 const executeBookAppointment = async (slots, req, res) => {
+  // action_intent.py resolves dates from free text ("next Tuesday") without
+  // knowing which day of the week that lands on - the clinic-day rule (see
+  // appointmentRules.js) is only checked here, at the actual write, same as
+  // the staff appointmentController.js and pet-owner customerAppointmentController.js paths.
+  if (slots.appointment_date && !isClinicOpenDay(slots.appointment_date)) {
+    return res.status(400).json({ success: false, message: 'The clinic is closed on Sundays - please choose another date' });
+  }
+
   const customer = await getCustomerById(slots.customer_id);
   if (!customer) {
     return res.status(404).json({ success: false, message: 'Customer not found' });
@@ -170,6 +180,10 @@ const executeBookAppointment = async (slots, req, res) => {
 };
 
 const executeRescheduleAppointment = async (slots, req, res) => {
+  if (slots.appointment_date && !isClinicOpenDay(slots.appointment_date)) {
+    return res.status(400).json({ success: false, message: 'The clinic is closed on Sundays - please choose another date' });
+  }
+
   const existingAppointment = await getAppointmentById(slots.appointment_id);
   if (!existingAppointment) {
     return res.status(404).json({ success: false, message: 'Appointment not found' });
