@@ -75,6 +75,18 @@ Handles an individual pet's disease-recurrence/cancer risk, and clinic-wide pand
 
 Admin-only (`PET_HEALTH_ADMIN_ROLES`). The module gates internally and returns `None` for any other role, so the question falls through to the next handler rather than erroring.
 
+### Between handlers 3 and 4 — chart requests (`chart_intent.py`)
+
+Not a sixth handler, and the count above is unchanged. Each of the five owns a class of *question*; this one owns a form of *answer*. It is dispatched from the same `answer_question()` function, immediately before handler 4, and it changes how already-covered data is presented rather than covering anything new.
+
+It claims a question only when an explicit trigger word is present — chart, graph, plot, visualize/visualise. Everything else falls through untouched, which is what keeps "what's our revenue this month?" a sentence while "graph revenue by month" becomes a chart. Guessing that a question merely looked chart-shaped would put a picture in front of someone who asked for a number.
+
+The position matters. Chart questions share their nouns with patterns handler 4 already matches — "graph revenue by month" contains the same "revenue" as its revenue-by-timeframe pattern, "chart appointments by status" the same pair as its count-by-status pattern — and neither handler knows about the other's criteria, so whichever runs first claims the question outright. Running the chart check second would mean a chart request silently answered as a one-line sentence. The reverse mistake cannot happen, because without a trigger word the chart check never claims anything.
+
+The response is the handler-4 dict shape plus a `chart` key: a title, bar rows, and one or more named series. Six categories are supported — disease cases by category and by severity, appointments by status and over time, inventory stock versus reorder level, and revenue by month. Staff-only; the two disease-case charts are restricted to `CLINICAL_STAFF_ROLES`, with receptionist receiving the same clinical redirect used elsewhere. Guest and pet-owner questions fall through rather than erroring, exactly as they do for handler 4's staff-only patterns. Charts are web-only — the iOS client ignores the extra key.
+
+Every number is SQL, as in handler 4; the model plays no part in producing chart data. See [`rag-query-coverage.md`](rag-query-coverage.md) for the full category list.
+
 ### Handler 4 — structured queries (`structured_query.py`)
 
 Answers counting and listing questions, clinic info (hours/location/contact — open to every role including guests), and pet-owner self-service (their own upcoming appointments, their own billing balance) with deterministic SQL, bypassing embeddings entirely. See [`rag-query-coverage.md`](rag-query-coverage.md) for the covered patterns.

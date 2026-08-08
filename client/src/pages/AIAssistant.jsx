@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { askAssistant, confirmAiAction } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import AiChartMessage from '../components/AiChartMessage';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
 
@@ -135,7 +136,10 @@ const AIAssistant = () => {
             structured: Boolean(result.structured || result.pending_intent),
             // Disambiguation choices (e.g. "which Max?") - clicking one just
             // re-submits its value as the next message, same as typing it.
-            options: result.options || []
+            options: result.options || [],
+            // Only present when the question explicitly asked for a chart
+            // (see ml/scripts/rag/chart_intent.py) - normally null.
+            chart: result.chart || null
           }
         ]);
       }
@@ -217,6 +221,7 @@ const AIAssistant = () => {
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
+                {m.role === 'assistant' && m.chart && <AiChartMessage chart={m.chart} />}
                 {m.role === 'assistant' && m.action && !m.resolved && (
                   <div className="ai-action-confirm">
                     <button

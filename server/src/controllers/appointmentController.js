@@ -11,6 +11,7 @@ import {
 import { getCustomerById } from '../models/customerModel.js';
 import { getPetById } from '../models/petModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { isClinicOpenDay } from '../utils/appointmentRules.js';
 
 /**
  * Appointment Controller
@@ -97,6 +98,17 @@ export const createNewAppointment = async (req, res) => {
   try {
     const appointmentData = req.body;
 
+    // The clinic is closed Sundays (see appointmentRules.js) - staff booking
+    // shares this physical constraint with the pet-owner self-service flow
+    // in customerAppointmentController.js, so it's enforced here too rather
+    // than only client-side.
+    if (appointmentData.appointment_date && !isClinicOpenDay(appointmentData.appointment_date)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'The clinic is closed on Sundays - please choose another date'
+      });
+    }
+
     // Verify customer exists
     const customer = await getCustomerById(appointmentData.customer_id);
     if (!customer) {
@@ -177,6 +189,13 @@ export const updateAppointmentById = async (req, res) => {
       return res.status(404).json({
         status: 'error',
         message: 'Appointment not found'
+      });
+    }
+
+    if (appointmentData.appointment_date && !isClinicOpenDay(appointmentData.appointment_date)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'The clinic is closed on Sundays - please choose another date'
       });
     }
 
@@ -281,6 +300,15 @@ export const updateStatus = async (req, res) => {
       return res.status(404).json({
         status: 'error',
         message: 'Appointment not found'
+      });
+    }
+
+    // A veterinarian may only start/update appointments assigned to them -
+    // admin and receptionist manage the full schedule and are unrestricted.
+    if (req.user.role === 'veterinarian' && existingAppointment.veterinarian_id !== req.user.user_id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only update appointments assigned to you'
       });
     }
 

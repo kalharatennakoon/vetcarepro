@@ -150,6 +150,42 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+/* Chart returned for an explicit "graph/chart/plot this" request. Sits
+   between the answer sentence and the sources row inside the bubble. */
+.ai-message-chart {
+  /* A definite width matters twice over: recharts' ResponsiveContainer
+     measures its parent (a percentage of an auto-sized flex item would
+     resolve to zero and render nothing), and the bubble is content-sized,
+     so this is what widens it enough for the chart to be readable. The
+     bubble's own max-width still caps it on narrow viewports. */
+  width: 520px;
+  max-width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.4rem 0.2rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  /* The bubble sets pre-wrap for the answer text; inside the chart that
+     would turn the JSX's own indentation into visible gaps. */
+  white-space: normal;
+}
+
+.ai-message-chart-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+/* Below this the 80%-wide bubble is too narrow for angled axis labels to
+   stay legible, so let the chart use the full bubble instead. */
+@media (max-width: 768px) {
+  .ai-message-chart {
+    width: 100%;
+  }
+}
+
 .ai-message-sources {
   margin-top: 0.5rem;
   font-size: 0.75rem;
