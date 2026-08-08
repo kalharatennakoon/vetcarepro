@@ -331,7 +331,36 @@ _PET_NAME_STOPWORDS = {
     'what', 'how', 'where', 'who', 'when', 'why',
     'it', 'there', 'here', 'he', 'she', 'they', 'we', 'you', 'i',
     'month', 'months', 'day', 'days', 'week', 'weeks', 'year', 'years',
+    # "my pet's medical records" makes PET_POSSESSIVE_MENTION capture the
+    # literal word "pet" - skipping it lets the scan continue to a real name
+    # later in the same question ("my pet's vaccination history for Max").
+    'pet', 'pets',
 }
+
+
+def _names_a_pet_explicitly(question: str, pet_name: str) -> bool:
+    """
+    Whether `pet_name` was capitalized where it appears in `question`, i.e.
+    the asker actually wrote a name rather than ordinary lowercase English
+    that the extraction patterns happened to capture.
+
+    The patterns above are deliberately permissive, and the word "pet" shows
+    up constantly in general pet-care questions that name no pet at all -
+    "what counts as a pet emergency", "how do I care for my pet after
+    surgery", "how often should my pet see a veterinarian" all put a plain
+    lowercase word right after "pet". Capitalization is what separates those
+    from "my pet Max is limping".
+
+    This only gates the hard "I couldn't find a pet named X" error in
+    find_pet_candidates - a lowercase name that DOES match a real pet still
+    resolves normally (the lookup is ILIKE), so requiring a capital here
+    costs nothing for genuine names. The one thing it gives up is erroring
+    on a lowercase misspelling of a nonexistent pet ("luke"), which falls
+    through to unscoped retrieval instead - the same harmless no-op this
+    module had before the error existed, and far better than telling someone
+    asking about a pet emergency that they have no pet named "emergency".
+    """
+    return bool(re.search(rf'\b{re.escape(pet_name)}\b', question)) and pet_name[:1].isupper()
 
 
 def _first_non_stopword_match(pattern, text: str):
@@ -762,6 +791,13 @@ def find_pet_candidates(question: str, role: str, customer_id: str = None):
             rows = cur.fetchall()
     finally:
         conn.close()
+
+    # A permissive extraction that matched nothing AND was never capitalized
+    # is almost certainly not a name at all ("a pet emergency", "my pet after
+    # surgery") - report it as "no pet mentioned" so the caller falls through
+    # to normal retrieval instead of raising the hard "no pet named X" error.
+    if not rows and not _names_a_pet_explicitly(question, pet_name):
+        return None, []
 
     return pet_name, rows
 

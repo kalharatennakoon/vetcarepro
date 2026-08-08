@@ -34,6 +34,35 @@ STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 # present them as if they grounded the answer.
 GUEST_RELEVANCE_THRESHOLD = 0.32
 
+# ...except for FAQs about VetCare Pro ITSELF, which get a looser floor.
+#
+# The threshold above is safe for general pet-care topics precisely because
+# dropping a weak chunk is harmless there: GUEST_SYSTEM_PROMPT rule 1 tells
+# the model to fall back on general veterinary knowledge, so the guest still
+# gets a useful answer. That reasoning inverts for clinic/platform/assistant
+# questions - rule 3 forbids inventing facts about VetCare Pro, so filtering
+# the one chunk that could have answered leaves NO way to answer at all. The
+# observed failures were a prospective user asking "can I use the app on my
+# iphone?" (platform-001 @ 0.354) being told the assistant only handles
+# pet-care questions, and "do you have an android app" (0.391) getting an
+# ungrounded answer in violation of rule 3.
+#
+# 0.45 clears every on-topic phrasing measured for these categories (worst
+# was "can I book online" @ 0.419) while still excluding genuinely unrelated
+# questions, whose nearest clinic-category chunk sat at 0.53+ ("write me a
+# python script" @ 0.532, "what is the capital of France?" @ 0.605).
+GUEST_CLINIC_FACT_CATEGORIES = {'clinic_policy', 'ai_assistant', 'platform'}
+GUEST_CLINIC_FACT_THRESHOLD = 0.45
+
+
+def _guest_threshold(chunk: dict) -> float:
+    """Relevance floor for one chunk on the guest path - looser for FAQs the
+    model is not allowed to answer from its own knowledge (see above)."""
+    metadata = chunk.get('metadata') or {}
+    if metadata.get('category') in GUEST_CLINIC_FACT_CATEGORIES:
+        return GUEST_CLINIC_FACT_THRESHOLD
+    return GUEST_RELEVANCE_THRESHOLD
+
 
 def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: int = 5, pet_id: str = None) -> list:
     """
@@ -165,7 +194,7 @@ def retrieve_chunks(question: str, role: str, customer_id: str = None, top_k: in
             rows = [dict(zip(columns, r)) for r in cur.fetchall()]
 
             if role not in STAFF_ROLES and role != 'pet_owner':
-                rows = [r for r in rows if r['distance'] <= GUEST_RELEVANCE_THRESHOLD]
+                rows = [r for r in rows if r['distance'] <= _guest_threshold(r)]
 
             return rows
     finally:
