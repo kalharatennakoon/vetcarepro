@@ -67,3 +67,6 @@ TODO.md
 
 # ── Graphify (regenerable code knowledge graph) ────────────────────────────────
 graphify-out/
+
+# ── Claude Code local settings ─────────────────────────────────────────────────
+.claude/settings.local.json
