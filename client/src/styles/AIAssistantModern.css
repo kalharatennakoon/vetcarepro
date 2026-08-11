@@ -66,8 +66,17 @@
   gap: 0.55rem;
 }
 
-.ai-message-user.ai-modern-message {
-  flex-direction: row-reverse;
+/* justify-content: flex-end (from the base .ai-message-user rule) combined
+   with flex-direction: row-reverse would put flex-end on the visual LEFT
+   (row-reverse flips main-start/main-end), pushing user bubbles the wrong
+   way - use `order` on the children instead so the row stays normal and
+   flex-end reliably means the physical right. */
+.ai-message-user.ai-modern-message .ai-modern-avatar {
+  order: 2;
+}
+
+.ai-message-user.ai-modern-message .ai-modern-bubble {
+  order: 1;
 }
 
 .ai-modern-avatar {

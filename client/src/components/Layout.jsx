@@ -365,12 +365,14 @@ const Layout = ({ children }) => {
 
         {/* Content Area */}
         <main id="main-content" style={styles.content}>
-          {children}
-          <footer style={styles.footer}>
-            <p style={styles.footerText}>
-              © 2026 VetCare Pro - Pro Pet Animal Hospital, Kurunegala
-            </p>
-          </footer>
+          <div style={styles.contentInner}>
+            {children}
+            <footer style={styles.footer}>
+              <p style={styles.footerText}>
+                © 2026 VetCare Pro - Pro Pet Animal Hospital, Kurunegala
+              </p>
+            </footer>
+          </div>
         </main>
       </div>
     </div>
@@ -707,6 +709,11 @@ const styles = {
     width: '100%',
     maxWidth: '100%',
     boxSizing: 'border-box',
+  },
+  contentInner: {
+    width: '100%',
+    maxWidth: '1600px',
+    margin: '0 auto',
   },
   footer: {
     marginTop: '2.5rem',
