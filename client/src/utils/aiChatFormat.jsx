@@ -118,6 +118,10 @@ export const getSourceLabel = (source) => {
       return `Lab report${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.report_type ? ` (${meta.report_type})` : ''}`;
     case 'outbreak_risk_model':
       return `Outbreak risk model${meta.risk_level ? ` – ${meta.risk_level} risk` : ''}`;
+    case 'billing':
+      return meta.bill_number ? `Bill ${meta.bill_number}` : `Bill #${source.source_id}`;
+    case 'billing_summary':
+      return `Revenue summary${meta.start_date && meta.end_date ? ` (${meta.start_date} to ${meta.end_date})` : ''}`;
     default:
       return `${source.source_type} #${source.source_id}`;
   }
