@@ -1,0 +1,273 @@
+/* Modern restyle for the staff AI Assistant page only. Scoped entirely
+   under ai-modern-* classes (set only in pages/AIAssistant.jsx) so the
+   guest assistant and the Explain-with-AI widget, which share the base
+   classes in AIAssistant.css, are unaffected. */
+
+.ai-modern-page {
+  max-width: 900px;
+  background: transparent;
+}
+
+/* Header */
+
+.ai-modern-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-modern-header-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 6px 16px -4px rgba(79, 70, 229, 0.45);
+}
+
+.ai-modern-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+.ai-modern-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Chat container */
+
+.ai-modern-chat {
+  background: #ffffff;
+  border: 1px solid #f1f2f6;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 16px 40px -20px rgba(15, 23, 42, 0.12);
+  padding: 1.5rem;
+  gap: 1.1rem;
+}
+
+/* Messages + avatars */
+
+.ai-modern-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.ai-message-user.ai-modern-message {
+  flex-direction: row-reverse;
+}
+
+.ai-modern-avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+}
+
+.ai-modern-avatar-assistant {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+}
+
+.ai-modern-avatar-user {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.ai-modern-bubble {
+  max-width: calc(100% - 3rem);
+  border-radius: 16px;
+  font-size: 0.85rem;
+  box-shadow: none;
+}
+
+.ai-message-assistant .ai-modern-bubble {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  color: #1f2937;
+}
+
+.ai-message-user .ai-modern-bubble {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+}
+
+/* Intro/guidance message - de-emphasized so it reads as a small helper
+   note rather than a full reply. */
+.ai-modern-intro {
+  font-size: 0.78rem;
+  color: #6b7280;
+  background: #fafafa;
+}
+
+.ai-modern-loading {
+  color: #9ca3af;
+}
+
+/* Headings/lists rendered inside a modern bubble via formatMessageContent */
+.ai-modern-bubble .ai-message-heading {
+  color: inherit;
+}
+
+.ai-modern-bubble .ai-message-list {
+  font-size: 0.85rem;
+}
+
+/* Sources */
+
+.ai-modern-sources {
+  font-size: 0.68rem;
+  color: #9ca3af;
+}
+
+.ai-modern-source-tag {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.ai-modern-sources-general {
+  color: #9ca3af;
+}
+
+/* Action confirm/cancel */
+
+.ai-modern-action-confirm {
+  gap: 0.5rem;
+}
+
+.ai-modern-btn-confirm,
+.ai-modern-btn-cancel {
+  border-radius: 999px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ai-modern-btn-confirm {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
+}
+
+.ai-modern-btn-confirm:not(:disabled):hover,
+.ai-modern-btn-cancel:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ai-modern-btn-cancel {
+  background: #f3f4f6;
+}
+
+/* Disambiguation options */
+
+.ai-modern-option-btn {
+  border-radius: 999px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ai-modern-option-btn:not(:disabled):hover {
+  background: #e0e7ff;
+  transform: translateY(-1px);
+}
+
+/* Error banner */
+
+.ai-modern-error {
+  border-radius: 12px;
+}
+
+/* Suggested prompts */
+
+.ai-modern-prompts {
+  gap: 0.5rem;
+}
+
+.ai-modern-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.76rem;
+  color: #4b5563;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-modern-prompt-btn i {
+  color: #7c3aed;
+  font-size: 0.72rem;
+}
+
+.ai-modern-prompt-btn:hover {
+  border-color: #c7d2fe;
+  color: #4338ca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -4px rgba(79, 70, 229, 0.3);
+}
+
+/* Input row - unified pill */
+
+.ai-modern-input-row {
+  align-items: center;
+  gap: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.3rem 0.3rem 0.3rem 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-modern-input-row:focus-within {
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.ai-modern-input {
+  border: none !important;
+  outline: none;
+  padding: 0.6rem 0.5rem !important;
+  background: transparent;
+  border-radius: 0 !important;
+}
+
+.ai-modern-send-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.ai-modern-send-btn:not(:disabled):hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 640px) {
+  .ai-modern-bubble {
+    max-width: calc(100% - 2.2rem);
+  }
+}
