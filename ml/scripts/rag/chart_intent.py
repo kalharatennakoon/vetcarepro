@@ -125,11 +125,31 @@ APPOINTMENTS_BY_STATUS = re.compile(
 # veterinarian" resolves here rather than falling into the generic over-time
 # catch-all (which APPOINTMENTS_UNSUPPORTED_BREAKDOWN below used to have to
 # guard against, back when this breakdown wasn't supported at all).
+#
+# "vet"/"doctor" is genuinely ambiguous in English: it can be the subject
+# ("vet performance", "performance of vets") or an adjective on some other
+# noun ("vet supplies", "vet products", "vet workload"). An earlier version
+# of this pattern used unbounded .* on both sides of "performance", which
+# matched the adjective case too - "graph inventory performance for vet
+# supplies" and "chart sales performance of vet products" both matched,
+# hijacking an inventory/revenue chart request into this admin-only
+# category (and producing a false "you don't have access" denial for a
+# receptionist who never asked about veterinarians at all). Two changes fix
+# it: the vet/doctor term must sit right next to "performance" with only a
+# short preposition between them (not "and", which joins two separate
+# things rather than describing one), and a trailing lookahead requires the
+# term to end the noun phrase - followed by nothing, punctuation, or one of
+# a few real continuations ("this month", "and <more>") - rather than
+# immediately modifying another noun.
+_VET_TERM = r'(?:veterinarians?|vets?|doctors?)'
+_VET_TERM_ENDS_PHRASE = r"(?=$|['.,!?]|\s+(?:this|last|next|and)\b)"
+_PERF_CONNECTOR = r'(?:of|for|among|across|by)\s+(?:all\s+|the\s+)?'
+
 VET_PERFORMANCE = re.compile(
-    r'\bperformance\b.*\b(?:vet(?:erinarian)?s?|doctors?)\b|'
-    r'\b(?:vet(?:erinarian)?s?|doctors?)\b.*\bperformance\b|'
-    r'\bappointments?\b.*\b(?:by|per)\s+(?:vet(?:erinarian)?s?|doctors?)\b|'
-    r'\b(?:by|per)\s+(?:vet(?:erinarian)?s?|doctors?)\b.*\bappointments?\b',
+    rf'\b{_VET_TERM}\b\s+performance\b|'
+    rf'\bperformance\b\s+{_PERF_CONNECTOR}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
+    rf'\bappointments?\b.*\b(?:by|per)\s+{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
+    rf'\b(?:by|per)\s+{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}.*\bappointments?\b',
     re.IGNORECASE
 )
 
@@ -435,6 +455,17 @@ def _chart_veterinarian_performance(question: str, chart_type: str = 'bar') -> d
         for r in rows
     ]
     total_appointments = sum(int(r[3]) for r in rows)
+
+    # The "not all rows are zero" guard above checks TOTAL appointments
+    # (r[3]), but a pie is sized by series[0] alone - 'completed'. A window
+    # where every appointment is still scheduled (asked on a Monday, say)
+    # has a real total and zero completions: the guard above correctly says
+    # "there's data" while every pie slice would still be sized zero, which
+    # recharts can't render as a meaningful pie at all. Bar shows both
+    # series honestly instead, so fall back to it rather than draw nothing.
+    if chart_type == 'pie' and all(d['completed'] == 0 for d in data):
+        chart_type = 'bar'
+
     return _chart_result(
         answer=(
             f'Here is appointment performance across {len(data)} veterinarian'

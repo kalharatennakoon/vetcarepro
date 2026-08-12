@@ -756,9 +756,19 @@ def _fmt_date(d) -> str:
 
 
 def _fmt_time(t) -> str:
-    """'09:30 AM' instead of a raw datetime.time's default str() of
-    '09:30:00'."""
-    return t.strftime('%I:%M %p') if hasattr(t, 'strftime') else str(t)
+    """'9:30 AM' instead of a raw datetime.time's default str() of
+    '09:30:00'. Built from hour/minute directly rather than
+    strftime('%I:%M %p') - %p is locale-dependent (driven by the process's
+    LC_TIME) and some locales define no AM/PM marker at all, so it can
+    silently return an empty string and drop AM/PM from an appointment time
+    with nothing to indicate it happened. Also drops the leading zero
+    strftime forces on the hour ('09:30 AM'), which isn't how a clinic
+    schedule actually gets written."""
+    if not hasattr(t, 'hour'):
+        return str(t)
+    hour_12 = t.hour % 12 or 12
+    period = 'AM' if t.hour < 12 else 'PM'
+    return f'{hour_12}:{t.minute:02d} {period}'
 
 
 def _fmt_status(status: str) -> str:
