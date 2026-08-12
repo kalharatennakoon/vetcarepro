@@ -1265,6 +1265,111 @@ def test_db_connection():
 
 
 # ===========================================================================
+# AI DAILY BRIEFING ROUTE
+#
+# Summarizes an already-aggregated numeric payload (built server-side by
+# server/src/services/briefingService.js from existing /api/ml/* endpoints)
+# into a short natural-language briefing. Calls ollama_client.py directly -
+# deliberately NOT part of the RAG chain in scripts/rag/rag_service.py,
+# since there is no retrieval step here, just summarization of numbers the
+# caller already has.
+# ===========================================================================
+
+_BRIEFING_ROLE_FOCUS = {
+    'admin': (
+        'You are summarizing today\'s clinic-wide business signals for a clinic administrator: '
+        'revenue forecast trend, top revenue services, inventory reorder alerts, and disease '
+        'outbreak/pandemic risk.'
+    ),
+    'veterinarian': (
+        'You are summarizing today\'s clinical signals for a veterinarian: today\'s scheduled '
+        'appointments cross-referenced with any elevated pet disease-recurrence or cancer risk, '
+        'plus a note on disease trends. Do not mention pandemic risk - that is not part of this data.'
+    ),
+    'receptionist': (
+        'You are summarizing today\'s front-desk operational signals for a receptionist: '
+        'inventory reorder suggestions, today\'s appointment load, and outstanding billing '
+        'balances. Do not mention or infer any clinical/medical/disease information - none was '
+        'provided and none should appear in your answer.'
+    ),
+}
+
+_BRIEFING_SYSTEM_PROMPT_TEMPLATE = """{role_focus}
+
+Respond with ONLY a JSON object, no other text, in exactly this shape:
+{{"summary": "<one sentence overview>", "bullets": ["<insight 1>", "<insight 2>", "<insight 3 optional>", "<insight 4 optional>"]}}
+
+Rules:
+- Use only the data given to you below. Do not invent numbers.
+- 2 to 4 bullets, each one short sentence.
+- Use metric units and Sri Lankan Rupees (Rs.) for any currency figures - never dollars.
+- If the data has nothing noteworthy, say so briefly rather than padding with filler.
+"""
+
+
+def _extract_json_object(text):
+    """Best-effort extraction of a {...} JSON object from LLM output that may
+    include stray text around it despite the prompt asking for JSON only."""
+    import json as _json
+    start = text.find('{')
+    end = text.rfind('}')
+    if start == -1 or end == -1 or end <= start:
+        return None
+    try:
+        return _json.loads(text[start:end + 1])
+    except (ValueError, TypeError):
+        return None
+
+
+@app.route('/api/ml/briefing/summarize', methods=['POST'])
+def briefing_summarize():
+    """
+    Body: { "role": "admin" | "veterinarian" | "receptionist", "data": {...} }
+    "data" is the already-aggregated numeric payload; this endpoint only summarizes it.
+    """
+    try:
+        from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
+
+        body = request.get_json(silent=True) or {}
+        role = body.get('role')
+        data = body.get('data')
+
+        if role not in _BRIEFING_ROLE_FOCUS:
+            return jsonify({'success': False, 'message': 'role must be admin, veterinarian, or receptionist'}), 400
+        if not isinstance(data, dict) or not data:
+            return jsonify({'success': False, 'message': 'data is required'}), 400
+
+        import json as _json
+        system_prompt = _BRIEFING_SYSTEM_PROMPT_TEMPLATE.format(role_focus=_BRIEFING_ROLE_FOCUS[role])
+        user_prompt = f'Today\'s data:\n{_json.dumps(data, default=str)}'
+
+        try:
+            raw = generate_answer(system_prompt, user_prompt)
+        except OllamaError as e:
+            return jsonify({'success': False, 'message': str(e)}), 503
+
+        parsed = _extract_json_object(raw)
+        if not parsed or 'summary' not in parsed:
+            # Model didn't follow the JSON format - fall back to raw text as the summary
+            # rather than failing the whole briefing.
+            parsed = {'summary': raw.strip(), 'bullets': []}
+
+        bullets = parsed.get('bullets') or []
+        if not isinstance(bullets, list):
+            bullets = []
+
+        briefing = {
+            'summary': normalize_currency(str(parsed.get('summary', ''))),
+            'bullets': [normalize_currency(str(b)) for b in bullets][:4],
+        }
+
+        return jsonify({'success': True, 'briefing': briefing}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ===========================================================================
 # RAG / AI ASSISTANT ROUTES
 # ===========================================================================
 

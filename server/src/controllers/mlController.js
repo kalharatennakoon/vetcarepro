@@ -5,6 +5,7 @@
 
 import * as mlService from '../services/mlService.js';
 import { insertAuditLog } from '../models/auditLogModel.js';
+import { getBriefing } from '../services/briefingService.js';
 
 /**
  * @desc    Check ML service health
@@ -488,6 +489,20 @@ const getPandemicRisk = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get the AI Daily Briefing for the requesting staff user's role
+ * @route   GET /api/ml/briefing
+ * @access  Private (admin, veterinarian, receptionist)
+ */
+const getDailyBriefing = async (req, res) => {
+  try {
+    const briefing = await getBriefing(req.user);
+    res.json({ success: true, ...briefing });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export {
   // Health & Status
   checkHealth,
@@ -505,6 +520,7 @@ export {
   predictCancerRisk,
   getOutbreakTrend,
   getPandemicRisk,
+  getDailyBriefing,
 
   // Sales Forecasting (Phase 3)
   trainSalesModel,

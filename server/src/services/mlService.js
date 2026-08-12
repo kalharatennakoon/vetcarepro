@@ -346,6 +346,31 @@ const getPandemicRisk = async (params = {}) => {
 };
 
 // ============================================
+// AI Daily Briefing Service
+// ============================================
+
+/**
+ * Summarize an already-aggregated numeric payload into a short natural
+ * language briefing (summary + bullets). Does not throw on Ollama being
+ * unreachable - callers need to degrade gracefully, not error out.
+ * @param {Object} params
+ * @param {string} params.role - 'admin' | 'veterinarian' | 'receptionist'
+ * @param {Object} params.data - aggregated numeric payload for that role
+ */
+const summarizeBriefing = async (params) => {
+  try {
+    const response = await mlClient.post('/api/ml/briefing/summarize', params);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Briefing summarization failed:', error.message);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'AI briefing is not available right now'
+    };
+  }
+};
+
+// ============================================
 // Data Loading Services (for testing)
 // ============================================
 
@@ -421,6 +446,9 @@ export {
   getFastMovingItems,
   getCategoryDemandAnalysis,
   predictRestockDate,
+
+  // AI Daily Briefing
+  summarizeBriefing,
 
   // Data Loading
   loadSalesData,

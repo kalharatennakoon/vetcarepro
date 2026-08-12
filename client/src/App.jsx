@@ -4,7 +4,7 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
 import StaffLogin from './pages/StaffLogin';
-import Dashboard from './pages/Dashboard';
+import DashboardRouter from './pages/DashboardRouter';
 import Appointments from './pages/Appointments';
 import AppointmentCreate from './pages/AppointmentCreate';
 import Patients from './pages/Patients';
@@ -112,7 +112,7 @@ function App() {
         path="/dashboard" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardRouter />
           </ProtectedRoute>
         } 
       />
