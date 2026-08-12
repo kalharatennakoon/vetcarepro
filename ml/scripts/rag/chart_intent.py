@@ -136,20 +136,58 @@ APPOINTMENTS_BY_STATUS = re.compile(
 # category (and producing a false "you don't have access" denial for a
 # receptionist who never asked about veterinarians at all). Two changes fix
 # it: the vet/doctor term must sit right next to "performance" with only a
-# short preposition between them (not "and", which joins two separate
-# things rather than describing one), and a trailing lookahead requires the
+# short preposition between them, and a trailing lookahead requires the
 # term to end the noun phrase - followed by nothing, punctuation, or one of
-# a few real continuations ("this month", "and <more>") - rather than
-# immediately modifying another noun.
+# a set of real continuations ("this month", "for the vets" ...) - rather
+# than immediately modifying another noun.
 _VET_TERM = r'(?:veterinarians?|vets?|doctors?)'
-_VET_TERM_ENDS_PHRASE = r"(?=$|['.,!?]|\s+(?:this|last|next|and)\b)"
-_PERF_CONNECTOR = r'(?:of|for|among|across|by)\s+(?:all\s+|the\s+)?'
+
+# Continuations that mean the vet term ENDED its noun phrase rather than
+# modifying a following noun. An earlier version of this list was
+# end-of-string, punctuation, and "this|last|next|and" only, which rejected
+# several ordinary phrasings: "appointments by vet FOR this month",
+# "appointments per doctor OVER the last month". Those fell through to the
+# APPOINTMENTS_OVER_TIME catch-all and came back as an appointments-per-day
+# chart titled "Appointments This Month" - a real chart silently answering a
+# different question, which is precisely what the catch-all guard below
+# exists to prevent.
+#
+# "and" is deliberately NOT here. It joins two things rather than closing
+# one off, so "...for vets AND stock levels" would satisfy the lookahead
+# while the question is plainly about stock. "performance of vets and
+# doctors" loses out as a result, but that phrasing is already caught by
+# the first alternative, and letting "and" through re-opens a narrow
+# version of the adjective bug this lookahead exists to close.
+_VET_TERM_ENDS_PHRASE = (
+    r"(?=$|['.,!?;:]|\s+(?:this|last|next|for|over|in|during|between|from|"
+    r"per|each|by|so\s+far|to\s+date|ytd)\b)"
+)
+# Determiners allowed between the connector and the vet term. An earlier
+# version was missing "each"/"our", so "performance by EACH veterinarian"
+# and "performance of OUR veterinarians" both failed.
+_VET_DETERMINER = r'(?:all\s+|the\s+|each\s+|our\s+|every\s+|both\s+)?'
+_PERF_CONNECTOR = rf'(?:of|for|among|across|by|per)\s+{_VET_DETERMINER}'
 
 VET_PERFORMANCE = re.compile(
     rf'\b{_VET_TERM}\b\s+performance\b|'
     rf'\bperformance\b\s+{_PERF_CONNECTOR}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
-    rf'\bappointments?\b.*\b(?:by|per)\s+{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
-    rf'\b(?:by|per)\s+{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}.*\bappointments?\b',
+    rf'\bappointments?\b.*\b(?:by|per)\s+{_VET_DETERMINER}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
+    rf'\b(?:by|per)\s+{_VET_DETERMINER}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}.*\bappointments?\b',
+    re.IGNORECASE
+)
+
+# Belt-and-braces on top of the lookahead above. The lookahead decides
+# whether the vet term is a subject or an adjective using local grammar
+# alone; this asks a different question - does the sentence name a DIFFERENT
+# chart subject entirely? "graph inventory performance for vets and stock
+# levels" is about stock no matter how its clauses parse. Because
+# VET_PERFORMANCE is checked before the inventory and revenue handlers, a
+# wrong match here doesn't just draw the wrong chart - this category is
+# admin-only, so it denies a receptionist data they're entitled to. Two
+# independent guards is the right price for that failure mode.
+VET_PERFORMANCE_FOREIGN_SUBJECT = re.compile(
+    r'\b(?:inventory|stock|reorder|revenue|income|sales|earnings|'
+    r'expiry|expiring|supplies|products)\b',
     re.IGNORECASE
 )
 
@@ -710,7 +748,7 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
             return _clinical_detail_redirect()
         return _chart_disease_by_severity(chart_type=chart_type)
 
-    if VET_PERFORMANCE.search(question):
+    if VET_PERFORMANCE.search(question) and not VET_PERFORMANCE_FOREIGN_SUBJECT.search(question):
         if role != 'admin':
             return _admin_only_chart_redirect('veterinarian performance data')
         return _chart_veterinarian_performance(question, chart_type=chart_type)

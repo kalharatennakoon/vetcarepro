@@ -69,4 +69,10 @@ TODO.md
 graphify-out/
 
 # ── Claude Code local settings ─────────────────────────────────────────────────
-.claude/settings.local.json
+# commands/ and skills/ are shared team tooling (the OpenSpec workflow) and
+# stay tracked; everything else under .claude/ - settings.local.json, and any
+# future personal/local file dropped in here - is untracked by default so it
+# never needs its own line added later.
+.claude/*
+!.claude/commands/
+!.claude/skills/

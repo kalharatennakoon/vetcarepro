@@ -127,8 +127,15 @@ export const getSourceLabel = (source) => {
       return meta.question || `FAQ #${source.source_id}`;
     case 'medical_record':
       return `Medical record${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.visit_date ? ` (${formatChipDate(meta.visit_date)})` : ''}`;
-    case 'vaccination':
-      return `${meta.vaccine_name || 'Vaccination'}${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.vaccination_date ? ` (${formatChipDate(meta.vaccination_date)})` : ''}`;
+    case 'vaccination': {
+      // Two different handlers emit this source_type under two different
+      // date keys for two genuinely different things: _last_vaccination_for_pet's
+      // vaccination_date is one exact dose; _list_vaccinations_for_pet's
+      // first_date is a MIN() across however many doses of that vaccine the
+      // pet has had (structured_query.py). Either is worth showing on the chip.
+      const vaccinationDate = meta.vaccination_date || meta.first_date;
+      return `${meta.vaccine_name || 'Vaccination'}${meta.pet_name ? ` – ${meta.pet_name}` : ''}${vaccinationDate ? ` (${formatChipDate(vaccinationDate)})` : ''}`;
+    }
     case 'disease_case':
       return `${meta.disease_name || 'Disease case'}${meta.pet_name ? ` – ${meta.pet_name}` : ''}${meta.diagnosis_date ? ` (${formatChipDate(meta.diagnosis_date)})` : ''}`;
     case 'lab_report':
