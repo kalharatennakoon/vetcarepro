@@ -58,6 +58,19 @@ def _owner_options(pet_rows) -> list:
         for r in pet_rows
     ]
 
+
+def _strip_pet_name_prefix(reply: str, pet_name: str) -> str:
+    """A vet disambiguating a pet naturally restates its name alongside the
+    owner's (e.g. "Max, Nishantha Rajapaksa") rather than replying with just
+    the owner's name - strip a leading repeat of the pet's name plus a
+    comma/"and"/whitespace separator so the remainder is a clean owner-name
+    filter for _find_pet_by_name."""
+    if not pet_name:
+        return reply.strip()
+    return re.sub(
+        rf'^\s*{re.escape(pet_name)}\s*(?:[,;]|and)?\s*', '', reply, count=1, flags=re.IGNORECASE
+    ).strip()
+
 # ============================================================
 # Intent detection
 # ============================================================
@@ -484,42 +497,87 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
         stage = pending_intent.get('stage')
         original_question = pending_intent.get('original_question', '')
 
-        if stage == 'disambiguate_pet':
-            # This turn's reply is the owner's name - either typed, or sent
-            # verbatim by clicking one of the option buttons offered below.
-            pet_name = _extract_pet_name(original_question)
+        if stage == 'need_detail':
+            pet_id = pending_intent.get('pet_id')
+            observations_text = f"{original_question}\n{question}"
+            return _RESOLVERS[intent_type](pet_id, observations_text)
+
+        if stage == 'need_pet_name':
+            # The original request had no pet name in it at all - this
+            # turn's whole reply is the pet's name.
+            pet_name = question.strip()
             conn = get_raw_db_connection()
             try:
                 with conn.cursor() as cur:
-                    pet_rows = _find_pet_by_name(cur, pet_name, owner_name=question)
+                    pet_rows = _find_pet_by_name(cur, pet_name)
             finally:
                 conn.close()
-            if len(pet_rows) != 1:
+
+            if not pet_rows:
+                return {'answer': f'I couldn\'t find an active pet named "{pet_name}".', 'structured': True}
+
+            if len(pet_rows) > 1:
+                return {
+                    'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
+                    'options': _owner_options(pet_rows),
+                    'pending_intent': {
+                        'type': intent_type, 'stage': 'disambiguate_pet',
+                        'pet_name': pet_name, 'original_question': original_question
+                    },
+                    'structured': True
+                }
+            pet_id = pet_rows[0][0]
+        elif stage == 'disambiguate_pet':
+            # This turn's reply is the owner's name - typed alone, sent
+            # verbatim by clicking one of the option buttons offered below,
+            # or naturally restating the pet's name alongside the owner's
+            # (e.g. "Max, Nishantha Rajapaksa") - strip a restated pet name
+            # first so it doesn't pollute the owner-name filter.
+            pet_name = pending_intent.get('pet_name')
+            owner_reply = _strip_pet_name_prefix(question, pet_name)
+            conn = get_raw_db_connection()
+            try:
+                with conn.cursor() as cur:
+                    pet_rows = _find_pet_by_name(cur, pet_name, owner_name=owner_reply)
+            finally:
+                conn.close()
+
+            retry_pending_intent = {
+                'type': intent_type, 'stage': 'disambiguate_pet',
+                'pet_name': pet_name, 'original_question': original_question
+            }
+            if not pet_rows:
                 return {
                     'answer': (
                         "I still couldn't find exactly one matching pet - could you double-check "
                         "the pet's name and the owner's name?"
                     ),
+                    'pending_intent': retry_pending_intent,
+                    'structured': True
+                }
+            if len(pet_rows) > 1:
+                return {
+                    'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
+                    'options': _owner_options(pet_rows),
+                    'pending_intent': retry_pending_intent,
                     'structured': True
                 }
             pet_id = pet_rows[0][0]
-            # Pet just resolved - check the ORIGINAL request for clinical
-            # detail (not this turn's reply, which was just the owner's name).
-            if intent_type in _NEEDS_CLINICAL_DETAIL and not _has_enough_detail(original_question):
-                return {
-                    'answer': _detail_question(intent_type),
-                    'pending_intent': {
-                        'type': intent_type, 'stage': 'need_detail',
-                        'pet_id': pet_id, 'original_question': original_question
-                    },
-                    'structured': True
-                }
-            observations_text = original_question
-        elif stage == 'need_detail':
-            pet_id = pending_intent.get('pet_id')
-            observations_text = f"{original_question}\n{question}"
         else:
             return None
+
+        # Pet just resolved - check the ORIGINAL request for clinical detail
+        # (not this turn's reply, which was just naming/disambiguating the pet).
+        if intent_type in _NEEDS_CLINICAL_DETAIL and not _has_enough_detail(original_question):
+            return {
+                'answer': _detail_question(intent_type),
+                'pending_intent': {
+                    'type': intent_type, 'stage': 'need_detail',
+                    'pet_id': pet_id, 'original_question': original_question
+                },
+                'structured': True
+            }
+        observations_text = original_question
     else:
         intent_type = None
         if FULL_HISTORY_SUMMARY.search(question):
@@ -538,7 +596,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
         if not pet_name:
             return {
                 'answer': "Which pet is this about?",
-                'pending_intent': {'type': intent_type, 'stage': 'disambiguate_pet', 'original_question': question},
+                'pending_intent': {'type': intent_type, 'stage': 'need_pet_name', 'original_question': question},
                 'structured': True
             }
 
@@ -557,7 +615,8 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
                 'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
                 'options': _owner_options(pet_rows),
                 'pending_intent': {
-                    'type': intent_type, 'stage': 'disambiguate_pet', 'original_question': question
+                    'type': intent_type, 'stage': 'disambiguate_pet',
+                    'pet_name': pet_name, 'original_question': question
                 },
                 'structured': True
             }

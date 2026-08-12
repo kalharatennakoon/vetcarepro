@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import AiChartMessage from '../components/AiChartMessage';
 import { formatMessageContent, getSourceLabel, allSourcesAreFaq } from '../utils/aiChatFormat';
 import '../styles/AIAssistant.css';
+import '../styles/AIAssistantModern.css';
 
 // Admin oversees the whole clinic - operations, staffing, and finances, not
 // just the clinical side - so these spotlight revenue/staffing/inventory
@@ -202,11 +203,14 @@ const AIAssistant = () => {
 
   return (
     <Layout>
-      <div className="ai-assistant-page">
-        <div className="ai-assistant-header">
+      <div className="ai-assistant-page ai-modern-page">
+        <div className="ai-assistant-header ai-modern-header">
+          <div className="ai-modern-header-icon">
+            <i className="fas fa-wand-magic-sparkles"></i>
+          </div>
           <div>
-            <h1><i className="fas fa-robot"></i> AI Assistant</h1>
-            <p className="ai-assistant-subtitle">
+            <h1 className="ai-modern-title">AI Assistant</h1>
+            <p className="ai-assistant-subtitle ai-modern-subtitle">
               {isVeterinarian
                 ? 'Decision-support only — you always make the final call on diagnosis and treatment.'
                 : isReceptionist
@@ -216,23 +220,26 @@ const AIAssistant = () => {
           </div>
         </div>
 
-        <div className="ai-assistant-chat">
+        <div className="ai-assistant-chat ai-modern-chat">
           {messages.map((m, i) => (
-            <div key={i} className={`ai-message ai-message-${m.role}`}>
-              <div className="ai-message-bubble">
+            <div key={i} className={`ai-message ai-message-${m.role} ai-modern-message`}>
+              <div className={`ai-modern-avatar ai-modern-avatar-${m.role}`}>
+                <i className={`fas ${m.role === 'assistant' ? 'fa-robot' : 'fa-user'}`}></i>
+              </div>
+              <div className={`ai-message-bubble ai-modern-bubble${m.intro ? ' ai-modern-intro' : ''}`}>
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
                 {m.role === 'assistant' && m.chart && <AiChartMessage chart={m.chart} />}
                 {m.role === 'assistant' && m.action && !m.resolved && (
-                  <div className="ai-action-confirm">
+                  <div className="ai-action-confirm ai-modern-action-confirm">
                     <button
-                      className="ai-action-confirm-btn"
+                      className="ai-action-confirm-btn ai-modern-btn-confirm"
                       onClick={() => handleConfirmAction(i)}
                       disabled={loading}
                     >
                       <i className="fas fa-check"></i> Confirm
                     </button>
                     <button
-                      className="ai-action-cancel-btn"
+                      className="ai-action-cancel-btn ai-modern-btn-cancel"
                       onClick={() => handleCancelAction(i)}
                       disabled={loading}
                     >
@@ -241,11 +248,11 @@ const AIAssistant = () => {
                   </div>
                 )}
                 {m.role === 'assistant' && m.options && m.options.length > 0 && !m.resolved && (
-                  <div className="ai-option-choices">
+                  <div className="ai-option-choices ai-modern-option-choices">
                     {m.options.map((opt, j) => (
                       <button
                         key={j}
-                        className="ai-option-btn"
+                        className="ai-option-btn ai-modern-option-btn"
                         onClick={() => handleOptionClick(i, opt)}
                         disabled={loading}
                       >
@@ -256,13 +263,13 @@ const AIAssistant = () => {
                 )}
                 {m.role === 'assistant' && !m.intro && !m.action && (
                   m.sources && m.sources.length > 0 ? (
-                    <div className="ai-message-sources">
+                    <div className="ai-message-sources ai-modern-sources">
                       <span className="ai-message-sources-label">
                         <i className="fas fa-book"></i>
                         {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
                       </span>
                       {m.sources.map((s, j) => (
-                        <span key={j} className="ai-source-tag">
+                        <span key={j} className="ai-source-tag ai-modern-source-tag">
                           {getSourceLabel(s)}
                         </span>
                       ))}
@@ -273,7 +280,7 @@ const AIAssistant = () => {
                     // structured/action-flow replies (follow-up questions, booking
                     // confirmations, DB lookups with nothing to cite) are still
                     // clinic-data-driven even without a source chip to show.
-                    <div className="ai-message-sources ai-message-sources-general">
+                    <div className="ai-message-sources ai-message-sources-general ai-modern-sources ai-modern-sources-general">
                       <i className="fas fa-brain"></i> General veterinary knowledge &mdash; not from a specific clinic record.
                     </div>
                   ) : null
@@ -282,8 +289,11 @@ const AIAssistant = () => {
             </div>
           ))}
           {loading && (
-            <div className="ai-message ai-message-assistant">
-              <div className="ai-message-bubble ai-message-loading">
+            <div className="ai-message ai-message-assistant ai-modern-message">
+              <div className="ai-modern-avatar ai-modern-avatar-assistant">
+                <i className="fas fa-robot"></i>
+              </div>
+              <div className="ai-message-bubble ai-message-loading ai-modern-bubble ai-modern-loading">
                 <span>Thinking</span>
                 <span className="ai-thinking-dots">
                   <span></span><span></span><span></span>
@@ -294,18 +304,20 @@ const AIAssistant = () => {
           <div ref={bottomRef} />
         </div>
 
-        {error && <div className="ai-assistant-error">{error}</div>}
+        {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}
 
         {messages.length <= 1 && (
-          <div className="ai-suggested-prompts">
+          <div className="ai-suggested-prompts ai-modern-prompts">
             {suggestedPrompts.map((p) => (
-              <button key={p} onClick={() => sendQuestion(p)}>{p}</button>
+              <button key={p} className="ai-modern-prompt-btn" onClick={() => sendQuestion(p)}>
+                <i className="fas fa-lightbulb"></i> {p}
+              </button>
             ))}
           </div>
         )}
 
         <form
-          className="ai-assistant-input-row"
+          className="ai-assistant-input-row ai-modern-input-row"
           onSubmit={(e) => { e.preventDefault(); sendQuestion(input); }}
         >
           <input
@@ -314,8 +326,9 @@ const AIAssistant = () => {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about a pet, consultation, or prediction..."
             disabled={loading}
+            className="ai-modern-input"
           />
-          <button type="submit" disabled={loading || !input.trim()}>
+          <button type="submit" disabled={loading || !input.trim()} className="ai-modern-send-btn">
             <i className="fas fa-paper-plane"></i>
           </button>
         </form>

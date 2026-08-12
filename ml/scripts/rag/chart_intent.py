@@ -1,8 +1,11 @@
 """
 Chart Intent
 
-Turns an explicit "chart/graph/plot this" request into a small bar-chart
-payload the web client renders with recharts, instead of a sentence.
+Turns an explicit "chart/graph/plot this" request into a small bar- or
+pie-chart payload the web client renders with recharts, instead of a
+sentence. Bar is the default; "pie" anywhere in the question (see
+CHART_TYPE_PIE) switches the same data into a pie instead - chart *type* is
+independent of chart *category* (which data gets charted).
 
 Two rules shape everything here:
 
@@ -12,12 +15,35 @@ Two rules shape everything here:
      that a question "looks chart-shaped" would put a visualization in front
      of someone who asked for a number, and the trigger word is the only
      unambiguous signal that a picture is actually wanted.
-  2. **Staff-only, and clinical data narrower still.** Guest and pet_owner
-     return None (fall through to the normal pipeline, never an error - same
-     convention as the staff-only patterns in structured_query.py).
-     Disease-case charts are restricted to CLINICAL_STAFF_ROLES; receptionist
-     gets _clinical_detail_redirect(), matching how disease-case data is gated
-     everywhere else in this module chain.
+  2. **Staff-only, and three categories narrower still.** Guest and
+     pet_owner return None (fall through to the normal pipeline, never an
+     error - same convention as the staff-only patterns in
+     structured_query.py). A role inside STAFF_ROLES that asks for a
+     category it can't see gets an explicit "I don't have access" decline
+     instead - unlike the guest/pet_owner fallthrough, silently handing this
+     off to RAG would either produce a confusing non-answer (there's no FAQ
+     content about veterinarian performance) or, worse, look like the
+     assistant is granting access the rest of the app denies. Three
+     categories are gated narrower than plain STAFF_ROLES, each matching an
+     existing restriction elsewhere in the app rather than inventing a new
+     one:
+       - Disease-case charts: CLINICAL_STAFF_ROLES (admin, veterinarian) -
+         matches vetOrAdmin on diseaseCaseRoutes.js. Receptionist gets
+         _clinical_detail_redirect().
+       - Veterinarian-performance chart: admin only - matches
+         reportRoutes.js's operational reports (authorize('admin')), which
+         already include a 'veterinarian-performance' report type. Both
+         veterinarian and receptionist get _admin_only_chart_redirect().
+       - Revenue chart: BILLING_STAFF_ROLES (admin, receptionist) - matches
+         adminOrReceptionist on GET /api/billing/stats/revenue. Veterinarian
+         gets _billing_staff_redirect() (imported from structured_query.py,
+         shared with its own _sum_revenue_timeframe gate - a veterinarian
+         gets the same decline wording whether they ask for revenue as a
+         chart or as a sentence). Note this is the one category where
+         veterinarian, not receptionist, is the excluded role - the
+         opposite shape from the other two.
+     Appointments (status/over-time) and inventory levels stay open to every
+     STAFF_ROLES member, matching those routes' authenticate-only GETs.
 
 Like structured_query.py, every number here comes from real SQL - the model
 is not involved in producing chart data at all.
@@ -39,9 +65,11 @@ from config.db_connection import get_raw_db_connection
 from scripts.rag.structured_query import (
     STAFF_ROLES,
     CLINICAL_STAFF_ROLES,
+    BILLING_STAFF_ROLES,
     TIMEFRAME_WORDS,
     _resolve_timeframe,
     _clinical_detail_redirect,
+    _billing_staff_redirect,
 )
 
 # The web design token used for primary data series (docs/design/design-system.md).
@@ -54,9 +82,20 @@ SECONDARY_COLOR = '#fa709a'
 # a picture - not "show"/"list"/"break down", which are how someone asks for
 # the same data as text.
 CHART_TRIGGER = re.compile(
-    r'\b(?:chart|graph|plot|visuali[sz]e|visuali[sz]ations?|visuali[sz]ation)\b',
+    r'\b(?:chart|graph|plot|visuali[sz]e|visuali[sz]ations?|visuali[sz]ation|pie)\b',
     re.IGNORECASE
 )
+
+# Chart *type*, independent of which category matched above. "pie" is the
+# only word that unambiguously requests a pie chart in this domain; anything
+# else (including a bare "chart"/"graph") keeps the long-standing bar-chart
+# default. Deliberately also part of CHART_TRIGGER above, so "pie chart of
+# disease cases by category" doesn't need a second trigger word.
+CHART_TYPE_PIE = re.compile(r'\bpie\b', re.IGNORECASE)
+
+
+def _requested_chart_type(question: str) -> str:
+    return 'pie' if CHART_TYPE_PIE.search(question) else 'bar'
 
 # Category patterns, checked most-specific-first in try_chart_intent below.
 # Each is written both ways round ("disease cases by category" / "category of
@@ -80,20 +119,95 @@ APPOINTMENTS_BY_STATUS = re.compile(
     re.IGNORECASE
 )
 
+# "graph veterinarian performance", "chart vet performance", "appointments by
+# doctor", "appointments per vet" - a per-veterinarian breakdown. Checked
+# before APPOINTMENTS_BY_STATUS/APPOINTMENTS_OVER_TIME so "appointments by
+# veterinarian" resolves here rather than falling into the generic over-time
+# catch-all (which APPOINTMENTS_UNSUPPORTED_BREAKDOWN below used to have to
+# guard against, back when this breakdown wasn't supported at all).
+#
+# "vet"/"doctor" is genuinely ambiguous in English: it can be the subject
+# ("vet performance", "performance of vets") or an adjective on some other
+# noun ("vet supplies", "vet products", "vet workload"). An earlier version
+# of this pattern used unbounded .* on both sides of "performance", which
+# matched the adjective case too - "graph inventory performance for vet
+# supplies" and "chart sales performance of vet products" both matched,
+# hijacking an inventory/revenue chart request into this admin-only
+# category (and producing a false "you don't have access" denial for a
+# receptionist who never asked about veterinarians at all). Two changes fix
+# it: the vet/doctor term must sit right next to "performance" with only a
+# short preposition between them, and a trailing lookahead requires the
+# term to end the noun phrase - followed by nothing, punctuation, or one of
+# a set of real continuations ("this month", "for the vets" ...) - rather
+# than immediately modifying another noun.
+_VET_TERM = r'(?:veterinarians?|vets?|doctors?)'
+
+# Continuations that mean the vet term ENDED its noun phrase rather than
+# modifying a following noun. An earlier version of this list was
+# end-of-string, punctuation, and "this|last|next|and" only, which rejected
+# several ordinary phrasings: "appointments by vet FOR this month",
+# "appointments per doctor OVER the last month". Those fell through to the
+# APPOINTMENTS_OVER_TIME catch-all and came back as an appointments-per-day
+# chart titled "Appointments This Month" - a real chart silently answering a
+# different question, which is precisely what the catch-all guard below
+# exists to prevent.
+#
+# "and" is deliberately NOT here. It joins two things rather than closing
+# one off, so "...for vets AND stock levels" would satisfy the lookahead
+# while the question is plainly about stock. "performance of vets and
+# doctors" loses out as a result, but that phrasing is already caught by
+# the first alternative, and letting "and" through re-opens a narrow
+# version of the adjective bug this lookahead exists to close.
+_VET_TERM_ENDS_PHRASE = (
+    r"(?=$|['.,!?;:]|\s+(?:this|last|next|for|over|in|during|between|from|"
+    r"per|each|by|so\s+far|to\s+date|ytd)\b)"
+)
+# Determiners allowed between the connector and the vet term. An earlier
+# version was missing "each"/"our", so "performance by EACH veterinarian"
+# and "performance of OUR veterinarians" both failed.
+_VET_DETERMINER = r'(?:all\s+|the\s+|each\s+|our\s+|every\s+|both\s+)?'
+_PERF_CONNECTOR = rf'(?:of|for|among|across|by|per)\s+{_VET_DETERMINER}'
+
+VET_PERFORMANCE = re.compile(
+    rf'\b{_VET_TERM}\b\s+performance\b|'
+    rf'\bperformance\b\s+{_PERF_CONNECTOR}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
+    rf'\bappointments?\b.*\b(?:by|per)\s+{_VET_DETERMINER}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}|'
+    rf'\b(?:by|per)\s+{_VET_DETERMINER}{_VET_TERM}\b{_VET_TERM_ENDS_PHRASE}.*\bappointments?\b',
+    re.IGNORECASE
+)
+
+# Belt-and-braces on top of the lookahead above. The lookahead decides
+# whether the vet term is a subject or an adjective using local grammar
+# alone; this asks a different question - does the sentence name a DIFFERENT
+# chart subject entirely? "graph inventory performance for vets and stock
+# levels" is about stock no matter how its clauses parse. Because
+# VET_PERFORMANCE is checked before the inventory and revenue handlers, a
+# wrong match here doesn't just draw the wrong chart - this category is
+# admin-only, so it denies a receptionist data they're entitled to. Two
+# independent guards is the right price for that failure mode.
+VET_PERFORMANCE_FOREIGN_SUBJECT = re.compile(
+    r'\b(?:inventory|stock|reorder|revenue|income|sales|earnings|'
+    r'expiry|expiring|supplies|products)\b',
+    re.IGNORECASE
+)
+
 # Deliberately broad: once "chart"/"graph" is present, any appointment question
-# that isn't a status breakdown is a request to see them over time.
+# that isn't a status breakdown or a vet breakdown is a request to see them
+# over time.
 APPOINTMENTS_OVER_TIME = re.compile(r'\bappointments?\b', re.IGNORECASE)
 
 # ...but not broad enough to swallow a breakdown this module doesn't support.
-# "graph appointments by veterinarian" would otherwise fall into the catch-all
-# above and come back as an appointments-per-day chart titled "Appointments
-# This Month" - a real chart, drawn from real data, silently answering a
-# different question than the one asked. Falling through instead lets the rest
-# of the pipeline respond (or decline) honestly, which is the same "ask rather
-# than guess" discipline action_intent.py applies to ambiguous slots.
+# "graph appointments by reason" would otherwise fall into the catch-all above
+# and come back as an appointments-per-day chart titled "Appointments This
+# Month" - a real chart, drawn from real data, silently answering a different
+# question than the one asked. Falling through instead lets the rest of the
+# pipeline respond (or decline) honestly, which is the same "ask rather than
+# guess" discipline action_intent.py applies to ambiguous slots. "by
+# vet(erinarian)/doctor" used to be listed here too, until VET_PERFORMANCE
+# above gave it a real handler - it's checked first, so this catch-all no
+# longer needs to name it.
 APPOINTMENTS_UNSUPPORTED_BREAKDOWN = re.compile(
-    r'\bby\s+(?:vet(?:erinarian)?s?|doctors?|types?|reasons?|pets?|'
-    r'customers?|owners?|species|breeds?)\b',
+    r'\bby\s+(?:types?|reasons?|pets?|customers?|owners?|species|breeds?)\b',
     re.IGNORECASE
 )
 
@@ -158,7 +272,9 @@ def _normalize_status(raw: str) -> str:
     return _STATUS_ALIASES.get(value, value)
 
 
-def _chart_result(answer: str, title: str, data: list, series: list, multi_color: bool) -> dict:
+def _chart_result(
+    answer: str, title: str, data: list, series: list, multi_color: bool, chart_type: str = 'bar'
+) -> dict:
     """Assemble the structured_query.py-shaped dict, plus the `chart` key."""
     return {
         'answer': answer,
@@ -166,7 +282,7 @@ def _chart_result(answer: str, title: str, data: list, series: list, multi_color
         'chunks_used': 0,
         'structured': True,
         'chart': {
-            'type': 'bar',
+            'type': chart_type,
             'title': title,
             'data': data,
             'series': series,
@@ -180,6 +296,25 @@ def _no_data(subject: str) -> dict:
     chart frame, which reads as a broken component rather than an answer."""
     return {
         'answer': f"There's no {subject} data to chart yet.",
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True,
+    }
+
+
+def _admin_only_chart_redirect(subject: str) -> dict:
+    """Returned instead of a chart for a non-admin staff role asking for a
+    category that's admin-only in the rest of the app too - see
+    reportRoutes.js's operational reports (authorize('admin')), which
+    already include a 'veterinarian-performance' report type. Explicit and
+    immediate, same convention as _clinical_detail_redirect - a role inside
+    STAFF_ROLES asking for something it can't see should be told so plainly,
+    not handed a confusing RAG fallthrough or, worse, the chart anyway."""
+    return {
+        'answer': (
+            f"I don't have access to share {subject} with your role - this is "
+            "restricted to admin. Please check with an admin if you need it."
+        ),
         'sources': [],
         'chunks_used': 0,
         'structured': True,
@@ -202,7 +337,7 @@ def _query(sql: str, params: tuple = ()) -> list:
 # Category handlers
 # ---------------------------------------------------------------------------
 
-def _chart_disease_by_category() -> dict:
+def _chart_disease_by_category(chart_type: str = 'bar') -> dict:
     rows = _query("""
         SELECT disease_category, COUNT(*)
         FROM disease_cases
@@ -221,10 +356,11 @@ def _chart_disease_by_category() -> dict:
         data=data,
         series=[{'key': 'count', 'name': 'Cases', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_disease_by_severity() -> dict:
+def _chart_disease_by_severity(chart_type: str = 'bar') -> dict:
     rows = _query("""
         SELECT severity, COUNT(*)
         FROM disease_cases
@@ -249,10 +385,11 @@ def _chart_disease_by_severity() -> dict:
         data=data,
         series=[{'key': 'count', 'name': 'Cases', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_appointments_by_status(question: str, role: str, user_id: str = None) -> dict:
+def _chart_appointments_by_status(question: str, role: str, user_id: str = None, chart_type: str = 'bar') -> dict:
     timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
     start = end = None
     scope = ''
@@ -296,10 +433,96 @@ def _chart_appointments_by_status(question: str, role: str, user_id: str = None)
         data=data,
         series=[{'key': 'count', 'name': 'Appointments', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
     )
 
 
-def _chart_appointments_over_time(question: str, role: str, user_id: str = None) -> dict:
+def _chart_veterinarian_performance(question: str, chart_type: str = 'bar') -> dict:
+    """Per-veterinarian appointment volume and outcome - completed vs.
+    no-show counts are the two concrete numbers "performance" can mean here
+    without inventing a metric the schema doesn't have. Optional timeframe
+    narrows both counts to the same window, same convention as
+    _chart_appointments_by_status.
+
+    Admin-only - the caller in try_chart_intent checks this, not this
+    function. Unlike _count_appointments_by_vet in structured_query.py
+    (a single named vet's own appointment count, open to every staff role),
+    "veterinarian performance" evaluates staff against each other, which
+    reportRoutes.js already treats as admin-only operational-report data
+    (its 'veterinarian-performance' report type sits behind
+    authorize('admin')) - this mirrors that restriction rather than
+    inventing a laxer one for the same data reached through the assistant."""
+    timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
+    start = end = None
+    scope = ''
+    if timeframe_match:
+        start, end = _resolve_timeframe(timeframe_match.group(0))
+        if start is not None:
+            scope = ' ' + re.sub(r'\s+', ' ', timeframe_match.group(0).strip().lower())
+
+    # The date filter has to live inside the LEFT JOIN's ON clause, not a
+    # WHERE - a WHERE would drop veterinarians with zero appointments in the
+    # window instead of showing them as a zero bar, same reasoning as the
+    # generated-series joins above.
+    date_filter = ''
+    params: list = []
+    if start is not None:
+        date_filter = 'AND a.appointment_date BETWEEN %s AND %s'
+        params = [start, end]
+
+    rows = _query(f"""
+        SELECT u.user_id, u.first_name, u.last_name,
+               COUNT(a.appointment_id) AS total,
+               COUNT(a.appointment_id) FILTER (WHERE a.status = 'completed') AS completed,
+               COUNT(a.appointment_id) FILTER (WHERE a.status = 'no_show') AS no_shows
+        FROM users u
+        LEFT JOIN appointments a
+               ON a.veterinarian_id = u.user_id {date_filter}
+        WHERE u.role = 'veterinarian' AND u.is_active = true
+        GROUP BY u.user_id, u.first_name, u.last_name
+        ORDER BY total DESC
+    """, tuple(params))
+
+    if not rows:
+        return _no_data('veterinarian')
+    if all(int(r[3]) == 0 for r in rows):
+        return _no_data(f'veterinarian appointment{scope}')
+
+    data = [
+        {'label': f'Dr. {r[1]} {r[2]}', 'completed': int(r[4]), 'no_shows': int(r[5])}
+        for r in rows
+    ]
+    total_appointments = sum(int(r[3]) for r in rows)
+
+    # The "not all rows are zero" guard above checks TOTAL appointments
+    # (r[3]), but a pie is sized by series[0] alone - 'completed'. A window
+    # where every appointment is still scheduled (asked on a Monday, say)
+    # has a real total and zero completions: the guard above correctly says
+    # "there's data" while every pie slice would still be sized zero, which
+    # recharts can't render as a meaningful pie at all. Bar shows both
+    # series honestly instead, so fall back to it rather than draw nothing.
+    if chart_type == 'pie' and all(d['completed'] == 0 for d in data):
+        chart_type = 'bar'
+
+    return _chart_result(
+        answer=(
+            f'Here is appointment performance across {len(data)} veterinarian'
+            f'{"s" if len(data) != 1 else ""}{scope} ({total_appointments} appointment'
+            f'{"s" if total_appointments != 1 else ""} total): completed vs. no-show '
+            f'counts per veterinarian.'
+        ),
+        title=f'Veterinarian Performance{scope.title() if scope else ""}',
+        data=data,
+        series=[
+            {'key': 'completed', 'name': 'Completed', 'color': PRIMARY_COLOR},
+            {'key': 'no_shows', 'name': 'No-shows', 'color': SECONDARY_COLOR},
+        ],
+        multi_color=False,
+        chart_type=chart_type,
+    )
+
+
+def _chart_appointments_over_time(question: str, role: str, user_id: str = None, chart_type: str = 'bar') -> dict:
     timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
     raw_timeframe = timeframe_match.group(0) if timeframe_match else 'this month'
     start, end = _resolve_timeframe(raw_timeframe)
@@ -381,10 +604,11 @@ def _chart_appointments_over_time(question: str, role: str, user_id: str = None)
         data=data,
         series=[{'key': 'count', 'name': 'Appointments', 'color': PRIMARY_COLOR}],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
-def _chart_inventory_levels() -> dict:
+def _chart_inventory_levels(chart_type: str = 'bar') -> dict:
     # Closest to (or already below) reorder level first - the items someone
     # asking to "see stock levels" actually needs to act on. Ordering by raw
     # quantity would just surface whatever happens to be stocked in small
@@ -404,6 +628,9 @@ def _chart_inventory_levels() -> dict:
         for r in rows
     ]
     below = sum(1 for d in data if d['quantity'] <= d['reorder_level'])
+    # A pie has room for one value per slice, not a two-series comparison -
+    # the web client falls back to the first series (current stock) and
+    # drops reorder_level rather than refusing the request outright.
     return _chart_result(
         answer=(
             f'Here are the {len(data)} items closest to their reorder level '
@@ -416,10 +643,11 @@ def _chart_inventory_levels() -> dict:
             {'key': 'reorder_level', 'name': 'Reorder Level', 'color': SECONDARY_COLOR},
         ],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
-def _chart_revenue_by_month(question: str) -> dict:
+def _chart_revenue_by_month(question: str, chart_type: str = 'bar') -> dict:
     months = DEFAULT_MONTHS_BACK
     match = MONTHS_BACK.search(question)
     if match:
@@ -467,6 +695,7 @@ def _chart_revenue_by_month(question: str) -> dict:
         data=data,
         series=[{'key': 'revenue', 'name': 'Revenue (Rs.)', 'color': PRIMARY_COLOR}],
         multi_color=False,
+        chart_type=chart_type,
     )
 
 
@@ -477,7 +706,7 @@ def _chart_revenue_by_month(question: str) -> dict:
 def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
     """
     Detect an explicit request to chart clinic data and answer it with a
-    bar-chart payload.
+    bar- or pie-chart payload (see _requested_chart_type).
 
     user_id scopes "my"/"mine" appointment charts to that veterinarian's own
     appointments (see SELF_SCOPE) - None for roles/questions where it's
@@ -504,32 +733,41 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
     if role not in STAFF_ROLES:
         return None
 
+    chart_type = _requested_chart_type(question)
+
     # Most-specific first: the disease patterns require their own noun, the
     # appointment status pattern is narrower than the over-time one, and the
     # bare-noun inventory/revenue patterns come last.
     if DISEASE_BY_CATEGORY.search(question):
         if role not in CLINICAL_STAFF_ROLES:
             return _clinical_detail_redirect()
-        return _chart_disease_by_category()
+        return _chart_disease_by_category(chart_type=chart_type)
 
     if DISEASE_BY_SEVERITY.search(question):
         if role not in CLINICAL_STAFF_ROLES:
             return _clinical_detail_redirect()
-        return _chart_disease_by_severity()
+        return _chart_disease_by_severity(chart_type=chart_type)
+
+    if VET_PERFORMANCE.search(question) and not VET_PERFORMANCE_FOREIGN_SUBJECT.search(question):
+        if role != 'admin':
+            return _admin_only_chart_redirect('veterinarian performance data')
+        return _chart_veterinarian_performance(question, chart_type=chart_type)
 
     if APPOINTMENTS_BY_STATUS.search(question):
-        return _chart_appointments_by_status(question, role=role, user_id=user_id)
+        return _chart_appointments_by_status(question, role=role, user_id=user_id, chart_type=chart_type)
 
     if APPOINTMENTS_OVER_TIME.search(question):
         if APPOINTMENTS_UNSUPPORTED_BREAKDOWN.search(question):
             return None
-        return _chart_appointments_over_time(question, role=role, user_id=user_id)
+        return _chart_appointments_over_time(question, role=role, user_id=user_id, chart_type=chart_type)
 
     if INVENTORY_LEVELS.search(question):
-        return _chart_inventory_levels()
+        return _chart_inventory_levels(chart_type=chart_type)
 
     if REVENUE_BY_MONTH.search(question):
-        return _chart_revenue_by_month(question)
+        if role not in BILLING_STAFF_ROLES:
+            return _billing_staff_redirect('revenue data')
+        return _chart_revenue_by_month(question, chart_type=chart_type)
 
     # Trigger word present but nothing recognizable to chart ("graph the
     # weather"). Fall through rather than guessing at a category - the rest

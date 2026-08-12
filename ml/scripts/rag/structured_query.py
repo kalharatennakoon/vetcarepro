@@ -55,6 +55,17 @@ STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 # admin/veterinarian get it.
 CLINICAL_STAFF_ROLES = {'admin', 'veterinarian'}
 
+# Aggregate revenue reporting is narrower still, and in the opposite
+# direction from CLINICAL_STAFF_ROLES: veterinarian is the one excluded
+# role, not receptionist. Matches billingRoutes.js's adminOrReceptionist
+# gate on GET /api/billing/stats/revenue - the one billing endpoint in the
+# app that's actually restricted below plain "authenticated staff". Bill
+# lookups, balances, and overdue counts (getBills/getBill/getOverdue) have
+# no such gate, so _customer_balance/_count_unpaid_bills/etc. below stay on
+# plain STAFF_ROLES; only _sum_revenue_timeframe - the handler that mirrors
+# getRevenue's aggregate-stats shape - uses this narrower set.
+BILLING_STAFF_ROLES = {'admin', 'receptionist'}
+
 # Shared timeframe vocabulary used by appointments/disease-case/billing queries.
 TIMEFRAME_WORDS = r'(today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
 
@@ -728,6 +739,63 @@ def _first_group(match):
     return next((g for g in match.groups() if g), None)
 
 
+def _fmt_money(amount, decimals: int = 2) -> str:
+    """Rs. formatting with thousands separators. Exact sums/balances (pulled
+    straight from a DECIMAL(10,2) column) keep 2 decimals - that's real
+    precision. An AVG() over a handful of bills should pass decimals=0
+    instead: cents in an average of a small sample are false precision, not
+    real ones."""
+    return f'Rs. {float(amount):,.{decimals}f}'
+
+
+def _fmt_date(d) -> str:
+    """'05 January 2024' instead of a raw ISO date - matches the one
+    handler (_last_vaccination_for_pet) that already formatted dates this
+    way, so all structured answers render dates consistently."""
+    return d.strftime('%d %B %Y') if hasattr(d, 'strftime') else str(d)
+
+
+def _fmt_time(t) -> str:
+    """'9:30 AM' instead of a raw datetime.time's default str() of
+    '09:30:00'. Built from hour/minute directly rather than
+    strftime('%I:%M %p') - %p is locale-dependent (driven by the process's
+    LC_TIME) and some locales define no AM/PM marker at all, so it can
+    silently return an empty string and drop AM/PM from an appointment time
+    with nothing to indicate it happened. Also drops the leading zero
+    strftime forces on the hour ('09:30 AM'), which isn't how a clinic
+    schedule actually gets written."""
+    if not hasattr(t, 'hour'):
+        return str(t)
+    hour_12 = t.hour % 12 or 12
+    period = 'AM' if t.hour < 12 else 'PM'
+    return f'{hour_12}:{t.minute:02d} {period}'
+
+
+def _fmt_status(status: str) -> str:
+    """'no_show' -> 'no show' - the same enum-to-prose normalization
+    _count_appointments_by_status already does, applied everywhere else a
+    raw appointments.status value lands in an answer string."""
+    return status.replace('_', ' ') if status else status
+
+
+def _summary_source(source_type: str, source_id: str, **metadata) -> list:
+    """A single source representing a pure count/aggregate answer, instead
+    of one chip per underlying row - the same fix applied to
+    _sum_revenue_timeframe. A count answer ("there are 12 appointments this
+    week") isn't "sourced" from any one row the way a listing is: none of
+    those 12 rows is individually named in the answer text, so a chip per
+    row is noise, not a citation - and it scales with real data volume (a
+    month of appointments, a pet's full vaccination history), not with how
+    much the answer actually says.
+
+    Handlers that list individual items by name in their answer text (e.g.
+    _list_appointments_timeframe, _customer_balance) do NOT use this - each
+    item there is genuinely referenced in the prose, so a chip per item is
+    a real citation, not noise.
+    """
+    return [{'source_type': source_type, 'source_id': source_id, 'metadata': metadata}]
+
+
 def find_pet_candidates(question: str, role: str, customer_id: str = None):
     """
     Name-extraction + SQL lookup shared by resolve_pet_id() and by
@@ -843,6 +911,24 @@ def _clinical_detail_redirect() -> dict:
             "Medical record and diagnosis details aren't available through "
             "this assistant for your role - please check with a veterinarian "
             "or admin for clinical specifics."
+        ),
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _billing_staff_redirect(subject: str) -> dict:
+    """Returned instead of aggregate revenue data for a staff role outside
+    BILLING_STAFF_ROLES (i.e. veterinarian) - same "explicit decline, not a
+    confusing RAG fallthrough" convention as _clinical_detail_redirect,
+    shared with chart_intent.py's chart path so a veterinarian gets the same
+    wording whether they ask for revenue as a sentence or as a chart."""
+    return {
+        'answer': (
+            f"I don't have access to share {subject} with your role - billing "
+            "and revenue reporting is restricted to admin and receptionist. "
+            "Please check with an admin or receptionist if you need it."
         ),
         'sources': [],
         'chunks_used': 0,
@@ -1062,6 +1148,8 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
         match = BILLING_REVENUE_TIMEFRAME.search(question)
         timeframe = _first_group(match)
         if timeframe:
+            if role not in BILLING_STAFF_ROLES:
+                return _billing_staff_redirect('revenue data')
             return _sum_revenue_timeframe(timeframe)
 
         # Pricing estimate is checked before the per-customer patterns below
@@ -1227,10 +1315,10 @@ def _count_pets_by_name(name: str, role: str, customer_id: str = None) -> dict:
         pet_id, pet_name, species, breed = rows[0]
         answer = f'There is 1 pet named "{name}": {pet_name} ({species}{", " + breed if breed else ""}).'
     else:
-        listing = ', '.join(
+        listing = '\n- '.join(
             f"{r[1]} ({r[2]}{', ' + r[3] if r[3] else ''})" for r in rows
         )
-        answer = f'There are {count} pets named "{name}": {listing}.'
+        answer = f'There are {count} pets named "{name}":\n- {listing}'
 
     return {
         'answer': answer,
@@ -1266,22 +1354,27 @@ def _count_staff_by_role(role_to_count: str) -> dict:
         active_staff = [r for r in rows if r[3]]
         inactive_staff = [r for r in rows if not r[3]]
 
+        # Every appointment answer refers to veterinarians as "Dr. First
+        # Last" - match that here so the same person isn't named two
+        # different ways depending on which handler answered.
+        name_prefix = 'Dr. ' if role_to_count == 'veterinarian' else ''
+
         parts = []
         if active_staff:
             active_count = len(active_staff)
-            active_listing = ', '.join(f'{r[1]} {r[2]}' for r in active_staff)
+            active_listing = '\n- '.join(f'{name_prefix}{r[1]} {r[2]}' for r in active_staff)
             parts.append(
                 f'There {"is" if active_count == 1 else "are"} {active_count} active '
-                f'{role_to_count}{"s" if active_count != 1 else ""}: {active_listing}.'
+                f'{role_to_count}{"s" if active_count != 1 else ""}:\n- {active_listing}'
             )
         if inactive_staff:
             inactive_count = len(inactive_staff)
-            inactive_listing = ', '.join(f'{r[1]} {r[2]}' for r in inactive_staff)
+            inactive_listing = '\n- '.join(f'{name_prefix}{r[1]} {r[2]}' for r in inactive_staff)
             parts.append(
                 f'There {"is" if inactive_count == 1 else "are"} also {inactive_count} inactive '
-                f'{role_to_count}{"s" if inactive_count != 1 else ""} on record: {inactive_listing}.'
+                f'{role_to_count}{"s" if inactive_count != 1 else ""} on record:\n- {inactive_listing}'
             )
-        answer = ' '.join(parts)
+        answer = '\n\n'.join(parts)
 
     return {
         'answer': answer,
@@ -1344,7 +1437,7 @@ def _list_records_by_customer(customer_name: str) -> dict:
         }
 
     record_count = len(record_rows)
-    items = [f'{r[1]} ({r[2]}): {r[3]}' for r in record_rows]
+    items = [f'{r[1]} ({_fmt_date(r[2])}): {r[3]}' for r in record_rows]
     listing = '\n- '.join(items)
 
     answer = f'Found {record_count} medical record{"s" if record_count != 1 else ""} for pets of customer {full_name}:\n- {listing}'
@@ -1399,10 +1492,10 @@ def _count_pets_by_customer(customer_name: str) -> dict:
     if count == 0:
         answer = f'Customer {full_name} has no pets on record.'
     else:
-        listing = ', '.join(
+        listing = '\n- '.join(
             f"{r[1]} ({r[2]}{', ' + r[3] if r[3] else ''})" for r in pet_rows
         )
-        answer = f'Customer {full_name} has {count} pet{"s" if count != 1 else ""}: {listing}.'
+        answer = f'Customer {full_name} has {count} pet{"s" if count != 1 else ""}:\n- {listing}'
 
     return {
         'answer': answer,
@@ -1441,8 +1534,8 @@ def _count_inventory_low_stock() -> dict:
     if count == 0:
         answer = 'No items are currently low on stock.'
     else:
-        listing = ', '.join(f'{r[1]} ({r[2]} left, reorder at {r[3]})' for r in rows)
-        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} low on stock: {listing}.'
+        listing = '\n- '.join(f'{r[1]} ({r[2]} left, reorder at {r[3]})' for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} low on stock:\n- {listing}'
 
     return {
         'answer': answer,
@@ -1472,8 +1565,8 @@ def _count_inventory_out_of_stock() -> dict:
     if count == 0:
         answer = 'No items are currently out of stock.'
     else:
-        listing = ', '.join(r[1] for r in rows)
-        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} out of stock: {listing}.'
+        listing = '\n- '.join(r[1] for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} {"is" if count == 1 else "are"} out of stock:\n- {listing}'
 
     return {
         'answer': answer,
@@ -1508,8 +1601,8 @@ def _list_inventory_expiring(days: int = 90) -> dict:
     if count == 0:
         answer = f'No items are expiring within the next {days} days.'
     else:
-        listing = ', '.join(f'{r[1]} (expires {r[2]}, {r[3]} left)' for r in rows)
-        answer = f'{count} item{"s" if count != 1 else ""} expiring within the next {days} days: {listing}.'
+        listing = '\n- '.join(f'{r[1]} (expires {_fmt_date(r[2])}, {r[3]} left)' for r in rows)
+        answer = f'{count} item{"s" if count != 1 else ""} expiring within the next {days} days:\n- {listing}'
 
     return {
         'answer': answer,
@@ -1547,7 +1640,10 @@ def _count_appointments_timeframe(timeframe: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in rows],
+        'sources': _summary_source(
+            'appointment_summary', f'appointments_{start.isoformat()}_{end.isoformat()}',
+            start_date=str(start), end_date=str(end), count=count
+        ),
         'chunks_used': 0,
         'structured': True
     }
@@ -1592,8 +1688,8 @@ def _list_appointments_timeframe(timeframe: str) -> dict:
     for appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last in rows:
         vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
         items.append(
-            f'{appt_date} {appt_time} - {pet_name} ({cust_first} {cust_last}){vet_str}, '
-            f'{status} - {reason}'
+            f'{_fmt_date(appt_date)} {_fmt_time(appt_time)} - {pet_name} ({cust_first} {cust_last}){vet_str}, '
+            f'{_fmt_status(status)} - {reason}'
         )
         sources.append({
             'source_type': 'appointment',
@@ -1652,7 +1748,7 @@ def _list_appointments_on_date(target_date: date) -> dict:
     sources = []
     for appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last in rows:
         vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
-        items.append(f'{appt_time} - {pet_name} ({cust_first} {cust_last}){vet_str}, {status} - {reason}')
+        items.append(f'{_fmt_time(appt_time)} - {pet_name} ({cust_first} {cust_last}){vet_str}, {_fmt_status(status)} - {reason}')
         sources.append({
             'source_type': 'appointment',
             'source_id': appt_id,
@@ -1713,13 +1809,13 @@ def _next_appointment_for_pet(pet_id: str) -> dict:
     appt_id, appt_date, appt_time, status, reason, pet_name, cust_first, cust_last, vet_first, vet_last = rows[0]
     vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
     answer = (
-        f"{pet_name}'s next appointment is on {appt_date} at {appt_time}{vet_str} "
-        f"({status}) - {reason}. Owner: {cust_first} {cust_last}."
+        f"{pet_name}'s next appointment is on {_fmt_date(appt_date)} at {_fmt_time(appt_time)}{vet_str} "
+        f"({_fmt_status(status)}) - {reason}. Owner: {cust_first} {cust_last}."
     )
 
     if len(rows) > 1:
         more = '\n- '.join(
-            f'{r[1]} {r[2]}' + (f' with Dr. {r[8]} {r[9]}' if r[8] else '') + f' ({r[3]}) - {r[4]}'
+            f'{_fmt_date(r[1])} {_fmt_time(r[2])}' + (f' with Dr. {r[8]} {r[9]}' if r[8] else '') + f' ({_fmt_status(r[3])}) - {r[4]}'
             for r in rows[1:]
         )
         answer += f'\n\nOther upcoming appointments:\n- {more}'
@@ -1770,11 +1866,11 @@ def _owner_next_appointment(customer_id: str, pet_id: str = None) -> dict:
 
     appt_id, appt_date, appt_time, status, reason, pet_name, vet_first, vet_last = rows[0]
     vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
-    answer = f'Your next appointment is on {appt_date} at {appt_time} for {pet_name}{vet_str} ({status}) - {reason}.'
+    answer = f'Your next appointment is on {_fmt_date(appt_date)} at {_fmt_time(appt_time)} for {pet_name}{vet_str} ({_fmt_status(status)}) - {reason}.'
 
     if len(rows) > 1:
         more = '\n- '.join(
-            f'{r[1]} {r[2]} - {r[5]}' + (f' with Dr. {r[6]} {r[7]}' if r[6] else '') + f' ({r[3]}) - {r[4]}'
+            f'{_fmt_date(r[1])} {_fmt_time(r[2])} - {r[5]}' + (f' with Dr. {r[6]} {r[7]}' if r[6] else '') + f' ({_fmt_status(r[3])}) - {r[4]}'
             for r in rows[1:]
         )
         answer += f'\n\nOther upcoming appointments:\n- {more}'
@@ -1823,7 +1919,7 @@ def _owner_appointments_timeframe(customer_id: str, timeframe: str) -> dict:
     sources = []
     for appt_id, appt_date, appt_time, status, reason, pet_name, vet_first, vet_last in rows:
         vet_str = f' with Dr. {vet_first} {vet_last}' if vet_first else ''
-        items.append(f'{appt_date} {appt_time} - {pet_name}{vet_str}, {status} - {reason}')
+        items.append(f'{_fmt_date(appt_date)} {_fmt_time(appt_time)} - {pet_name}{vet_str}, {_fmt_status(status)} - {reason}')
         sources.append({'source_type': 'appointment', 'source_id': appt_id, 'metadata': {'status': status}})
 
     count = len(rows)
@@ -1842,6 +1938,7 @@ def _owner_appointments_timeframe(customer_id: str, timeframe: str) -> dict:
 
 
 def _count_no_shows(timeframe: str = None) -> dict:
+    start = end = None
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -1863,9 +1960,10 @@ def _count_no_shows(timeframe: str = None) -> dict:
     suffix = f' {_normalize_timeframe(timeframe)}' if timeframe else ''
     answer = f'There {"was" if count == 1 else "were"} {count} no-show{"s" if count != 1 else ""}{suffix}.'
 
+    source_id = f'no_shows_{start.isoformat()}_{end.isoformat()}' if start else 'no_shows_all_time'
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'sources': _summary_source('appointment_summary', source_id, count=count, timeframe=timeframe),
         'chunks_used': 0,
         'structured': True
     }
@@ -1906,7 +2004,7 @@ def _count_appointments_by_vet(vet_name: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in appt_rows],
+        'sources': _summary_source('appointment_summary', f'appointments_by_vet_{vet_id}', vet_name=full_name, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1928,7 +2026,7 @@ def _count_appointments_by_status(status_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'sources': _summary_source('appointment_summary', f'appointments_status_{status}', status=status, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1952,7 +2050,7 @@ def _count_disease_cases_contagious() -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', 'disease_cases_contagious', count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1973,7 +2071,7 @@ def _count_disease_cases_by_category(category_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', f'disease_cases_category_{category}', category=category, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1994,7 +2092,7 @@ def _count_disease_cases_by_severity(severity_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', f'disease_cases_severity_{severity}', severity=severity, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2018,14 +2116,20 @@ def _count_unpaid_bills() -> dict:
 
     count = len(rows)
     if count == 0:
-        answer = 'There are no unpaid bills.'
+        answer = 'There are no outstanding bills.'
     else:
         total_outstanding = sum(r[2] for r in rows)
-        answer = f'There {"is" if count == 1 else "are"} {count} unpaid bill{"s" if count != 1 else ""}, totaling Rs. {total_outstanding:.2f} outstanding.'
+        # "unpaid" is only one of the three statuses this query covers - a
+        # partially-paid bill has money on it already, so calling it
+        # "unpaid" is wrong, not just imprecise.
+        answer = (
+            f'There {"is" if count == 1 else "are"} {count} outstanding bill{"s" if count != 1 else ""} '
+            f'(unpaid, partially paid, or overdue), totaling {_fmt_money(total_outstanding)}.'
+        )
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'sources': _summary_source('billing_summary', 'unpaid_bills', count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2048,11 +2152,22 @@ def _sum_revenue_timeframe(timeframe: str) -> dict:
         conn.close()
 
     total = sum(r[1] for r in rows) if rows else 0
-    answer = f'Total revenue collected {_normalize_timeframe(timeframe)} is Rs. {total:.2f} across {len(rows)} bill{"s" if len(rows) != 1 else ""}.'
+    # "across N bills" must count bills that actually contributed money, not
+    # every bill in the date range - a bill with paid_amount = 0 didn't add
+    # to the total, so counting it here would overstate how many bills the
+    # revenue figure came from.
+    contributing = [r for r in rows if r[1] and float(r[1]) > 0]
+    answer = (
+        f'Total revenue collected {_normalize_timeframe(timeframe)} is {_fmt_money(total)} '
+        f'across {len(contributing)} bill{"s" if len(contributing) != 1 else ""} with a payment recorded.'
+    )
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'sources': _summary_source(
+            'billing_summary', f'revenue_{start.isoformat()}_{end.isoformat()}',
+            start_date=str(start), end_date=str(end), bill_count=len(contributing)
+        ),
         'chunks_used': 0,
         'structured': True
     }
@@ -2073,7 +2188,7 @@ def _count_bills_by_payment_method(method_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'sources': _summary_source('billing_summary', f'bills_method_{method}', payment_method=method, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2136,12 +2251,12 @@ def _customer_balance(customer_name: str) -> dict:
         }
 
     total_owed = sum(r[2] for r in rows)
-    listing = ', '.join(
-        f'{r[1]} (Rs. {r[2]:.2f}{", due " + str(r[3]) if r[3] else ""})' for r in rows
+    listing = '\n- '.join(
+        f'{r[1]} - {_fmt_money(r[2])}{f", due {_fmt_date(r[3])}" if r[3] else ""}' for r in rows
     )
     answer = (
-        f'{full_name} owes Rs. {total_owed:.2f} in total across {len(rows)} unpaid bill'
-        f'{"s" if len(rows) != 1 else ""}: {listing}.'
+        f'{full_name} owes {_fmt_money(total_owed)} in total across {len(rows)} outstanding bill'
+        f'{"s" if len(rows) != 1 else ""} (unpaid, partially paid, or overdue):\n- {listing}'
     )
 
     return {
@@ -2190,8 +2305,8 @@ def _customer_payment_status(customer_name: str) -> dict:
         }
 
     items = [
-        f'{bill_number} ({bill_date}): {payment_status.replace("_", " ")}'
-        + (f', balance Rs. {balance_amount:.2f}' if balance_amount and float(balance_amount) > 0 else '')
+        f'{bill_number} ({_fmt_date(bill_date)}): {payment_status.replace("_", " ")}'
+        + (f', balance {_fmt_money(balance_amount)}' if balance_amount and float(balance_amount) > 0 else '')
         for _, bill_number, payment_status, _, balance_amount, bill_date in rows
     ]
     answer = f'Payment status for {full_name}:\n- ' + '\n- '.join(items)
@@ -2232,12 +2347,12 @@ def _owner_balance(customer_id: str) -> dict:
         }
 
     total_owed = sum(r[2] for r in rows)
-    listing = ', '.join(
-        f'{r[1]} (Rs. {r[2]:.2f}{", due " + str(r[3]) if r[3] else ""})' for r in rows
+    listing = '\n- '.join(
+        f'{r[1]} - {_fmt_money(r[2])}{f", due {_fmt_date(r[3])}" if r[3] else ""}' for r in rows
     )
     answer = (
-        f'You owe Rs. {total_owed:.2f} in total across {len(rows)} unpaid bill'
-        f'{"s" if len(rows) != 1 else ""}: {listing}.'
+        f'You owe {_fmt_money(total_owed)} in total across {len(rows)} outstanding bill'
+        f'{"s" if len(rows) != 1 else ""} (unpaid, partially paid, or overdue):\n- {listing}'
     )
 
     return {
@@ -2274,8 +2389,8 @@ def _owner_payment_status(customer_id: str) -> dict:
         }
 
     items = [
-        f'{bill_number} ({bill_date}): {payment_status.replace("_", " ")}'
-        + (f', balance Rs. {balance_amount:.2f}' if balance_amount and float(balance_amount) > 0 else '')
+        f'{bill_number} ({_fmt_date(bill_date)}): {payment_status.replace("_", " ")}'
+        + (f', balance {_fmt_money(balance_amount)}' if balance_amount and float(balance_amount) > 0 else '')
         for _, bill_number, payment_status, _, balance_amount, bill_date in rows
     ]
     answer = 'Your payment status:\n- ' + '\n- '.join(items)
@@ -2312,7 +2427,11 @@ def _estimate_price_by_appointment_type(appointment_type: str) -> dict:
                 return {
                     'answer': (
                         f'Based on {bill_count} past bill{"s" if bill_count != 1 else ""}, a {type_display} '
-                        f'appointment costs an average of Rs. {float(avg_total):.2f}. This is a historical '
+                        # Rounded to the nearest rupee, not decimals=2 - an
+                        # average of a handful of bills doesn't justify
+                        # cent-level precision, and showing it invites
+                        # someone to read it as an exact quote.
+                        f'appointment costs an average of {_fmt_money(avg_total, decimals=0)}. This is a historical '
                         f'average, not a fixed price or quote - the actual cost depends on the specific visit.'
                     ),
                     'sources': [],
@@ -2335,7 +2454,7 @@ def _estimate_price_by_appointment_type(appointment_type: str) -> dict:
             'answer': (
                 f'There\'s no billing history yet for {type_display} appointments, but based on '
                 f'{estimate_count} past appointment estimate{"s" if estimate_count != 1 else ""}, expect '
-                f'around Rs. {float(avg_estimate):.2f}. This is an estimate, not a fixed price.'
+                f'around {_fmt_money(avg_estimate, decimals=0)}. This is an estimate, not a fixed price.'
             ),
             'sources': [],
             'chunks_used': 0,
@@ -2389,49 +2508,25 @@ def _count_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None)
             pet_name = pet_row[0]
             owner_name = f'{pet_row[1]} {pet_row[2]}'
 
-            if role in STAFF_ROLES:
-                cur.execute(
-                    """
-                    SELECT v.vaccination_id, v.vaccine_name, v.vaccination_date
-                    FROM vaccinations v
-                    WHERE v.pet_id = %s
-                    ORDER BY v.vaccination_date ASC, v.vaccination_id ASC
-                    """,
-                    (pet_id,)
-                )
-            elif role == 'pet_owner' and customer_id:
-                cur.execute(
-                    """
-                    SELECT v.vaccination_id, v.vaccine_name, v.vaccination_date
-                    FROM vaccinations v
-                    WHERE v.pet_id = %s
-                    ORDER BY v.vaccination_date ASC, v.vaccination_id ASC
-                    """,
-                    (pet_id,)
-                )
+            if role in STAFF_ROLES or (role == 'pet_owner' and customer_id):
+                # Only the count is needed now that the answer no longer
+                # lists individual doses - COUNT(*) instead of fetching
+                # every row just to call len() on it.
+                cur.execute("SELECT COUNT(*) FROM vaccinations WHERE pet_id = %s", (pet_id,))
             else:
                 return None
 
-            rows = cur.fetchall()
+            count = cur.fetchone()[0]
     finally:
         conn.close()
 
-    count = len(rows)
-    answer = f'{pet_name} (owner: {owner_name}) has had {count} vaccination record{"s" if count != 1 else ""} so far.'
+    # "dose", not "record" - same ambiguity _list_vaccinations_for_pet used
+    # to have (a "record" could mean a row or a distinct vaccine).
+    answer = f'{pet_name} (owner: {owner_name}) has had {count} vaccination dose{"s" if count != 1 else ""} so far.'
 
     return {
         'answer': answer,
-        'sources': [
-            {
-                'source_type': 'vaccination',
-                'source_id': r[0],
-                'metadata': {
-                    'vaccine_name': r[1],
-                    'vaccination_date': str(r[2]) if r[2] else None,
-                }
-            }
-            for r in rows
-        ],
+        'sources': _summary_source('vaccination_summary', f'vaccination_count_{pet_id}', pet_name=pet_name, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2484,7 +2579,7 @@ def _list_records_by_pet(pet_id: str, role: str, customer_id: str = None) -> dic
         }
 
     record_count = len(record_rows)
-    items = [f'{r[1]} - {r[2]} (Complaint: {r[3]})' for r in record_rows]
+    items = [f'{_fmt_date(r[1])} - {r[2]} (Complaint: {r[3]})' for r in record_rows]
     listing = '\n- '.join(items)
 
     answer = f'Found {record_count} medical record{"s" if record_count != 1 else ""} for pet {pet_name} (owner: {owner_name}):\n- {listing}'
@@ -2565,12 +2660,14 @@ def _list_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None) 
     items = []
     for vaccine_name, vaccine_type, first_date, dose_count in rows:
         type_text = f' ({vaccine_type})' if vaccine_type else ''
+        date_str = _fmt_date(first_date) if first_date else 'date unknown'
         if dose_count > 1:
-            items.append(f'{vaccine_name}{type_text} ({dose_count} records)')
+            items.append(f'{vaccine_name}{type_text} - {dose_count} doses, first given {date_str}')
         else:
-            items.append(f'{vaccine_name}{type_text}')
+            items.append(f'{vaccine_name}{type_text} - given {date_str}')
 
-    answer = f'{pet_name} (owner: {owner_name}) has received: ' + '; '.join(items) + '.'
+    listing = '\n- '.join(items)
+    answer = f'{pet_name} (owner: {owner_name}) has received:\n- {listing}'
 
     return {
         'answer': answer,
