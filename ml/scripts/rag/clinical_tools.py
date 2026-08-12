@@ -76,8 +76,14 @@ def _strip_pet_name_prefix(reply: str, pet_name: str) -> str:
 # ============================================================
 
 FULL_HISTORY_SUMMARY = re.compile(
-    r'\bsummar(?:y|ize|ise)\b.*\bhistory\b|\bhistory\b.*\bsummar(?:y|ize|ise)\b|'
-    r'\b(?:full|complete|entire|whole)\b.*\bhistory\b',
+    r'\bsummar(?:y|ize|ise)\b.*\b(?:history|health)\b|\b(?:history|health)\b.*\bsummar(?:y|ize|ise)\b|'
+    r'\b(?:full|complete|entire|whole)\b.*\bhistory\b|'
+    # "current health condition/status", "how is X's health" etc - phrasings
+    # that ask for a health summary without literally saying "history". Kept
+    # to explicit "health" wording (not a bare "how is X doing") so this
+    # doesn't fire on unrelated clinic questions ("how is revenue doing").
+    r'\b(?:current\s+)?health\s+(?:condition|status)\b|\bhow\s+(?:is|\'s)\b.{0,40}\bhealth\b|'
+    r'\bhow\s+healthy\b',
     re.IGNORECASE
 )
 DRAFT_CONSULTATION_NOTE = re.compile(
@@ -119,6 +125,7 @@ def _has_enough_detail(text: str, min_words: int = 6) -> bool:
 MAX_RECORDS = 30
 MAX_VACCINATIONS = 20
 MAX_LAB_REPORTS = 20
+MAX_DISEASE_CASES = 20
 
 
 def _fetch_pet_profile(cur, pet_id: str):
@@ -176,7 +183,22 @@ def _fetch_lab_reports(cur, pet_id: str, limit: int = MAX_LAB_REPORTS):
     return cur.fetchall()
 
 
-def _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_reports=None) -> str:
+def _fetch_disease_cases(cur, pet_id: str, limit: int = MAX_DISEASE_CASES):
+    cur.execute(
+        """
+        SELECT disease_name, disease_category, diagnosis_date, severity, outcome,
+               requires_followup, next_followup_date, notes
+        FROM disease_cases
+        WHERE pet_id = %s
+        ORDER BY diagnosis_date DESC
+        LIMIT %s
+        """,
+        (pet_id, limit)
+    )
+    return cur.fetchall()
+
+
+def _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_reports=None, disease_cases=None) -> str:
     pet_name, species, breed, gender, dob, weight, is_neutered, allergies, special_needs = pet_profile
 
     lines = [f"Pet: {pet_name} ({species}{', ' + breed if breed else ''}, {gender or 'unknown gender'})"]
@@ -189,6 +211,30 @@ def _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_repor
         lines.append(f"Known allergies: {allergies}")
     if special_needs:
         lines.append(f"Special needs: {special_needs}")
+
+    # Diagnosed disease cases carry the status fields (severity/outcome/
+    # follow-up) that a medical record's free-text diagnosis doesn't - placed
+    # first and flagged explicitly so an UNRESOLVED case can't get missed or
+    # summarized as if the pet were currently healthy.
+    if disease_cases is not None:
+        lines.append("")
+        lines.append(f"Diagnosed disease cases ({len(disease_cases)}, most recent first):")
+        if not disease_cases:
+            lines.append("- none on file")
+        for (disease_name, disease_category, diagnosis_date, severity, outcome,
+             requires_followup, next_followup_date, notes) in disease_cases:
+            is_unresolved = outcome in ('ongoing_treatment', 'chronic')
+            entry = (
+                f"- {diagnosis_date}: {disease_name}"
+                f"{' (' + disease_category + ')' if disease_category else ''}; "
+                f"severity: {severity or 'n/a'}; status: {outcome or 'n/a'}"
+                f"{' — STILL UNRESOLVED, not recovered' if is_unresolved else ''}"
+            )
+            if requires_followup:
+                entry += f"; follow-up required{' by ' + str(next_followup_date) if next_followup_date else ''}"
+            if notes:
+                entry += f"; notes: {notes}"
+            lines.append(entry)
 
     lines.append("")
     lines.append(f"Medical records ({len(records)}, most recent first):")
@@ -248,8 +294,12 @@ You must follow these rules strictly:
 or details not present.
 2. This is decision support only - you are not making a diagnosis or treatment recommendation. \
 Present facts from the records; let the veterinarian draw clinical conclusions.
-3. Organize the summary clearly: overall pattern/timeline first, then flag anything that stands out \
-(recurring issues, allergies, adverse reactions, overdue follow-ups or vaccinations).
+3. STRICT RULE - if any entry in "Diagnosed disease cases" is marked STILL UNRESOLVED, you MUST lead \
+the summary with that fact (e.g. "Currently under treatment for X since <date>") before any overall \
+pattern/timeline. Never describe a pet as healthy, stable, or having "no significant issues" while an \
+unresolved case is on file, even if other recent visits (routine checkups, vaccinations) look normal - \
+those don't override an open case. After that, flag anything else that stands out (recurring issues, \
+allergies, adverse reactions, overdue follow-ups or vaccinations).
 4. Use clinical terminology appropriate for a veterinary professional audience.
 5. Format for skimming: a short lead-in sentence at most, then "- " bullet points \
 grouped by topic (e.g. vaccinations, medical records, flagged issues) - not a \
@@ -308,9 +358,12 @@ rules strictly:
 2. This is decision support only, not a diagnosis - surface what the vet should be aware of before \
 the visit: known allergies, special needs, past adverse reactions, recent/ongoing issues, overdue \
 vaccinations or follow-ups, and current medication if a recent prescription is on file.
-3. Keep it short and scannable - a few bullet points, not a full history retelling.
-4. This clinic operates in Sri Lanka - always use metric units. Never use pounds, Fahrenheit, or inches.
-5. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
+3. STRICT RULE - if any entry in "Diagnosed disease cases" is marked STILL UNRESOLVED, lead with it - \
+that's the single most important thing for the vet to know walking into the room, ahead of routine \
+checkup history.
+4. Keep it short and scannable - a few bullet points, not a full history retelling.
+5. This clinic operates in Sri Lanka - always use metric units. Never use pounds, Fahrenheit, or inches.
+6. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never "$", "USD", or "dollars".
 """
 
 
@@ -336,10 +389,11 @@ def _resolve_full_history_summary(pet_id: str, observations_text: str) -> dict:
             records = _fetch_medical_records(cur, pet_id)
             vaccinations = _fetch_vaccinations(cur, pet_id)
             lab_reports = _fetch_lab_reports(cur, pet_id)
+            disease_cases = _fetch_disease_cases(cur, pet_id)
     finally:
         conn.close()
 
-    dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_reports)
+    dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_reports, disease_cases)
     user_prompt = f"Full record for this pet:\n\n{dataset_text}\n\nWrite a summary of this pet's complete medical history for the veterinarian."
 
     try:
@@ -438,10 +492,11 @@ def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str) -> di
                 return {'answer': "I couldn't find that pet's record.", 'structured': True}
             records = _fetch_medical_records(cur, pet_id)
             vaccinations = _fetch_vaccinations(cur, pet_id)
+            disease_cases = _fetch_disease_cases(cur, pet_id)
     finally:
         conn.close()
 
-    dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations)
+    dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, disease_cases=disease_cases)
     user_prompt = f"Record for this pet:\n\n{dataset_text}\n\nGive the veterinarian a short pre-visit briefing for today's appointment."
 
     try:

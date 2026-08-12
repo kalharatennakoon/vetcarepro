@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { askAssistant, confirmAiAction } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -70,6 +71,8 @@ const DEFAULT_INTRO =
 
 const AIAssistant = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const isVeterinarian = user?.role === 'veterinarian';
   const isReceptionist = user?.role === 'receptionist';
   const [messages, setMessages] = useState([
@@ -153,6 +156,20 @@ const AIAssistant = () => {
       setLoading(false);
     }
   };
+
+  // Arriving from the header's "quick ask" popup: send the typed question
+  // immediately, then clear the router state so refreshing/navigating back
+  // doesn't resend it. Guarded by a ref (not just the state clear) because
+  // StrictMode double-invokes this effect in dev - without it, the second
+  // invocation would still see the original location.state and resend.
+  const initialQuestionHandledRef = useRef(false);
+  useEffect(() => {
+    const initialQuestion = location.state?.initialQuestion;
+    if (!initialQuestion || initialQuestionHandledRef.current) return;
+    initialQuestionHandledRef.current = true;
+    sendQuestion(initialQuestion);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, []);
 
   const handleConfirmAction = async (messageIndex) => {
     const target = messages[messageIndex];
@@ -313,7 +330,7 @@ const AIAssistant = () => {
         {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}
 
         {messages.length <= 1 && (
-          <div className="ai-suggested-prompts ai-modern-prompts">
+          <div className={`ai-suggested-prompts ai-modern-prompts${isVeterinarian ? ' ai-modern-prompts-grid' : ''}`}>
             {suggestedPrompts.map((p) => (
               <button key={p} className="ai-modern-prompt-btn" onClick={() => sendQuestion(p)}>
                 <i className="fas fa-lightbulb"></i> {p}

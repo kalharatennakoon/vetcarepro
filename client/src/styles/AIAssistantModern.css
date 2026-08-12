@@ -219,6 +219,25 @@
   gap: 0.5rem;
 }
 
+/* Veterinarian's 4 prompts are full sentences of uneven length - left-aligned
+   flex-wrap left them ragged, with rows starting/ending at different widths.
+   A 2-column grid keeps both columns equal width so rows line up cleanly. */
+.ai-modern-prompts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.ai-modern-prompts-grid .ai-modern-prompt-btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .ai-modern-prompts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ai-modern-prompt-btn {
   display: inline-flex;
   align-items: center;

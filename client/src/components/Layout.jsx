@@ -14,18 +14,29 @@ const Layout = ({ children }) => {
   const [hoveredNavItem, setHoveredNavItem] = useState(null);
   const [showAiTooltip, setShowAiTooltip] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [showAiQuickAsk, setShowAiQuickAsk] = useState(false);
+  const [aiQuickQuestion, setAiQuickQuestion] = useState('');
   const profileMenuRef = useRef(null);
+  const aiQuickAskRef = useRef(null);
+  const aiQuickAskInputRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
       }
+      if (aiQuickAskRef.current && !aiQuickAskRef.current.contains(event.target)) {
+        setShowAiQuickAsk(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (showAiQuickAsk) aiQuickAskInputRef.current?.focus();
+  }, [showAiQuickAsk]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -56,6 +67,16 @@ const Layout = ({ children }) => {
 
   const handleNavigation = (path) => {
     navigate(path);
+    closeMobileMenu();
+  };
+
+  const handleAiQuickAskSubmit = (e) => {
+    e.preventDefault();
+    const question = aiQuickQuestion.trim();
+    if (!question) return;
+    navigate('/ai-assistant', { state: { initialQuestion: question } });
+    setAiQuickQuestion('');
+    setShowAiQuickAsk(false);
     closeMobileMenu();
   };
 
@@ -124,18 +145,44 @@ const Layout = ({ children }) => {
           {/* AI Assistant Shortcut */}
           <div
             style={styles.aiAssistantWrapper}
-            onMouseEnter={() => setShowAiTooltip(true)}
+            ref={aiQuickAskRef}
+            onMouseEnter={() => !showAiQuickAsk && setShowAiTooltip(true)}
             onMouseLeave={() => setShowAiTooltip(false)}
           >
             <button
               style={styles.aiAssistantButton}
-              onClick={() => handleNavigation('/ai-assistant')}
-              aria-label="Open AI Assistant"
+              onClick={() => { setShowAiTooltip(false); setShowAiQuickAsk((open) => !open); }}
+              aria-label="Ask the AI Assistant"
+              aria-expanded={showAiQuickAsk}
             >
               <i className="fas fa-wand-magic-sparkles"></i>
             </button>
-            {showAiTooltip && (
+            {showAiTooltip && !showAiQuickAsk && (
               <span style={styles.aiAssistantTooltip}>AI Assistant</span>
+            )}
+            {showAiQuickAsk && (
+              <form style={styles.aiQuickAskPopup} onSubmit={handleAiQuickAskSubmit}>
+                <label style={styles.aiQuickAskLabel}>Ask the AI Assistant</label>
+                <div style={styles.aiQuickAskInputRow}>
+                  <input
+                    ref={aiQuickAskInputRef}
+                    type="text"
+                    value={aiQuickQuestion}
+                    onChange={(e) => setAiQuickQuestion(e.target.value)}
+                    placeholder="Type your question..."
+                    style={styles.aiQuickAskInput}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setShowAiQuickAsk(false); }}
+                  />
+                  <button
+                    type="submit"
+                    style={{ ...styles.aiQuickAskSendBtn, opacity: aiQuickQuestion.trim() ? 1 : 0.5, cursor: aiQuickQuestion.trim() ? 'pointer' : 'default' }}
+                    disabled={!aiQuickQuestion.trim()}
+                    aria-label="Send question"
+                  >
+                    <i className="fas fa-paper-plane"></i>
+                  </button>
+                </div>
+              </form>
             )}
           </div>
 
@@ -478,6 +525,59 @@ const styles = {
     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
     zIndex: 1002,
     pointerEvents: 'none',
+  },
+  aiQuickAskPopup: {
+    position: 'absolute',
+    top: '120%',
+    right: 0,
+    width: '300px',
+    maxWidth: '85vw',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '14px',
+    boxShadow: '0 12px 28px -8px rgba(15, 23, 42, 0.25)',
+    padding: '0.85rem',
+    zIndex: 1002,
+  },
+  aiQuickAskLabel: {
+    display: 'block',
+    fontSize: '0.72rem',
+    fontWeight: '700',
+    color: '#6d28d9',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    marginBottom: '0.5rem',
+  },
+  aiQuickAskInputRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    backgroundColor: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: '999px',
+    padding: '0.3rem 0.3rem 0.3rem 0.9rem',
+  },
+  aiQuickAskInput: {
+    flex: 1,
+    border: 'none',
+    outline: 'none',
+    backgroundColor: 'transparent',
+    fontSize: '0.85rem',
+    padding: '0.4rem 0',
+    color: '#111827',
+  },
+  aiQuickAskSendBtn: {
+    width: '32px',
+    height: '32px',
+    flexShrink: 0,
+    borderRadius: '50%',
+    border: 'none',
+    background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
   },
   userInfo: {
     display: 'flex',
