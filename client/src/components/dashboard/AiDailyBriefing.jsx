@@ -64,11 +64,14 @@ const AiDailyBriefing = () => {
 
 const styles = {
   card: {
-    background: 'linear-gradient(135deg, #faf5ff 0%, #eff6ff 100%)',
-    border: '1px solid #e9d5ff',
+    background: 'linear-gradient(135deg, #f5ebff 0%, #eaf0ff 100%)',
+    border: '1px solid #d8b4fe',
+    borderLeft: '4px solid #7c3aed',
     borderRadius: '12px',
     padding: '1rem 1.25rem',
-    marginBottom: '1.25rem',
+    height: '100%',
+    boxSizing: 'border-box',
+    boxShadow: '0 4px 16px -6px rgba(124, 58, 237, 0.35)',
   },
   header: {
     display: 'flex',
@@ -85,20 +88,21 @@ const styles = {
     width: '30px',
     height: '30px',
     borderRadius: '8px',
-    backgroundColor: '#f3e8ff',
+    background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
+    boxShadow: '0 3px 8px -2px rgba(124, 58, 237, 0.6)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   icon: {
-    color: '#7c3aed',
+    color: '#fff',
     fontSize: '14px',
   },
   title: {
     margin: 0,
-    fontSize: '0.9rem',
-    fontWeight: '700',
+    fontSize: '0.92rem',
+    fontWeight: '800',
     color: '#4c1d95',
   },
   loadingRow: {

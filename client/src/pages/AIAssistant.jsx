@@ -224,7 +224,13 @@ const AIAssistant = () => {
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role} ai-modern-message`}>
               <div className={`ai-modern-avatar ai-modern-avatar-${m.role}`}>
-                <i className={`fas ${m.role === 'assistant' ? 'fa-robot' : 'fa-user'}`}></i>
+                {m.role === 'assistant' ? (
+                  <i className="fas fa-robot"></i>
+                ) : user?.profile_image ? (
+                  <img src={`http://localhost:3000/uploads/${user.profile_image}`} alt="You" />
+                ) : (
+                  <span>{user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}</span>
+                )}
               </div>
               <div className={`ai-message-bubble ai-modern-bubble${m.intro ? ' ai-modern-intro' : ''}`}>
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}

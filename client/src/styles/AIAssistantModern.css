@@ -42,7 +42,7 @@
 
 .ai-modern-subtitle {
   margin-top: 0.2rem;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: #9ca3af;
   font-weight: 500;
 }
@@ -88,6 +88,18 @@
   align-items: center;
   justify-content: center;
   font-size: 0.7rem;
+  overflow: hidden;
+}
+
+.ai-modern-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-modern-avatar span {
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .ai-modern-avatar-assistant {
@@ -103,7 +115,8 @@
 .ai-modern-bubble {
   max-width: calc(100% - 3rem);
   border-radius: 16px;
-  font-size: 0.85rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
   box-shadow: none;
 }
 
@@ -121,7 +134,7 @@
 /* Intro/guidance message - de-emphasized so it reads as a small helper
    note rather than a full reply. */
 .ai-modern-intro {
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   color: #6b7280;
   background: #fafafa;
 }
@@ -136,13 +149,13 @@
 }
 
 .ai-modern-bubble .ai-message-list {
-  font-size: 0.85rem;
+  font-size: 0.98rem;
 }
 
 /* Sources */
 
 .ai-modern-sources {
-  font-size: 0.68rem;
+  font-size: 0.74rem;
   color: #9ca3af;
 }
 
@@ -214,7 +227,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 999px;
   padding: 0.4rem 0.85rem;
-  font-size: 0.76rem;
+  font-size: 0.84rem;
   color: #4b5563;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
@@ -254,6 +267,7 @@
   border: none !important;
   outline: none;
   padding: 0.6rem 0.5rem !important;
+  font-size: 0.95rem;
   background: transparent;
   border-radius: 0 !important;
 }

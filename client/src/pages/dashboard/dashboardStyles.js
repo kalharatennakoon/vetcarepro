@@ -1,5 +1,9 @@
 // Shared style objects extracted verbatim from the former Dashboard.jsx
 // Used identically by AdminDashboard.jsx, VetDashboard.jsx, ReceptionistDashboard.jsx
+//
+// Quick-action pill buttons (with color + hover) live in
+// dashboardQuickActions.css as the `.dashboard-quick-action-btn` class,
+// since real :hover only works via CSS, not inline style objects.
 
 export const styles = {
   container: {

@@ -8,6 +8,7 @@ import AiDailyBriefing from '../components/dashboard/AiDailyBriefing';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { formatTime, getStatusBadge } from './dashboard/dashboardUtils';
 import { styles } from './dashboard/dashboardStyles';
+import './dashboard/dashboardQuickActions.css';
 
 const AdminDashboard = () => {
   const { user, logout, refreshUser } = useAuth();
@@ -65,67 +66,88 @@ const AdminDashboard = () => {
           </div>
         ) : (
           <>
-            <AiDailyBriefing />
-
-            {/* Universal Search */}
+            {/* AI Daily Briefing + Universal Search, side by side */}
             <div style={{
-              background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
-              border: '1px solid #bfdbfe',
-              borderRadius: '14px',
-              padding: '20px 24px',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '1.25rem',
               marginBottom: '24px',
-              boxShadow: '0 2px 8px rgba(59,130,246,0.08)'
+              alignItems: 'stretch',
             }}>
-              <div style={{ marginBottom: '10px' }}>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
-                  Search across customers, pets, appointments, billing, inventory, medical records, staff & suppliers
-                </p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <AiDailyBriefing />
               </div>
-              <UniversalSearch />
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+                border: '1px solid #93c5fd',
+                borderLeft: '4px solid #2563eb',
+                borderRadius: '14px',
+                padding: '20px 24px',
+                boxShadow: '0 4px 16px -6px rgba(37, 99, 235, 0.35)'
+              }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                    Search across customers, pets, appointments, billing, inventory, medical records, staff & suppliers
+                  </p>
+                </div>
+                <UniversalSearch />
+              </div>
             </div>
 
-            {/* Stats Cards */}
-            <div style={{...styles.statsGrid, gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)'}}>
-              {[
-                { label: 'TOTAL COLLECTED', value: `Rs. ${parseFloat(stats.adminTotalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: `Today: Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
-                { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${parseFloat(stats.adminOutstandingToday).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
-                { label: "TODAY'S APPOINTMENTS", value: stats.todayAppointments, sub: [stats.todayCompleted > 0 && `${stats.todayCompleted} completed`, stats.adminTodayInProgress > 0 && `${stats.adminTodayInProgress} in progress`, stats.waitingPatients > 0 && `${stats.waitingPatients} waiting`, stats.todayCancelled > 0 && `${stats.todayCancelled} cancelled`].filter(Boolean).join(' · '), border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
-                { label: 'PENDING INVOICES', value: stats.pendingInvoices, sub: stats.adminPendingDueToday > 0 ? `${stats.adminPendingDueToday} due today` : 'None due today', border: stats.pendingInvoices > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice', bg: 'white' },
-                { label: "TODAY'S EMERGENCIES", value: stats.urgentCases, sub: [stats.adminUrgentCompleted > 0 && `${stats.adminUrgentCompleted} completed`, stats.adminUrgentInProgress > 0 && `${stats.adminUrgentInProgress} in progress`].filter(Boolean).join(' · ') || 'No completions yet', border: stats.urgentCases > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.urgentCases > 0 ? '#fff7ed' : 'white', labelColor: stats.urgentCases > 0 ? '#dc2626' : '#6b7280' },
-                { label: 'LOW STOCK ALERTS', value: stats.lowStockItems, border: stats.lowStockItems > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#ede9fe', iconColor: '#7c3aed', icon: 'fa-boxes', bg: 'white' },
-              ].map(card => (
-                <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <div>
-                    <p style={{ fontSize: '0.7rem', fontWeight: '700', color: card.labelColor || '#6b7280', margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
-                    <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
-                    {card.sub && <p style={{ fontSize: '0.68rem', color: '#6b7280', margin: '0.25rem 0 0' }}>{card.sub}</p>}
+            {/* Stats Cards, with Quick Actions stacked to the right instead of on
+                their own row — these duplicate the left nav (which stays collapsed),
+                so they're kept compact rather than given their own highlighted row */}
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+              alignItems: 'stretch',
+            }}>
+              <div style={{...styles.statsGrid, gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', flex: 1, marginBottom: 0}}>
+                {[
+                  { label: 'TOTAL COLLECTED', value: `Rs. ${parseFloat(stats.adminTotalRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: `Today: Rs. ${parseFloat(stats.adminTodayRevenue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-coins', bg: 'white' },
+                  { label: 'OUTSTANDING PAYMENTS', value: `Rs. ${parseFloat(stats.adminOutstanding).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, sub: stats.adminOutstandingToday > 0 ? `Due today: Rs. ${parseFloat(stats.adminOutstandingToday).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'None due today', border: stats.adminOutstanding > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice-dollar', bg: 'white', labelColor: stats.adminOutstanding > 0 ? '#d97706' : '#6b7280' },
+                  { label: "TODAY'S APPOINTMENTS", value: stats.todayAppointments, sub: [stats.todayCompleted > 0 && `${stats.todayCompleted} completed`, stats.adminTodayInProgress > 0 && `${stats.adminTodayInProgress} in progress`, stats.waitingPatients > 0 && `${stats.waitingPatients} waiting`, stats.todayCancelled > 0 && `${stats.todayCancelled} cancelled`].filter(Boolean).join(' · '), border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
+                  { label: 'PENDING INVOICES', value: stats.pendingInvoices, sub: stats.adminPendingDueToday > 0 ? `${stats.adminPendingDueToday} due today` : 'None due today', border: stats.pendingInvoices > 0 ? '#f59e0b' : '#e5e7eb', iconBg: '#fef3c7', iconColor: '#d97706', icon: 'fa-file-invoice', bg: 'white' },
+                  { label: "TODAY'S EMERGENCIES", value: stats.urgentCases, sub: [stats.adminUrgentCompleted > 0 && `${stats.adminUrgentCompleted} completed`, stats.adminUrgentInProgress > 0 && `${stats.adminUrgentInProgress} in progress`].filter(Boolean).join(' · ') || 'No completions yet', border: stats.urgentCases > 0 ? '#ef4444' : '#e5e7eb', iconBg: '#fee2e2', iconColor: '#dc2626', icon: 'fa-exclamation-triangle', bg: stats.urgentCases > 0 ? '#fff7ed' : 'white', labelColor: stats.urgentCases > 0 ? '#dc2626' : '#6b7280' },
+                  { label: 'LOW STOCK ALERTS', value: stats.lowStockItems, border: stats.lowStockItems > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#ede9fe', iconColor: '#7c3aed', icon: 'fa-boxes', bg: 'white' },
+                ].map(card => (
+                  <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                    <div>
+                      <p style={{ fontSize: '0.7rem', fontWeight: '700', color: card.labelColor || '#6b7280', margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                      <p style={{ fontSize: '1.5rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
+                      {card.sub && <p style={{ fontSize: '0.68rem', color: '#6b7280', margin: '0.25rem 0 0' }}>{card.sub}</p>}
+                    </div>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
+                    </div>
                   </div>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Quick Actions */}
-            <div style={styles.vetQuickActionsContainer}>
-              <div style={styles.quickActionsGrid}>
-                <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
-                  <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
-                  <span style={styles.quickActionLabel}>Customers</span>
-                </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
-                  <i className="fas fa-paw" style={{...styles.quickActionIcon, color: '#f59e0b'}}></i>
-                  <span style={styles.quickActionLabel}>Pets</span>
-                </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/analytics')}>
-                  <i className="fas fa-chart-line" style={{...styles.quickActionIcon, color: '#10b981'}}></i>
-                  <span style={styles.quickActionLabel}>Analytics</span>
-                </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/users')}>
-                  <i className="fas fa-user-shield" style={{...styles.quickActionIcon, color: '#8b5cf6'}}></i>
-                  <span style={styles.quickActionLabel}>User Management</span>
-                </div>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: '0.6rem', justifyContent: 'center', flexShrink: 0 }}>
+                {[
+                  { label: 'Customers', icon: 'fa-users', path: '/customers', color: '#3b82f6' },
+                  { label: 'Pets', icon: 'fa-paw', path: '/pets', color: '#f59e0b' },
+                  { label: 'Analytics', icon: 'fa-chart-line', path: '/analytics', color: '#10b981' },
+                  { label: 'User Management', icon: 'fa-user-shield', path: '/users', color: '#8b5cf6' },
+                ].map(action => (
+                  <button
+                    key={action.label}
+                    onClick={() => navigate(action.path)}
+                    className="dashboard-quick-action-btn"
+                    style={{ '--qa-color': action.color }}
+                  >
+                    <i className={`fas ${action.icon}`}></i>
+                    <span>{action.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -365,7 +387,7 @@ const AdminDashboard = () => {
                   <div style={styles.sidebarHeader}>
                     <h4 style={styles.sidebarTitle}>Invoices to Generate</h4>
                     <span style={{...styles.badge2, backgroundColor: stats.pendingInvoiceAppointments.length > 0 ? '#fef3c7' : '#f3f4f6', color: stats.pendingInvoiceAppointments.length > 0 ? '#92400e' : '#6b7280'}}>
-                      {stats.pendingInvoiceAppointments.length} completed
+                      {stats.pendingInvoiceAppointments.length} awaiting invoice
                     </span>
                   </div>
                   <div style={styles.upcomingList}>

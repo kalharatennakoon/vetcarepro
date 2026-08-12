@@ -8,6 +8,7 @@ import AiDailyBriefing from '../components/dashboard/AiDailyBriefing';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import { formatTime, getStatusBadge } from './dashboard/dashboardUtils';
 import { styles } from './dashboard/dashboardStyles';
+import './dashboard/dashboardQuickActions.css';
 
 const ReceptionistDashboard = () => {
   const { user, logout, refreshUser } = useAuth();
@@ -65,80 +66,100 @@ const ReceptionistDashboard = () => {
           </div>
         ) : (
           <>
-            <AiDailyBriefing />
-
-            {/* Universal Search */}
+            {/* AI Daily Briefing + Universal Search, side by side */}
             <div style={{
-              background: 'linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%)',
-              border: '1px solid #bfdbfe',
-              borderRadius: '14px',
-              padding: '20px 24px',
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '1.25rem',
               marginBottom: '24px',
-              boxShadow: '0 2px 8px rgba(59,130,246,0.08)'
+              alignItems: 'stretch',
             }}>
-              <div style={{ marginBottom: '10px' }}>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
-                  Search across customers, pets, appointments, billing & inventory
-                </p>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <AiDailyBriefing />
               </div>
-              <UniversalSearch />
+              <div style={{
+                flex: 1,
+                minWidth: 0,
+                background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+                border: '1px solid #93c5fd',
+                borderLeft: '4px solid #2563eb',
+                borderRadius: '14px',
+                padding: '20px 24px',
+                boxShadow: '0 4px 16px -6px rgba(37, 99, 235, 0.35)'
+              }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                    Search across customers, pets, appointments, billing & inventory
+                  </p>
+                </div>
+                <UniversalSearch />
+              </div>
             </div>
 
-            {/* Stats Cards */}
-            <div style={styles.statsGrid}>
+            {/* Stats Cards + Quick Actions as four columns (2 cards + 2 cards + 4
+                buttons + 3 buttons) — keeps the cards at their natural height
+                instead of being stretched to match a single tall button stack.
+                Actions duplicate the left nav (which stays collapsed), so they're
+                kept compact rather than given their own highlighted row. */}
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: '1rem',
+              marginBottom: '1.5rem',
+              alignItems: 'flex-start',
+            }}>
               {[
-                { label: 'Appointments Today', value: stats.todayAppointments, border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
-                { label: 'Total Customers', value: stats.totalCustomers, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-users', bg: 'white' },
-                { label: 'Active Patients', value: stats.activePets, border: '#f59e0b', iconBg: '#fed7aa', iconColor: '#c2410c', icon: 'fa-paw', bg: 'white' },
-                { label: 'Pending Invoices', value: stats.pendingInvoices, border: stats.pendingInvoices > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#e9d5ff', iconColor: '#7c3aed', icon: 'fa-file-invoice-dollar', bg: 'white' },
-              ].map(card => (
-                <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <div>
-                    <p style={{ fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', margin: '0 0 0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
-                    <p style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
-                  </div>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
-                  </div>
+                [
+                  { label: 'Appointments Today', value: stats.todayAppointments, border: '#3b82f6', iconBg: '#dbeafe', iconColor: '#1e40af', icon: 'fa-calendar-check', bg: 'white' },
+                  { label: 'Total Customers', value: stats.totalCustomers, border: '#10b981', iconBg: '#d1fae5', iconColor: '#065f46', icon: 'fa-users', bg: 'white' },
+                ],
+                [
+                  { label: 'Active Patients', value: stats.activePets, border: '#f59e0b', iconBg: '#fed7aa', iconColor: '#c2410c', icon: 'fa-paw', bg: 'white' },
+                  { label: 'Pending Invoices', value: stats.pendingInvoices, border: stats.pendingInvoices > 0 ? '#8b5cf6' : '#e5e7eb', iconBg: '#e9d5ff', iconColor: '#7c3aed', icon: 'fa-file-invoice-dollar', bg: 'white' },
+                ],
+              ].map((column, i) => (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {column.map(card => (
+                    <div key={card.label} style={{ backgroundColor: card.bg, borderRadius: '12px', padding: '0.85rem 1.1rem', border: '1px solid #e5e7eb', borderLeft: `4px solid ${card.border}`, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+                      <div>
+                        <p style={{ fontSize: '0.7rem', fontWeight: '700', color: '#6b7280', margin: '0 0 0.3rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</p>
+                        <p style={{ fontSize: '1.75rem', fontWeight: '700', color: '#111827', margin: 0, lineHeight: 1 }}>{card.value}</p>
+                      </div>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <i className={`fas ${card.icon}`} style={{ fontSize: '17px', color: card.iconColor }}></i>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
-            </div>
 
-            {/* Quick Actions */}
-            <div style={styles.vetQuickActionsContainer}>
-              <div style={{display: 'flex', gap: '1rem', marginBottom: '1rem'}}>
-                <button onClick={() => navigate('/appointments/new')} style={styles.primaryButton}>
-                  <i className="fas fa-calendar-plus"></i>
-                  <span>New Appointment</span>
-                </button>
-                <button onClick={() => navigate('/customers/new')} style={styles.secondaryButton}>
-                  <i className="fas fa-user-plus" style={{color: '#8b5cf6'}}></i>
-                  <span>New Customer</span>
-                </button>
-                <button onClick={() => navigate('/billing/new')} style={styles.secondaryButton}>
-                  <i className="fas fa-cash-register" style={{color: '#6b7280'}}></i>
-                  <span>New Invoice</span>
-                </button>
-              </div>
-
-              <div style={styles.quickActionsGrid}>
-                <div style={styles.quickActionCard} onClick={() => navigate('/appointments')}>
-                  <i className="fas fa-calendar-alt" style={{...styles.quickActionIcon, color: '#3b82f6'}}></i>
-                  <span style={styles.quickActionLabel}>Appointments</span>
+              {[
+                [
+                  { label: 'New Appointment', icon: 'fa-calendar-plus', path: '/appointments/new', color: '#2563eb' },
+                  { label: 'New Customer', icon: 'fa-user-plus', path: '/customers/new', color: '#8b5cf6' },
+                  { label: 'New Invoice', icon: 'fa-cash-register', path: '/billing/new', color: '#0d9488' },
+                  { label: 'Appointments', icon: 'fa-calendar-alt', path: '/appointments', color: '#3b82f6' },
+                ],
+                [
+                  { label: 'Customers', icon: 'fa-users', path: '/customers', color: '#10b981' },
+                  { label: 'Patients', icon: 'fa-paw', path: '/pets', color: '#f59e0b' },
+                  { label: 'Billing', icon: 'fa-file-invoice-dollar', path: '/billing', color: '#8b5cf6' },
+                ],
+              ].map((column, i) => (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', flexShrink: 0, alignSelf: 'center' }}>
+                  {column.map(action => (
+                    <button
+                      key={action.label}
+                      onClick={() => navigate(action.path)}
+                      className="dashboard-quick-action-btn"
+                      style={{ '--qa-color': action.color }}
+                    >
+                      <i className={`fas ${action.icon}`}></i>
+                      <span>{action.label}</span>
+                    </button>
+                  ))}
                 </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/customers')}>
-                  <i className="fas fa-users" style={{...styles.quickActionIcon, color: '#10b981'}}></i>
-                  <span style={styles.quickActionLabel}>Customers</span>
-                </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/pets')}>
-                  <i className="fas fa-paw" style={{...styles.quickActionIcon, color: '#f59e0b'}}></i>
-                  <span style={styles.quickActionLabel}>Patients</span>
-                </div>
-                <div style={styles.quickActionCard} onClick={() => navigate('/billing')}>
-                  <i className="fas fa-file-invoice-dollar" style={{...styles.quickActionIcon, color: '#8b5cf6'}}></i>
-                  <span style={styles.quickActionLabel}>Billing</span>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* Main Dashboard Split View */}
@@ -213,7 +234,7 @@ const ReceptionistDashboard = () => {
                   <div style={styles.sidebarHeader}>
                     <h4 style={styles.sidebarTitle}>Invoices to Generate</h4>
                     <span style={{...styles.badge2, backgroundColor: stats.pendingInvoiceAppointments.length > 0 ? '#fef3c7' : '#f3f4f6', color: stats.pendingInvoiceAppointments.length > 0 ? '#92400e' : '#6b7280'}}>
-                      {stats.pendingInvoiceAppointments.length} completed
+                      {stats.pendingInvoiceAppointments.length} awaiting invoice
                     </span>
                   </div>
                   <div style={styles.upcomingList}>
