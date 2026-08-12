@@ -35,10 +35,13 @@ Two rules shape everything here:
          already include a 'veterinarian-performance' report type. Both
          veterinarian and receptionist get _admin_only_chart_redirect().
        - Revenue chart: BILLING_STAFF_ROLES (admin, receptionist) - matches
-         adminOrReceptionist on GET /api/billing/stats/revenue.
-         Veterinarian gets _billing_staff_chart_redirect() (note this is the
-         one category where veterinarian, not receptionist, is the excluded
-         role - the opposite shape from the other two).
+         adminOrReceptionist on GET /api/billing/stats/revenue. Veterinarian
+         gets _billing_staff_redirect() (imported from structured_query.py,
+         shared with its own _sum_revenue_timeframe gate - a veterinarian
+         gets the same decline wording whether they ask for revenue as a
+         chart or as a sentence). Note this is the one category where
+         veterinarian, not receptionist, is the excluded role - the
+         opposite shape from the other two.
      Appointments (status/over-time) and inventory levels stay open to every
      STAFF_ROLES member, matching those routes' authenticate-only GETs.
 
@@ -62,20 +65,17 @@ from config.db_connection import get_raw_db_connection
 from scripts.rag.structured_query import (
     STAFF_ROLES,
     CLINICAL_STAFF_ROLES,
+    BILLING_STAFF_ROLES,
     TIMEFRAME_WORDS,
     _resolve_timeframe,
     _clinical_detail_redirect,
+    _billing_staff_redirect,
 )
 
 # The web design token used for primary data series (docs/design/design-system.md).
 PRIMARY_COLOR = '#3b82f6'
 # Second series in a two-series comparison (e.g. stock vs reorder level).
 SECONDARY_COLOR = '#fa709a'
-
-# Matches billingRoutes.js's adminOrReceptionist gate on GET
-# /api/billing/stats/revenue - veterinarian is the one role excluded here,
-# the opposite of CLINICAL_STAFF_ROLES (which excludes receptionist).
-BILLING_STAFF_ROLES = {'admin', 'receptionist'}
 
 # The whole feature hangs off this: no trigger word, no chart, no exceptions.
 # Deliberately a small closed set of words people use when they actually want
@@ -256,23 +256,6 @@ def _admin_only_chart_redirect(subject: str) -> dict:
         'answer': (
             f"I don't have access to share {subject} with your role - this is "
             "restricted to admin. Please check with an admin if you need it."
-        ),
-        'sources': [],
-        'chunks_used': 0,
-        'structured': True,
-    }
-
-
-def _billing_staff_chart_redirect(subject: str) -> dict:
-    """Returned instead of a chart for a veterinarian asking for revenue
-    data - matches billingRoutes.js's adminOrReceptionist gate on GET
-    /api/billing/stats/revenue, which excludes veterinarian specifically
-    (the opposite exclusion from every other narrowed category here)."""
-    return {
-        'answer': (
-            f"I don't have access to share {subject} with your role - billing "
-            "and revenue reporting is restricted to admin and receptionist. "
-            "Please check with an admin or receptionist if you need it."
         ),
         'sources': [],
         'chunks_used': 0,
@@ -714,7 +697,7 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
 
     if REVENUE_BY_MONTH.search(question):
         if role not in BILLING_STAFF_ROLES:
-            return _billing_staff_chart_redirect('revenue data')
+            return _billing_staff_redirect('revenue data')
         return _chart_revenue_by_month(question, chart_type=chart_type)
 
     # Trigger word present but nothing recognizable to chart ("graph the

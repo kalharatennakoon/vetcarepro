@@ -55,6 +55,17 @@ STAFF_ROLES = {'admin', 'veterinarian', 'receptionist'}
 # admin/veterinarian get it.
 CLINICAL_STAFF_ROLES = {'admin', 'veterinarian'}
 
+# Aggregate revenue reporting is narrower still, and in the opposite
+# direction from CLINICAL_STAFF_ROLES: veterinarian is the one excluded
+# role, not receptionist. Matches billingRoutes.js's adminOrReceptionist
+# gate on GET /api/billing/stats/revenue - the one billing endpoint in the
+# app that's actually restricted below plain "authenticated staff". Bill
+# lookups, balances, and overdue counts (getBills/getBill/getOverdue) have
+# no such gate, so _customer_balance/_count_unpaid_bills/etc. below stay on
+# plain STAFF_ROLES; only _sum_revenue_timeframe - the handler that mirrors
+# getRevenue's aggregate-stats shape - uses this narrower set.
+BILLING_STAFF_ROLES = {'admin', 'receptionist'}
+
 # Shared timeframe vocabulary used by appointments/disease-case/billing queries.
 TIMEFRAME_WORDS = r'(today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
 
@@ -897,6 +908,24 @@ def _clinical_detail_redirect() -> dict:
     }
 
 
+def _billing_staff_redirect(subject: str) -> dict:
+    """Returned instead of aggregate revenue data for a staff role outside
+    BILLING_STAFF_ROLES (i.e. veterinarian) - same "explicit decline, not a
+    confusing RAG fallthrough" convention as _clinical_detail_redirect,
+    shared with chart_intent.py's chart path so a veterinarian gets the same
+    wording whether they ask for revenue as a sentence or as a chart."""
+    return {
+        'answer': (
+            f"I don't have access to share {subject} with your role - billing "
+            "and revenue reporting is restricted to admin and receptionist. "
+            "Please check with an admin or receptionist if you need it."
+        ),
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
 def try_structured_answer(question: str, role: str, customer_id: str = None, known_pet_id: str = None) -> dict:
     """
     Check if `question` matches a known structured-query pattern. If so,
@@ -1109,6 +1138,8 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
         match = BILLING_REVENUE_TIMEFRAME.search(question)
         timeframe = _first_group(match)
         if timeframe:
+            if role not in BILLING_STAFF_ROLES:
+                return _billing_staff_redirect('revenue data')
             return _sum_revenue_timeframe(timeframe)
 
         # Pricing estimate is checked before the per-customer patterns below
