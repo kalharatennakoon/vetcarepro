@@ -757,6 +757,24 @@ def _fmt_status(status: str) -> str:
     return status.replace('_', ' ') if status else status
 
 
+def _summary_source(source_type: str, source_id: str, **metadata) -> list:
+    """A single source representing a pure count/aggregate answer, instead
+    of one chip per underlying row - the same fix applied to
+    _sum_revenue_timeframe. A count answer ("there are 12 appointments this
+    week") isn't "sourced" from any one row the way a listing is: none of
+    those 12 rows is individually named in the answer text, so a chip per
+    row is noise, not a citation - and it scales with real data volume (a
+    month of appointments, a pet's full vaccination history), not with how
+    much the answer actually says.
+
+    Handlers that list individual items by name in their answer text (e.g.
+    _list_appointments_timeframe, _customer_balance) do NOT use this - each
+    item there is genuinely referenced in the prose, so a chip per item is
+    a real citation, not noise.
+    """
+    return [{'source_type': source_type, 'source_id': source_id, 'metadata': metadata}]
+
+
 def find_pet_candidates(question: str, role: str, customer_id: str = None):
     """
     Name-extraction + SQL lookup shared by resolve_pet_id() and by
@@ -1581,7 +1599,10 @@ def _count_appointments_timeframe(timeframe: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in rows],
+        'sources': _summary_source(
+            'appointment_summary', f'appointments_{start.isoformat()}_{end.isoformat()}',
+            start_date=str(start), end_date=str(end), count=count
+        ),
         'chunks_used': 0,
         'structured': True
     }
@@ -1876,6 +1897,7 @@ def _owner_appointments_timeframe(customer_id: str, timeframe: str) -> dict:
 
 
 def _count_no_shows(timeframe: str = None) -> dict:
+    start = end = None
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -1897,9 +1919,10 @@ def _count_no_shows(timeframe: str = None) -> dict:
     suffix = f' {_normalize_timeframe(timeframe)}' if timeframe else ''
     answer = f'There {"was" if count == 1 else "were"} {count} no-show{"s" if count != 1 else ""}{suffix}.'
 
+    source_id = f'no_shows_{start.isoformat()}_{end.isoformat()}' if start else 'no_shows_all_time'
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'sources': _summary_source('appointment_summary', source_id, count=count, timeframe=timeframe),
         'chunks_used': 0,
         'structured': True
     }
@@ -1940,7 +1963,7 @@ def _count_appointments_by_vet(vet_name: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {'status': r[1]}} for r in appt_rows],
+        'sources': _summary_source('appointment_summary', f'appointments_by_vet_{vet_id}', vet_name=full_name, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1962,7 +1985,7 @@ def _count_appointments_by_status(status_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'appointment', 'source_id': r[0], 'metadata': {}} for r in rows],
+        'sources': _summary_source('appointment_summary', f'appointments_status_{status}', status=status, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -1986,7 +2009,7 @@ def _count_disease_cases_contagious() -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', 'disease_cases_contagious', count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2007,7 +2030,7 @@ def _count_disease_cases_by_category(category_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', f'disease_cases_category_{category}', category=category, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2028,7 +2051,7 @@ def _count_disease_cases_by_severity(severity_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'disease_case', 'source_id': r[0], 'metadata': {'disease_name': r[1]}} for r in rows],
+        'sources': _summary_source('disease_case_summary', f'disease_cases_severity_{severity}', severity=severity, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2065,7 +2088,7 @@ def _count_unpaid_bills() -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'sources': _summary_source('billing_summary', 'unpaid_bills', count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2100,15 +2123,10 @@ def _sum_revenue_timeframe(timeframe: str) -> dict:
 
     return {
         'answer': answer,
-        # A single summary source instead of one chip per bill - an aggregate
-        # figure isn't "sourced" from any individual bill document the way a
-        # medical-record or FAQ answer is, and one chip per row becomes noise
-        # fast (a month of billing could be 40+ bills for a single number).
-        'sources': [{
-            'source_type': 'billing_summary',
-            'source_id': f'revenue_{start.isoformat()}_{end.isoformat()}',
-            'metadata': {'start_date': str(start), 'end_date': str(end), 'bill_count': len(contributing)}
-        }],
+        'sources': _summary_source(
+            'billing_summary', f'revenue_{start.isoformat()}_{end.isoformat()}',
+            start_date=str(start), end_date=str(end), bill_count=len(contributing)
+        ),
         'chunks_used': 0,
         'structured': True
     }
@@ -2129,7 +2147,7 @@ def _count_bills_by_payment_method(method_raw: str) -> dict:
 
     return {
         'answer': answer,
-        'sources': [{'source_type': 'billing', 'source_id': r[0], 'metadata': {'bill_number': r[1]}} for r in rows],
+        'sources': _summary_source('billing_summary', f'bills_method_{method}', payment_method=method, count=count),
         'chunks_used': 0,
         'structured': True
     }
@@ -2449,49 +2467,25 @@ def _count_vaccinations_for_pet(pet_id: str, role: str, customer_id: str = None)
             pet_name = pet_row[0]
             owner_name = f'{pet_row[1]} {pet_row[2]}'
 
-            if role in STAFF_ROLES:
-                cur.execute(
-                    """
-                    SELECT v.vaccination_id, v.vaccine_name, v.vaccination_date
-                    FROM vaccinations v
-                    WHERE v.pet_id = %s
-                    ORDER BY v.vaccination_date ASC, v.vaccination_id ASC
-                    """,
-                    (pet_id,)
-                )
-            elif role == 'pet_owner' and customer_id:
-                cur.execute(
-                    """
-                    SELECT v.vaccination_id, v.vaccine_name, v.vaccination_date
-                    FROM vaccinations v
-                    WHERE v.pet_id = %s
-                    ORDER BY v.vaccination_date ASC, v.vaccination_id ASC
-                    """,
-                    (pet_id,)
-                )
+            if role in STAFF_ROLES or (role == 'pet_owner' and customer_id):
+                # Only the count is needed now that the answer no longer
+                # lists individual doses - COUNT(*) instead of fetching
+                # every row just to call len() on it.
+                cur.execute("SELECT COUNT(*) FROM vaccinations WHERE pet_id = %s", (pet_id,))
             else:
                 return None
 
-            rows = cur.fetchall()
+            count = cur.fetchone()[0]
     finally:
         conn.close()
 
-    count = len(rows)
-    answer = f'{pet_name} (owner: {owner_name}) has had {count} vaccination record{"s" if count != 1 else ""} so far.'
+    # "dose", not "record" - same ambiguity _list_vaccinations_for_pet used
+    # to have (a "record" could mean a row or a distinct vaccine).
+    answer = f'{pet_name} (owner: {owner_name}) has had {count} vaccination dose{"s" if count != 1 else ""} so far.'
 
     return {
         'answer': answer,
-        'sources': [
-            {
-                'source_type': 'vaccination',
-                'source_id': r[0],
-                'metadata': {
-                    'vaccine_name': r[1],
-                    'vaccination_date': str(r[2]) if r[2] else None,
-                }
-            }
-            for r in rows
-        ],
+        'sources': _summary_source('vaccination_summary', f'vaccination_count_{pet_id}', pet_name=pet_name, count=count),
         'chunks_used': 0,
         'structured': True
     }

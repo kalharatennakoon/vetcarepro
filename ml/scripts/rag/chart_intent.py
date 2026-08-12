@@ -94,20 +94,37 @@ APPOINTMENTS_BY_STATUS = re.compile(
     re.IGNORECASE
 )
 
+# "graph veterinarian performance", "chart vet performance", "appointments by
+# doctor", "appointments per vet" - a per-veterinarian breakdown. Checked
+# before APPOINTMENTS_BY_STATUS/APPOINTMENTS_OVER_TIME so "appointments by
+# veterinarian" resolves here rather than falling into the generic over-time
+# catch-all (which APPOINTMENTS_UNSUPPORTED_BREAKDOWN below used to have to
+# guard against, back when this breakdown wasn't supported at all).
+VET_PERFORMANCE = re.compile(
+    r'\bperformance\b.*\b(?:vet(?:erinarian)?s?|doctors?)\b|'
+    r'\b(?:vet(?:erinarian)?s?|doctors?)\b.*\bperformance\b|'
+    r'\bappointments?\b.*\b(?:by|per)\s+(?:vet(?:erinarian)?s?|doctors?)\b|'
+    r'\b(?:by|per)\s+(?:vet(?:erinarian)?s?|doctors?)\b.*\bappointments?\b',
+    re.IGNORECASE
+)
+
 # Deliberately broad: once "chart"/"graph" is present, any appointment question
-# that isn't a status breakdown is a request to see them over time.
+# that isn't a status breakdown or a vet breakdown is a request to see them
+# over time.
 APPOINTMENTS_OVER_TIME = re.compile(r'\bappointments?\b', re.IGNORECASE)
 
 # ...but not broad enough to swallow a breakdown this module doesn't support.
-# "graph appointments by veterinarian" would otherwise fall into the catch-all
-# above and come back as an appointments-per-day chart titled "Appointments
-# This Month" - a real chart, drawn from real data, silently answering a
-# different question than the one asked. Falling through instead lets the rest
-# of the pipeline respond (or decline) honestly, which is the same "ask rather
-# than guess" discipline action_intent.py applies to ambiguous slots.
+# "graph appointments by reason" would otherwise fall into the catch-all above
+# and come back as an appointments-per-day chart titled "Appointments This
+# Month" - a real chart, drawn from real data, silently answering a different
+# question than the one asked. Falling through instead lets the rest of the
+# pipeline respond (or decline) honestly, which is the same "ask rather than
+# guess" discipline action_intent.py applies to ambiguous slots. "by
+# vet(erinarian)/doctor" used to be listed here too, until VET_PERFORMANCE
+# above gave it a real handler - it's checked first, so this catch-all no
+# longer needs to name it.
 APPOINTMENTS_UNSUPPORTED_BREAKDOWN = re.compile(
-    r'\bby\s+(?:vet(?:erinarian)?s?|doctors?|types?|reasons?|pets?|'
-    r'customers?|owners?|species|breeds?)\b',
+    r'\bby\s+(?:types?|reasons?|pets?|customers?|owners?|species|breeds?)\b',
     re.IGNORECASE
 )
 
@@ -314,6 +331,74 @@ def _chart_appointments_by_status(question: str, role: str, user_id: str = None,
         data=data,
         series=[{'key': 'count', 'name': 'Appointments', 'color': PRIMARY_COLOR}],
         multi_color=True,
+        chart_type=chart_type,
+    )
+
+
+def _chart_veterinarian_performance(question: str, chart_type: str = 'bar') -> dict:
+    """Per-veterinarian appointment volume and outcome - completed vs.
+    no-show counts are the two concrete numbers "performance" can mean here
+    without inventing a metric the schema doesn't have. Optional timeframe
+    narrows both counts to the same window, same convention as
+    _chart_appointments_by_status. Open to all STAFF_ROLES, not just
+    CLINICAL_STAFF_ROLES - this is appointment/scheduling data, not
+    diagnosis or treatment detail, matching how _count_appointments_by_vet
+    in structured_query.py is already available to every staff role."""
+    timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
+    start = end = None
+    scope = ''
+    if timeframe_match:
+        start, end = _resolve_timeframe(timeframe_match.group(0))
+        if start is not None:
+            scope = ' ' + re.sub(r'\s+', ' ', timeframe_match.group(0).strip().lower())
+
+    # The date filter has to live inside the LEFT JOIN's ON clause, not a
+    # WHERE - a WHERE would drop veterinarians with zero appointments in the
+    # window instead of showing them as a zero bar, same reasoning as the
+    # generated-series joins above.
+    date_filter = ''
+    params: list = []
+    if start is not None:
+        date_filter = 'AND a.appointment_date BETWEEN %s AND %s'
+        params = [start, end]
+
+    rows = _query(f"""
+        SELECT u.user_id, u.first_name, u.last_name,
+               COUNT(a.appointment_id) AS total,
+               COUNT(a.appointment_id) FILTER (WHERE a.status = 'completed') AS completed,
+               COUNT(a.appointment_id) FILTER (WHERE a.status = 'no_show') AS no_shows
+        FROM users u
+        LEFT JOIN appointments a
+               ON a.veterinarian_id = u.user_id {date_filter}
+        WHERE u.role = 'veterinarian' AND u.is_active = true
+        GROUP BY u.user_id, u.first_name, u.last_name
+        ORDER BY total DESC
+    """, tuple(params))
+
+    if not rows:
+        return _no_data('veterinarian')
+    if all(int(r[3]) == 0 for r in rows):
+        return _no_data(f'veterinarian appointment{scope}')
+
+    data = [
+        {'label': f'Dr. {r[1]} {r[2]}', 'completed': int(r[4]), 'no_shows': int(r[5])}
+        for r in rows
+    ]
+    total_appointments = sum(int(r[3]) for r in rows)
+    return _chart_result(
+        answer=(
+            f'Here is appointment performance across {len(data)} veterinarian'
+            f'{"s" if len(data) != 1 else ""}{scope} ({total_appointments} appointment'
+            f'{"s" if total_appointments != 1 else ""} total): completed vs. no-show '
+            f'counts per veterinarian.'
+        ),
+        title=f'Veterinarian Performance{scope.title() if scope else ""}',
+        data=data,
+        series=[
+            {'key': 'completed', 'name': 'Completed', 'color': PRIMARY_COLOR},
+            {'key': 'no_shows', 'name': 'No-shows', 'color': SECONDARY_COLOR},
+        ],
+        multi_color=False,
         chart_type=chart_type,
     )
 
@@ -543,6 +628,9 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
         if role not in CLINICAL_STAFF_ROLES:
             return _clinical_detail_redirect()
         return _chart_disease_by_severity(chart_type=chart_type)
+
+    if VET_PERFORMANCE.search(question):
+        return _chart_veterinarian_performance(question, chart_type=chart_type)
 
     if APPOINTMENTS_BY_STATUS.search(question):
         return _chart_appointments_by_status(question, role=role, user_id=user_id, chart_type=chart_type)

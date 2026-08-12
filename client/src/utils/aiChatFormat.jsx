@@ -120,8 +120,25 @@ export const getSourceLabel = (source) => {
       return `Outbreak risk model${meta.risk_level ? ` – ${meta.risk_level} risk` : ''}`;
     case 'billing':
       return meta.bill_number ? `Bill ${meta.bill_number}` : `Bill #${source.source_id}`;
+    // The four "_summary" types below back a pure count/aggregate answer
+    // (see _summary_source in structured_query.py) rather than a list of
+    // individually-named items, so there's exactly one of these chips per
+    // answer - the label just needs to say what was counted.
     case 'billing_summary':
-      return `Revenue summary${meta.start_date && meta.end_date ? ` (${meta.start_date} to ${meta.end_date})` : ''}`;
+      if (meta.start_date && meta.end_date) return `Revenue summary (${meta.start_date} to ${meta.end_date})`;
+      if (meta.payment_method) return `Billing summary – ${meta.payment_method.replace(/_/g, ' ')}`;
+      return 'Billing summary';
+    case 'appointment_summary':
+      if (meta.vet_name) return `Appointment summary – Dr. ${meta.vet_name}`;
+      if (meta.status) return `Appointment summary – ${meta.status.replace(/_/g, ' ')}`;
+      if (meta.start_date && meta.end_date) return `Appointment summary (${meta.start_date} to ${meta.end_date})`;
+      return 'Appointment summary';
+    case 'disease_case_summary':
+      if (meta.category) return `Disease case summary – ${meta.category.replace(/_/g, ' ')}`;
+      if (meta.severity) return `Disease case summary – ${meta.severity}`;
+      return 'Disease case summary (contagious)';
+    case 'vaccination_summary':
+      return `Vaccination summary${meta.pet_name ? ` – ${meta.pet_name}` : ''}`;
     default:
       return `${source.source_type} #${source.source_id}`;
   }
