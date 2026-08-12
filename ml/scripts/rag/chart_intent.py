@@ -15,12 +15,32 @@ Two rules shape everything here:
      that a question "looks chart-shaped" would put a visualization in front
      of someone who asked for a number, and the trigger word is the only
      unambiguous signal that a picture is actually wanted.
-  2. **Staff-only, and clinical data narrower still.** Guest and pet_owner
-     return None (fall through to the normal pipeline, never an error - same
-     convention as the staff-only patterns in structured_query.py).
-     Disease-case charts are restricted to CLINICAL_STAFF_ROLES; receptionist
-     gets _clinical_detail_redirect(), matching how disease-case data is gated
-     everywhere else in this module chain.
+  2. **Staff-only, and three categories narrower still.** Guest and
+     pet_owner return None (fall through to the normal pipeline, never an
+     error - same convention as the staff-only patterns in
+     structured_query.py). A role inside STAFF_ROLES that asks for a
+     category it can't see gets an explicit "I don't have access" decline
+     instead - unlike the guest/pet_owner fallthrough, silently handing this
+     off to RAG would either produce a confusing non-answer (there's no FAQ
+     content about veterinarian performance) or, worse, look like the
+     assistant is granting access the rest of the app denies. Three
+     categories are gated narrower than plain STAFF_ROLES, each matching an
+     existing restriction elsewhere in the app rather than inventing a new
+     one:
+       - Disease-case charts: CLINICAL_STAFF_ROLES (admin, veterinarian) -
+         matches vetOrAdmin on diseaseCaseRoutes.js. Receptionist gets
+         _clinical_detail_redirect().
+       - Veterinarian-performance chart: admin only - matches
+         reportRoutes.js's operational reports (authorize('admin')), which
+         already include a 'veterinarian-performance' report type. Both
+         veterinarian and receptionist get _admin_only_chart_redirect().
+       - Revenue chart: BILLING_STAFF_ROLES (admin, receptionist) - matches
+         adminOrReceptionist on GET /api/billing/stats/revenue.
+         Veterinarian gets _billing_staff_chart_redirect() (note this is the
+         one category where veterinarian, not receptionist, is the excluded
+         role - the opposite shape from the other two).
+     Appointments (status/over-time) and inventory levels stay open to every
+     STAFF_ROLES member, matching those routes' authenticate-only GETs.
 
 Like structured_query.py, every number here comes from real SQL - the model
 is not involved in producing chart data at all.
@@ -51,6 +71,11 @@ from scripts.rag.structured_query import (
 PRIMARY_COLOR = '#3b82f6'
 # Second series in a two-series comparison (e.g. stock vs reorder level).
 SECONDARY_COLOR = '#fa709a'
+
+# Matches billingRoutes.js's adminOrReceptionist gate on GET
+# /api/billing/stats/revenue - veterinarian is the one role excluded here,
+# the opposite of CLINICAL_STAFF_ROLES (which excludes receptionist).
+BILLING_STAFF_ROLES = {'admin', 'receptionist'}
 
 # The whole feature hangs off this: no trigger word, no chart, no exceptions.
 # Deliberately a small closed set of words people use when they actually want
@@ -219,6 +244,42 @@ def _no_data(subject: str) -> dict:
     }
 
 
+def _admin_only_chart_redirect(subject: str) -> dict:
+    """Returned instead of a chart for a non-admin staff role asking for a
+    category that's admin-only in the rest of the app too - see
+    reportRoutes.js's operational reports (authorize('admin')), which
+    already include a 'veterinarian-performance' report type. Explicit and
+    immediate, same convention as _clinical_detail_redirect - a role inside
+    STAFF_ROLES asking for something it can't see should be told so plainly,
+    not handed a confusing RAG fallthrough or, worse, the chart anyway."""
+    return {
+        'answer': (
+            f"I don't have access to share {subject} with your role - this is "
+            "restricted to admin. Please check with an admin if you need it."
+        ),
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True,
+    }
+
+
+def _billing_staff_chart_redirect(subject: str) -> dict:
+    """Returned instead of a chart for a veterinarian asking for revenue
+    data - matches billingRoutes.js's adminOrReceptionist gate on GET
+    /api/billing/stats/revenue, which excludes veterinarian specifically
+    (the opposite exclusion from every other narrowed category here)."""
+    return {
+        'answer': (
+            f"I don't have access to share {subject} with your role - billing "
+            "and revenue reporting is restricted to admin and receptionist. "
+            "Please check with an admin or receptionist if you need it."
+        ),
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True,
+    }
+
+
 def _query(sql: str, params: tuple = ()) -> list:
     """Run one read query and return all rows - same connection handling as
     every handler in structured_query.py."""
@@ -340,10 +401,16 @@ def _chart_veterinarian_performance(question: str, chart_type: str = 'bar') -> d
     no-show counts are the two concrete numbers "performance" can mean here
     without inventing a metric the schema doesn't have. Optional timeframe
     narrows both counts to the same window, same convention as
-    _chart_appointments_by_status. Open to all STAFF_ROLES, not just
-    CLINICAL_STAFF_ROLES - this is appointment/scheduling data, not
-    diagnosis or treatment detail, matching how _count_appointments_by_vet
-    in structured_query.py is already available to every staff role."""
+    _chart_appointments_by_status.
+
+    Admin-only - the caller in try_chart_intent checks this, not this
+    function. Unlike _count_appointments_by_vet in structured_query.py
+    (a single named vet's own appointment count, open to every staff role),
+    "veterinarian performance" evaluates staff against each other, which
+    reportRoutes.js already treats as admin-only operational-report data
+    (its 'veterinarian-performance' report type sits behind
+    authorize('admin')) - this mirrors that restriction rather than
+    inventing a laxer one for the same data reached through the assistant."""
     timeframe_match = re.search(TIMEFRAME_WORDS, question, re.IGNORECASE)
     start = end = None
     scope = ''
@@ -630,6 +697,8 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
         return _chart_disease_by_severity(chart_type=chart_type)
 
     if VET_PERFORMANCE.search(question):
+        if role != 'admin':
+            return _admin_only_chart_redirect('veterinarian performance data')
         return _chart_veterinarian_performance(question, chart_type=chart_type)
 
     if APPOINTMENTS_BY_STATUS.search(question):
@@ -644,6 +713,8 @@ def try_chart_intent(question: str, role: str, user_id: str = None) -> dict:
         return _chart_inventory_levels(chart_type=chart_type)
 
     if REVENUE_BY_MONTH.search(question):
+        if role not in BILLING_STAFF_ROLES:
+            return _billing_staff_chart_redirect('revenue data')
         return _chart_revenue_by_month(question, chart_type=chart_type)
 
     # Trigger word present but nothing recognizable to chart ("graph the

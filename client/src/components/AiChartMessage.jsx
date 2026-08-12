@@ -30,10 +30,12 @@ import {
  *           series and for the two-series stock-vs-reorder comparison, where
  *           a per-bar colour would imply a distinction that isn't there.
  *
- * A pie only has room for one value per slice, so it always uses series[0]
- * regardless of multi_color/how many series the payload carries - the rare
- * two-series payload (stock vs reorder level) just loses its second series
- * rather than the request being refused.
+ * A pie slice's size only has room for one value, so it's always sized by
+ * series[0] regardless of how many series the payload carries. Its hover
+ * tooltip isn't limited the same way though - PieTooltip below reads every
+ * series straight off the row's raw data, so a two-series payload (e.g.
+ * completed vs. no-show counts per veterinarian) still shows both numbers
+ * on hover even though only one of them drove the slice's size.
  */
 
 // Same flavour as the COLORS array in pages/Reports.jsx, trimmed to the number
@@ -56,6 +58,26 @@ const truncate = (value) => {
 
 const formatValue = (value) =>
   typeof value === 'number' ? value.toLocaleString() : value;
+
+// recharts' default pie Tooltip only knows about series[0] (the one dataKey
+// actually driving slice size) - for a two-series payload like completed vs.
+// no-show counts, that would hide the second number entirely. This reads
+// every series straight off the hovered row's raw data instead, so all of
+// them show up on hover regardless of which one sized the slice.
+const PieTooltip = ({ active, payload, series }) => {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="ai-chart-tooltip">
+      <div className="ai-chart-tooltip-label">{row.label}</div>
+      {series.map((s) => (
+        <div key={s.key} className="ai-chart-tooltip-row">
+          {s.name}: {formatValue(row[s.key])}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 function AiChartMessage({ chart }) {
   if (!chart || !Array.isArray(chart.data) || chart.data.length === 0) return null;
@@ -87,7 +109,7 @@ function AiChartMessage({ chart }) {
                 />
               ))}
             </Pie>
-            <Tooltip formatter={formatValue} />
+            <Tooltip content={(props) => <PieTooltip {...props} series={series} />} />
             <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
           </PieChart>
         </ResponsiveContainer>

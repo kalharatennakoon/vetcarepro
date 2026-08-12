@@ -178,6 +178,28 @@
   margin-bottom: 0.4rem;
 }
 
+/* Custom pie-chart hover tooltip (PieTooltip in AiChartMessage.jsx) - shows
+   every series' value for the hovered row, not just the one sizing the
+   slice, so replaces recharts' default single-value tooltip content. */
+.ai-chart-tooltip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-chart-tooltip-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.2rem;
+}
+
+.ai-chart-tooltip-row {
+  color: #4b5563;
+}
+
 /* Below this the 80%-wide bubble is too narrow for angled axis labels to
    stay legible, so let the chart use the full bubble instead. */
 @media (max-width: 768px) {
