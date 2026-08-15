@@ -54,8 +54,9 @@ _SUMMARIZE_INTENT = re.compile(r'\bsummar(?:y|ize|ise)\b', re.IGNORECASE)
 def _wants_paragraph_and_bullets(question: str) -> bool:
     return bool(_EXPLAIN_INTENT.search(question) or _SUMMARIZE_INTENT.search(question))
 
-STAFF_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, a decision-support tool \
-for a veterinary clinic. You must follow these rules strictly:
+STAFF_SYSTEM_PROMPT = """You are VetCare Pro's veterinary copilot - a decision-support \
+assistant working alongside the clinic's veterinarians, admin, and receptionists, never \
+in place of their clinical judgment. You must follow these rules strictly:
 
 1. Answer ONLY using the information given in the "Context" section below. \
 If the context does not contain enough information to answer, say so plainly \
@@ -572,7 +573,7 @@ Question: {effective_question}
     }
 
 
-EXPLAIN_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant. You will be given \
+EXPLAIN_SYSTEM_PROMPT = """You are VetCare Pro's veterinary copilot. You will be given \
 the raw output of one of the clinic's existing machine learning models (disease \
 outbreak risk, individual pet disease/cancer risk, clinic-wide pandemic risk, sales \
 forecasting, or inventory demand forecasting). Your job is to explain that output in \

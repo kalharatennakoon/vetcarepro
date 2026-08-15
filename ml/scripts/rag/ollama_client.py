@@ -89,7 +89,15 @@ def generate_answer(system_prompt: str, user_prompt: str) -> str:
                     {'role': 'user', 'content': user_prompt}
                 ],
                 'stream': False,
-                'options': {'temperature': 0.1}  # low temperature: stay grounded and consistent
+                'options': {'temperature': 0.1},  # low temperature: stay grounded and consistent
+                # Reasoning-capable models (e.g. qwen3) default to an internal
+                # "thinking" pass before answering - Ollama keeps it out of
+                # `content` either way, but it adds real latency (~24x slower
+                # in testing) for no accuracy benefit here: every answer this
+                # app generates is already grounded in retrieved context or
+                # live model output, never open-ended reasoning. Ignored
+                # harmlessly by models that don't support thinking mode.
+                'think': False
             },
             timeout=OLLAMA_TIMEOUT
         )

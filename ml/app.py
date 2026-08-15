@@ -1831,7 +1831,11 @@ def rag_chat():
         # demand prediction from the trained inventory model.
         if re.search(
             r'\b(?:reorder|restock)\b.*\b(?:suggest|recommend|predict|forecast|need)\b|'
-            r'\bwhat\s+(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?reorder\b|'
+            # Bounded gap (not a bare .*) between "what" and "should/do" so a
+            # noun in between - "what items/products/supplies should we
+            # reorder" - still matches, without letting the alternative
+            # over-match unrelated distant text in a longer question.
+            r'\bwhat\b.{0,25}\b(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?(?:reorder|restock)\b|'
             r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b|'
             r'\b(?:inventory|stock)\s+demand\b',
             question, re.IGNORECASE
