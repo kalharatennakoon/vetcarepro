@@ -179,6 +179,43 @@ def _resolve_relative_weekday(qualifier: str, weekday_name: str):
     return week_start + timedelta(days=target_weekday)
 
 
+# A bare relative-weekday question ("next monday", "what date is next
+# Friday?") with no appointment/clinical content of its own is pure
+# calendar arithmetic, not a clinic-data lookup - but with nothing else in
+# the question, it has no chunks to retrieve and previously fell through
+# to plain RAG retrieval, where the LLM was observed answering from
+# whatever unrelated dates happened to be in the (irrelevant) retrieved
+# context instead of doing real date arithmetic, off by months. Anchored
+# on the whole (stripped) question so it only matches when the weekday
+# reference IS the question - "appointments next Monday" has extra content
+# this pattern won't match, leaving that to APPT_RELATIVE_WEEKDAY below,
+# which is scoped to the appointments table.
+# Bounded gap (not a bare .*) after "what", same fix as the inventory
+# reorder regex - covers "what date is/day is/'s the date on next Friday"
+# etc. without enumerating every phrasing combination, while still failing
+# to match once "appointments" or other real content pushes the qualifier
+# past the 20-char gap (verified below: "any appointments next monday?"
+# doesn't start with "what" at all, so it's excluded from the very first
+# token, independent of the gap bound).
+BARE_RELATIVE_WEEKDAY = re.compile(
+    r'^(?:what.{0,20})?(this|next|last)\s+(' + '|'.join(_WEEKDAY_NAMES) +
+    r')\'?s?\s*(?:date)?\s*\??$',
+    re.IGNORECASE
+)
+
+
+def _bare_relative_weekday_date(qualifier: str, weekday_name: str) -> dict:
+    target_date = _resolve_relative_weekday(qualifier, weekday_name)
+    qualifier_label = (qualifier or 'this').capitalize()
+    weekday_label = weekday_name.capitalize()
+    return {
+        'answer': f"{qualifier_label} {weekday_label} is {_fmt_date(target_date)}.",
+        'sources': [],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
 _DATE_EXTRACTION_PROMPT = """You extract a single calendar date from a question about appointments. Today's date is {today}.
 
 Respond with ONLY a JSON object, no other text, no markdown, in exactly this shape:
@@ -964,6 +1001,12 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
         return _clinic_location()
     if CLINIC_CONTACT.search(question):
         return _clinic_contact()
+
+    # Same reasoning as the clinic facts above - pure calendar arithmetic,
+    # no pet/customer scoping needed, available to every role.
+    match = BARE_RELATIVE_WEEKDAY.match(question.strip())
+    if match:
+        return _bare_relative_weekday_date(match.group(1), match.group(2))
 
     match = COUNT_PETS_BY_NAME.search(question)
     if match:
