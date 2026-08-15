@@ -16,13 +16,13 @@ from scripts.rag.clinical_tools import try_clinical_tool
 from scripts.rag.pet_health_intent import try_pet_health_intent
 from scripts.rag.chart_intent import try_chart_intent
 
-# Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
-# doesn't reliably drop the imperial aside it's used to seeing in training
-# data (e.g. "29-36 kilograms (65-80 lbs)") even when told not to. Rather
-# than keep tuning prompt wording against a small local model, strip it
-# deterministically: matches a parenthetical that contains both a digit and
-# an imperial unit word, so it won't touch unrelated parens (e.g. a plain-
-# language term explanation).
+# Every system prompt below instructs metric-only units, but small local chat
+# models don't reliably drop the imperial aside they're used to seeing in
+# training data (e.g. "29-36 kilograms (65-80 lbs)") even when told not to.
+# Rather than keep tuning prompt wording per-model, strip it deterministically
+# as a model-agnostic safety net: matches a parenthetical that contains both a
+# digit and an imperial unit word, so it won't touch unrelated parens (e.g. a
+# plain-language term explanation) - a no-op when the model already gets it right.
 _IMPERIAL_ASIDE = re.compile(
     r'\s*\([^()]*\d[^()]*(?:lbs?\.?|pounds?|°\s?F(?:ahrenheit)?|fahrenheit|(?<=\d)\s?F\b|inch(?:es)?)\b[^()]*\)',
     re.IGNORECASE
@@ -35,14 +35,18 @@ def _strip_imperial_units(text: str) -> str:
 
 # Asking for the paragraph-then-bullets shape inside the main generation
 # call - as a prose rule, repeated next to the question, even as a literal
-# fill-in-the-blank template - was never enough on its own: qwen2.5-coder:7b
-# kept relabeling the context's terse "field: value" chunk lines (see
+# fill-in-the-blank template - was never enough on its own: the model kept
+# relabeling the context's terse "field: value" chunk lines (see
 # chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
 # like "Vaccinations:"/"Medical Records:" regardless, because that one rule
 # was competing against several others (units, currency, clinical tone,
 # citation handling) in the same call. So the shape is now enforced by a
 # separate follow-up reshape call instead (see _reshape_explain_summarize
 # below) - this regex pair just decides whether that follow-up call runs.
+# NOTE: this was diagnosed against qwen2.5-coder:7b specifically and hasn't
+# been re-verified since the switch to qwen2.5:7b-instruct - if a future
+# pass confirms the new model holds the shape in one call, this reshape
+# call can likely be dropped to save the extra round-trip.
 _EXPLAIN_INTENT = re.compile(r'\bexplain\b|\bwhy\b', re.IGNORECASE)
 _SUMMARIZE_INTENT = re.compile(r'\bsummar(?:y|ize|ise)\b', re.IGNORECASE)
 
@@ -239,8 +243,8 @@ as "Rs. X" - never "$", "USD", or "dollars".
 
 # Asking for the paragraph-then-bullets shape inside the main system prompt -
 # even repeated right next to the question, even spelled out as a literal
-# fill-in-the-blank template - was not enough on its own: qwen2.5-coder:7b
-# kept relabeling the context's terse "field: value" chunk lines (see
+# fill-in-the-blank template - was not enough on its own: the model kept
+# relabeling the context's terse "field: value" chunk lines (see
 # chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
 # like "Vaccinations:"/"Medical Records:" regardless, because that one rule
 # was competing against several others (units, currency, clinical tone,
@@ -249,6 +253,9 @@ as "Rs. X" - never "$", "USD", or "dollars".
 # is far more reliable - this prompt's only job is the shape, and the facts
 # are already locked in from the first pass, so there's nothing left for it
 # to get wrong except the format.
+# NOTE: diagnosed against qwen2.5-coder:7b specifically, not re-verified
+# since the switch to qwen2.5:7b-instruct - see the matching note above
+# _wants_paragraph_and_bullets.
 _RESHAPE_SYSTEM_PROMPT = """You are a text reformatter, not a clinical assistant - you do \
 not add, remove, or invent any fact. You will be given a draft answer that already contains \
 all the correct facts, and must rewrite it into exactly this shape:
@@ -579,9 +586,16 @@ estimates" or "based on current trends". This applies doubly to individual pet \
 disease/cancer risk figures: these are statistical estimates from breed/age/history \
 data, never a diagnosis - make that explicit rather than stating a pet "has" or \
 "will get" a condition.
-3. Keep it concise: 2-4 sentences, plain English, no jargon unless you also explain it.
-4. If the data looks incomplete or you can't make sense of it, say so rather than \
-guessing.
+3. Write in a professional, clinical-report tone suited to staff review - not casual \
+or conversational phrasing. Keep it concise: 3-5 sentences, plain English, no jargon \
+unless you also explain it. Bold the key figures and labels (risk level, trend \
+direction, peak period, case/revenue volumes, confidence level) using markdown, e.g. \
+"**low risk**", "**17.2 cases/month**". Do not add section headers, bullet lists, or a \
+"Source:" line - the app displays sources separately from this text.
+4. If the data reports a confidence or reliability level, close with one explicit \
+sentence stating what that means for how staff should use the numbers (e.g. treat as \
+directional rather than precise, corroborate before acting on it). If the data looks \
+incomplete or you can't make sense of it, say so rather than guessing.
 5. This clinic operates in Sri Lanka - any revenue, cost, or price figure in the data \
 is in Sri Lankan Rupees, even though the field itself carries no currency label. \
 Always present it as "Rs. X", never "$", "USD", or "dollars".

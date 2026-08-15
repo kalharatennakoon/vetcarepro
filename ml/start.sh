@@ -24,6 +24,10 @@ if [ ! -f ".env" ]; then
     echo "Created .env from .env.example. Please update with your database credentials."
 fi
 
+# Report which Ollama chat model is configured before starting
+CHAT_MODEL=$(grep -E '^OLLAMA_CHAT_MODEL=' .env | cut -d '=' -f2-)
+echo "Using LLM chat model: ${CHAT_MODEL:-qwen2.5:7b-instruct (default)}"
+
 # Start Flask server
 echo "Starting Flask ML API server..."
 python app.py

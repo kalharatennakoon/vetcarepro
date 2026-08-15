@@ -5,7 +5,7 @@ Runs fully locally -> no API keys, no per-token cost.
 
 Requires Ollama running locally (default http://localhost:11434) with:
     ollama pull nomic-embed-text
-    ollama pull qwen2.5-coder:7b
+    ollama pull qwen2.5:7b-instruct
 """
 
 import os
@@ -17,7 +17,7 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_EMBED_MODEL = os.getenv('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen2.5-coder:7b')
+OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen2.5:7b-instruct')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 
 EMBEDDING_DIM = 768  # must match database/migrations/add_rag_vector_store.sql
@@ -105,13 +105,15 @@ def generate_answer(system_prompt: str, user_prompt: str) -> str:
         raise OllamaError(f'Ollama chat request failed: {e}') from e
 
 
-# This clinic operates in Sri Lanka and bills exclusively in LKR - qwen2.5-coder:7b
-# still occasionally defaults to '$'/'USD'/'dollars' from its training data even when
-# a system prompt explicitly says not to (same failure mode as the imperial-units
-# aside stripped in rag_service.py's _strip_imperial_units). Rather than keep tuning
-# prompt wording against a small local model, normalize deterministically. Lives here
-# (not in rag_service.py, where _strip_imperial_units lives) so both rag_service.py
-# and clinical_tools.py can share it without a circular import between them.
+# This clinic operates in Sri Lanka and bills exclusively in LKR - small local
+# chat models can still default to '$'/'USD'/'dollars' from their training data
+# even when a system prompt explicitly says not to (same failure mode as the
+# imperial-units aside stripped in rag_service.py's _strip_imperial_units).
+# Rather than keep tuning prompt wording per-model, normalize deterministically
+# as a model-agnostic safety net - a no-op when the model already gets it right.
+# Lives here (not in rag_service.py, where _strip_imperial_units lives) so both
+# rag_service.py and clinical_tools.py can share it without a circular import
+# between them.
 _DOLLAR_AMOUNT = re.compile(r'\$\s?([\d,]+(?:\.\d+)?)')
 _DOLLAR_WORD = re.compile(r'\bUSD\b|\bU\.S\.\s?dollars?\b|\bdollars?\b', re.IGNORECASE)
 

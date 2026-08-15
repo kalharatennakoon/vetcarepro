@@ -61,6 +61,8 @@
   font-size: 0.9rem;
   line-height: 1.45;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ai-message-bubble p {
@@ -324,14 +326,22 @@
 .ai-assistant-input-row {
   display: flex;
   gap: 0.5rem;
+  align-items: flex-end;
 }
 
-.ai-assistant-input-row input {
+.ai-assistant-input-row textarea {
   flex: 1;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   padding: 0.7rem 0.9rem;
   font-size: 0.9rem;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
 }
 
 .ai-assistant-input-row button {

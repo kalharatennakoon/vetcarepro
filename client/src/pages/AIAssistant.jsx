@@ -92,6 +92,7 @@ const AIAssistant = () => {
   // is how the assistant remembers what it already asked.
   const [pendingIntent, setPendingIntent] = useState(null);
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
   const suggestedPrompts = user?.role === 'receptionist'
     ? RECEPTIONIST_SUGGESTED_PROMPTS
     : isVeterinarian
@@ -101,6 +102,17 @@ const AIAssistant = () => {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Grows the input with its content instead of scrolling text horizontally
+  // inside a fixed-height box - re-measured on every keystroke since a
+  // plain height:auto reset is required first to let scrollHeight shrink
+  // back down when text is deleted, not just grow.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   const sendQuestion = async (question, displayText) => {
     if (!question.trim() || loading) return;
@@ -343,10 +355,17 @@ const AIAssistant = () => {
           className="ai-assistant-input-row ai-modern-input-row"
           onSubmit={(e) => { e.preventDefault(); sendQuestion(input); }}
         >
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion(input);
+              }
+            }}
             placeholder="Ask about a pet, consultation, or prediction..."
             disabled={loading}
             className="ai-modern-input"

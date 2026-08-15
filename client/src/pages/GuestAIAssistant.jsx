@@ -27,10 +27,22 @@ const GuestAIAssistant = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const bottomRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Grows the input with its content instead of scrolling text horizontally
+  // inside a fixed-height box - re-measured on every keystroke since a
+  // plain height:auto reset is required first to let scrollHeight shrink
+  // back down when text is deleted, not just grow.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
 
   const sendQuestion = async (question) => {
     if (!question.trim() || loading) return;
@@ -124,10 +136,17 @@ const GuestAIAssistant = () => {
           className="ai-assistant-input-row"
           onSubmit={(e) => { e.preventDefault(); sendQuestion(input); }}
         >
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuestion(input);
+              }
+            }}
             placeholder="Ask a general pet care question..."
             disabled={loading}
           />

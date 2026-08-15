@@ -1547,6 +1547,23 @@ def rag_explain():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# Chat questions spell small counts out ("the next three years") about as
+# often as they use digits ("the next 3 years") - matching digits only
+# silently mis-parses the spelled-out form as "no time horizon given" and
+# falls back to a default window instead of the one actually requested.
+_NUMBER_WORDS = {
+    'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6,
+    'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12,
+    'thirteen': 13, 'fourteen': 14, 'fifteen': 15, 'sixteen': 16,
+    'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20
+}
+_NUMBER_PATTERN = r'(?:\d+|' + '|'.join(_NUMBER_WORDS.keys()) + r')'
+
+
+def _parse_count(text):
+    return int(text) if text.isdigit() else _NUMBER_WORDS[text.lower()]
+
+
 def _extract_time_horizon(question, unit='days', default=30, minimum=7, maximum=365):
     """
     Picks a "next N days/weeks/months/years" time horizon out of a chat
@@ -1556,15 +1573,18 @@ def _extract_time_horizon(question, unit='days', default=30, minimum=7, maximum=
     [minimum, maximum] to match that model's own route-level clamp (e.g.
     "for the next 18 months" -> ~547 days -> clamped to 365 for inventory,
     matching /api/ml/inventory/forecast's own clamp; "next 5 years" -> 60
-    months -> matches /api/ml/disease/forecast's clamp of 1-60).
+    months -> matches /api/ml/disease/forecast's clamp of 1-60). N may be a
+    digit or a spelled-out number up to twenty (see _NUMBER_WORDS).
     Returns (value, was_clamped) so the caller can note in the answer when
     the requested period got capped rather than silently answering a
     different window than what was asked for.
     """
-    match = re.search(r'\bnext\s+(\d+)\s*(day|week|month|year)s?\b', question, re.IGNORECASE)
+    match = re.search(
+        rf'\bnext\s+({_NUMBER_PATTERN})\s*(day|week|month|year)s?\b', question, re.IGNORECASE
+    )
     if not match:
         return default, False
-    count = int(match.group(1))
+    count = _parse_count(match.group(1))
     src_unit = match.group(2).lower()
     per_unit = (
         {'day': 1 / 30, 'week': 7 / 30, 'month': 1, 'year': 12} if unit == 'months'
@@ -1616,9 +1636,22 @@ def rag_chat():
         # general-knowledge question the guest/owner pipeline already
         # handles - only intercept this phrasing for staff, who mean the
         # clinic's own live risk model.
+        # Exemption: "outbreak risk/trend" phrasing normally means "what's
+        # happening right now" and is deliberately claimed here even for
+        # the word "trend" (see the trend-forecast block's comment below) -
+        # but a question that also carries real forward-looking language
+        # ("forecasted", "predict", "over the next N years") is
+        # unambiguously asking for the Prophet trend forecast instead, not
+        # a 30-day snapshot with none of the historical/forecast/demographic
+        # detail that block actually answers with. Let those fall through.
+        _outbreak_forecast_intent = re.search(
+            rf'\bforecast(?:ed|s)?\b|\bpredict(?:ed|ion|s)?\b|\bover\s+the\s+next\b|'
+            rf'\bnext\s+{_NUMBER_PATTERN}\s*(?:day|week|month|year)s?\b',
+            question, re.IGNORECASE
+        )
         if role in ('admin', 'veterinarian', 'receptionist') and re.search(
             r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE
-        ):
+        ) and not _outbreak_forecast_intent:
             if role not in ('admin', 'veterinarian'):
                 return jsonify({
                     'success': True,
@@ -1641,6 +1674,12 @@ def rag_chat():
 
             risk_assessment = disease_model.predict_outbreak_risk(days_lookback=30)
             explanation = explain_ml_output('outbreak_risk', risk_assessment)
+            # No forward-looking-window note needed here anymore: the
+            # _outbreak_forecast_intent exemption above already routes any
+            # question with real forecast language away from this block
+            # before it can be answered as a 30-day snapshot, so this block
+            # only ever fires for genuine "what's happening right now"
+            # questions.
             return jsonify({
                 'success': True,
                 'answer': explanation,
@@ -1661,8 +1700,12 @@ def rag_chat():
         # through to plain RAG retrieval before this existed, which had
         # nothing relevant to retrieve and hallucinated an answer stitched
         # from unrelated pet medical records instead. Checked after the
-        # outbreak-risk block on purpose - "disease outbreak trend" should
-        # still hit that block above, not this one.
+        # outbreak-risk block on purpose - a bare "disease outbreak trend"
+        # (no forecast language) still hits that block above, not this one;
+        # but that block now exempts questions carrying real forward-looking
+        # language ("forecasted", "predict", "over the next N years"), so
+        # e.g. "outbreak risk trend over the next 3 years, historical vs
+        # forecasted cases" falls through and lands here instead.
         if role in ('admin', 'veterinarian', 'receptionist') and re.search(
             r'\bdiseases?\b.*\b(?:predict(?:ed|ion)?|forecast(?:ed)?|trend)\b|'
             r'\b(?:predict(?:ed|ion)?|forecast(?:ed)?)\b.*\bdiseases?\b',

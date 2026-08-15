@@ -118,6 +118,8 @@
   font-size: 0.98rem;
   line-height: 1.55;
   box-shadow: none;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ai-message-assistant .ai-modern-bubble {
@@ -289,6 +291,13 @@
   font-size: 0.95rem;
   background: transparent;
   border-radius: 0 !important;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
 }
 
 .ai-modern-send-btn {
