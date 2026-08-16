@@ -310,20 +310,34 @@ LIST_VACCINATIONS = re.compile(
     re.IGNORECASE
 )
 
-# Matches temporal "last / most recent" vaccine questions, PLUS "up to date"
-# status-check questions - both are answered the same way (most recent shot
-# + its next_due_date), so they share one handler:
+# Matches temporal "last / most recent" vaccine questions - a single-dose
+# lookup, deliberately NOT matching "up to date" phrasing (see
+# VACCINATION_UP_TO_DATE below, a different question with a different
+# handler):
 # "when did Max take his last vaccine?"
 # "when was Max last vaccinated?"
 # "what was the latest vaccination for Bella?"
 # "most recent vaccine for Max"
-# "is Max up to date with shots?" / "is Max up to date on vaccinations?"
 LAST_VACCINATION = re.compile(
     r'\b(?:last|latest|most\s+recent|recent)\b.*\b(?:vaccines?|vaccinations?)\b|'
     r'\b(?:vaccines?|vaccinations?)\b.*\b(?:last|latest|most\s+recent|recent)\b|'
     r'\bwhen\b.*\b(?:last|latest|recent)\b.*\bvaccinat|'
     r'\bwhen\b.*\bvaccinat.*\b(?:last|latest|recent)\b|'
-    r'\blast\s+time\b.*\bvaccinat|'
+    r'\blast\s+time\b.*\bvaccinat',
+    re.IGNORECASE
+)
+
+# Matches "up to date" vaccination-status questions - answered differently
+# from LAST_VACCINATION above. A pet can have several DISTINCT vaccine
+# types on file (e.g. both DHPP and Rabies) with different due dates; "up
+# to date" asks about ALL of them, not just whichever single dose happens
+# to have been administered most recently (LAST_VACCINATION's question).
+# Answering "is Max up to date with shots?" with only his latest Rabies
+# shot, while silently omitting an overdue DHPP booster, would be actively
+# misleading - see _vaccination_status_for_pet, which reports every
+# vaccine type's latest dose and due date, not one global "last shot" row:
+# "is Max up to date with shots?" / "is Max up to date on vaccinations?"
+VACCINATION_UP_TO_DATE = re.compile(
     r'\bup[\s-]?to[\s-]?date\b.*\b(?:vaccines?|vaccinations?|shots?)\b|'
     r'\b(?:vaccines?|vaccinations?|shots?)\b.*\bup[\s-]?to[\s-]?date\b',
     re.IGNORECASE
@@ -1066,6 +1080,8 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
                 return _list_records_by_pet(pet_id, role, customer_id)
 
             if is_vaccine_query:
+                if VACCINATION_UP_TO_DATE.search(question):
+                    return _vaccination_status_for_pet(pet_id, role, customer_id)
                 if LAST_VACCINATION.search(question):
                     return _last_vaccination_for_pet(pet_id, role, customer_id)
                 if LIST_VACCINATIONS.search(question):
@@ -1336,8 +1352,12 @@ def _looks_like_vaccine_question(question: str) -> bool:
     # "shots" is the common everyday word staff/owners actually type for
     # vaccines ("is Max up to date with shots?") - without it, this whole
     # class of question skips the exact-SQL vaccine handlers entirely and
-    # falls through to unscoped RAG.
-    return bool(re.search(r'\b(?:vaccines?|vaccinations?|shots?)\b', question, re.IGNORECASE))
+    # falls through to unscoped RAG. The \bvaccin\w*\b prefix match (rather
+    # than spelling out vaccines?/vaccinations?) is deliberately broad
+    # enough to also catch the verb form ("when was Max last vaccinated?")
+    # that the noun-only forms used to miss, silently skipping this same
+    # dispatch block for a question that's just as clearly about vaccines.
+    return bool(re.search(r'\bvaccin\w*\b|\bshots?\b', question, re.IGNORECASE))
 
 
 def _count_pets_by_name(name: str, role: str, customer_id: str = None) -> dict:
@@ -2843,6 +2863,124 @@ def _last_vaccination_for_pet(pet_id: str, role: str, customer_id: str = None) -
                     'next_due_date': str(next_due_date) if next_due_date else None,
                 },
             }
+        ],
+        'chunks_used': 0,
+        'structured': True,
+    }
+
+
+def _vaccination_status_for_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
+    """
+    Answers "is <pet> up to date with shots/vaccines?" - deliberately
+    different from _last_vaccination_for_pet above: a pet can have several
+    DISTINCT vaccine types on file (e.g. both DHPP and Rabies) with
+    different due dates, and "up to date" is asking about ALL of them, not
+    just whichever single dose happens to have been administered most
+    recently. Reports every vaccine type's latest dose and next due date,
+    plus an overall verdict, rather than one global "last shot given" row.
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if role in STAFF_ROLES:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON c.customer_id = p.customer_id
+                    WHERE p.pet_id = %s
+                    """,
+                    (pet_id,)
+                )
+            elif role == 'pet_owner' and customer_id:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON c.customer_id = p.customer_id
+                    WHERE p.pet_id = %s AND p.customer_id = %s
+                    """,
+                    (pet_id, customer_id)
+                )
+            else:
+                return None
+
+            pet_row = cur.fetchone()
+            if not pet_row:
+                return {
+                    'answer': 'I could not find vaccination records for that pet.',
+                    'sources': [],
+                    'chunks_used': 0,
+                    'structured': True,
+                }
+
+            pet_name = pet_row[0]
+
+            # DISTINCT ON (vaccine_name) keeps only the most recent dose PER
+            # vaccine type - a pet current on DHPP but overdue on Rabies is
+            # not "up to date with shots", and this needs to see both, not
+            # just whichever type happens to have the latest single dose.
+            cur.execute(
+                """
+                SELECT DISTINCT ON (v.vaccine_name)
+                    v.vaccine_name, v.vaccine_type, v.vaccination_date, v.next_due_date
+                FROM vaccinations v
+                WHERE v.pet_id = %s
+                ORDER BY v.vaccine_name, v.vaccination_date DESC
+                """,
+                (pet_id,)
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return {
+            'answer': f'{pet_name} has no vaccination records yet.',
+            'sources': [],
+            'chunks_used': 0,
+            'structured': True,
+        }
+
+    today = date.today()
+    items = []
+    overdue = []
+    for vaccine_name, vaccine_type, vaccination_date, next_due_date in rows:
+        type_text = f' ({vaccine_type})' if vaccine_type else ''
+        date_str = _fmt_date(vaccination_date) if vaccination_date else 'date unknown'
+        if next_due_date:
+            due_str = _fmt_date(next_due_date)
+            if next_due_date < today:
+                items.append(f'{vaccine_name}{type_text} - last given {date_str}, **overdue since {due_str}**')
+                overdue.append(vaccine_name)
+            else:
+                items.append(f'{vaccine_name}{type_text} - last given {date_str}, next due {due_str}')
+        else:
+            items.append(f'{vaccine_name}{type_text} - last given {date_str}, no next due date on file')
+
+    listing = '\n- '.join(items)
+    if overdue:
+        verdict = f"{pet_name} is **not fully up to date** - overdue on {', '.join(overdue)}."
+    else:
+        verdict = f'{pet_name} is **up to date** on all vaccines on file.'
+
+    answer = f'{verdict}\n\n- {listing}'
+
+    return {
+        'answer': answer,
+        'sources': [
+            {
+                'source_type': 'vaccination',
+                'source_id': f'{vaccine_name}|{vaccine_type or ""}',
+                'metadata': {
+                    'pet_name': pet_name,
+                    'vaccine_name': vaccine_name,
+                    'vaccine_type': vaccine_type,
+                    'vaccination_date': str(vaccination_date) if vaccination_date else None,
+                    'next_due_date': str(next_due_date) if next_due_date else None,
+                }
+            }
+            for vaccine_name, vaccine_type, vaccination_date, next_due_date in rows
         ],
         'chunks_used': 0,
         'structured': True,
