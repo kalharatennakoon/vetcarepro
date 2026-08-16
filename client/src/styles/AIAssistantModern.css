@@ -208,10 +208,15 @@
   color: #1f2937;
 }
 
-.ai-reasoning-summary-action {
+.ai-reasoning-chevron {
   color: #9ca3af;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-size: 0.68rem;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.ai-modern-reasoning[open] > .ai-modern-reasoning-summary .ai-reasoning-chevron {
+  transform: rotate(180deg);
 }
 
 .ai-modern-reasoning-text {

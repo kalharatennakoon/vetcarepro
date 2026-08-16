@@ -9,7 +9,7 @@ This is what the Flask /api/ml/rag/chat route calls.
 import re
 
 from scripts.rag.retrieval import retrieve_chunks
-from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, OllamaError
+from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, strip_non_english, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, find_pet_candidates, STAFF_ROLES
 from scripts.rag.action_intent import try_action_intent
 from scripts.rag.clinical_tools import _route_clinical_tool, run_clinical_generation, stream_clinical_generation
@@ -587,6 +587,7 @@ def _finalize_generation(answer_text: str, reasoning, prep: dict) -> dict:
     is_guest_ungrounded = prep['is_guest_ungrounded']
 
     def _normalize(text: str) -> str:
+        text = strip_non_english(text)
         text = _strip_imperial_units(text)
         return text if is_guest_ungrounded else normalize_currency(text)
 
@@ -784,7 +785,7 @@ def explain_ml_output(output_type: str, data: dict, think: bool = False) -> tupl
     """
     try:
         answer, reasoning = generate_answer(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data), think=think)
-        return normalize_currency(_strip_imperial_units(answer)), reasoning
+        return normalize_currency(_strip_imperial_units(strip_non_english(answer))), reasoning
     except OllamaError as e:
         return f"Could not generate an explanation right now: {str(e)}", None
 
@@ -815,7 +816,7 @@ def stream_explain_ml_output(output_type: str, data: dict, think: bool = True):
                 reasoning = event['thinking']
         yield {
             'type': 'done',
-            'explanation': normalize_currency(_strip_imperial_units(content)),
+            'explanation': normalize_currency(_strip_imperial_units(strip_non_english(content))),
             'reasoning': reasoning
         }
     except OllamaError as e:

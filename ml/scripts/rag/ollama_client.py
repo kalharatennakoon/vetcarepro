@@ -219,6 +219,33 @@ def normalize_currency(text: str) -> str:
     return text
 
 
+# qwen3:8b is trained on heavily multilingual (mostly Chinese+English) data
+# and occasionally leaks a stray CJK/Hangul token into an otherwise-English
+# sentence (e.g. "to 减轻 joint strain" instead of "to reduce joint strain") -
+# a model-quality quirk, not a prompt problem, so no amount of "respond only
+# in English" wording in the system prompt reliably prevents it. This app is
+# English-only end to end, so any run of these characters is always a leak,
+# never intended content. Same model-agnostic-safety-net pattern as
+# normalize_currency above: strip deterministically after generation rather
+# than trusting the prompt alone - a no-op when the model already stays in
+# English.
+# CJK punctuation, Hiragana/Katakana, CJK Extension A, CJK Unified
+# Ideographs, Hangul syllables, CJK compatibility ideographs, fullwidth forms.
+_NON_ENGLISH_SCRIPT = re.compile(
+    '[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff'
+    '\uac00-\ud7af\uf900-\ufaff\uff00-\uffef]+'
+)
+_DOUBLE_SPACE = re.compile(r' {2,}')
+_SPACE_BEFORE_PUNCT = re.compile(r' +([,.!?;:])')
+
+
+def strip_non_english(text: str) -> str:
+    text = _NON_ENGLISH_SCRIPT.sub(' ', text)
+    text = _SPACE_BEFORE_PUNCT.sub(r'\1', text)
+    text = _DOUBLE_SPACE.sub(' ', text)
+    return text.strip()
+
+
 def check_health() -> dict:
     """Check whether Ollama is up and the required models are pulled."""
     try:

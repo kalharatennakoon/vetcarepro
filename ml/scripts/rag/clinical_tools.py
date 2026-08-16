@@ -28,7 +28,7 @@ an email without the vet reviewing it first.
 import re
 
 from config.db_connection import get_raw_db_connection
-from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, OllamaError
+from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, strip_non_english, OllamaError
 from scripts.rag.structured_query import (
     CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name, _first_non_stopword_match
 )
@@ -402,7 +402,7 @@ def _prepare_full_history_summary(pet_id: str, observations_text: str) -> tuple:
 
 
 def _finalize_full_history_summary(answer_text: str, reasoning, prep: dict) -> dict:
-    answer = normalize_currency(answer_text)
+    answer = normalize_currency(strip_non_english(answer_text))
     return {
         'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
@@ -429,7 +429,7 @@ def _prepare_draft_consultation_note(pet_id: str, observations_text: str) -> tup
 
 
 def _finalize_draft_consultation_note(answer_text: str, reasoning, prep: dict) -> dict:
-    answer = normalize_currency(answer_text)
+    answer = normalize_currency(strip_non_english(answer_text))
     return {
         'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
@@ -468,7 +468,7 @@ def _prepare_aftercare_instructions(pet_id: str, observations_text: str) -> tupl
 
 
 def _finalize_aftercare_instructions(answer_text: str, reasoning, prep: dict) -> dict:
-    answer = normalize_currency(answer_text)
+    answer = normalize_currency(strip_non_english(answer_text))
     pet_name, customer_id = prep['pet_name'], prep['customer_id']
     owner_first, owner_last, owner_email = prep['owner_first'], prep['owner_last'], prep['owner_email']
 
@@ -517,7 +517,7 @@ def _prepare_pre_appointment_briefing(pet_id: str, observations_text: str) -> tu
 
 
 def _finalize_pre_appointment_briefing(answer_text: str, reasoning, prep: dict) -> dict:
-    answer = normalize_currency(answer_text)
+    answer = normalize_currency(strip_non_english(answer_text))
     return {
         'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})

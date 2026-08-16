@@ -334,7 +334,7 @@ const AIAssistant = () => {
                             Thinking
                             <span className="ai-thinking-dots"><span></span><span></span><span></span></span>
                           </span>
-                          <span className="ai-reasoning-summary-action">view model reasoning</span>
+                          <i className="fas fa-chevron-down ai-reasoning-chevron"></i>
                         </>
                       ) : (
                         <>
