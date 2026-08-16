@@ -407,8 +407,20 @@ def _names_a_pet_explicitly(question: str, pet_name: str) -> bool:
     through to unscoped retrieval instead - the same harmless no-op this
     module had before the error existed, and far better than telling someone
     asking about a pet emergency that they have no pet named "emergency".
+
+    A capitalized word immediately followed by ANOTHER capitalized word
+    ("Diabetes Mellitus", "Chronic Kidney Disease") is excluded too - that
+    shape is characteristic of a medical/proper-noun phrase caught by
+    PET_BY_MENTION's "for/of/about X" pattern (e.g. "managed for Diabetes
+    Mellitus"), not how a personal pet name is ever phrased ("for Max is
+    limping", never "for Max Something"). Without this, a genuinely
+    misspelled pet name still correctly hard-errors - it's just this one
+    two-capitalized-words shape that's treated as "not a name at all".
     """
-    return bool(re.search(rf'\b{re.escape(pet_name)}\b', question)) and pet_name[:1].isupper()
+    match = re.search(rf'\b{re.escape(pet_name)}\b', question)
+    if not match or not pet_name[:1].isupper():
+        return False
+    return not re.match(r"\s+[A-Z][a-z]", question[match.end():])
 
 
 def _first_non_stopword_match(pattern, text: str):

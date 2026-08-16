@@ -28,7 +28,7 @@ an email without the vet reviewing it first.
 import re
 
 from config.db_connection import get_raw_db_connection
-from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
+from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, OllamaError
 from scripts.rag.structured_query import (
     CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name, _first_non_stopword_match
 )
@@ -382,13 +382,13 @@ def _pet_source(pet_id: str) -> list:
 # Per-intent resolution
 # ============================================================
 
-def _resolve_full_history_summary(pet_id: str, observations_text: str, think: bool = False) -> dict:
+def _prepare_full_history_summary(pet_id: str, observations_text: str) -> tuple:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
             pet_profile = _fetch_pet_profile(cur, pet_id)
             if not pet_profile:
-                return {'answer': "I couldn't find that pet's record.", 'structured': True}
+                return 'early', {'answer': "I couldn't find that pet's record.", 'structured': True}
             records = _fetch_medical_records(cur, pet_id)
             vaccinations = _fetch_vaccinations(cur, pet_id)
             lab_reports = _fetch_lab_reports(cur, pet_id)
@@ -398,20 +398,18 @@ def _resolve_full_history_summary(pet_id: str, observations_text: str, think: bo
 
     dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, lab_reports, disease_cases)
     user_prompt = f"Full record for this pet:\n\n{dataset_text}\n\nWrite a summary of this pet's complete medical history for the veterinarian."
+    return 'generate', {'system_prompt': HISTORY_SUMMARY_SYSTEM_PROMPT, 'user_prompt': user_prompt, 'pet_id': pet_id}
 
-    try:
-        raw_answer, reasoning = generate_answer(HISTORY_SUMMARY_SYSTEM_PROMPT, user_prompt, think=think)
-        answer = normalize_currency(raw_answer)
-    except OllamaError as e:
-        return _unavailable(e)
 
+def _finalize_full_history_summary(answer_text: str, reasoning, prep: dict) -> dict:
+    answer = normalize_currency(answer_text)
     return {
-        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
     }
 
 
-def _resolve_draft_consultation_note(pet_id: str, observations_text: str, think: bool = False) -> dict:
+def _prepare_draft_consultation_note(pet_id: str, observations_text: str) -> tuple:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -420,27 +418,25 @@ def _resolve_draft_consultation_note(pet_id: str, observations_text: str, think:
         conn.close()
 
     if not pet_profile:
-        return {'answer': "I couldn't find that pet's record.", 'structured': True}
+        return 'early', {'answer': "I couldn't find that pet's record.", 'structured': True}
 
     pet_name = pet_profile[0]
     user_prompt = (
         f"Pet: {pet_name}\n\nVeterinarian's observations from this visit:\n{observations_text}\n\n"
         "Turn this into a structured draft consultation note."
     )
+    return 'generate', {'system_prompt': DRAFT_NOTE_SYSTEM_PROMPT, 'user_prompt': user_prompt, 'pet_id': pet_id}
 
-    try:
-        raw_answer, reasoning = generate_answer(DRAFT_NOTE_SYSTEM_PROMPT, user_prompt, think=think)
-        answer = normalize_currency(raw_answer)
-    except OllamaError as e:
-        return _unavailable(e)
 
+def _finalize_draft_consultation_note(answer_text: str, reasoning, prep: dict) -> dict:
+    answer = normalize_currency(answer_text)
     return {
-        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
     }
 
 
-def _resolve_aftercare_instructions(pet_id: str, observations_text: str, think: bool = False) -> dict:
+def _prepare_aftercare_instructions(pet_id: str, observations_text: str) -> tuple:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -457,23 +453,27 @@ def _resolve_aftercare_instructions(pet_id: str, observations_text: str, think: 
         conn.close()
 
     if not row:
-        return {'answer': "I couldn't find that pet's record.", 'structured': True}
+        return 'early', {'answer': "I couldn't find that pet's record.", 'structured': True}
 
     pet_name, customer_id, owner_first, owner_last, owner_email = row
-
     user_prompt = (
         f"Pet: {pet_name}\n\nVisit details:\n{observations_text}\n\n"
         "Write owner-friendly aftercare instructions."
     )
+    return 'generate', {
+        'system_prompt': AFTERCARE_SYSTEM_PROMPT, 'user_prompt': user_prompt, 'pet_id': pet_id,
+        'pet_name': pet_name, 'customer_id': customer_id,
+        'owner_first': owner_first, 'owner_last': owner_last, 'owner_email': owner_email
+    }
 
-    try:
-        raw_answer, reasoning = generate_answer(AFTERCARE_SYSTEM_PROMPT, user_prompt, think=think)
-        answer = normalize_currency(raw_answer)
-    except OllamaError as e:
-        return _unavailable(e)
+
+def _finalize_aftercare_instructions(answer_text: str, reasoning, prep: dict) -> dict:
+    answer = normalize_currency(answer_text)
+    pet_name, customer_id = prep['pet_name'], prep['customer_id']
+    owner_first, owner_last, owner_email = prep['owner_first'], prep['owner_last'], prep['owner_email']
 
     result = {
-        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
     }
 
@@ -498,13 +498,13 @@ def _resolve_aftercare_instructions(pet_id: str, observations_text: str, think: 
     return result
 
 
-def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str, think: bool = False) -> dict:
+def _prepare_pre_appointment_briefing(pet_id: str, observations_text: str) -> tuple:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
             pet_profile = _fetch_pet_profile(cur, pet_id)
             if not pet_profile:
-                return {'answer': "I couldn't find that pet's record.", 'structured': True}
+                return 'early', {'answer': "I couldn't find that pet's record.", 'structured': True}
             records = _fetch_medical_records(cur, pet_id)
             vaccinations = _fetch_vaccinations(cur, pet_id)
             disease_cases = _fetch_disease_cases(cur, pet_id)
@@ -513,25 +513,81 @@ def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str, think
 
     dataset_text = _format_pet_dataset_for_prompt(pet_profile, records, vaccinations, disease_cases=disease_cases)
     user_prompt = f"Record for this pet:\n\n{dataset_text}\n\nGive the veterinarian a short pre-visit briefing for today's appointment."
+    return 'generate', {'system_prompt': BRIEFING_SYSTEM_PROMPT, 'user_prompt': user_prompt, 'pet_id': pet_id}
 
-    try:
-        raw_answer, reasoning = generate_answer(BRIEFING_SYSTEM_PROMPT, user_prompt, think=think)
-        answer = normalize_currency(raw_answer)
-    except OllamaError as e:
-        return _unavailable(e)
 
+def _finalize_pre_appointment_briefing(answer_text: str, reasoning, prep: dict) -> dict:
+    answer = normalize_currency(answer_text)
     return {
-        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        'answer': answer, 'sources': _pet_source(prep['pet_id']), 'chunks_used': 0, 'structured': True,
         **({'reasoning': reasoning} if reasoning else {})
     }
 
 
-_RESOLVERS = {
-    'full_history_summary': _resolve_full_history_summary,
-    'draft_consultation_note': _resolve_draft_consultation_note,
-    'aftercare_instructions': _resolve_aftercare_instructions,
-    'pre_appointment_briefing': _resolve_pre_appointment_briefing,
+_PREPARERS = {
+    'full_history_summary': _prepare_full_history_summary,
+    'draft_consultation_note': _prepare_draft_consultation_note,
+    'aftercare_instructions': _prepare_aftercare_instructions,
+    'pre_appointment_briefing': _prepare_pre_appointment_briefing,
 }
+
+_FINALIZERS = {
+    'full_history_summary': _finalize_full_history_summary,
+    'draft_consultation_note': _finalize_draft_consultation_note,
+    'aftercare_instructions': _finalize_aftercare_instructions,
+    'pre_appointment_briefing': _finalize_pre_appointment_briefing,
+}
+
+
+def run_clinical_generation(intent_type: str, pet_id: str, observations_text: str, role: str) -> dict:
+    """
+    Runs the actual generation step for a matched clinical-tool intent
+    (called by rag_service.answer_question once _route_clinical_tool has
+    resolved a pet and intent) - blocking, via generate_answer. See
+    stream_clinical_generation for the real-time streamed counterpart.
+    """
+    prep_kind, prep = _PREPARERS[intent_type](pet_id, observations_text)
+    if prep_kind == 'early':
+        return prep
+
+    try:
+        answer_text, reasoning = generate_answer(prep['system_prompt'], prep['user_prompt'], think=(role == 'admin'))
+    except OllamaError as e:
+        return _unavailable(e)
+
+    return _FINALIZERS[intent_type](answer_text, reasoning, prep)
+
+
+def stream_clinical_generation(intent_type: str, pet_id: str, observations_text: str, role: str):
+    """
+    Streaming counterpart to run_clinical_generation, for the admin-only
+    real-time "show reasoning" chat view - same matched intent/pet, but
+    surfaces reasoning deltas as they're produced via stream_chat instead of
+    only after the full answer is ready.
+
+    Yields:
+        dict: {'type': 'reasoning_delta', 'text': str} zero or more times,
+            followed by exactly one {'type': 'final', 'result': dict}
+    """
+    prep_kind, prep = _PREPARERS[intent_type](pet_id, observations_text)
+    if prep_kind == 'early':
+        yield {'type': 'final', 'result': prep}
+        return
+
+    content = ''
+    reasoning = None
+    try:
+        for event in stream_chat(prep['system_prompt'], prep['user_prompt'], think=(role == 'admin')):
+            if event['type'] == 'thinking':
+                yield {'type': 'reasoning_delta', 'text': event['delta']}
+            elif event['type'] == 'done':
+                content = event['content']
+                reasoning = event['thinking']
+    except OllamaError as e:
+        yield {'type': 'final', 'result': _unavailable(e)}
+        return
+
+    yield {'type': 'final', 'result': _FINALIZERS[intent_type](content, reasoning, prep)}
 
 
 # Only these two intents take free-text clinical input from the vet - the
@@ -549,24 +605,38 @@ def _detail_question(intent_type: str) -> str:
     )
 
 
-def try_clinical_tool(question: str, role: str, history=None, pending_intent: dict = None):
+def _route_clinical_tool(question: str, role: str, history=None, pending_intent: dict = None) -> tuple:
     """
     Detects and progresses a clinical generation request (full history
     summary, consultation note draft, aftercare instructions, or a
-    pre-appointment briefing). Staff-only (admin/veterinarian) - returns None
-    for any other role, or if `question` doesn't match a known intent
-    (caller should fall through to try_structured_answer / RAG).
+    pre-appointment briefing), stopping short of the actual LLM generation
+    call so rag_service.answer_question (blocking) and
+    stream_answer_question (real-time streamed, admin-only "show reasoning"
+    view) can each run that final step their own way, via
+    run_clinical_generation/stream_clinical_generation. Staff-only
+    (admin/veterinarian).
 
     Note this deliberately does NOT feed the model the raw conversation
     history/transcript - only the vet's own clinical text (the original
     trigger message, plus a follow-up answer if one was needed). Passing the
     full back-and-forth (including the pet-disambiguation exchange) confused
     the model into echoing transcript-like text back in earlier testing.
+
+    Returns:
+        tuple: (None, None) - role not allowed, or `question` doesn't match
+            a known intent (caller should fall through to
+            try_structured_answer / RAG)
+          ('early', dict) - fully resolved already (disambiguation prompts,
+            "couldn't find pet", "what did you observe" follow-up) - nothing
+            left to generate
+          ('dispatch', {'intent_type', 'pet_id', 'observations_text'}) - a
+            pet and intent are resolved, ready for
+            run_clinical_generation/stream_clinical_generation
     """
     if role not in CLINICAL_STAFF_ROLES:
-        return None
+        return None, None
 
-    if pending_intent and pending_intent.get('type') in _RESOLVERS:
+    if pending_intent and pending_intent.get('type') in _PREPARERS:
         intent_type = pending_intent['type']
         stage = pending_intent.get('stage')
         original_question = pending_intent.get('original_question', '')
@@ -574,7 +644,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
         if stage == 'need_detail':
             pet_id = pending_intent.get('pet_id')
             observations_text = f"{original_question}\n{question}"
-            return _RESOLVERS[intent_type](pet_id, observations_text, think=(role == 'admin'))
+            return 'dispatch', {'intent_type': intent_type, 'pet_id': pet_id, 'observations_text': observations_text}
 
         if stage == 'need_pet_name':
             # The original request had no pet name in it at all - this
@@ -588,10 +658,10 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
                 conn.close()
 
             if not pet_rows:
-                return {'answer': f'I couldn\'t find an active pet named "{pet_name}".', 'structured': True}
+                return 'early', {'answer': f'I couldn\'t find an active pet named "{pet_name}".', 'structured': True}
 
             if len(pet_rows) > 1:
-                return {
+                return 'early', {
                     'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
                     'options': _owner_options(pet_rows),
                     'pending_intent': {
@@ -621,7 +691,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
                 'pet_name': pet_name, 'original_question': original_question
             }
             if not pet_rows:
-                return {
+                return 'early', {
                     'answer': (
                         "I still couldn't find exactly one matching pet - could you double-check "
                         "the pet's name and the owner's name?"
@@ -630,7 +700,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
                     'structured': True
                 }
             if len(pet_rows) > 1:
-                return {
+                return 'early', {
                     'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
                     'options': _owner_options(pet_rows),
                     'pending_intent': retry_pending_intent,
@@ -638,12 +708,12 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
                 }
             pet_id = pet_rows[0][0]
         else:
-            return None
+            return None, None
 
         # Pet just resolved - check the ORIGINAL request for clinical detail
         # (not this turn's reply, which was just naming/disambiguating the pet).
         if intent_type in _NEEDS_CLINICAL_DETAIL and not _has_enough_detail(original_question):
-            return {
+            return 'early', {
                 'answer': _detail_question(intent_type),
                 'pending_intent': {
                     'type': intent_type, 'stage': 'need_detail',
@@ -664,11 +734,11 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
             intent_type = 'pre_appointment_briefing'
 
         if intent_type is None:
-            return None
+            return None, None
 
         pet_name = _extract_pet_name(question)
         if not pet_name:
-            return {
+            return 'early', {
                 'answer': "Which pet is this about?",
                 'pending_intent': {'type': intent_type, 'stage': 'need_pet_name', 'original_question': question},
                 'structured': True
@@ -682,10 +752,10 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
             conn.close()
 
         if not pet_rows:
-            return {'answer': f'I couldn\'t find an active pet named "{pet_name}".', 'structured': True}
+            return 'early', {'answer': f'I couldn\'t find an active pet named "{pet_name}".', 'structured': True}
 
         if len(pet_rows) > 1:
-            return {
+            return 'early', {
                 'answer': f'I found multiple pets named "{pet_name}" - which one did you mean?',
                 'options': _owner_options(pet_rows),
                 'pending_intent': {
@@ -698,7 +768,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
         pet_id = pet_rows[0][0]
 
         if intent_type in _NEEDS_CLINICAL_DETAIL and not _has_enough_detail(question):
-            return {
+            return 'early', {
                 'answer': _detail_question(intent_type),
                 'pending_intent': {
                     'type': intent_type, 'stage': 'need_detail', 'pet_id': pet_id, 'original_question': question
@@ -707,4 +777,4 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
             }
         observations_text = question
 
-    return _RESOLVERS[intent_type](pet_id, observations_text, think=(role == 'admin'))
+    return 'dispatch', {'intent_type': intent_type, 'pet_id': pet_id, 'observations_text': observations_text}

@@ -12,8 +12,10 @@ from scripts.rag.retrieval import retrieve_chunks
 from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, find_pet_candidates, STAFF_ROLES
 from scripts.rag.action_intent import try_action_intent
-from scripts.rag.clinical_tools import try_clinical_tool
-from scripts.rag.pet_health_intent import try_pet_health_intent
+from scripts.rag.clinical_tools import _route_clinical_tool, run_clinical_generation, stream_clinical_generation
+from scripts.rag.pet_health_intent import (
+    _route_pet_health_intent, run_pet_health_generation, stream_pet_health_generation
+)
 from scripts.rag.chart_intent import try_chart_intent
 
 # Every system prompt below instructs metric-only units, but small local chat
@@ -338,9 +340,16 @@ def _route_to_generation(
 
     Returns:
         tuple: ('early', dict) - a fully-resolved answer, return/yield as-is
+            ('clinical_generate', dict) - {'intent_type', 'pet_id',
+                'observations_text'}, ready for
+                clinical_tools.run_clinical_generation/stream_clinical_generation
+            ('health_generate', dict) - {'intent_type', 'pet_id',
+                'question'}, ready for
+                pet_health_intent.run_pet_health_generation/stream_pet_health_generation
             ('generate', dict) - {'system_prompt', 'user_prompt',
                 'effective_question', 'chunks', 'is_guest_ungrounded'},
-                everything needed to run and finalize the generation call
+                everything needed to run and finalize the plain free-form
+                RAG generation call
     """
     # Staff write-action requests (book/reschedule/cancel an appointment,
     # send a reminder, register a customer, add a pet) are checked first -
@@ -356,19 +365,29 @@ def _route_to_generation(
     # draft, aftercare instructions, pre-appointment briefing) need the
     # COMPLETE record set for a pet, not a top-k RAG sample - checked next,
     # before falling to exact-SQL/RAG. Staff-only (admin/veterinarian); the
-    # module itself gates on CLINICAL_STAFF_ROLES and returns None otherwise.
-    clinical_result = try_clinical_tool(question, role=role, history=history, pending_intent=pending_intent)
-    if clinical_result is not None:
-        return 'early', clinical_result
+    # module itself gates on CLINICAL_STAFF_ROLES and returns (None, None)
+    # otherwise. Routing only here (no generation yet) so the streaming
+    # caller can watch this generation live too, same as the plain RAG path.
+    clinical_kind, clinical_payload = _route_clinical_tool(
+        question, role=role, history=history, pending_intent=pending_intent
+    )
+    if clinical_kind == 'early':
+        return 'early', clinical_payload
+    if clinical_kind == 'dispatch':
+        return 'clinical_generate', clinical_payload
 
     # Pet disease-recurrence risk, cancer risk, and clinic-wide pandemic risk
     # are live PetHealthPredictor computations, never ingested into
     # rag_chunks - checked next, same "live model, not RAG" reasoning as the
     # clinical tools above. Admin-only; the module itself gates on
-    # PET_HEALTH_ADMIN_ROLES and returns None otherwise.
-    pet_health_result = try_pet_health_intent(question, role=role, history=history, pending_intent=pending_intent)
-    if pet_health_result is not None:
-        return 'early', pet_health_result
+    # PET_HEALTH_ADMIN_ROLES and returns (None, None) otherwise.
+    health_kind, health_payload = _route_pet_health_intent(
+        question, role=role, history=history, pending_intent=pending_intent
+    )
+    if health_kind == 'early':
+        return 'early', health_payload
+    if health_kind == 'dispatch':
+        return 'health_generate', health_payload
 
     # Explicit "chart/graph/plot this" requests are checked BEFORE the plain
     # structured-query layer below, not after. Chart questions share their
@@ -608,9 +627,10 @@ def answer_question(
         }
         (staff write-action turns may instead/also include 'action' +
         'requires_confirmation', or 'pending_intent' - see action_intent.py.
-        Admin-role turns on the plain RAG-generation path may also include
-        'reasoning': str - the model's thinking-mode output, present only
-        when the chat model supports it and produced non-empty output.)
+        Admin-role turns on any of the three generation paths - plain RAG,
+        clinical_tools, or pet_health_intent - may also include 'reasoning':
+        str, the model's thinking-mode output, present only when the chat
+        model supports it and produced non-empty output.)
     """
     kind, payload = _route_to_generation(
         question, role, customer_id=customer_id, user_id=user_id, top_k=top_k,
@@ -618,6 +638,10 @@ def answer_question(
     )
     if kind == 'early':
         return payload
+    if kind == 'clinical_generate':
+        return run_clinical_generation(payload['intent_type'], payload['pet_id'], payload['observations_text'], role)
+    if kind == 'health_generate':
+        return run_pet_health_generation(payload['intent_type'], payload['pet_id'], payload['question'], role)
 
     try:
         # Reasoning is only requested for admins - it's an admin-only debug
@@ -643,14 +667,17 @@ def stream_answer_question(
     """
     Generator variant of answer_question, for the admin-only real-time
     "show reasoning" chat view. Runs the exact same routing as
-    answer_question (see _route_to_generation) - only the final free-form
-    RAG generation step is actually streamed token-by-token, since it's the
-    only step that makes a live model call worth watching in real time.
-    Every early-return branch above it (write-actions, clinical tools, pet
-    health, charts, structured SQL, pet disambiguation) already resolves
-    its answer synchronously and cheaply, so it's yielded as a single
-    'final' event immediately, same as it would return from
-    answer_question.
+    answer_question (see _route_to_generation) - three different final
+    steps can end up streamed token-by-token: the plain free-form RAG
+    generation call, clinical_tools' generation (full history summary,
+    consultation note, aftercare, briefing), and pet_health_intent's
+    live-model explanation (individual disease risk, cancer risk, pandemic
+    risk), since all three make a live model call worth watching in real
+    time. Every OTHER early-return branch (write-actions, chart/structured
+    SQL answers, pet disambiguation, "which pet did you mean") already
+    resolves synchronously and cheaply with nothing to generate, so it's
+    yielded as a single 'final' event immediately, same as it would return
+    from answer_question.
 
     Yields:
         dict: {'type': 'reasoning_delta', 'text': str} for each incremental
@@ -665,6 +692,14 @@ def stream_answer_question(
     )
     if kind == 'early':
         yield {'type': 'final', 'result': payload}
+        return
+    if kind == 'clinical_generate':
+        yield from stream_clinical_generation(
+            payload['intent_type'], payload['pet_id'], payload['observations_text'], role
+        )
+        return
+    if kind == 'health_generate':
+        yield from stream_pet_health_generation(payload['intent_type'], payload['pet_id'], payload['question'], role)
         return
 
     content = ''
