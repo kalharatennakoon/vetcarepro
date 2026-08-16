@@ -76,6 +76,57 @@ const staffChat = async (req, res) => {
 };
 
 /**
+ * @desc    Real-time streamed variant of staffChat (Server-Sent Events) -
+ *          the admin-only "show model reasoning live" chat view. Proxies
+ *          the ML service's SSE stream straight through rather than
+ *          buffering it, since the whole point is forwarding each
+ *          reasoning_delta event to the client as it arrives.
+ * @route   POST /api/ai/chat/stream
+ * @access  Private (admin only - enforced by the adminOnly route middleware)
+ */
+const streamChat = async (req, res) => {
+  const { question, history, pending_intent } = req.body;
+  if (!question || !question.trim()) {
+    return res.status(400).json({ success: false, message: 'question is required' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  try {
+    const upstream = await aiService.askAssistantStream({
+      question,
+      role: req.user.role, // enforced server-side from the authenticated user, never trusted from the client
+      userId: req.user.user_id,
+      history,
+      pendingIntent: pending_intent
+    });
+
+    upstream.on('data', (chunk) => res.write(chunk));
+    upstream.on('end', () => res.end());
+    upstream.on('error', (error) => {
+      console.error('AI stream chat upstream error:', error.message);
+      res.end();
+    });
+
+    // Client navigated away or aborted mid-stream - stop pulling from
+    // Ollama instead of generating a full (possibly minutes-long) answer
+    // nobody's listening for.
+    req.on('close', () => upstream.destroy());
+  } catch (error) {
+    console.error('AI stream chat error:', error);
+    res.write(`data: ${JSON.stringify({
+      type: 'final',
+      success: false,
+      message: 'Failed to get a response from the AI assistant'
+    })}\n\n`);
+    res.end();
+  }
+};
+
+/**
  * @desc    Execute a write action the assistant proposed (book/reschedule/
  *          cancel an appointment, send a reminder, register a customer, add
  *          a pet, or - admin only - register a new staff member) - only
@@ -517,6 +568,7 @@ const explainOutput = async (req, res) => {
 export {
   checkHealth,
   staffChat,
+  streamChat,
   customerChat,
   publicChat,
   getFaqs,

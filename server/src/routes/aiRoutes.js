@@ -29,6 +29,14 @@ router.post('/customer-chat', authenticateCustomer, aiController.customerChat);
 // @access  Private (admin, veterinarian, receptionist)
 router.post('/chat', authenticate, staffOnly, aiController.staffChat);
 
+// @route   POST /api/ai/chat/stream
+// @desc    Real-time streamed variant of /chat (Server-Sent Events) - the
+//          admin-only "show model reasoning live" chat view. Admin-only
+//          because the ML layer only ever turns on thinking mode for that
+//          role (see rag_service.py) - no other role has anything to stream.
+// @access  Private (admin only)
+router.post('/chat/stream', authenticate, adminOnly, aiController.streamChat);
+
 // @route   POST /api/ai/actions/confirm
 // @desc    Execute a write action the assistant proposed (book/reschedule/
 //          cancel an appointment, send a reminder, register a customer, add

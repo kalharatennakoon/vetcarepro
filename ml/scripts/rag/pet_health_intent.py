@@ -99,12 +99,13 @@ def _resolve_individual_disease_risk(pet_id: str, question: str) -> dict:
     )
     result['pet_name'] = pet_name
 
-    explanation = explain_ml_output('pet_disease_risk', result)
+    explanation, reasoning = explain_ml_output('pet_disease_risk', result, think=True)
     return {
         'answer': explanation,
         'sources': [{'source_type': 'pet_disease_risk_model', 'source_id': pet_id, 'metadata': {}}],
         'chunks_used': 0,
-        'structured': True
+        'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
     }
 
 
@@ -133,12 +134,13 @@ def _resolve_cancer_risk(pet_id: str, question: str) -> dict:
     )
     result['pet_name'] = pet_name
 
-    explanation = explain_ml_output('cancer_risk', result)
+    explanation, reasoning = explain_ml_output('cancer_risk', result, think=True)
     return {
         'answer': explanation,
         'sources': [{'source_type': 'cancer_risk_model', 'source_id': pet_id, 'metadata': {}}],
         'chunks_used': 0,
-        'structured': True
+        'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
     }
 
 
@@ -147,12 +149,13 @@ def _resolve_pandemic_risk(pet_id: str, question: str) -> dict:
     from scripts.rag.rag_service import explain_ml_output
 
     result = PetHealthPredictor().assess_pandemic_risk()
-    explanation = explain_ml_output('pandemic_risk', result)
+    explanation, reasoning = explain_ml_output('pandemic_risk', result, think=True)
     return {
         'answer': explanation,
         'sources': [{'source_type': 'pandemic_risk_model', 'source_id': 'current', 'metadata': {}}],
         'chunks_used': 0,
-        'structured': True
+        'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
     }
 
 

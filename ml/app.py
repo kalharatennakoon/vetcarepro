@@ -3,12 +3,14 @@ Flask API Server for ML Services
 Provides REST API endpoints for machine learning predictions
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import os
 import glob
 import re
+import json
 import time
+import itertools
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
@@ -1344,7 +1346,7 @@ def briefing_summarize():
         user_prompt = f'Today\'s data:\n{_json.dumps(data, default=str)}'
 
         try:
-            raw = generate_answer(system_prompt, user_prompt)
+            raw, _ = generate_answer(system_prompt, user_prompt)
         except OllamaError as e:
             return jsonify({'success': False, 'message': str(e)}), 503
 
@@ -1540,7 +1542,7 @@ def rag_explain():
         if not data:
             return jsonify({'success': False, 'error': 'data is required'}), 400
 
-        explanation = explain_ml_output(output_type, data)
+        explanation, _ = explain_ml_output(output_type, data)
         return jsonify({'success': True, 'explanation': explanation}), 200
 
     except Exception as e:
@@ -1595,6 +1597,336 @@ def _extract_time_horizon(question, unit='days', default=30, minimum=7, maximum=
     return clamped, clamped != requested
 
 
+def _match_live_model_gate(question: str, role: str):
+    """
+    Pure matching logic shared by _try_live_model_gate (blocking) and the
+    streaming route: "explain the current outbreak risk / disease trend
+    forecast / revenue forecast / inventory reorder suggestions" can't be
+    answered through RAG retrieval - each is a live model computation,
+    never ingested into rag_chunks - so the general chat pipeline would
+    otherwise hallucinate an answer stitched from tangentially-related
+    chunks instead of a real assessment. This runs the (cheap, synchronous)
+    model call itself, but stops short of the actual LLM explanation call
+    so both the blocking and streaming callers can run that part their own
+    way (generate_answer vs stream_chat).
+
+    Returns:
+        tuple: (None, None) - no pattern matched, caller should fall through
+            to answer_question/stream_answer_question
+          ('early', dict) - fully resolved already (role-not-allowed
+            message, model-not-loaded message, or a computation error) -
+            return/yield as-is, nothing left to generate
+          ('explain', dict) - {'output_type', 'data', 'source', 'note'},
+            everything needed to call (stream_)explain_ml_output and
+            finish building the response
+    """
+    # Staff-only gate: guests/owners asking a general "what do I do
+    # during a disease outbreak" question are asking a legitimate
+    # general-knowledge question the guest/owner pipeline already
+    # handles - only intercept this phrasing for staff, who mean the
+    # clinic's own live risk model.
+    # Exemption: "outbreak risk/trend" phrasing normally means "what's
+    # happening right now" and is deliberately claimed here even for
+    # the word "trend" (see the trend-forecast block's comment below) -
+    # but a question that also carries real forward-looking language
+    # ("forecasted", "predict", "over the next N years") is
+    # unambiguously asking for the Prophet trend forecast instead, not
+    # a 30-day snapshot with none of the historical/forecast/demographic
+    # detail that block actually answers with. Let those fall through.
+    _outbreak_forecast_intent = re.search(
+        rf'\bforecast(?:ed|s)?\b|\bpredict(?:ed|ion|s)?\b|\bover\s+the\s+next\b|'
+        rf'\bnext\s+{_NUMBER_PATTERN}\s*(?:day|week|month|year)s?\b',
+        question, re.IGNORECASE
+    )
+    if role in ('admin', 'veterinarian', 'receptionist') and re.search(
+        r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE
+    ) and not _outbreak_forecast_intent:
+        if role not in ('admin', 'veterinarian'):
+            return 'early', {
+                'answer': (
+                    "Disease outbreak risk assessments aren't available through "
+                    "this assistant for your role - check the Analytics page, "
+                    "or ask a veterinarian or admin."
+                ),
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        if not disease_model:
+            return 'early', {
+                'answer': "The outbreak risk model isn't loaded right now - please try again shortly.",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        risk_assessment = disease_model.predict_outbreak_risk(days_lookback=30)
+        # No forward-looking-window note needed here anymore: the
+        # _outbreak_forecast_intent exemption above already routes any
+        # question with real forecast language away from this block
+        # before it can be answered as a 30-day snapshot, so this block
+        # only ever fires for genuine "what's happening right now"
+        # questions.
+        return 'explain', {
+            'output_type': 'outbreak_risk',
+            'data': risk_assessment,
+            'source': {'source_type': 'outbreak_risk_model', 'source_id': 'current', 'metadata': risk_assessment},
+            'note': None
+        }
+
+    # "Disease prediction/forecast for the next N months/years" is a
+    # distinct live-model computation from outbreak risk above -
+    # forecast_disease_trends() is a genuine forward-looking Prophet
+    # forecast (predictions per period, trend direction, pandemic risk
+    # index), not a current risk-level snapshot. Never ingested into
+    # rag_chunks, same reasoning as everywhere else in this block: fell
+    # through to plain RAG retrieval before this existed, which had
+    # nothing relevant to retrieve and hallucinated an answer stitched
+    # from unrelated pet medical records instead. Checked after the
+    # outbreak-risk block on purpose - a bare "disease outbreak trend"
+    # (no forecast language) still hits that block above, not this one;
+    # but that block now exempts questions carrying real forward-looking
+    # language ("forecasted", "predict", "over the next N years"), so
+    # e.g. "outbreak risk trend over the next 3 years, historical vs
+    # forecasted cases" falls through and lands here instead.
+    if role in ('admin', 'veterinarian', 'receptionist') and re.search(
+        r'\bdiseases?\b.*\b(?:predict(?:ed|ion)?|forecast(?:ed)?|trend)\b|'
+        r'\b(?:predict(?:ed|ion)?|forecast(?:ed)?)\b.*\bdiseases?\b',
+        question, re.IGNORECASE
+    ):
+        if role not in ('admin', 'veterinarian'):
+            return 'early', {
+                'answer': (
+                    "Disease trend forecasts aren't available through this "
+                    "assistant for your role - check the Analytics page, "
+                    "or ask a veterinarian or admin."
+                ),
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        if not disease_model:
+            return 'early', {
+                'answer': "The disease prediction model isn't loaded right now - please try again shortly.",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        months, was_clamped = _extract_time_horizon(question, unit='months', default=12, minimum=1, maximum=60)
+        trends = disease_model.forecast_disease_trends(periods_months=months)
+        if 'error' in trends:
+            return 'early', {
+                'answer': f"Couldn't generate a disease trend forecast right now: {trends['error']}",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        # 'predictions', 'activity_forecast' (one row per forecasted
+        # month each - up to 60 rows at the max horizon) and
+        # 'category_trend' (one list per disease category) are the
+        # detailed series behind the summary fields (trend_direction,
+        # peak_month, totals, pandemic_risk, etc.) - same "don't bloat
+        # the prompt" reasoning as daily_forecast/sufficient_stock above.
+        condensed_trends = {
+            k: v for k, v in trends.items()
+            if k not in ('predictions', 'activity_forecast', 'category_trend')
+        }
+        return 'explain', {
+            'output_type': 'disease_trend_forecast',
+            'data': condensed_trends,
+            'source': {'source_type': 'disease_trend_forecast_model', 'source_id': 'current', 'metadata': {}},
+            'note': (
+                f"\n\n(Note: the disease prediction model forecasts up to 60 months ahead, so this "
+                f"reflects a {months}-month window rather than the full period you asked about.)"
+            ) if was_clamped else None
+        }
+
+    # "Forecast/predict revenue" is the same shape of problem as outbreak
+    # risk above - a live model computation, never ingested into
+    # rag_chunks. Distinct from BILLING_REVENUE_TIMEFRAME in
+    # structured_query.py, which reports ACTUAL past/current revenue from
+    # real billing rows via SQL - this is a genuine forward-looking
+    # prediction, so it needs the trained sales model, not a query.
+    if re.search(
+        r'\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b.*\b(?:revenue|sales|income)\b|'
+        r'\b(?:revenue|sales|income)\b.*\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b',
+        question, re.IGNORECASE
+    ):
+        if role not in ('admin', 'veterinarian'):
+            return 'early', {
+                'answer': (
+                    "Revenue forecasts aren't available through this assistant "
+                    "for your role - check the Analytics page, or ask an admin."
+                ),
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        if not sales_model:
+            return 'early', {
+                'answer': "The sales forecasting model isn't loaded right now - please try again shortly.",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        days, was_clamped = _extract_time_horizon(question, unit='days', default=90)
+        forecast = sales_model.forecast_revenue(periods=days)
+        if 'error' in forecast:
+            return 'early', {
+                'answer': f"Couldn't generate a revenue forecast right now: {forecast['error']}",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        # forecast_revenue's 'daily_forecast' is ~90+ individual rows -
+        # far more detail than a chat explanation needs and large enough
+        # to bloat the local model's prompt for no benefit; the monthly
+        # rollup is what a plain-language summary should be grounded in.
+        condensed_forecast = {
+            k: v for k, v in forecast.items() if k != 'daily_forecast'
+        }
+        return 'explain', {
+            'output_type': 'sales_forecast',
+            'data': condensed_forecast,
+            'source': {'source_type': 'sales_forecast_model', 'source_id': 'current', 'metadata': {}},
+            'note': (
+                f"\n\n(Note: the sales model forecasts up to 365 days ahead, so this reflects "
+                f"a {days}-day window rather than the full period you asked about.)"
+            ) if was_clamped else None
+        }
+
+    # "What should we reorder/restock soon" - clinic-wide inventory
+    # demand forecast, same live-model reasoning as above. Distinct from
+    # structured_query.py's INVENTORY_LOW_STOCK/INVENTORY_EXPIRING, which
+    # report CURRENT stock levels via SQL - this is a forward-looking
+    # demand prediction from the trained inventory model.
+    if re.search(
+        r'\b(?:reorder|restock)\b.*\b(?:suggest|recommend|predict|forecast|need)\b|'
+        # Bounded gap (not a bare .*) between "what" and "should/do" so a
+        # noun in between - "what items/products/supplies should we
+        # reorder" - still matches, without letting the alternative
+        # over-match unrelated distant text in a longer question.
+        r'\bwhat\b.{0,25}\b(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?(?:reorder|restock)\b|'
+        r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b|'
+        r'\b(?:inventory|stock)\s+demand\b',
+        question, re.IGNORECASE
+    ):
+        if role not in ('admin', 'veterinarian'):
+            return 'early', {
+                'answer': (
+                    "Inventory demand forecasts aren't available through this "
+                    "assistant for your role - check the Analytics page, or ask an admin."
+                ),
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        if not inventory_model:
+            return 'early', {
+                'answer': "The inventory forecasting model isn't loaded right now - please try again shortly.",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        days, was_clamped = _extract_time_horizon(question, unit='days', default=30)
+        recommendations = inventory_model.get_reorder_recommendations(days=days)
+        if 'error' in recommendations:
+            return 'early', {
+                'answer': f"Couldn't generate reorder suggestions right now: {recommendations['error']}",
+                'sources': [],
+                'chunks_used': 0
+            }
+
+        # 'sufficient_stock' lists every well-stocked item (often most of
+        # the catalog) - irrelevant to a "what should I reorder" question
+        # and, like daily_forecast above, just bloats the prompt.
+        condensed_recommendations = {
+            k: v for k, v in recommendations.items() if k != 'sufficient_stock'
+        }
+        return 'explain', {
+            'output_type': 'inventory_forecast',
+            'data': condensed_recommendations,
+            'source': {'source_type': 'inventory_forecast_model', 'source_id': 'current', 'metadata': {}},
+            'note': (
+                f"\n\n(Note: the inventory model forecasts up to 365 days ahead, so this reflects "
+                f"a {days}-day window rather than the full period you asked about.)"
+            ) if was_clamped else None
+        }
+
+    return None, None
+
+
+def _try_live_model_gate(question: str, role: str) -> dict:
+    """
+    Blocking wrapper around _match_live_model_gate, for /api/ml/rag/chat -
+    runs the matched explanation call synchronously via explain_ml_output.
+    See _match_live_model_gate's docstring for what these four patterns are
+    and why they're gated here rather than left to plain RAG retrieval.
+
+    Returns:
+        dict: a fully-resolved chat response (matching answer_question's
+            shape) if one of the four patterns matched, else None - caller
+            should fall through to answer_question.
+    """
+    from scripts.rag.rag_service import explain_ml_output
+
+    kind, payload = _match_live_model_gate(question, role)
+    if kind is None:
+        return None
+    if kind == 'early':
+        return payload
+
+    explanation, reasoning = explain_ml_output(payload['output_type'], payload['data'], think=(role == 'admin'))
+    if payload['note']:
+        explanation += payload['note']
+    return {
+        'answer': explanation,
+        'sources': [payload['source']],
+        'chunks_used': 0,
+        **({'reasoning': reasoning} if reasoning else {})
+    }
+
+
+def _stream_live_model_gate(question: str, role: str):
+    """
+    Streaming counterpart to _try_live_model_gate, for
+    /api/ml/rag/chat/stream - runs the matched explanation call via
+    stream_explain_ml_output instead, surfacing reasoning deltas live the
+    same way stream_answer_question does for the plain RAG path. See
+    _match_live_model_gate's docstring for what these four patterns are.
+
+    Yields:
+        dict: {'type': 'reasoning_delta', 'text': str} zero or more times,
+            followed by exactly one {'type': 'final', 'result': dict} -
+            unless nothing matched, in which case nothing is yielded at all
+            (caller should check _match_live_model_gate itself, not this
+            generator, to decide whether to fall through - see rag_chat_stream)
+    """
+    from scripts.rag.rag_service import stream_explain_ml_output
+
+    kind, payload = _match_live_model_gate(question, role)
+    if kind is None:
+        return
+    if kind == 'early':
+        yield {'type': 'final', 'result': payload}
+        return
+
+    explanation = ''
+    reasoning = None
+    for event in stream_explain_ml_output(payload['output_type'], payload['data'], think=(role == 'admin')):
+        if event['type'] == 'reasoning_delta':
+            yield event
+        elif event['type'] == 'done':
+            explanation = event['explanation']
+            reasoning = event['reasoning']
+
+    if payload['note']:
+        explanation += payload['note']
+    result = {'answer': explanation, 'sources': [payload['source']], 'chunks_used': 0}
+    if reasoning:
+        result['reasoning'] = reasoning
+    yield {'type': 'final', 'result': result}
+
+
 @app.route('/api/ml/rag/chat', methods=['POST'])
 def rag_chat():
     """
@@ -1611,7 +1943,7 @@ def rag_chat():
     the Node backend, never trusted from an unauthenticated client directly.
     """
     try:
-        from scripts.rag.rag_service import answer_question, explain_ml_output
+        from scripts.rag.rag_service import answer_question
         data = request.get_json(force=True)
 
         question = (data.get('question') or '').strip()
@@ -1624,269 +1956,9 @@ def rag_chat():
         if not question:
             return jsonify({'success': False, 'error': 'question is required'}), 400
 
-        # "Explain the current outbreak risk" style questions can't be
-        # answered through RAG retrieval - outbreak risk is a live model
-        # computation (see /api/ml/disease/outbreak-risk), never ingested
-        # into rag_chunks - so the general chat pipeline would otherwise
-        # hallucinate an answer stitched from tangentially-related
-        # vaccination/FAQ chunks instead of a real assessment. Route these
-        # to the actual model + explain feature instead.
-        # Staff-only gate: guests/owners asking a general "what do I do
-        # during a disease outbreak" question are asking a legitimate
-        # general-knowledge question the guest/owner pipeline already
-        # handles - only intercept this phrasing for staff, who mean the
-        # clinic's own live risk model.
-        # Exemption: "outbreak risk/trend" phrasing normally means "what's
-        # happening right now" and is deliberately claimed here even for
-        # the word "trend" (see the trend-forecast block's comment below) -
-        # but a question that also carries real forward-looking language
-        # ("forecasted", "predict", "over the next N years") is
-        # unambiguously asking for the Prophet trend forecast instead, not
-        # a 30-day snapshot with none of the historical/forecast/demographic
-        # detail that block actually answers with. Let those fall through.
-        _outbreak_forecast_intent = re.search(
-            rf'\bforecast(?:ed|s)?\b|\bpredict(?:ed|ion|s)?\b|\bover\s+the\s+next\b|'
-            rf'\bnext\s+{_NUMBER_PATTERN}\s*(?:day|week|month|year)s?\b',
-            question, re.IGNORECASE
-        )
-        if role in ('admin', 'veterinarian', 'receptionist') and re.search(
-            r'outbreak\s*(risk|trend)|disease\s+outbreak', question, re.IGNORECASE
-        ) and not _outbreak_forecast_intent:
-            if role not in ('admin', 'veterinarian'):
-                return jsonify({
-                    'success': True,
-                    'answer': (
-                        "Disease outbreak risk assessments aren't available through "
-                        "this assistant for your role - check the Analytics page, "
-                        "or ask a veterinarian or admin."
-                    ),
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            if not disease_model:
-                return jsonify({
-                    'success': True,
-                    'answer': "The outbreak risk model isn't loaded right now - please try again shortly.",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            risk_assessment = disease_model.predict_outbreak_risk(days_lookback=30)
-            explanation = explain_ml_output('outbreak_risk', risk_assessment)
-            # No forward-looking-window note needed here anymore: the
-            # _outbreak_forecast_intent exemption above already routes any
-            # question with real forecast language away from this block
-            # before it can be answered as a 30-day snapshot, so this block
-            # only ever fires for genuine "what's happening right now"
-            # questions.
-            return jsonify({
-                'success': True,
-                'answer': explanation,
-                'sources': [{
-                    'source_type': 'outbreak_risk_model',
-                    'source_id': 'current',
-                    'metadata': risk_assessment
-                }],
-                'chunks_used': 0
-            }), 200
-
-        # "Disease prediction/forecast for the next N months/years" is a
-        # distinct live-model computation from outbreak risk above -
-        # forecast_disease_trends() is a genuine forward-looking Prophet
-        # forecast (predictions per period, trend direction, pandemic risk
-        # index), not a current risk-level snapshot. Never ingested into
-        # rag_chunks, same reasoning as everywhere else in this block: fell
-        # through to plain RAG retrieval before this existed, which had
-        # nothing relevant to retrieve and hallucinated an answer stitched
-        # from unrelated pet medical records instead. Checked after the
-        # outbreak-risk block on purpose - a bare "disease outbreak trend"
-        # (no forecast language) still hits that block above, not this one;
-        # but that block now exempts questions carrying real forward-looking
-        # language ("forecasted", "predict", "over the next N years"), so
-        # e.g. "outbreak risk trend over the next 3 years, historical vs
-        # forecasted cases" falls through and lands here instead.
-        if role in ('admin', 'veterinarian', 'receptionist') and re.search(
-            r'\bdiseases?\b.*\b(?:predict(?:ed|ion)?|forecast(?:ed)?|trend)\b|'
-            r'\b(?:predict(?:ed|ion)?|forecast(?:ed)?)\b.*\bdiseases?\b',
-            question, re.IGNORECASE
-        ):
-            if role not in ('admin', 'veterinarian'):
-                return jsonify({
-                    'success': True,
-                    'answer': (
-                        "Disease trend forecasts aren't available through this "
-                        "assistant for your role - check the Analytics page, "
-                        "or ask a veterinarian or admin."
-                    ),
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            if not disease_model:
-                return jsonify({
-                    'success': True,
-                    'answer': "The disease prediction model isn't loaded right now - please try again shortly.",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            months, was_clamped = _extract_time_horizon(question, unit='months', default=12, minimum=1, maximum=60)
-            trends = disease_model.forecast_disease_trends(periods_months=months)
-            if 'error' in trends:
-                return jsonify({
-                    'success': True,
-                    'answer': f"Couldn't generate a disease trend forecast right now: {trends['error']}",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            # 'predictions', 'activity_forecast' (one row per forecasted
-            # month each - up to 60 rows at the max horizon) and
-            # 'category_trend' (one list per disease category) are the
-            # detailed series behind the summary fields (trend_direction,
-            # peak_month, totals, pandemic_risk, etc.) - same "don't bloat
-            # the prompt" reasoning as daily_forecast/sufficient_stock above.
-            condensed_trends = {
-                k: v for k, v in trends.items()
-                if k not in ('predictions', 'activity_forecast', 'category_trend')
-            }
-            explanation = explain_ml_output('disease_trend_forecast', condensed_trends)
-            if was_clamped:
-                explanation += (
-                    f"\n\n(Note: the disease prediction model forecasts up to 60 months ahead, so this "
-                    f"reflects a {months}-month window rather than the full period you asked about.)"
-                )
-            return jsonify({
-                'success': True,
-                'answer': explanation,
-                'sources': [{'source_type': 'disease_trend_forecast_model', 'source_id': 'current', 'metadata': {}}],
-                'chunks_used': 0
-            }), 200
-
-        # "Forecast/predict revenue" is the same shape of problem as outbreak
-        # risk above - a live model computation, never ingested into
-        # rag_chunks. Distinct from BILLING_REVENUE_TIMEFRAME in
-        # structured_query.py, which reports ACTUAL past/current revenue from
-        # real billing rows via SQL - this is a genuine forward-looking
-        # prediction, so it needs the trained sales model, not a query.
-        if re.search(
-            r'\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b.*\b(?:revenue|sales|income)\b|'
-            r'\b(?:revenue|sales|income)\b.*\b(?:forecast|predict(?:ed|ion)?|project(?:ed|ion)?|expect(?:ed)?)\b',
-            question, re.IGNORECASE
-        ):
-            if role not in ('admin', 'veterinarian'):
-                return jsonify({
-                    'success': True,
-                    'answer': (
-                        "Revenue forecasts aren't available through this assistant "
-                        "for your role - check the Analytics page, or ask an admin."
-                    ),
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            if not sales_model:
-                return jsonify({
-                    'success': True,
-                    'answer': "The sales forecasting model isn't loaded right now - please try again shortly.",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            days, was_clamped = _extract_time_horizon(question, unit='days', default=90)
-            forecast = sales_model.forecast_revenue(periods=days)
-            if 'error' in forecast:
-                return jsonify({
-                    'success': True,
-                    'answer': f"Couldn't generate a revenue forecast right now: {forecast['error']}",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            # forecast_revenue's 'daily_forecast' is ~90+ individual rows -
-            # far more detail than a chat explanation needs and large enough
-            # to bloat the local model's prompt for no benefit; the monthly
-            # rollup is what a plain-language summary should be grounded in.
-            condensed_forecast = {
-                k: v for k, v in forecast.items() if k != 'daily_forecast'
-            }
-            explanation = explain_ml_output('sales_forecast', condensed_forecast)
-            if was_clamped:
-                explanation += (
-                    f"\n\n(Note: the sales model forecasts up to 365 days ahead, so this reflects "
-                    f"a {days}-day window rather than the full period you asked about.)"
-                )
-            return jsonify({
-                'success': True,
-                'answer': explanation,
-                'sources': [{'source_type': 'sales_forecast_model', 'source_id': 'current', 'metadata': {}}],
-                'chunks_used': 0
-            }), 200
-
-        # "What should we reorder/restock soon" - clinic-wide inventory
-        # demand forecast, same live-model reasoning as above. Distinct from
-        # structured_query.py's INVENTORY_LOW_STOCK/INVENTORY_EXPIRING, which
-        # report CURRENT stock levels via SQL - this is a forward-looking
-        # demand prediction from the trained inventory model.
-        if re.search(
-            r'\b(?:reorder|restock)\b.*\b(?:suggest|recommend|predict|forecast|need)\b|'
-            # Bounded gap (not a bare .*) between "what" and "should/do" so a
-            # noun in between - "what items/products/supplies should we
-            # reorder" - still matches, without letting the alternative
-            # over-match unrelated distant text in a longer question.
-            r'\bwhat\b.{0,25}\b(?:should|do)\s+(?:i|we)\s+(?:need\s+to\s+)?(?:reorder|restock)\b|'
-            r'\b(?:inventory|stock)\b.*\b(?:demand\s+)?(?:forecast|predict(?:ion)?)\b|'
-            r'\b(?:inventory|stock)\s+demand\b',
-            question, re.IGNORECASE
-        ):
-            if role not in ('admin', 'veterinarian'):
-                return jsonify({
-                    'success': True,
-                    'answer': (
-                        "Inventory demand forecasts aren't available through this "
-                        "assistant for your role - check the Analytics page, or ask an admin."
-                    ),
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            if not inventory_model:
-                return jsonify({
-                    'success': True,
-                    'answer': "The inventory forecasting model isn't loaded right now - please try again shortly.",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            days, was_clamped = _extract_time_horizon(question, unit='days', default=30)
-            recommendations = inventory_model.get_reorder_recommendations(days=days)
-            if 'error' in recommendations:
-                return jsonify({
-                    'success': True,
-                    'answer': f"Couldn't generate reorder suggestions right now: {recommendations['error']}",
-                    'sources': [],
-                    'chunks_used': 0
-                }), 200
-
-            # 'sufficient_stock' lists every well-stocked item (often most of
-            # the catalog) - irrelevant to a "what should I reorder" question
-            # and, like daily_forecast above, just bloats the prompt.
-            condensed_recommendations = {
-                k: v for k, v in recommendations.items() if k != 'sufficient_stock'
-            }
-            explanation = explain_ml_output('inventory_forecast', condensed_recommendations)
-            if was_clamped:
-                explanation += (
-                    f"\n\n(Note: the inventory model forecasts up to 365 days ahead, so this reflects "
-                    f"a {days}-day window rather than the full period you asked about.)"
-                )
-            return jsonify({
-                'success': True,
-                'answer': explanation,
-                'sources': [{'source_type': 'inventory_forecast_model', 'source_id': 'current', 'metadata': {}}],
-                'chunks_used': 0
-            }), 200
+        gate_result = _try_live_model_gate(question, role)
+        if gate_result is not None:
+            return jsonify({'success': True, **gate_result}), 200
 
         result = answer_question(
             question, role=role, customer_id=customer_id, user_id=user_id,
@@ -1896,6 +1968,75 @@ def rag_chat():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/ml/rag/chat/stream', methods=['POST'])
+def rag_chat_stream():
+    """
+    Real-time streaming counterpart to /api/ml/rag/chat, for the admin-only
+    "show reasoning live" chat view. Same request body. The response is
+    Server-Sent Events (text/event-stream) instead of a single JSON body:
+    each event is a `data: <json>\\n\\n` line, where the json is one of:
+        {"type": "reasoning_delta", "text": str} - zero or more, as the
+            model thinks (only ever happens for role == "admin" - see
+            stream_answer_question)
+        {"type": "final", "success": true, ...} - always exactly one, the
+            last event, same shape as /api/ml/rag/chat's JSON body
+
+    The four live-model gates (outbreak risk, disease trend forecast,
+    revenue forecast, inventory reorder suggestions) and the plain free-form
+    RAG generation path (answer_question's fallback, once every other
+    early-return branch - write-actions, clinical tools, pet health, charts,
+    structured SQL - has passed on the question) are both actually streamed
+    token-by-token, since both make a live model call worth watching in real
+    time. Every early-return branch inside those (role-not-allowed messages,
+    model-not-loaded messages, deterministic SQL answers, write-action
+    proposals, etc.) still resolves synchronously and cheaply and is emitted
+    as a single immediate 'final' event, identical to what the blocking
+    endpoint would have returned for the same question.
+    """
+    from scripts.rag.rag_service import stream_answer_question
+
+    data = request.get_json(force=True)
+    question = (data.get('question') or '').strip()
+    role = data.get('role', 'guest')
+    customer_id = data.get('customer_id')
+    user_id = data.get('user_id')
+    history = data.get('history')
+    pending_intent = data.get('pending_intent')
+
+    if not question:
+        return jsonify({'success': False, 'error': 'question is required'}), 400
+
+    def _sse():
+        try:
+            # _stream_live_model_gate yields nothing at all if none of the
+            # four patterns matched - peek the first event (running
+            # _match_live_model_gate exactly once, not once to check and
+            # again inside the generator) to decide whether to fall through
+            # to stream_answer_question, then replay it before the rest.
+            gate_events = _stream_live_model_gate(question, role)
+            first_gate_event = next(gate_events, None)
+            if first_gate_event is not None:
+                for event in itertools.chain([first_gate_event], gate_events):
+                    if event['type'] == 'final':
+                        yield f'data: {json.dumps({"type": "final", "success": True, **event["result"]})}\n\n'
+                    else:
+                        yield f'data: {json.dumps(event)}\n\n'
+                return
+
+            for event in stream_answer_question(
+                question, role=role, customer_id=customer_id, user_id=user_id,
+                history=history, pending_intent=pending_intent
+            ):
+                if event['type'] == 'final':
+                    yield f'data: {json.dumps({"type": "final", "success": True, **event["result"]})}\n\n'
+                else:
+                    yield f'data: {json.dumps(event)}\n\n'
+        except Exception as e:
+            yield f'data: {json.dumps({"type": "final", "success": False, "error": str(e)})}\n\n'
+
+    return Response(stream_with_context(_sse()), mimetype='text/event-stream')
 
 
 # ===========================================================================

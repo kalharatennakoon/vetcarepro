@@ -382,7 +382,7 @@ def _pet_source(pet_id: str) -> list:
 # Per-intent resolution
 # ============================================================
 
-def _resolve_full_history_summary(pet_id: str, observations_text: str) -> dict:
+def _resolve_full_history_summary(pet_id: str, observations_text: str, think: bool = False) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -400,14 +400,18 @@ def _resolve_full_history_summary(pet_id: str, observations_text: str) -> dict:
     user_prompt = f"Full record for this pet:\n\n{dataset_text}\n\nWrite a summary of this pet's complete medical history for the veterinarian."
 
     try:
-        answer = normalize_currency(generate_answer(HISTORY_SUMMARY_SYSTEM_PROMPT, user_prompt))
+        raw_answer, reasoning = generate_answer(HISTORY_SUMMARY_SYSTEM_PROMPT, user_prompt, think=think)
+        answer = normalize_currency(raw_answer)
     except OllamaError as e:
         return _unavailable(e)
 
-    return {'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True}
+    return {
+        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
+    }
 
 
-def _resolve_draft_consultation_note(pet_id: str, observations_text: str) -> dict:
+def _resolve_draft_consultation_note(pet_id: str, observations_text: str, think: bool = False) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -425,14 +429,18 @@ def _resolve_draft_consultation_note(pet_id: str, observations_text: str) -> dic
     )
 
     try:
-        answer = normalize_currency(generate_answer(DRAFT_NOTE_SYSTEM_PROMPT, user_prompt))
+        raw_answer, reasoning = generate_answer(DRAFT_NOTE_SYSTEM_PROMPT, user_prompt, think=think)
+        answer = normalize_currency(raw_answer)
     except OllamaError as e:
         return _unavailable(e)
 
-    return {'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True}
+    return {
+        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
+    }
 
 
-def _resolve_aftercare_instructions(pet_id: str, observations_text: str) -> dict:
+def _resolve_aftercare_instructions(pet_id: str, observations_text: str, think: bool = False) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -459,11 +467,15 @@ def _resolve_aftercare_instructions(pet_id: str, observations_text: str) -> dict
     )
 
     try:
-        answer = normalize_currency(generate_answer(AFTERCARE_SYSTEM_PROMPT, user_prompt))
+        raw_answer, reasoning = generate_answer(AFTERCARE_SYSTEM_PROMPT, user_prompt, think=think)
+        answer = normalize_currency(raw_answer)
     except OllamaError as e:
         return _unavailable(e)
 
-    result = {'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True}
+    result = {
+        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
+    }
 
     if owner_email:
         result['answer'] = f"{answer}\n\nShall I email this to {owner_first} {owner_last} ({owner_email})?"
@@ -486,7 +498,7 @@ def _resolve_aftercare_instructions(pet_id: str, observations_text: str) -> dict
     return result
 
 
-def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str) -> dict:
+def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str, think: bool = False) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
@@ -503,11 +515,15 @@ def _resolve_pre_appointment_briefing(pet_id: str, observations_text: str) -> di
     user_prompt = f"Record for this pet:\n\n{dataset_text}\n\nGive the veterinarian a short pre-visit briefing for today's appointment."
 
     try:
-        answer = normalize_currency(generate_answer(BRIEFING_SYSTEM_PROMPT, user_prompt))
+        raw_answer, reasoning = generate_answer(BRIEFING_SYSTEM_PROMPT, user_prompt, think=think)
+        answer = normalize_currency(raw_answer)
     except OllamaError as e:
         return _unavailable(e)
 
-    return {'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True}
+    return {
+        'answer': answer, 'sources': _pet_source(pet_id), 'chunks_used': 0, 'structured': True,
+        **({'reasoning': reasoning} if reasoning else {})
+    }
 
 
 _RESOLVERS = {
@@ -558,7 +574,7 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
         if stage == 'need_detail':
             pet_id = pending_intent.get('pet_id')
             observations_text = f"{original_question}\n{question}"
-            return _RESOLVERS[intent_type](pet_id, observations_text)
+            return _RESOLVERS[intent_type](pet_id, observations_text, think=(role == 'admin'))
 
         if stage == 'need_pet_name':
             # The original request had no pet name in it at all - this
@@ -691,4 +707,4 @@ def try_clinical_tool(question: str, role: str, history=None, pending_intent: di
             }
         observations_text = question
 
-    return _RESOLVERS[intent_type](pet_id, observations_text)
+    return _RESOLVERS[intent_type](pet_id, observations_text, think=(role == 'admin'))

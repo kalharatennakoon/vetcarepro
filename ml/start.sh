@@ -26,7 +26,7 @@ fi
 
 # Report which Ollama chat model is configured before starting
 CHAT_MODEL=$(grep -E '^OLLAMA_CHAT_MODEL=' .env | cut -d '=' -f2-)
-echo "Using LLM chat model: ${CHAT_MODEL:-qwen2.5:7b-instruct (default)}"
+echo "Using LLM chat model: ${CHAT_MODEL:-qwen3:8b (default)}"
 
 # Start Flask server
 echo "Starting Flask ML API server..."

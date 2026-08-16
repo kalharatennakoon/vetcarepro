@@ -4,7 +4,7 @@
    classes in AIAssistant.css, are unaffected. */
 
 .ai-modern-page {
-  max-width: 900px;
+  max-width: 1120px;
   background: transparent;
 }
 
@@ -56,6 +56,11 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 16px 40px -20px rgba(15, 23, 42, 0.12);
   padding: 1.5rem;
   gap: 1.1rem;
+  /* Taller than the shared .ai-assistant-chat default (55vh) - admin
+     reasoning blocks add a lot of extra content per message, so the
+     staff page benefits from more vertical room before it scrolls. */
+  min-height: 480px;
+  max-height: 78vh;
 }
 
 /* Messages + avatars */
@@ -169,6 +174,53 @@
 
 .ai-modern-sources-general {
   color: #9ca3af;
+}
+
+/* Model reasoning (admin-only) */
+
+.ai-modern-reasoning {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.ai-modern-reasoning-summary {
+  cursor: pointer;
+  color: #9ca3af;
+  font-weight: 500;
+  list-style: none;
+}
+
+.ai-modern-reasoning-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-modern-reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-reasoning-thinking-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-style: italic;
+  color: #1f2937;
+}
+
+.ai-reasoning-summary-action {
+  color: #9ca3af;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ai-modern-reasoning-text {
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #4b5563;
+  white-space: pre-wrap;
 }
 
 /* Action confirm/cancel */

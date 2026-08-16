@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { askAssistant, confirmAiAction } from '../services/aiService';
+import { askAssistant, askAssistantStream, confirmAiAction } from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import AiChartMessage from '../components/AiChartMessage';
@@ -75,6 +75,7 @@ const AIAssistant = () => {
   const navigate = useNavigate();
   const isVeterinarian = user?.role === 'veterinarian';
   const isReceptionist = user?.role === 'receptionist';
+  const isAdmin = user?.role === 'admin';
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -114,6 +115,38 @@ const AIAssistant = () => {
     el.style.height = `${el.scrollHeight}px`;
   }, [input]);
 
+  // Shared shape-building between the blocking (askAssistant) and streaming
+  // (askAssistantStream) paths - both resolve to the same fields, so the
+  // message object built for the chat bubble is identical either way; only
+  // how that answer arrives (all at once vs incrementally) differs.
+  const buildAssistantMessage = (result, reasoningSoFar) => {
+    if (result.action && result.requires_confirmation) {
+      return { role: 'assistant', content: result.answer, sources: [], action: result.action, structured: true };
+    }
+    return {
+      role: 'assistant',
+      content: result.answer,
+      sources: result.sources || [],
+      // Follow-up slot-filling questions and deterministic SQL answers
+      // aren't the model's own general knowledge, even when there's no
+      // specific record to cite as a source - don't label them as such.
+      structured: Boolean(result.structured || result.pending_intent),
+      // Disambiguation choices (e.g. "which Max?") - clicking one just
+      // re-submits its value as the next message, same as typing it.
+      options: result.options || [],
+      // Only present when the question explicitly asked for a chart
+      // (see ml/scripts/rag/chart_intent.py) - normally null.
+      chart: result.chart || null,
+      // Only present on admin turns of the plain RAG-generation path
+      // (see rag_service.answer_question) - the backend only requests
+      // the model's thinking-mode output for that role in the first
+      // place, so this is never populated for other roles. The streaming
+      // path already has this built up locally from reasoning_delta
+      // events, in case the final event's own copy is ever missing.
+      reasoning: result.reasoning || reasoningSoFar || null
+    };
+  };
+
   const sendQuestion = async (question, displayText) => {
     if (!question.trim() || loading) return;
 
@@ -129,36 +162,61 @@ const AIAssistant = () => {
     setLoading(true);
     setError('');
 
+    // Admin gets the real-time streamed path - a live "watch it think"
+    // view - since the backend only ever turns thinking mode on for that
+    // role and /ai/chat/stream is admin-only regardless. Every other role
+    // keeps the plain blocking call below unchanged.
+    if (isAdmin) {
+      // A stable id (not an index into `messages`) identifies the in-progress
+      // streaming bubble across updates - React 18 StrictMode double-invokes
+      // setState updater functions in dev to check they're pure, so the
+      // updater itself must decide push-vs-update by looking at `prev`
+      // alone, never by mutating an outer variable (that path silently
+      // indexes into the wrong array on the discarded replay call).
+      const streamId = `stream-${Date.now()}-${Math.random()}`;
+      try {
+        await askAssistantStream(question, { history, pendingIntent }, (event) => {
+          if (event.type === 'reasoning_delta') {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === streamId);
+              if (idx === -1) {
+                return [
+                  ...prev,
+                  { id: streamId, role: 'assistant', content: '', sources: [], reasoning: event.text, streaming: true }
+                ];
+              }
+              const next = [...prev];
+              next[idx] = { ...next[idx], reasoning: (next[idx].reasoning || '') + event.text };
+              return next;
+            });
+          } else if (event.type === 'final') {
+            if (event.success === false) {
+              setError(event.message || 'The AI assistant is unavailable. Make sure Ollama is running locally.');
+              return;
+            }
+            setPendingIntent(event.action && event.requires_confirmation ? null : (event.pending_intent || null));
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === streamId);
+              const finalMessage = buildAssistantMessage(event, idx !== -1 ? prev[idx].reasoning : null);
+              if (idx === -1) return [...prev, finalMessage];
+              const next = [...prev];
+              next[idx] = finalMessage;
+              return next;
+            });
+          }
+        });
+      } catch {
+        setError('The AI assistant is unavailable. Make sure Ollama is running locally.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const result = await askAssistant(question, { history, pendingIntent });
-
-      if (result.action && result.requires_confirmation) {
-        setPendingIntent(null);
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: result.answer, sources: [], action: result.action, structured: true }
-        ]);
-      } else {
-        setPendingIntent(result.pending_intent || null);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: result.answer,
-            sources: result.sources || [],
-            // Follow-up slot-filling questions and deterministic SQL answers
-            // aren't the model's own general knowledge, even when there's no
-            // specific record to cite as a source - don't label them as such.
-            structured: Boolean(result.structured || result.pending_intent),
-            // Disambiguation choices (e.g. "which Max?") - clicking one just
-            // re-submits its value as the next message, same as typing it.
-            options: result.options || [],
-            // Only present when the question explicitly asked for a chart
-            // (see ml/scripts/rag/chart_intent.py) - normally null.
-            chart: result.chart || null
-          }
-        ]);
-      }
+      setPendingIntent(result.action && result.requires_confirmation ? null : (result.pending_intent || null));
+      setMessages((prev) => [...prev, buildAssistantMessage(result)]);
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -263,6 +321,30 @@ const AIAssistant = () => {
               </div>
               <div className={`ai-message-bubble ai-modern-bubble${m.intro ? ' ai-modern-intro' : ''}`}>
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
+                {m.role === 'assistant' && isAdmin && m.reasoning && (
+                  // Collapsed by default, even while actively streaming in -
+                  // viewing the reasoning is opt-in, not forced open. The
+                  // text keeps accumulating in state regardless, so opening
+                  // it mid-stream still shows it catching up live.
+                  <details className="ai-reasoning ai-modern-reasoning">
+                    <summary className="ai-reasoning-summary ai-modern-reasoning-summary">
+                      {m.streaming ? (
+                        <>
+                          <span className="ai-reasoning-thinking-label">
+                            Thinking
+                            <span className="ai-thinking-dots"><span></span><span></span><span></span></span>
+                          </span>
+                          <span className="ai-reasoning-summary-action">view model reasoning</span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-brain"></i> Show model reasoning
+                        </>
+                      )}
+                    </summary>
+                    <p className="ai-reasoning-text ai-modern-reasoning-text">{m.reasoning}</p>
+                  </details>
+                )}
                 {m.role === 'assistant' && m.chart && <AiChartMessage chart={m.chart} />}
                 {m.role === 'assistant' && m.action && !m.resolved && (
                   <div className="ai-action-confirm ai-modern-action-confirm">
@@ -296,7 +378,7 @@ const AIAssistant = () => {
                     ))}
                   </div>
                 )}
-                {m.role === 'assistant' && !m.intro && !m.action && (
+                {m.role === 'assistant' && !m.intro && !m.action && !m.streaming && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources ai-modern-sources">
                       <span className="ai-message-sources-label">
@@ -323,7 +405,11 @@ const AIAssistant = () => {
               </div>
             </div>
           ))}
-          {loading && (
+          {/* Once the streaming reasoning bubble itself has appeared (see
+              sendQuestion's admin path), that bubble IS the "thinking"
+              indicator - showing this generic one at the same time would
+              just duplicate it below the live reasoning text. */}
+          {loading && !messages[messages.length - 1]?.streaming && (
             <div className="ai-message ai-message-assistant ai-modern-message">
               <div className="ai-modern-avatar ai-modern-avatar-assistant">
                 <i className="fas fa-robot"></i>

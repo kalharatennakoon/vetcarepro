@@ -246,7 +246,7 @@ def _extract_date_via_llm(question: str):
     """
     system_prompt = _DATE_EXTRACTION_PROMPT.format(today=date.today().isoformat())
     try:
-        raw = generate_answer(system_prompt, question)
+        raw, _ = generate_answer(system_prompt, question)
     except OllamaError:
         return None
 

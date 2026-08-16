@@ -25,6 +25,58 @@ export const askAssistant = async (question, { history, pendingIntent } = {}) =>
 };
 
 /**
+ * Stream the AI assistant's answer in real time (admin-only "show model
+ * reasoning live" chat view) - the server only ever turns thinking mode on
+ * for that role, and /ai/chat/stream is admin-only regardless. Uses fetch()
+ * rather than axios since axios has no browser streaming-body support;
+ * invokes onEvent for each Server-Sent Events message as it arrives instead
+ * of returning a single response, since the whole point is showing
+ * reasoning incrementally rather than after the fact.
+ * @param {string} question
+ * @param {Object} [options] - see askAssistant
+ * @param {(event: {type: string, [key: string]: any}) => void} onEvent - called for each
+ *   {type: 'reasoning_delta', text} as the model thinks, then exactly one
+ *   {type: 'final', success, ...} with the same shape askAssistant resolves to
+ * @param {AbortSignal} [signal] - lets the caller cancel an in-flight stream
+ */
+export const askAssistantStream = async (question, { history, pendingIntent } = {}, onEvent, signal) => {
+  const response = await fetch(`${API_URL}/ai/chat/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify({ question, history, pending_intent: pendingIntent }),
+    signal
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`AI stream request failed (${response.status})`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // SSE events are separated by a blank line; each line inside one is
+    // "data: <json>" - buffer across chunk boundaries since a single read()
+    // can split an event (or even a single data: line) mid-way.
+    let boundary;
+    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      const line = rawEvent.split('\n').find((l) => l.startsWith('data: '));
+      if (line) onEvent(JSON.parse(line.slice('data: '.length)));
+    }
+  }
+};
+
+/**
  * Execute a write action the assistant proposed (book/reschedule/cancel an
  * appointment, send a reminder, register a customer, add a pet) - only ever
  * called after the staff member explicitly confirms it in the chat UI.

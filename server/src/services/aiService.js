@@ -59,6 +59,39 @@ const askAssistant = async ({ question, role, customerId, userId, history, pendi
 };
 
 /**
+ * Stream the AI assistant's answer in real time (admin-only "show
+ * reasoning live" chat view) - same params as askAssistant, but returns the
+ * raw Server-Sent Events response stream from the ML service instead of a
+ * parsed body, since the point is to forward incremental reasoning_delta
+ * events to the client as they arrive rather than waiting for the answer
+ * to finish generating.
+ * @param {Object} params - see askAssistant
+ * @returns {Promise<import('stream').Readable>} the upstream SSE stream
+ */
+const askAssistantStream = async ({ question, role, customerId, userId, history, pendingIntent }) => {
+  const response = await aiClient.post(
+    '/api/ml/rag/chat/stream',
+    {
+      question,
+      role,
+      customer_id: customerId,
+      user_id: userId,
+      history,
+      pending_intent: pendingIntent
+    },
+    {
+      responseType: 'stream',
+      // Thinking mode can run for minutes on this model (see
+      // OLLAMA_THINK_TIMEOUT in the ML service) - the default
+      // AI_SERVICE_TIMEOUT above is sized for non-streaming calls and would
+      // cut the stream off mid-reasoning.
+      timeout: 0
+    }
+  );
+  return response.data;
+};
+
+/**
  * (Re)ingest medical records into the vector store.
  * Called after a medical record is created/updated (single record_id),
  * or manually to backfill everything (no record_id).
@@ -205,6 +238,7 @@ const explainMlOutput = async (outputType, data) => {
 export {
   checkRagHealth,
   askAssistant,
+  askAssistantStream,
   ingestMedicalRecord,
   ingestDiseaseCase,
   ingestLabReport,

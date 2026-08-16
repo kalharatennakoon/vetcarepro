@@ -225,7 +225,7 @@ Use null for anything not mentioned anywhere in the conversation. Carry forward 
 values unless the latest message changes them. No markdown, no extra commentary - JSON only."""
 
     try:
-        raw = generate_answer(system_prompt, conversation_text)
+        raw, _ = generate_answer(system_prompt, conversation_text)
     except OllamaError:
         return fallback
 
