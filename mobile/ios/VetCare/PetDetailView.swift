@@ -34,6 +34,11 @@ struct PetDetailView: View {
                 }
                 vaccinationsSection
                 labReportsSection
+                Label("Pet details are managed by VetCare Pro. Contact the clinic to request any changes.", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
             }
             .padding(20)
         }

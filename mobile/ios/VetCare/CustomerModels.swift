@@ -304,6 +304,11 @@ struct ChangePasswordFirstLoginRequest: Encodable {
     let newPassword: String
 }
 
+struct ChangePasswordRequest: Encodable {
+    let currentPassword: String
+    let newPassword: String
+}
+
 struct AckResponse: Decodable {
     let status: String
 }

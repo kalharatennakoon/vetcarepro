@@ -12,6 +12,12 @@ import {
 import { listMyLabReports, viewMyLabReport } from '../controllers/labReportController.js';
 import { listMyPetVaccinations } from '../controllers/petController.js';
 import {
+  submitPhotoGuidance,
+  getPhotoGuidanceStatus,
+  listPhotoGuidanceHistory
+} from '../controllers/petPhotoGuidanceController.js';
+import { uploadPetAiPhoto } from '../config/multer.js';
+import {
   listVeterinarians,
   listMyAppointments,
   getAvailability,
@@ -82,6 +88,26 @@ router.get('/pets/:petId/lab-reports', authenticateCustomer, listMyLabReports);
 //          current customer's own pets
 // @access  Private (customer)
 router.get('/lab-reports/:reportId/view', authenticateCustomer, viewMyLabReport);
+
+// @route   POST /api/customer-auth/pets/:petId/ai-photo-guidance
+// @desc    Submit a photo of one of the current customer's own pets for
+//          async AI guidance (general advice only, never a diagnosis or
+//          medicine - see ml/scripts/rag/photo_guidance.py). Responds
+//          immediately with a job id; the result is generated in the
+//          background and fetched via the poll route below.
+// @access  Private (customer)
+router.post('/pets/:petId/ai-photo-guidance', authenticateCustomer, uploadPetAiPhoto.single('photo'), submitPhotoGuidance);
+
+// @route   GET /api/customer-auth/pets/:petId/ai-photo-guidance
+// @desc    List past AI photo guidance submissions for one of the current
+//          customer's own pets
+// @access  Private (customer)
+router.get('/pets/:petId/ai-photo-guidance', authenticateCustomer, listPhotoGuidanceHistory);
+
+// @route   GET /api/customer-auth/ai-photo-guidance/:jobId
+// @desc    Poll a submitted AI photo guidance job's status/result
+// @access  Private (customer)
+router.get('/ai-photo-guidance/:jobId', authenticateCustomer, getPhotoGuidanceStatus);
 
 // @route   GET /api/customer-auth/veterinarians
 // @desc    List active veterinarians a pet owner can pick as their preferred vet

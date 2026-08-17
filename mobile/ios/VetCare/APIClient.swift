@@ -133,6 +133,46 @@ struct APIClient {
         return try await execute(request)
     }
 
+    /// Sends a multipart/form-data POST (file upload) and decodes the JSON
+    /// response. No multipart support existed before the AI photo guidance
+    /// feature - every other endpoint sends plain JSON.
+    func postMultipart<Response: Decodable>(
+        _ path: String,
+        fields: [String: String] = [:],
+        fileField: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"\(fileField)\"; filename=\"\(fileName)\"\r\n"
+                .data(using: .utf8)!
+        )
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
+        return try await execute(request)
+    }
+
     /// Downloads raw bytes (for file viewing via QuickLook).
     func download(_ path: String, bearerToken: String? = nil) async throws -> Data {
         var request = URLRequest(url: baseURL.appending(path: path))

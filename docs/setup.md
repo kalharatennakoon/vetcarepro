@@ -100,7 +100,7 @@ npm run dev          # http://localhost:5173
 
 ```bash
 ollama pull nomic-embed-text      # embeddings, 768-dimension
-ollama pull qwen3:8b               # generation
+ollama pull qwen3.5:9b             # generation (text and vision)
 ollama serve
 ```
 

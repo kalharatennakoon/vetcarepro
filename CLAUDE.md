@@ -66,7 +66,7 @@ The AI assistant requires Ollama running locally with both models pulled:
 
 ```bash
 ollama pull nomic-embed-text          # embeddings, 768-dim
-ollama pull qwen3:8b                  # generation; override via OLLAMA_CHAT_MODEL
+ollama pull qwen3.5:9b                # generation (text AND vision); override via OLLAMA_CHAT_MODEL
 ```
 
 Without Ollama, chat endpoints degrade to an "unavailable" message rather than erroring — a passing health check does not imply the assistant is functional.

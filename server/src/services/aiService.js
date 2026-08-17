@@ -217,6 +217,35 @@ const ingestAll = async () => {
 };
 
 /**
+ * Hand off a pet photo guidance job to the ML service. The ML service acks
+ * quickly (it just spawns a background thread) - it does NOT wait for the
+ * ~3 minute vision-model generation, so the default AI_SERVICE_TIMEOUT is
+ * unnecessarily long here and a short dedicated timeout is used instead.
+ * Non-throwing on failure since the caller (petPhotoGuidanceController)
+ * fires this without awaiting it - the job row stays 'pending' and the
+ * client's poll will just never see it complete.
+ */
+const submitPhotoGuidanceJob = async (jobId, photoPath, ownerNote, petId, customerId) => {
+  try {
+    const response = await aiClient.post(
+      '/api/ml/rag/photo-guidance/process',
+      {
+        job_id: jobId,
+        photo_path: photoPath,
+        owner_note: ownerNote,
+        pet_id: petId,
+        customer_id: customerId
+      },
+      { timeout: 15000 }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Photo guidance job hand-off failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Explain a raw ML model output (outbreak risk, sales forecast, inventory
  * forecast) in plain language.
  * @param {string} outputType - e.g. 'outbreak_risk', 'sales_forecast', 'inventory_forecast'
@@ -247,5 +276,6 @@ export {
   deleteChunk,
   ingestFaqs,
   ingestAll,
-  explainMlOutput
+  explainMlOutput,
+  submitPhotoGuidanceJob
 };

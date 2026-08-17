@@ -5,7 +5,7 @@ Runs fully locally -> no API keys, no per-token cost.
 
 Requires Ollama running locally (default http://localhost:11434) with:
     ollama pull nomic-embed-text
-    ollama pull qwen3:8b
+    ollama pull qwen3.5:9b
 """
 
 import json
@@ -18,7 +18,12 @@ load_dotenv()
 
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_EMBED_MODEL = os.getenv('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen3:8b')
+# Single chat model for every text AND vision call in this app (structured
+# answers, action-intent parsing, clinical tools, briefings, and the photo
+# guidance feature) - qwen3.5:9b handles both, and this deployment only has
+# room to run one chat model locally alongside nomic-embed-text, so there is
+# deliberately no separate vision-only model/env var.
+OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen3.5:9b')
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 # Thinking mode measured at ~24x slower (see generate_answer) - the normal
 # OLLAMA_TIMEOUT is sized for non-thinking calls and routinely isn't enough
@@ -26,6 +31,12 @@ OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '60'))
 # forecast explanations). Only applied when a caller actually requests
 # thinking, so the default fast path's timeout budget is unaffected.
 OLLAMA_THINK_TIMEOUT = int(os.getenv('OLLAMA_THINK_TIMEOUT', '240'))
+# Vision calls (see generate_vision_answer / scripts/rag/photo_guidance.py)
+# measured at ~195s for a single response in testing, well beyond every
+# other timeout in this file, hence its own timeout constant - separate from
+# OLLAMA_VISION_MODEL, which no longer exists now that OLLAMA_CHAT_MODEL
+# itself is vision-capable.
+OLLAMA_VISION_TIMEOUT = int(os.getenv('OLLAMA_VISION_TIMEOUT', '300'))
 
 EMBEDDING_DIM = 768  # must match database/migrations/add_rag_vector_store.sql
 
@@ -121,6 +132,52 @@ def generate_answer(system_prompt: str, user_prompt: str, think: bool = False) -
         ) from e
     except requests.exceptions.RequestException as e:
         raise OllamaError(f'Ollama chat request failed: {e}') from e
+
+
+def generate_vision_answer(system_prompt: str, user_prompt: str, image_b64: str, think: bool = False) -> tuple:
+    """
+    Generate a chat completion from a system prompt, a user prompt, and a
+    single base64-encoded image, using the same OLLAMA_CHAT_MODEL as every
+    other call in this app (it's vision-capable). Mirrors generate_answer
+    exactly except for the image attached to the user message (Ollama's
+    documented chat-with-images shape: an `images` list on the user message
+    dict) and the timeout, since vision generation is measured far slower.
+
+    Kept as a separate function rather than added as an optional parameter
+    to generate_answer, since the `images` field and timeout only apply to
+    this one call site (scripts/rag/photo_guidance.py).
+
+    Returns:
+        tuple: (answer text, reasoning text or None), same shape as
+            generate_answer.
+    """
+    try:
+        response = requests.post(
+            f'{OLLAMA_HOST}/api/chat',
+            json={
+                'model': OLLAMA_CHAT_MODEL,
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt, 'images': [image_b64]}
+                ],
+                'stream': False,
+                'options': {'temperature': 0.1},
+                'think': think
+            },
+            timeout=OLLAMA_THINK_TIMEOUT if think else OLLAMA_VISION_TIMEOUT
+        )
+        response.raise_for_status()
+        message = response.json().get('message', {})
+        content = message.get('content', '').strip()
+        thinking = message.get('thinking', '').strip() if think else None
+        return content, (thinking or None)
+
+    except requests.exceptions.ConnectionError as e:
+        raise OllamaError(
+            'Could not reach Ollama. Is it running? Try: ollama serve'
+        ) from e
+    except requests.exceptions.RequestException as e:
+        raise OllamaError(f'Ollama vision chat request failed: {e}') from e
 
 
 def stream_chat(system_prompt: str, user_prompt: str, think: bool = True):
@@ -219,11 +276,12 @@ def normalize_currency(text: str) -> str:
     return text
 
 
-# qwen3:8b is trained on heavily multilingual (mostly Chinese+English) data
-# and occasionally leaks a stray CJK/Hangul token into an otherwise-English
-# sentence (e.g. "to 减轻 joint strain" instead of "to reduce joint strain") -
-# a model-quality quirk, not a prompt problem, so no amount of "respond only
-# in English" wording in the system prompt reliably prevents it. This app is
+# Small local chat models trained on heavily multilingual (mostly Chinese+
+# English) data - qwen3:8b originally, now qwen3.5:9b - occasionally leak a
+# stray CJK/Hangul token into an otherwise-English sentence (e.g. "to 减轻
+# joint strain" instead of "to reduce joint strain") - a model-quality
+# quirk, not a prompt problem, so no amount of "respond only in English"
+# wording in the system prompt reliably prevents it. This app is
 # English-only end to end, so any run of these characters is always a leak,
 # never intended content. Same model-agnostic-safety-net pattern as
 # normalize_currency above: strip deterministically after generation rather

@@ -68,6 +68,15 @@ struct CustomerAuthService {
         )
     }
 
+    func changePassword(current: String, new: String, token: String) async throws {
+        _ = try await client.post(
+            "customer-auth/change-password",
+            body: ChangePasswordRequest(currentPassword: current, newPassword: new),
+            bearerToken: token,
+            as: AckResponse.self
+        )
+    }
+
     func verifyIdentity(email: String, phone: String) async throws -> (setupToken: String, firstName: String) {
         let response = try await client.post(
             "customer-auth/verify-identity",

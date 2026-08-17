@@ -1526,6 +1526,35 @@ def rag_delete_chunk():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/ml/rag/photo-guidance/process', methods=['POST'])
+def rag_photo_guidance_process():
+    """
+    Accept a pet-owner photo guidance job and process it in the background.
+    Returns immediately (well under a second) - the actual vision-model
+    generation takes ~3 minutes (see scripts.rag.photo_guidance), so this
+    route must not block on it. The Node backend has already inserted a
+    'pending' row and responded to its own caller before this is called;
+    this route's only job is to hand the row off to a background thread that
+    will update it to 'processing' then 'completed'/'failed' directly in
+    Postgres.
+    Body: { "job_id": 1, "photo_path": "pet-ai-photos/xyz.jpg",
+            "owner_note": "...", "pet_id": "PET-0001", "customer_id": "CUST-0001" }
+    """
+    try:
+        from scripts.rag.photo_guidance import submit_job
+        data = request.get_json(force=True)
+        job_id = data.get('job_id')
+        photo_path = data.get('photo_path')
+        pet_id = data.get('pet_id')
+        customer_id = data.get('customer_id')
+        if not job_id or not photo_path or not pet_id or not customer_id:
+            return jsonify({'success': False, 'error': 'job_id, photo_path, pet_id, and customer_id are required'}), 400
+        submit_job(job_id, photo_path, data.get('owner_note'), pet_id, customer_id)
+        return jsonify({'success': True, 'accepted': True}), 202
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/ml/rag/explain', methods=['POST'])
 def rag_explain():
     """
