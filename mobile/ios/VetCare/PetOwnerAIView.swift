@@ -94,8 +94,10 @@ struct PetOwnerAIView: View {
             ScrollView {
                 LazyVStack(spacing: 14) {
                     ForEach(viewModel.messages) { message in
-                        MessageBubble(message: message)
-                            .id(message.id)
+                        MessageBubble(message: message) { option in
+                            Task { await viewModel.selectOption(option, from: message) }
+                        }
+                        .id(message.id)
                     }
                     if viewModel.isEmpty {
                         promptChips

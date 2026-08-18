@@ -221,6 +221,10 @@ struct GuestAIView: View {
 
 struct MessageBubble: View {
     let message: ChatMessage
+    /// Tapped with the chosen option when the pet-owner assistant asks a
+    /// disambiguation question ("which pet do you mean?"). Guest chat never
+    /// receives options (see PendingIntent's docstring), so this is nil there.
+    var onSelectOption: ((ChatOption) -> Void)? = nil
 
     private var isUser: Bool { message.role == .user }
 
@@ -242,11 +246,37 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .frame(maxWidth: 300, alignment: isUser ? .trailing : .leading)
 
+            if !message.options.isEmpty && !message.optionsResolved {
+                optionButtons
+            }
+
             if message.isAnswer {
                 answerFooter
             }
         }
         .frame(maxWidth: .infinity, alignment: isUser ? .trailing : .leading)
+    }
+
+    private var optionButtons: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(message.options) { option in
+                Button {
+                    onSelectOption?(option)
+                } label: {
+                    Text(option.label)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Color.brand)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .strokeBorder(Color.brand.opacity(0.4), lineWidth: 1)
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: 300, alignment: .leading)
     }
 
     @ViewBuilder

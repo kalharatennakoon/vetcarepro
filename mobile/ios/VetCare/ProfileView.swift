@@ -10,6 +10,7 @@ struct ProfileView: View {
     let token: String
 
     @State private var showEdit = false
+    @State private var showChangePassword = false
 
     var body: some View {
         ScrollView {
@@ -17,6 +18,7 @@ struct ProfileView: View {
                 headerCard
                 accountCard
                 contactCard
+                securityCard
             }
             .padding(20)
         }
@@ -32,6 +34,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showEdit) {
             EditProfileView(token: token)
+        }
+        .sheet(isPresented: $showChangePassword) {
+            UpdatePasswordView(token: token)
         }
     }
 
@@ -120,6 +125,41 @@ struct ProfileView: View {
                 ProfileRow(label: "Emergency Contact", value: c.emergencyContact ?? "—")
                 profileDivider
                 ProfileRow(label: "Emergency Phone",   value: formatPhone(c.emergencyPhone))
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.cardSurface)
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        )
+    }
+
+    // MARK: - Security
+
+    private var securityCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Security")
+                .font(.headline)
+                .padding(.bottom, 14)
+
+            Button {
+                showChangePassword = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "lock.rotation")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.brand)
+                        .frame(width: 22)
+                    Text("Change Password")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(16)
@@ -281,6 +321,143 @@ struct EditProfileView: View {
                 token: token
             )
             session.updateCustomer(updated)
+            showSuccessAlert = true
+        } catch {
+            saveError = (error as? APIError)?.errorDescription ?? error.localizedDescription
+            showErrorAlert = true
+        }
+        saving = false
+    }
+}
+
+// MARK: - UpdatePasswordView
+
+struct UpdatePasswordView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(CustomerSession.self) private var session
+
+    let token: String
+
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var isCurrentVisible = false
+    @State private var isNewVisible = false
+    @State private var isConfirmVisible = false
+
+    @State private var saving = false
+    @State private var saveError: String? = nil
+    @State private var showErrorAlert = false
+    @State private var showSuccessAlert = false
+
+    private var isValid: Bool {
+        !currentPassword.isEmpty && newPassword.count >= 6 && newPassword == confirmPassword
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Current Password") {
+                    HStack {
+                        Group {
+                            if isCurrentVisible {
+                                TextField("Enter current password", text: $currentPassword)
+                            } else {
+                                SecureField("Enter current password", text: $currentPassword)
+                            }
+                        }
+                        .textContentType(.password)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                        Button { isCurrentVisible.toggle() } label: {
+                            Image(systemName: isCurrentVisible ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("New Password") {
+                    HStack {
+                        Group {
+                            if isNewVisible {
+                                TextField("At least 6 characters", text: $newPassword)
+                            } else {
+                                SecureField("At least 6 characters", text: $newPassword)
+                            }
+                        }
+                        .textContentType(.newPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                        Button { isNewVisible.toggle() } label: {
+                            Image(systemName: isNewVisible ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    HStack {
+                        Group {
+                            if isConfirmVisible {
+                                TextField("Confirm new password", text: $confirmPassword)
+                            } else {
+                                SecureField("Confirm new password", text: $confirmPassword)
+                            }
+                        }
+                        .textContentType(.newPassword)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+
+                        Button { isConfirmVisible.toggle() } label: {
+                            Image(systemName: isConfirmVisible ? "eye.slash" : "eye")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    if !confirmPassword.isEmpty && newPassword != confirmPassword {
+                        Label("Passwords don't match", systemImage: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Change Password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if saving {
+                        ProgressView()
+                    } else {
+                        Button("Save") { Task { await save() } }
+                            .fontWeight(.semibold)
+                            .disabled(!isValid)
+                    }
+                }
+            }
+        }
+        .alert("Password Updated", isPresented: $showSuccessAlert) {
+            Button("Done") { dismiss() }
+        } message: {
+            Text("Your password has been changed successfully.")
+        }
+        .alert("Couldn't Update Password", isPresented: $showErrorAlert) {
+            Button("OK") { }
+        } message: {
+            if let err = saveError { Text(err) }
+        }
+    }
+
+    private func save() async {
+        saving = true
+        do {
+            try await CustomerAuthService().changePassword(
+                current: currentPassword,
+                new: newPassword,
+                token: token
+            )
             showSuccessAlert = true
         } catch {
             saveError = (error as? APIError)?.errorDescription ?? error.localizedDescription

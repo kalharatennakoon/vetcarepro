@@ -27,13 +27,17 @@ VetCare Pro includes an AI assistant/copilot built with Retrieval-Augmented Gene
 | Purpose | Model | Notes |
 |---|---|---|
 | Embeddings | `nomic-embed-text` | 768-dim vectors, stored in Postgres via `pgvector` |
-| Chat / generation | `qwen2.5-coder:7b` | Configurable via the `OLLAMA_CHAT_MODEL` env var |
+| Chat / generation (text) | `qwen3:8b` | Configurable via the `OLLAMA_CHAT_MODEL` env var |
+| Chat / generation (vision, photo guidance only) | `qwen3.5:9b` | Configurable via the `OLLAMA_VISION_MODEL` env var |
 
-Install Ollama, then pull both models before starting the ML service:
+Two separate models rather than one vision-capable model for everything, since 16GB of unified memory can't comfortably hold both resident at once - Ollama loads whichever is needed on demand instead.
+
+Install Ollama, then pull all three models before starting the ML service:
 
 ```bash
 ollama pull nomic-embed-text
-ollama pull qwen2.5-coder:7b
+ollama pull qwen3:8b
+ollama pull qwen3.5:9b
 ```
 
 **What it does:**

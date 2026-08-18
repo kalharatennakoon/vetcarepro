@@ -12,6 +12,7 @@ private enum PetOwnerRoute: Hashable {
     case aiAssistant
     case appointments
     case profile
+    case photoGuidance
 }
 
 struct PetOwnerHomeView: View {
@@ -29,6 +30,7 @@ struct PetOwnerHomeView: View {
                     petsSection
                     appointmentsCard
                     aiCard
+                    photoGuidanceCard
                 }
                 .padding(20)
             }
@@ -55,6 +57,8 @@ struct PetOwnerHomeView: View {
                     AppointmentsView(token: session.token ?? "")
                 case .profile:
                     ProfileView(token: session.token ?? "")
+                case .photoGuidance:
+                    PhotoGuidanceView(token: session.token ?? "")
                 }
             }
             .navigationDestination(for: Pet.self) { pet in
@@ -207,6 +211,42 @@ struct PetOwnerHomeView: View {
             NavigationLink(value: PetOwnerRoute.aiAssistant) {
                 HStack {
                     Text("Ask a question")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(LinearGradient.brand)
+                )
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.cardSurface)
+                .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+        )
+    }
+
+    // MARK: - Photo guidance card
+
+    private var photoGuidanceCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("AI Photo Guidance", systemImage: "camera")
+                .font(.headline)
+
+            Text("Upload a photo of your pet for general AI guidance on what to do next. Not a diagnosis - always see a vet for anything concerning.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            NavigationLink(value: PetOwnerRoute.photoGuidance) {
+                HStack {
+                    Text("Upload a photo")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
                     Image(systemName: "chevron.right")

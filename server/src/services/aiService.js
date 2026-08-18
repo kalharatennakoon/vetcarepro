@@ -7,7 +7,12 @@
 import axios from 'axios';
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
-const AI_SERVICE_TIMEOUT = 60000; // generation can be slower than ML predictions
+// Kept a few seconds above the ML service's own OLLAMA_TIMEOUT (120s, see
+// ml/scripts/rag/ollama_client.py) so that side's timeout fires first and
+// returns a graceful "AI assistant is currently unavailable" message,
+// rather than this axios call cutting the connection first and surfacing
+// the generic "Failed to get a response" error instead.
+const AI_SERVICE_TIMEOUT = 130000;
 
 const aiClient = axios.create({
   baseURL: ML_SERVICE_URL,
@@ -56,6 +61,39 @@ const askAssistant = async ({ question, role, customerId, userId, history, pendi
     console.error('AI assistant chat failed:', error.message);
     throw new Error('Failed to get a response from the AI assistant');
   }
+};
+
+/**
+ * Stream the AI assistant's answer in real time (admin-only "show
+ * reasoning live" chat view) - same params as askAssistant, but returns the
+ * raw Server-Sent Events response stream from the ML service instead of a
+ * parsed body, since the point is to forward incremental reasoning_delta
+ * events to the client as they arrive rather than waiting for the answer
+ * to finish generating.
+ * @param {Object} params - see askAssistant
+ * @returns {Promise<import('stream').Readable>} the upstream SSE stream
+ */
+const askAssistantStream = async ({ question, role, customerId, userId, history, pendingIntent }) => {
+  const response = await aiClient.post(
+    '/api/ml/rag/chat/stream',
+    {
+      question,
+      role,
+      customer_id: customerId,
+      user_id: userId,
+      history,
+      pending_intent: pendingIntent
+    },
+    {
+      responseType: 'stream',
+      // Thinking mode can run for minutes on this model (see
+      // OLLAMA_THINK_TIMEOUT in the ML service) - the default
+      // AI_SERVICE_TIMEOUT above is sized for non-streaming calls and would
+      // cut the stream off mid-reasoning.
+      timeout: 0
+    }
+  );
+  return response.data;
 };
 
 /**
@@ -184,6 +222,35 @@ const ingestAll = async () => {
 };
 
 /**
+ * Hand off a pet photo guidance job to the ML service. The ML service acks
+ * quickly (it just spawns a background thread) - it does NOT wait for the
+ * ~3 minute vision-model generation, so the default AI_SERVICE_TIMEOUT is
+ * unnecessarily long here and a short dedicated timeout is used instead.
+ * Non-throwing on failure since the caller (petPhotoGuidanceController)
+ * fires this without awaiting it - the job row stays 'pending' and the
+ * client's poll will just never see it complete.
+ */
+const submitPhotoGuidanceJob = async (jobId, photoPath, ownerNote, petId, customerId) => {
+  try {
+    const response = await aiClient.post(
+      '/api/ml/rag/photo-guidance/process',
+      {
+        job_id: jobId,
+        photo_path: photoPath,
+        owner_note: ownerNote,
+        pet_id: petId,
+        customer_id: customerId
+      },
+      { timeout: 15000 }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Photo guidance job hand-off failed:', error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Explain a raw ML model output (outbreak risk, sales forecast, inventory
  * forecast) in plain language.
  * @param {string} outputType - e.g. 'outbreak_risk', 'sales_forecast', 'inventory_forecast'
@@ -205,6 +272,7 @@ const explainMlOutput = async (outputType, data) => {
 export {
   checkRagHealth,
   askAssistant,
+  askAssistantStream,
   ingestMedicalRecord,
   ingestDiseaseCase,
   ingestLabReport,
@@ -213,5 +281,6 @@ export {
   deleteChunk,
   ingestFaqs,
   ingestAll,
-  explainMlOutput
+  explainMlOutput,
+  submitPhotoGuidanceJob
 };

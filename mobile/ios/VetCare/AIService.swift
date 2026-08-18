@@ -27,11 +27,15 @@ struct AIService {
 
     /// Pet-owner scope: answers are grounded in the signed-in owner's own
     /// pets and records only. The server enforces the scope from the JWT.
-    /// → POST /api/ai/customer-chat
-    func askPetOwner(_ question: String, token: String) async throws -> ChatResponse {
+    /// `history`/`pendingIntent` round-trip an in-progress disambiguation -
+    /// see PendingIntent's docstring. → POST /api/ai/customer-chat
+    func askPetOwner(
+        _ question: String, token: String,
+        history: [ChatHistoryTurn]? = nil, pendingIntent: PendingIntent? = nil
+    ) async throws -> ChatResponse {
         try await client.post(
             "ai/customer-chat",
-            body: ChatRequest(question: question),
+            body: ChatRequest(question: question, history: history, pendingIntent: pendingIntent),
             bearerToken: token,
             as: ChatResponse.self
         )

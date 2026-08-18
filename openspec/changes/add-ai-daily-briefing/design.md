@@ -59,4 +59,4 @@ Rollback: each step is independently revertable; the `ai_briefings` table has no
 
 ## Open Questions
 
-- Exact prompt wording and bullet-count tuning for the summarization call is left to implementation-time experimentation against the local `qwen2.5-coder:7b` model's actual output quality — doesn't change the endpoint contract, caching behavior, or role scoping defined above.
+- Exact prompt wording and bullet-count tuning for the summarization call is left to implementation-time experimentation against the local `qwen3:8b` model's actual output quality — doesn't change the endpoint contract, caching behavior, or role scoping defined above.

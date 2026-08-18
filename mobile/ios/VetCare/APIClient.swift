@@ -39,10 +39,15 @@ struct APIClient {
     init(baseURL: URL = APIConfig.baseURL) {
         self.baseURL = baseURL
         let configuration = URLSessionConfiguration.default
-        // AI answers are generated locally by Ollama and can take 15s+, so we
-        // allow a generous per-request timeout.
-        configuration.timeoutIntervalForRequest = 90
-        configuration.timeoutIntervalForResource = 120
+        // AI answers are generated locally by Ollama and can take a while - a
+        // longer "explain"/"summarize" answer measured at only ~9 tokens/sec
+        // on constrained hardware can comfortably exceed 90s. Kept a bit
+        // above the server-side timeout stack (Node's AI_SERVICE_TIMEOUT:
+        // 130s, ML service's OLLAMA_TIMEOUT: 120s - see aiService.js /
+        // ollama_client.py) so a slow-but-working answer doesn't get cut off
+        // client-side before either of those has a chance to.
+        configuration.timeoutIntervalForRequest = 150
+        configuration.timeoutIntervalForResource = 180
         self.session = URLSession(configuration: configuration)
     }
 
@@ -130,6 +135,46 @@ struct APIClient {
         if let token = bearerToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        return try await execute(request)
+    }
+
+    /// Sends a multipart/form-data POST (file upload) and decodes the JSON
+    /// response. No multipart support existed before the AI photo guidance
+    /// feature - every other endpoint sends plain JSON.
+    func postMultipart<Response: Decodable>(
+        _ path: String,
+        fields: [String: String] = [:],
+        fileField: String,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        bearerToken: String? = nil,
+        as responseType: Response.Type
+    ) async throws -> Response {
+        var request = URLRequest(url: baseURL.appending(path: path))
+        request.httpMethod = "POST"
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token = bearerToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var body = Data()
+        for (key, value) in fields {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+            body.append("\(value)\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append(
+            "Content-Disposition: form-data; name=\"\(fileField)\"; filename=\"\(fileName)\"\r\n"
+                .data(using: .utf8)!
+        )
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        request.httpBody = body
+
         return try await execute(request)
     }
 

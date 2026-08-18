@@ -11,8 +11,9 @@ const uploadsDir = path.join(__dirname, '../../uploads');
 const profileImagesDir = path.join(uploadsDir, 'profile-images');
 const petImagesDir = path.join(uploadsDir, 'pet-images');
 const labReportsDir = path.join(uploadsDir, 'lab-reports');
+const petAiPhotosDir = path.join(uploadsDir, 'pet-ai-photos');
 
-[uploadsDir, profileImagesDir, petImagesDir, labReportsDir].forEach(dir => {
+[uploadsDir, profileImagesDir, petImagesDir, labReportsDir, petAiPhotosDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -66,6 +67,28 @@ export const uploadProfileImage = multer({
 
 export const uploadPetImage = multer({
   storage: petStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: imageFilter
+});
+
+// Configure storage for pet-owner-submitted photos used by the AI photo
+// guidance feature (separate from petStorage/petImagesDir, which backs the
+// pet's profile photo)
+const petAiPhotoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, petAiPhotosDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'pet-ai-photo-' + uniqueSuffix + ext);
+  }
+});
+
+export const uploadPetAiPhoto = multer({
+  storage: petAiPhotoStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
   },

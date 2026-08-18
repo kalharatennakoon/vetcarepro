@@ -4,7 +4,7 @@
    classes in AIAssistant.css, are unaffected. */
 
 .ai-modern-page {
-  max-width: 900px;
+  max-width: 1120px;
   background: transparent;
 }
 
@@ -56,6 +56,11 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 16px 40px -20px rgba(15, 23, 42, 0.12);
   padding: 1.5rem;
   gap: 1.1rem;
+  /* Taller than the shared .ai-assistant-chat default (55vh) - admin
+     reasoning blocks add a lot of extra content per message, so the
+     staff page benefits from more vertical room before it scrolls. */
+  min-height: 480px;
+  max-height: 78vh;
 }
 
 /* Messages + avatars */
@@ -118,6 +123,8 @@
   font-size: 0.98rem;
   line-height: 1.55;
   box-shadow: none;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .ai-message-assistant .ai-modern-bubble {
@@ -167,6 +174,58 @@
 
 .ai-modern-sources-general {
   color: #9ca3af;
+}
+
+/* Model reasoning (admin-only) */
+
+.ai-modern-reasoning {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.ai-modern-reasoning-summary {
+  cursor: pointer;
+  color: #9ca3af;
+  font-weight: 500;
+  list-style: none;
+}
+
+.ai-modern-reasoning-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-modern-reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-reasoning-thinking-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-style: italic;
+  color: #1f2937;
+}
+
+.ai-reasoning-chevron {
+  color: #9ca3af;
+  font-size: 0.68rem;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.ai-modern-reasoning[open] > .ai-modern-reasoning-summary .ai-reasoning-chevron {
+  transform: rotate(180deg);
+}
+
+.ai-modern-reasoning-text {
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #4b5563;
+  white-space: pre-wrap;
 }
 
 /* Action confirm/cancel */
@@ -289,6 +348,13 @@
   font-size: 0.95rem;
   background: transparent;
   border-radius: 0 !important;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
 }
 
 .ai-modern-send-btn {

@@ -21,6 +21,7 @@
 		D99E86C63018AC8600B730BC /* PetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99E86C53018AC8500B730BC /* PetDetailView.swift */; };
 		D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */; };
 		D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27630197F4700ACE00D /* SetPasswordView.swift */; };
+		D9B6B47C3033E31E00BE01E6 /* PhotoGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */; };
 		D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */; };
 		D9D2205E301F49CD009B9CD1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */; };
 		D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205F301F82B3009B9CD1 /* ProfileView.swift */; };
@@ -65,6 +66,7 @@
 		D99E86C53018AC8500B730BC /* PetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailView.swift; sourceTree = "<group>"; };
 		D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyIdentityView.swift; sourceTree = "<group>"; };
 		D9A6E27630197F4700ACE00D /* SetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPasswordView.swift; sourceTree = "<group>"; };
+		D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGuidanceView.swift; sourceTree = "<group>"; };
 		D9B9EC2A3013A4C100C8C883 /* VetCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VetCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -167,6 +169,7 @@
 				D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */,
 				D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */,
 				D9D2205F301F82B3009B9CD1 /* ProfileView.swift */,
+				D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -337,6 +340,7 @@
 				D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */,
 				D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */,
 				D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */,
+				D9B6B47C3033E31E00BE01E6 /* PhotoGuidanceView.swift in Sources */,
 				D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */,
 				D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */,
 				D99AEDC03015F07100D117CA /* Theme.swift in Sources */,

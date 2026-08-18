@@ -44,6 +44,7 @@ import PetOwnerSetPassword from './pages/PetOwnerSetPassword';
 import PetOwnerChangePassword from './pages/PetOwnerChangePassword';
 import PetOwnerProfile from './pages/PetOwnerProfile';
 import PetOwnerAppointments from './pages/PetOwnerAppointments';
+import PetOwnerAIPhotoGuidance from './pages/PetOwnerAIPhotoGuidance';
 import PetOwnerProtectedRoute from './components/PetOwnerProtectedRoute';
 
 
@@ -103,6 +104,14 @@ function App() {
         element={
           <PetOwnerProtectedRoute>
             <PetOwnerAppointments />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/ai-photo-guidance"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerAIPhotoGuidance />
           </PetOwnerProtectedRoute>
         }
       />

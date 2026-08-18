@@ -9,20 +9,22 @@ This is what the Flask /api/ml/rag/chat route calls.
 import re
 
 from scripts.rag.retrieval import retrieve_chunks
-from scripts.rag.ollama_client import generate_answer, normalize_currency, OllamaError
+from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, strip_non_english, OllamaError
 from scripts.rag.structured_query import try_structured_answer, resolve_pet_id, find_pet_candidates, STAFF_ROLES
 from scripts.rag.action_intent import try_action_intent
-from scripts.rag.clinical_tools import try_clinical_tool
-from scripts.rag.pet_health_intent import try_pet_health_intent
+from scripts.rag.clinical_tools import _route_clinical_tool, run_clinical_generation, stream_clinical_generation
+from scripts.rag.pet_health_intent import (
+    _route_pet_health_intent, run_pet_health_generation, stream_pet_health_generation
+)
 from scripts.rag.chart_intent import try_chart_intent
 
-# Every system prompt below instructs metric-only units, but qwen2.5-coder:7b
-# doesn't reliably drop the imperial aside it's used to seeing in training
-# data (e.g. "29-36 kilograms (65-80 lbs)") even when told not to. Rather
-# than keep tuning prompt wording against a small local model, strip it
-# deterministically: matches a parenthetical that contains both a digit and
-# an imperial unit word, so it won't touch unrelated parens (e.g. a plain-
-# language term explanation).
+# Every system prompt below instructs metric-only units, but small local chat
+# models don't reliably drop the imperial aside they're used to seeing in
+# training data (e.g. "29-36 kilograms (65-80 lbs)") even when told not to.
+# Rather than keep tuning prompt wording per-model, strip it deterministically
+# as a model-agnostic safety net: matches a parenthetical that contains both a
+# digit and an imperial unit word, so it won't touch unrelated parens (e.g. a
+# plain-language term explanation) - a no-op when the model already gets it right.
 _IMPERIAL_ASIDE = re.compile(
     r'\s*\([^()]*\d[^()]*(?:lbs?\.?|pounds?|°\s?F(?:ahrenheit)?|fahrenheit|(?<=\d)\s?F\b|inch(?:es)?)\b[^()]*\)',
     re.IGNORECASE
@@ -35,23 +37,69 @@ def _strip_imperial_units(text: str) -> str:
 
 # Asking for the paragraph-then-bullets shape inside the main generation
 # call - as a prose rule, repeated next to the question, even as a literal
-# fill-in-the-blank template - was never enough on its own: qwen2.5-coder:7b
-# kept relabeling the context's terse "field: value" chunk lines (see
+# fill-in-the-blank template - was never enough on its own: the model kept
+# relabeling the context's terse "field: value" chunk lines (see
 # chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
 # like "Vaccinations:"/"Medical Records:" regardless, because that one rule
 # was competing against several others (units, currency, clinical tone,
 # citation handling) in the same call. So the shape is now enforced by a
 # separate follow-up reshape call instead (see _reshape_explain_summarize
 # below) - this regex pair just decides whether that follow-up call runs.
+# NOTE: this was diagnosed against qwen2.5-coder:7b specifically and hasn't
+# been re-verified since - the chat model has since moved to
+# qwen2.5:7b-instruct and now qwen3:8b. If a future pass confirms the
+# current model holds the shape in one call, this reshape call can likely
+# be dropped to save the extra round-trip.
 _EXPLAIN_INTENT = re.compile(r'\bexplain\b|\bwhy\b', re.IGNORECASE)
 _SUMMARIZE_INTENT = re.compile(r'\bsummar(?:y|ize|ise)\b', re.IGNORECASE)
 
+# A yes/no clinical-judgment question ("does he need any vitamins?", "is he
+# due for his rabies shot?", "has he been given anything for it?", "should I
+# bring him in?") is just as much a synthesis question as an "explain"/
+# "summarize" one - answering it well means weaving together several
+# records into a real judgment call, not a one-line lookup - so it gets the
+# same paragraph-then-bullets treatment (and, for admin, the same reasoning
+# pass - see the `think=` call sites below). This is also what actually
+# closes the "bundled multi-part question" gap from STAFF_SYSTEM_PROMPT/
+# OWNER_SYSTEM_PROMPT rule 3/7 (answer every sub-question explicitly): a
+# question like "why does he seem off? does he need medicine?" hits
+# _EXPLAIN_INTENT via "why" already, but a lone "does he need medicine?"
+# with no "why"/"explain"/"summarize" at all previously skipped the reshape
+# pass entirely and got no structural push toward a direct answer.
+_JUDGMENT_INTENT = re.compile(
+    r'\b(?:does|do|did)\b.{0,40}\bneeds?\b|'
+    r'\bneeds?\s+(?:any|a|an)\b|'
+    r'\b(?:is|are)\b.{0,40}\bdue\b|'
+    r'\b(?:has|have)\b.{0,40}\bbeen\s+given\b|'
+    r'\bshould\s+(?:i|we)\b',
+    re.IGNORECASE
+)
+
 
 def _wants_paragraph_and_bullets(question: str) -> bool:
-    return bool(_EXPLAIN_INTENT.search(question) or _SUMMARIZE_INTENT.search(question))
+    return bool(
+        _EXPLAIN_INTENT.search(question)
+        or _SUMMARIZE_INTENT.search(question)
+        or _JUDGMENT_INTENT.search(question)
+    )
 
-STAFF_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant, a decision-support tool \
-for a veterinary clinic. You must follow these rules strictly:
+
+# Used only by the "no relevant chunks" bail-out below - a pet can have zero
+# ingested records at all (never seen the clinic, or a demo/test account
+# with no history on file), which is a real, valid state, not a bug. But a
+# flat "I couldn't find anything, please rephrase" leaves a genuine symptom
+# question ("why does he seem off?", "does he need vitamins?") as a dead
+# end with no guidance at all - see the answer built below, which appends a
+# general, non-diagnostic safety note when this matches.
+_SYMPTOM_CONCERN = re.compile(
+    r'\b(?:not\s+(?:well|feeling\s+well|himself|herself)|unwell|sick|ill|lethargic|'
+    r'symptom|vitamins?|medicine|medication|supplement)\b',
+    re.IGNORECASE
+)
+
+STAFF_SYSTEM_PROMPT = """You are VetCare Pro's veterinary copilot - a decision-support \
+assistant working alongside the clinic's veterinarians, admin, and receptionists, never \
+in place of their clinical judgment. You must follow these rules strictly:
 
 1. Answer ONLY using the information given in the "Context" section below. \
 If the context does not contain enough information to answer, say so plainly \
@@ -76,6 +124,18 @@ reformatted list, not an explanation or summary, even if each line is reworded f
 the source. The paragraph always comes first and is never replaced by the bullets.
    - For a plain factual question (a specific date, a status, a single value), just \
 answer it directly - no paragraph-plus-bullets needed.
+   - When the question bundles more than one distinct sub-question (e.g. "why is he \
+unwell? does he need medicine?"), answer EACH one explicitly, grounded in the \
+Context - do not fold a direct yes/no question into narrative that only implies the \
+answer, and do not let it surface only as an unlabeled bullet point among others. \
+Any sub-question phrased as yes/no ("does he need X?", "is he due for Y?", "has Z \
+been given?") - about medication, vitamins/supplements, follow-up care, vaccination, \
+or anything else - gets an explicit "Yes"/"No"/"Not noted in the records" as its own \
+sentence, immediately followed by the supporting fact, e.g. "Yes - Omega-3 fatty \
+acids were added to his regimen on 2025-09-15" rather than leaving that fact to \
+speak for itself in a bullet list. The person asking should never have to re-ask, or \
+infer from a bullet, a part of their question that was already right there in what \
+they typed.
 4. Keep answers concise and clear, using clinical terminology as appropriate \
 for a professional audience.
 5. Format for skimming, using lightweight markdown:
@@ -118,7 +178,26 @@ If the context does not contain enough information to answer, say so plainly \
 2. You are NOT a veterinarian. Never state a diagnosis as fact. When discussing \
 medical matters, use phrasing like "based on the available records, this may \
 help the veterinarian review..." rather than definitive medical conclusions.
-3. Write in simple, everyday English - the reading level of a general news \
+3. Never suggest, recommend, or name ANY medicine, drug, supplement, or vitamin - \
+even without a dosage, and even if the owner asks for one directly (e.g. "does he \
+need vitamins?", "what can I give her for X?"). Always redirect that specific \
+question to their veterinarian instead of guessing or naming anything to give. This \
+applies even if the records mention something similar having been prescribed before \
+- do not extrapolate today's supplement/treatment needs from a past prescription in \
+the records, since only a vet examining the pet now can say what's appropriate. \
+(This does NOT apply to naming standard preventive vaccines by name when answering a \
+vaccination question, e.g. "rabies" or "DHPP" - that is routine informational \
+content, not a medicine recommendation.)
+4. If the owner's question includes a symptom, wellness, or "should I do X" concern \
+that the Context doesn't fully resolve (e.g. "why does he seem off?", "does he need \
+vitamins?", asked alongside or instead of a record-lookup question), do not silently \
+drop that part of the question just because the records don't cover it. Explicitly \
+acknowledge it, offer general, non-medication guidance if appropriate (e.g. rest, \
+hydration, monitoring, keeping them comfortable), and recommend an in-person vet \
+visit for anything the records don't already resolve - the owner should get a clear \
+answer to every part of what they asked, not just whichever part happened to match \
+a record.
+5. Write in simple, everyday English - the reading level of a general news \
 article, not a medical chart. Avoid clinical jargon, abbreviations, and Latin \
 terms. If a technical term appears in the records (e.g. a diagnosis, medication, \
 or procedure name) and there is no simpler everyday word for it, keep the term but \
@@ -126,10 +205,12 @@ immediately explain what it means in plain language right after it, e.g. \
 "osteoarthritis (joint wear-and-tear that causes stiffness and pain)" or \
 "otitis externa (an infection of the outer ear canal)". Never leave a technical \
 term unexplained.
-4. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
+6. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
 serious, say so factually and calmly, and point them to their veterinarian rather \
-than speculating about severity.
-5. Match the answer to what's actually being asked, not just the topic:
+than speculating about severity. Just say "their veterinarian" / "the clinic" - \
+never "a vet in Sri Lanka" or "a Sri Lankan vet"; this clinic is already in Sri \
+Lanka, so naming the country again is redundant.
+7. Match the answer to what's actually being asked, not just the topic:
    - If the question asks you to "explain" something (e.g. their pet's current \
 health condition, a result, why a recommendation was made), answer in two parts: a \
 short, plain-English paragraph (2-4 sentences) that weaves the relevant facts \
@@ -147,7 +228,23 @@ from the source. The paragraph always comes first and is never replaced by the \
 bullets.
    - For a plain factual question (a specific date, a status, a single value), just \
 answer it directly - no paragraph-plus-bullets needed.
-6. Format for skimming, using lightweight markdown:
+   - When the question is about one specific thing (e.g. vaccines, a single medical \
+record, a billing charge), answer only that - do not also narrate unrelated record \
+types just because they showed up in the Context (e.g. a vaccine question should \
+list vaccines, not also recap diagnoses, treatments, or visit notes that happened \
+to be retrieved alongside them). Only weave multiple record types together when \
+the question is genuinely broad (e.g. "summarize my pet's health", "tell me \
+everything about my pet").
+   - When the question bundles more than one distinct sub-question (e.g. "why does \
+he seem off, and does he need any vitamins?"), address EACH one explicitly rather \
+than folding one into narrative that only implies an answer, and never let it \
+surface only as an unlabeled bullet among others. Any sub-question phrased as \
+yes/no about medicine, a vitamin, or a supplement is always answered per rule 3 - \
+never by naming anything - but that redirect still has to be its own explicit \
+sentence (e.g. "That's a question for your veterinarian, since it depends on \
+examining him now"), not silently skipped, and not left implied by a record from \
+the past appearing elsewhere in the answer.
+8. Format for skimming, using lightweight markdown:
    - If more than one pet or more than one topic/date is covered, use a short \
 "**Pet Name**" bold heading line before that pet's/topic's points.
    - Use "- " bullet points for lists (symptoms, medications, vaccines, visit \
@@ -158,21 +255,21 @@ history) instead of packing them into one paragraph.
 of plain prose outside of bullets.
    - Leave a blank line between sections (e.g. between one pet's bullets and the \
 next pet's heading).
-7. Never invent record details, dates, medications, or dosages that are not in \
+9. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-8. For any single question, you are only ever given the small handful of records \
+10. For any single question, you are only ever given the small handful of records \
 that matched it best - never every record in the system that could be relevant, \
 even though the full dataset is ingested. If asked for a count, total, or complete \
 list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
 what you were given - say that you only see the top matches for this question and \
 the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
 an exact count.
-9. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+11. This clinic operates in Sri Lanka - always use metric units (kilograms for \
 weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
-10. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+12. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
 "$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
@@ -216,7 +313,10 @@ a medicine recommendation.)
 6. For anything tied to an individual pet's symptoms or condition, give general, \
 non-medication guidance only (e.g. rest, hydration, keeping them calm, monitoring) \
 if appropriate, and recommend an in-person vet visit rather than trying to resolve \
-it here.
+it here. Just say "a vet" / "your veterinarian" / "an in-person visit" - never "a \
+vet in Sri Lanka" or "a Sri Lankan vet". This clinic is already in Sri Lanka and \
+staffed by Sri Lankan veterinarians, so naming the country again when recommending \
+a visit is redundant, not informative.
 7. Write in simple, everyday English - the reading level of a general news article, \
 not a medical chart. Avoid clinical jargon; if a technical term is unavoidable, \
 briefly explain it in plain language right after it.
@@ -239,8 +339,8 @@ as "Rs. X" - never "$", "USD", or "dollars".
 
 # Asking for the paragraph-then-bullets shape inside the main system prompt -
 # even repeated right next to the question, even spelled out as a literal
-# fill-in-the-blank template - was not enough on its own: qwen2.5-coder:7b
-# kept relabeling the context's terse "field: value" chunk lines (see
+# fill-in-the-blank template - was not enough on its own: the model kept
+# relabeling the context's terse "field: value" chunk lines (see
 # chunking.py's chunk_vaccination/chunk_medical_record) into grouped headers
 # like "Vaccinations:"/"Medical Records:" regardless, because that one rule
 # was competing against several others (units, currency, clinical tone,
@@ -249,6 +349,9 @@ as "Rs. X" - never "$", "USD", or "dollars".
 # is far more reliable - this prompt's only job is the shape, and the facts
 # are already locked in from the first pass, so there's nothing left for it
 # to get wrong except the format.
+# NOTE: diagnosed against qwen2.5-coder:7b specifically, not re-verified
+# since - the chat model has since moved to qwen2.5:7b-instruct and now
+# qwen3:8b - see the matching note above _wants_paragraph_and_bullets.
 _RESHAPE_SYSTEM_PROMPT = """You are a text reformatter, not a clinical assistant - you do \
 not add, remove, or invent any fact. You will be given a draft answer that already contains \
 all the correct facts, and must rewrite it into exactly this shape:
@@ -303,7 +406,8 @@ Draft answer to reformat (already fact-checked - only its shape needs to change)
 Rewrite it now in the required shape. Remember: the paragraph comes first, always - do not \
 start with "Key points:"."""
     try:
-        return generate_answer(_RESHAPE_SYSTEM_PROMPT, user_prompt)
+        answer, _ = generate_answer(_RESHAPE_SYSTEM_PROMPT, user_prompt)
+        return answer
     except OllamaError:
         # Reformatting is a nice-to-have on top of an already-correct answer -
         # if the follow-up call fails, showing the unshaped draft beats
@@ -311,21 +415,33 @@ start with "Key points:"."""
         return draft_answer
 
 
-def answer_question(
+def _route_to_generation(
     question: str, role: str, customer_id: str = None, user_id: str = None, top_k: int = 5,
     history=None, pending_intent: dict = None
-) -> dict:
+) -> tuple:
     """
-    Full RAG pipeline: retrieve -> generate -> return grounded answer + citations.
+    Shared routing logic for answer_question/stream_answer_question: tries
+    every early-return path (write-actions, clinical tools, pet health,
+    charts, structured SQL, pet disambiguation) in the same order both
+    callers need, then either resolves a full answer already (nothing left
+    to generate) or prepares everything the final free-form RAG generation
+    call needs, without actually making that call - the two callers differ
+    only in whether that last call is blocking (generate_answer) or
+    streamed (stream_chat), so it's factored out here to avoid duplicating
+    this entire routing chain between them.
 
     Returns:
-        dict: {
-            'answer': str,
-            'sources': [{'source_type', 'source_id', 'metadata'}, ...],
-            'chunks_used': int
-        }
-        (staff write-action turns may instead/also include 'action' +
-        'requires_confirmation', or 'pending_intent' - see action_intent.py)
+        tuple: ('early', dict) - a fully-resolved answer, return/yield as-is
+            ('clinical_generate', dict) - {'intent_type', 'pet_id',
+                'observations_text'}, ready for
+                clinical_tools.run_clinical_generation/stream_clinical_generation
+            ('health_generate', dict) - {'intent_type', 'pet_id',
+                'question'}, ready for
+                pet_health_intent.run_pet_health_generation/stream_pet_health_generation
+            ('generate', dict) - {'system_prompt', 'user_prompt',
+                'effective_question', 'chunks', 'is_guest_ungrounded'},
+                everything needed to run and finalize the plain free-form
+                RAG generation call
     """
     # Staff write-action requests (book/reschedule/cancel an appointment,
     # send a reminder, register a customer, add a pet) are checked first -
@@ -335,25 +451,35 @@ def answer_question(
         question, role=role, customer_id=customer_id, history=history, pending_intent=pending_intent
     )
     if action_result is not None:
-        return action_result
+        return 'early', action_result
 
     # Clinical generation requests (full history summary, consultation note
     # draft, aftercare instructions, pre-appointment briefing) need the
     # COMPLETE record set for a pet, not a top-k RAG sample - checked next,
     # before falling to exact-SQL/RAG. Staff-only (admin/veterinarian); the
-    # module itself gates on CLINICAL_STAFF_ROLES and returns None otherwise.
-    clinical_result = try_clinical_tool(question, role=role, history=history, pending_intent=pending_intent)
-    if clinical_result is not None:
-        return clinical_result
+    # module itself gates on CLINICAL_STAFF_ROLES and returns (None, None)
+    # otherwise. Routing only here (no generation yet) so the streaming
+    # caller can watch this generation live too, same as the plain RAG path.
+    clinical_kind, clinical_payload = _route_clinical_tool(
+        question, role=role, history=history, pending_intent=pending_intent
+    )
+    if clinical_kind == 'early':
+        return 'early', clinical_payload
+    if clinical_kind == 'dispatch':
+        return 'clinical_generate', clinical_payload
 
     # Pet disease-recurrence risk, cancer risk, and clinic-wide pandemic risk
     # are live PetHealthPredictor computations, never ingested into
     # rag_chunks - checked next, same "live model, not RAG" reasoning as the
     # clinical tools above. Admin-only; the module itself gates on
-    # PET_HEALTH_ADMIN_ROLES and returns None otherwise.
-    pet_health_result = try_pet_health_intent(question, role=role, history=history, pending_intent=pending_intent)
-    if pet_health_result is not None:
-        return pet_health_result
+    # PET_HEALTH_ADMIN_ROLES and returns (None, None) otherwise.
+    health_kind, health_payload = _route_pet_health_intent(
+        question, role=role, history=history, pending_intent=pending_intent
+    )
+    if health_kind == 'early':
+        return 'early', health_payload
+    if health_kind == 'dispatch':
+        return 'health_generate', health_payload
 
     # Explicit "chart/graph/plot this" requests are checked BEFORE the plain
     # structured-query layer below, not after. Chart questions share their
@@ -368,13 +494,13 @@ def answer_question(
     # reaches the structured layer untouched.
     chart = try_chart_intent(question, role=role, user_id=user_id)
     if chart is not None:
-        return chart
+        return 'early', chart
 
     # Counting/listing questions ("how many pets are named X") are unreliable
     # with pure semantic retrieval - answer them exactly via SQL when we can.
     structured = try_structured_answer(question, role=role, customer_id=customer_id)
     if structured is not None:
-        return structured
+        return 'early', structured
 
     # Try to resolve an exact pet (e.g. "pet Max whose owner is ...") so that
     # retrieval isn't polluted by other pets sharing the same common name.
@@ -395,7 +521,7 @@ def answer_question(
     if resolved_pet_id is None and role in (*STAFF_ROLES, 'pet_owner'):
         pet_name, candidates = find_pet_candidates(question, role=role, customer_id=customer_id)
         if pet_name and not candidates:
-            return {
+            return 'early', {
                 'answer': (
                     f'I couldn\'t find a pet named "{pet_name}"'
                     + (' in the system' if role in STAFF_ROLES else ' in your account')
@@ -407,7 +533,7 @@ def answer_question(
             }
         if pet_name and len(candidates) > 1 and role in STAFF_ROLES:
             listing = '\n'.join(f'- {r[1]} (owner: {r[3]} {r[4]})' for r in candidates)
-            return {
+            return 'early', {
                 'answer': (
                     f'There are {len(candidates)} pets named "{pet_name}" in the system - '
                     f'which one do you mean?\n{listing}'
@@ -427,6 +553,33 @@ def answer_question(
                         # what the chat bubble shows the user instead.
                         'value': f'pet {r[1]} whose owner is {r[3]} {r[4]}',
                         'display': f'{r[3]} {r[4]}'
+                    }
+                    for r in candidates
+                ],
+                'pending_intent': {'type': 'general_qa_disambiguation', 'original_question': question},
+                'structured': True
+            }
+        # Same disambiguation, for a pet_owner who said "my pet"/"my dog"/etc
+        # without naming it and has more than one pet on their account (see
+        # SELF_PET_MENTION in structured_query.py - pet_name is the 'your
+        # pet' placeholder it returns, candidates are the owner's own pets).
+        # No owner qualifier needed in the listing/options - it's already
+        # scoped to their own account, so just the pet's name disambiguates.
+        if pet_name and len(candidates) > 1 and role == 'pet_owner':
+            listing = '\n'.join(f'- {r[1]}' for r in candidates)
+            return 'early', {
+                'answer': f'You have {len(candidates)} pets - which one do you mean?\n{listing}',
+                'sources': [],
+                'chunks_used': 0,
+                'options': [
+                    {
+                        'label': r[1],
+                        # "pet <Name>" round-trips through PET_MENTION, then
+                        # find_pet_candidates' pet_owner branch resolves it
+                        # scoped to this customer_id - no owner phrase needed
+                        # since it's implicit from the authenticated session.
+                        'value': f'pet {r[1]}',
+                        'display': r[1]
                     }
                     for r in candidates
                 ],
@@ -466,7 +619,7 @@ def answer_question(
             effective_question, role=role, customer_id=customer_id, known_pet_id=resolved_pet_id
         )
         if structured is not None:
-            return structured
+            return 'early', structured
 
     chunks = retrieve_chunks(
         effective_question, role=role, customer_id=customer_id, top_k=top_k, pet_id=resolved_pet_id
@@ -478,13 +631,34 @@ def answer_question(
     # empty FAQ match isn't a dead end - fall through and let it answer
     # without a context block instead.
     if not chunks and role != 'guest':
-        return {
-            'answer': (
-                "I couldn't find any relevant clinic records or information to "
-                "answer that. Please rephrase, or check with clinic staff directly."
-            ),
+        answer = (
+            "I couldn't find any relevant clinic records or information to "
+            "answer that. Please rephrase, or check with clinic staff directly."
+        )
+        # A pet with zero records on file is a real, valid state (never
+        # seen the clinic, or a test/demo account with no history) - but a
+        # genuine symptom concern still deserves a clear answer, not just a
+        # dead end, per OWNER_SYSTEM_PROMPT rule 4's "don't silently drop
+        # part of the question" reasoning. General, non-diagnostic safety
+        # guidance only - never speculate about what the missing records
+        # might have shown.
+        if _SYMPTOM_CONCERN.search(effective_question):
+            answer += (
+                " If there's a specific health concern, the safest next step is an "
+                "in-person examination with a veterinarian rather than guessing from "
+                "what's on file - records alone can't tell you what's needed today."
+            )
+        return 'early', {
+            'answer': answer,
             'sources': [],
-            'chunks_used': 0
+            'chunks_used': 0,
+            # Deterministic bail-out, not an LLM answer at all (let alone an
+            # ungrounded general-knowledge one) - without this, the chat UI's
+            # "General veterinary knowledge - not from a specific clinic
+            # record" footer (gated on !structured) wrongly labels this
+            # "nothing found" message as if the model had answered from its
+            # own training knowledge.
+            'structured': True
         }
 
     context_block = '\n\n---\n\n'.join(
@@ -523,16 +697,6 @@ Question: {effective_question}
     else:
         system_prompt = STAFF_SYSTEM_PROMPT
 
-    try:
-        answer_text = generate_answer(system_prompt, user_prompt)
-    except OllamaError as e:
-        return {
-            'answer': f"AI assistant is currently unavailable: {str(e)}",
-            'sources': [],
-            'chunks_used': 0,
-            'error': True
-        }
-
     # normalize_currency assumes any "$"/"USD"/"dollars" figure is really an
     # LKR amount the model mislabeled - true for clinic data (billing/pricing
     # fields are always LKR at the source), but not for a guest's ungrounded
@@ -542,7 +706,28 @@ Question: {effective_question}
     # the value by ~300x, so skip normalization in that specific case.
     is_guest_ungrounded = role == 'guest' and not chunks
 
+    return 'generate', {
+        'system_prompt': system_prompt,
+        'user_prompt': user_prompt,
+        'effective_question': effective_question,
+        'chunks': chunks,
+        'is_guest_ungrounded': is_guest_ungrounded
+    }
+
+
+def _finalize_generation(answer_text: str, reasoning, prep: dict) -> dict:
+    """
+    Shared post-processing for the final free-form RAG generation step
+    (currency/units normalization, the paragraph-then-bullets reshape call,
+    source list) - used by both answer_question and stream_answer_question
+    once they have the model's full answer text, however they got it.
+    """
+    effective_question = prep['effective_question']
+    chunks = prep['chunks']
+    is_guest_ungrounded = prep['is_guest_ungrounded']
+
     def _normalize(text: str) -> str:
+        text = strip_non_english(text)
         text = _strip_imperial_units(text)
         return text if is_guest_ungrounded else normalize_currency(text)
 
@@ -551,7 +736,7 @@ Question: {effective_question}
     if _wants_paragraph_and_bullets(effective_question):
         answer_text = _normalize(_reshape_explain_summarize(effective_question, answer_text))
 
-    return {
+    result = {
         'answer': answer_text,
         'sources': [
             {
@@ -563,9 +748,134 @@ Question: {effective_question}
         ],
         'chunks_used': len(chunks)
     }
+    if reasoning:
+        result['reasoning'] = reasoning
+    return result
 
 
-EXPLAIN_SYSTEM_PROMPT = """You are the VetCare Pro AI assistant. You will be given \
+def answer_question(
+    question: str, role: str, customer_id: str = None, user_id: str = None, top_k: int = 5,
+    history=None, pending_intent: dict = None
+) -> dict:
+    """
+    Full RAG pipeline: retrieve -> generate -> return grounded answer + citations.
+
+    Returns:
+        dict: {
+            'answer': str,
+            'sources': [{'source_type', 'source_id', 'metadata'}, ...],
+            'chunks_used': int
+        }
+        (staff write-action turns may instead/also include 'action' +
+        'requires_confirmation', or 'pending_intent' - see action_intent.py.
+        Admin-role turns on any of the three generation paths - plain RAG,
+        clinical_tools, or pet_health_intent - may also include 'reasoning':
+        str, the model's thinking-mode output, present only when the chat
+        model supports it and produced non-empty output.)
+    """
+    kind, payload = _route_to_generation(
+        question, role, customer_id=customer_id, user_id=user_id, top_k=top_k,
+        history=history, pending_intent=pending_intent
+    )
+    if kind == 'early':
+        return payload
+    if kind == 'clinical_generate':
+        return run_clinical_generation(payload['intent_type'], payload['pet_id'], payload['observations_text'], role)
+    if kind == 'health_generate':
+        return run_pet_health_generation(payload['intent_type'], payload['pet_id'], payload['question'], role)
+
+    try:
+        # Reasoning is only requested for admins - it's an admin-only debug
+        # view in the chat UI - and even then only for questions that
+        # actually ask the model to explain or summarize something.
+        # Thinking mode has a real latency cost (see generate_answer's
+        # docstring, ~24x slower) that isn't worth paying for a plain
+        # factual question, and reusing _wants_paragraph_and_bullets' same
+        # explain/summarize detection keeps the two "this question wants
+        # more than a one-shot answer" checks in sync.
+        answer_text, reasoning = generate_answer(
+            payload['system_prompt'], payload['user_prompt'],
+            think=(role == 'admin' and _wants_paragraph_and_bullets(question))
+        )
+    except OllamaError as e:
+        return {
+            'answer': f"AI assistant is currently unavailable: {str(e)}",
+            'sources': [],
+            'chunks_used': 0,
+            'error': True
+        }
+
+    return _finalize_generation(answer_text, reasoning, payload)
+
+
+def stream_answer_question(
+    question: str, role: str, customer_id: str = None, user_id: str = None, top_k: int = 5,
+    history=None, pending_intent: dict = None
+):
+    """
+    Generator variant of answer_question, for the admin-only real-time
+    "show reasoning" chat view. Runs the exact same routing as
+    answer_question (see _route_to_generation) - three different final
+    steps can end up streamed token-by-token: the plain free-form RAG
+    generation call, clinical_tools' generation (full history summary,
+    consultation note, aftercare, briefing), and pet_health_intent's
+    live-model explanation (individual disease risk, cancer risk, pandemic
+    risk), since all three make a live model call worth watching in real
+    time. Every OTHER early-return branch (write-actions, chart/structured
+    SQL answers, pet disambiguation, "which pet did you mean") already
+    resolves synchronously and cheaply with nothing to generate, so it's
+    yielded as a single 'final' event immediately, same as it would return
+    from answer_question.
+
+    Yields:
+        dict: {'type': 'reasoning_delta', 'text': str} for each incremental
+            chunk of the model's thinking-mode output, zero or more times,
+            followed by exactly one:
+              {'type': 'final', 'result': dict} - same shape answer_question
+              returns
+    """
+    kind, payload = _route_to_generation(
+        question, role, customer_id=customer_id, user_id=user_id, top_k=top_k,
+        history=history, pending_intent=pending_intent
+    )
+    if kind == 'early':
+        yield {'type': 'final', 'result': payload}
+        return
+    if kind == 'clinical_generate':
+        yield from stream_clinical_generation(
+            payload['intent_type'], payload['pet_id'], payload['observations_text'], role
+        )
+        return
+    if kind == 'health_generate':
+        yield from stream_pet_health_generation(payload['intent_type'], payload['pet_id'], payload['question'], role)
+        return
+
+    content = ''
+    reasoning = None
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
+    try:
+        for event in stream_chat(payload['system_prompt'], payload['user_prompt'], think=think):
+            if event['type'] == 'thinking':
+                yield {'type': 'reasoning_delta', 'text': event['delta']}
+            elif event['type'] == 'done':
+                content = event['content']
+                reasoning = event['thinking']
+    except OllamaError as e:
+        yield {
+            'type': 'final',
+            'result': {
+                'answer': f"AI assistant is currently unavailable: {str(e)}",
+                'sources': [],
+                'chunks_used': 0,
+                'error': True
+            }
+        }
+        return
+
+    yield {'type': 'final', 'result': _finalize_generation(content, reasoning, payload)}
+
+
+EXPLAIN_SYSTEM_PROMPT = """You are VetCare Pro's veterinary copilot. You will be given \
 the raw output of one of the clinic's existing machine learning models (disease \
 outbreak risk, individual pet disease/cancer risk, clinic-wide pandemic risk, sales \
 forecasting, or inventory demand forecasting). Your job is to explain that output in \
@@ -579,16 +889,34 @@ estimates" or "based on current trends". This applies doubly to individual pet \
 disease/cancer risk figures: these are statistical estimates from breed/age/history \
 data, never a diagnosis - make that explicit rather than stating a pet "has" or \
 "will get" a condition.
-3. Keep it concise: 2-4 sentences, plain English, no jargon unless you also explain it.
-4. If the data looks incomplete or you can't make sense of it, say so rather than \
-guessing.
+3. Write in a professional, clinical-report tone suited to staff review - not casual \
+or conversational phrasing. Keep it concise: 3-5 sentences, plain English, no jargon \
+unless you also explain it. Bold the key figures and labels (risk level, trend \
+direction, peak period, case/revenue volumes, confidence level) using markdown, e.g. \
+"**low risk**", "**17.2 cases/month**". Do not add section headers, bullet lists, or a \
+"Source:" line - the app displays sources separately from this text.
+4. If the data reports a confidence or reliability level, close with one explicit \
+sentence stating what that means for how staff should use the numbers (e.g. treat as \
+directional rather than precise, corroborate before acting on it). If the data looks \
+incomplete or you can't make sense of it, say so rather than guessing.
 5. This clinic operates in Sri Lanka - any revenue, cost, or price figure in the data \
 is in Sri Lankan Rupees, even though the field itself carries no currency label. \
 Always present it as "Rs. X", never "$", "USD", or "dollars".
 """
 
 
-def explain_ml_output(output_type: str, data: dict) -> str:
+def _explain_prompt(output_type: str, data: dict) -> str:
+    import json
+
+    return f"""Model output type: {output_type}
+
+Raw data:
+{json.dumps(data, indent=2, default=str)}
+
+Explain this output in plain language for clinic staff."""
+
+
+def explain_ml_output(output_type: str, data: dict, think: bool = False) -> tuple:
     """
     Translate a raw ML model output (outbreak risk, sales forecast, inventory
     forecast, etc.) into a plain-language explanation.
@@ -597,20 +925,47 @@ def explain_ml_output(output_type: str, data: dict) -> str:
         output_type: a short label, e.g. 'outbreak_risk', 'sales_forecast',
                       'inventory_forecast' - included in the prompt for context.
         data: the raw JSON/dict output from the ML model.
+        think: request the model's reasoning pass (admin-only "show reasoning"
+            view in the chat UI) - see generate_answer's docstring.
 
     Returns:
-        str: plain-language explanation
+        tuple: (plain-language explanation, reasoning text or None)
     """
-    import json
-
-    user_prompt = f"""Model output type: {output_type}
-
-Raw data:
-{json.dumps(data, indent=2, default=str)}
-
-Explain this output in plain language for clinic staff."""
-
     try:
-        return normalize_currency(_strip_imperial_units(generate_answer(EXPLAIN_SYSTEM_PROMPT, user_prompt)))
+        answer, reasoning = generate_answer(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data), think=think)
+        return normalize_currency(_strip_imperial_units(strip_non_english(answer))), reasoning
     except OllamaError as e:
-        return f"Could not generate an explanation right now: {str(e)}"
+        return f"Could not generate an explanation right now: {str(e)}", None
+
+
+def stream_explain_ml_output(output_type: str, data: dict, think: bool = True):
+    """
+    Streaming counterpart to explain_ml_output, for the admin-only real-time
+    "show reasoning" chat view on the four live-model gates in ml/app.py
+    (outbreak risk, disease trend forecast, revenue forecast, inventory
+    reorder suggestions) - the same live-model-explanation call, but
+    surfacing reasoning deltas as they're produced instead of only after
+    the full explanation is ready.
+
+    Yields:
+        dict: {'type': 'reasoning_delta', 'text': str} for each incremental
+            chunk of the model's thinking-mode output, zero or more times,
+            followed by exactly one:
+              {'type': 'done', 'explanation': str, 'reasoning': str or None}
+    """
+    try:
+        content = ''
+        reasoning = None
+        for event in stream_chat(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data), think=think):
+            if event['type'] == 'thinking':
+                yield {'type': 'reasoning_delta', 'text': event['delta']}
+            elif event['type'] == 'done':
+                content = event['content']
+                reasoning = event['thinking']
+        yield {
+            'type': 'done',
+            'explanation': normalize_currency(_strip_imperial_units(strip_non_english(content))),
+            'reasoning': reasoning
+        }
+    except OllamaError as e:
+        yield {'type': 'done', 'explanation': f"Could not generate an explanation right now: {str(e)}", 'reasoning': None}
