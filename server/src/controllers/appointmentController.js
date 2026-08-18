@@ -5,13 +5,12 @@ import {
   updateAppointment,
   deleteAppointment,
   updateAppointmentStatus,
-  getAppointmentCount,
-  checkAppointmentConflict
+  getAppointmentCount
 } from '../models/appointmentModel.js';
 import { getCustomerById } from '../models/customerModel.js';
 import { getPetById } from '../models/petModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
-import { isClinicOpenDay } from '../utils/appointmentRules.js';
+import { validateRequestedSlot } from './customerAppointmentController.js';
 
 /**
  * Appointment Controller
@@ -98,14 +97,22 @@ export const createNewAppointment = async (req, res) => {
   try {
     const appointmentData = req.body;
 
-    // The clinic is closed Sundays (see appointmentRules.js) - staff booking
-    // shares this physical constraint with the pet-owner self-service flow
-    // in customerAppointmentController.js, so it's enforced here too rather
-    // than only client-side.
-    if (appointmentData.appointment_date && !isClinicOpenDay(appointmentData.appointment_date)) {
-      return res.status(400).json({
+    // Clinic hours/day and slot capacity - shared with the pet-owner
+    // self-service flow and the AI assistant's booking action via
+    // validateRequestedSlot, so all three booking paths agree on what's
+    // bookable. The 48-hour lead time is skipped here, same as the AI path,
+    // since staff routinely book same-day/emergency visits.
+    const createSlotError = await validateRequestedSlot(
+      appointmentData.appointment_date,
+      appointmentData.appointment_time,
+      appointmentData.veterinarian_id || null,
+      null,
+      { enforceLeadTime: false }
+    );
+    if (createSlotError) {
+      return res.status(409).json({
         status: 'error',
-        message: 'The clinic is closed on Sundays - please choose another date'
+        message: createSlotError
       });
     }
 
@@ -131,17 +138,6 @@ export const createNewAppointment = async (req, res) => {
         status: 'error',
         message: 'Pet does not belong to the selected customer'
       });
-    }
-
-    // Check for appointment conflicts if veterinarian is assigned
-    if (appointmentData.veterinarian_id) {
-      const hasConflict = await checkAppointmentConflict(appointmentData);
-      if (hasConflict) {
-        return res.status(409).json({
-          status: 'error',
-          message: 'This time slot is already booked for the selected veterinarian'
-        });
-      }
     }
 
     const newAppointment = await createAppointment(appointmentData, req.user.user_id);
@@ -192,14 +188,8 @@ export const updateAppointmentById = async (req, res) => {
       });
     }
 
-    if (appointmentData.appointment_date && !isClinicOpenDay(appointmentData.appointment_date)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'The clinic is closed on Sundays - please choose another date'
-      });
-    }
-
-    // If veterinarian, date, or time is being changed, check for conflicts
+    // If veterinarian, date, or time is being changed, re-validate the
+    // resulting slot - clinic hours/day and capacity, same as create above.
     if (appointmentData.veterinarian_id || appointmentData.appointment_date || appointmentData.appointment_time) {
       const checkData = {
         veterinarian_id: appointmentData.veterinarian_id || existingAppointment.veterinarian_id,
@@ -207,14 +197,18 @@ export const updateAppointmentById = async (req, res) => {
         appointment_time: appointmentData.appointment_time || existingAppointment.appointment_time
       };
 
-      if (checkData.veterinarian_id) {
-        const hasConflict = await checkAppointmentConflict(checkData, id);
-        if (hasConflict) {
-          return res.status(409).json({
-            status: 'error',
-            message: 'This time slot is already booked for the selected veterinarian'
-          });
-        }
+      const updateSlotError = await validateRequestedSlot(
+        checkData.appointment_date,
+        checkData.appointment_time,
+        checkData.veterinarian_id || null,
+        id,
+        { enforceLeadTime: false }
+      );
+      if (updateSlotError) {
+        return res.status(409).json({
+          status: 'error',
+          message: updateSlotError
+        });
       }
     }
 

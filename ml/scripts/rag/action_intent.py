@@ -57,8 +57,12 @@ _APPT_NOUN = r'(?:appointments?|visits?|' + APPT_TYPE_WORDS + r')'
 # order, regardless of what came between them.
 _GAP = r'.{0,40}?'
 
+# \bmove\b excludes a following "on" - "move on to the next topic about
+# vaccinations" is a topic-change idiom that otherwise satisfies the whole
+# "move ... <appt noun> ... to" shape (the appointment noun and "to" both
+# show up incidentally), and was getting misread as a reschedule request.
 RESCHEDULE_APPOINTMENT = re.compile(
-    r'\breschedule\b' + _GAP + _APPT_NOUN + r'|\bmove\b' + _GAP + _APPT_NOUN + _GAP + r'\bto\b',
+    r'\breschedule\b' + _GAP + _APPT_NOUN + r'|\bmove\b(?!\s+on\b)' + _GAP + _APPT_NOUN + _GAP + r'\bto\b',
     re.IGNORECASE
 )
 CANCEL_APPOINTMENT = re.compile(r'\bcancel\b' + _GAP + _APPT_NOUN, re.IGNORECASE)
@@ -119,6 +123,41 @@ _CHART_OR_REPORT_REQUEST = CHART_TRIGGER
 _REPORT_OR_QUESTION_FRAMING = re.compile(
     r'\b(?:report|summary|breakdown|how\s+many|which|why|'
     r"what(?:'s|\s+is)\s+the)\b",
+    re.IGNORECASE
+)
+
+# Positional variants of the two guards above, used only when checking a
+# *fresh* request (see try_action_intent's elif chain below) rather than a
+# mid-flow slot-filling reply. A fresh request is a full sentence, so a
+# presence-based match over-fired on a read-framing word sitting in a
+# trailing clause that has nothing to do with the sentence's actual verb -
+# "book a checkup for Max, WHICH is the golden retriever", "cancel the
+# surgery for Bella - the owner said WHY later", "schedule an emergency
+# visit - HOW MANY slots are free?" - and, for the chart trigger, on "pie"
+# used as a literal pet name ("book a checkup for PIE") rather than a
+# request for a pie chart.
+#
+# Restricting _REPORT_OR_QUESTION_FRAMING to the sentence's *leading clause*
+# (the text before the first comma/dash/semicolon, via _leading_clause
+# below) fixes the four examples above without an absolute `^` anchor, which
+# would itself break a genuine case this guard already has to handle -
+# "can you set up A REPORT on emergency visits?" has "report" several words
+# in, not at position 0, same shape as "why did the owner cancel the
+# checkup?" which has no clause break at all and still matches. For the
+# chart trigger, "pie" specifically is additionally required to sit next to
+# a chart-requesting verb (chart/graph/plot/visualize need no such
+# restriction - they aren't also common pet names).
+_CLAUSE_BREAK = re.compile(r'[,;]|\s[-–—]\s')
+
+
+def _leading_clause(text: str) -> str:
+    match = _CLAUSE_BREAK.search(text)
+    return text[:match.start()] if match else text
+
+
+_LEADING_CHART_REQUEST = re.compile(
+    r'\b(?:chart|graph|plot|visuali[sz]e|visuali[sz]ations?|visuali[sz]ation)\b|'
+    r'\b(?:make|show|give|create|generate|draw|build)\b\s+(?:me\s+)?(?:a\s+)?pie\b',
     re.IGNORECASE
 )
 
@@ -843,13 +882,26 @@ _RESOLVERS = {
 }
 
 
+# Wh-words only - the auxiliaries (is/are/does/do/can/could/should) that
+# used to sit here collide with ordinary free-text answers. "reason" is
+# asked as an open clinical description ("is vomiting after every meal",
+# "does not want to walk or eat", "can't put weight on the left hind leg"),
+# and every one of those legitimately opens with an auxiliary, so the old
+# list silently abandoned the booking mid-flow on a normal answer.
 _QUESTION_STARTER = re.compile(
-    r'^\s*(?:how\s+many|how\s+much|what|why|when|where|who|which|is|are|does|do|can|could|should)\b',
+    r'^\s*(?:how\s+many|how\s+much|what|why|when|where|who|which)\b',
     re.IGNORECASE
 )
 
+# Fields where the field itself IS free text, so no phrasing - including one
+# that happens to open with a wh-word or auxiliary - should ever be read as
+# a topic change. Skipping the whole heuristic here (rather than relying on
+# the trailing-"?" requirement below) is the reliable fix: a clinical
+# description can legitimately end mid-thought without punctuation too.
+_FREE_TEXT_FIELDS = {'reason'}
 
-def _looks_like_fresh_question(reply: str) -> bool:
+
+def _looks_like_fresh_question(reply: str, awaiting_field: str = None) -> bool:
     """Used only while a slot-filling follow-up is pending (see
     try_action_intent): a bare value answering the field we just asked about
     ("Max", "next Tuesday", "checkup") never matches this, but a genuinely
@@ -857,6 +909,8 @@ def _looks_like_fresh_question(reply: str) -> bool:
     appointments do we have today?" got silently injected as the pet_name
     slot instead of being recognized as a topic change - see the comment at
     the call site."""
+    if awaiting_field in _FREE_TEXT_FIELDS:
+        return False
     reply = reply.strip()
     if not reply:
         return False
@@ -865,7 +919,10 @@ def _looks_like_fresh_question(reply: str) -> bool:
     word_count = len(reply.split())
     if word_count > 8 and reply.endswith('?'):
         return True
-    if word_count > 3 and _QUESTION_STARTER.match(reply):
+    # Requires a trailing "?" too - a wh-word opener alone isn't enough to
+    # call a reply a topic change; a free-text answer can legitimately start
+    # with one ("why" as part of a description) without being a question.
+    if word_count > 3 and _QUESTION_STARTER.match(reply) and reply.endswith('?'):
         return True
     return False
 
@@ -913,7 +970,7 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
 
         if awaiting_field:
             reply = question.strip()
-            if _looks_like_fresh_question(reply):
+            if _looks_like_fresh_question(reply, awaiting_field):
                 # Topic change mid-flow: this doesn't look like an answer to
                 # the field we just asked about, it looks like a new
                 # question ("actually, how many appointments do we have
@@ -946,7 +1003,8 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return _RESOLVERS[intent_type](updated_slots)
     else:
         intent_type = None
-        if _CHART_OR_REPORT_REQUEST.search(question) or _REPORT_OR_QUESTION_FRAMING.search(question):
+        leading = _leading_clause(question)
+        if _LEADING_CHART_REQUEST.search(leading) or _REPORT_OR_QUESTION_FRAMING.search(leading):
             # A chart/report request or a plain read/analysis question is
             # never a write command, even when it shares nouns with the
             # patterns below ("make A GRAPH OF appointments", "why did the
