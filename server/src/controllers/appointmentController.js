@@ -97,22 +97,23 @@ export const createNewAppointment = async (req, res) => {
   try {
     const appointmentData = req.body;
 
-    // Clinic hours/day and slot capacity - shared with the pet-owner
-    // self-service flow and the AI assistant's booking action via
-    // validateRequestedSlot, so all three booking paths agree on what's
-    // bookable. The 48-hour lead time is skipped here, same as the AI path,
-    // since staff routinely book same-day/emergency visits.
+    // Clinic day and slot capacity - shared with the pet-owner self-service
+    // flow and the AI assistant's booking action via validateRequestedSlot,
+    // so all three booking paths agree on what's bookable. The 48-hour lead
+    // time and the clinic-hours window are both skipped here, same as the
+    // AI path, since staff routinely book same-day/emergency/after-hours
+    // visits - only the self-service portal enforces either.
     const createSlotError = await validateRequestedSlot(
       appointmentData.appointment_date,
       appointmentData.appointment_time,
       appointmentData.veterinarian_id || null,
       null,
-      { enforceLeadTime: false }
+      { enforceLeadTime: false, enforceClinicHours: false }
     );
     if (createSlotError) {
-      return res.status(409).json({
+      return res.status(createSlotError.status).json({
         status: 'error',
-        message: createSlotError
+        message: createSlotError.message
       });
     }
 
@@ -189,7 +190,12 @@ export const updateAppointmentById = async (req, res) => {
     }
 
     // If veterinarian, date, or time is being changed, re-validate the
-    // resulting slot - clinic hours/day and capacity, same as create above.
+    // resulting slot - clinic day and capacity, same as create above. Hours
+    // and lead time are both skipped, same reasoning as create - this also
+    // matters for editing an existing appointment that predates strict hours
+    // enforcement (e.g. an 08:30 seed record) via a vet-only change: without
+    // the flag, re-validating against that unchanged time would 409 a
+    // reassignment that never touched the date or time at all.
     if (appointmentData.veterinarian_id || appointmentData.appointment_date || appointmentData.appointment_time) {
       const checkData = {
         veterinarian_id: appointmentData.veterinarian_id || existingAppointment.veterinarian_id,
@@ -202,12 +208,12 @@ export const updateAppointmentById = async (req, res) => {
         checkData.appointment_time,
         checkData.veterinarian_id || null,
         id,
-        { enforceLeadTime: false }
+        { enforceLeadTime: false, enforceClinicHours: false }
       );
       if (updateSlotError) {
-        return res.status(409).json({
+        return res.status(updateSlotError.status).json({
           status: 'error',
-          message: updateSlotError
+          message: updateSlotError.message
         });
       }
     }

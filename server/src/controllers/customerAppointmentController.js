@@ -140,32 +140,39 @@ export const getAvailability = async (req, res) => {
 };
 
 /**
- * Validates clinic-hours/day, 48-hour lead time, and slot capacity for a
- * requested date/time. When veterinarianId is given, checks that vet's own
- * calendar (mirrors the staff-side conflict check and the DB's
+ * Validates clinic-day, clinic-hours, 48-hour lead time, and slot capacity
+ * for a requested date/time. When veterinarianId is given, checks that
+ * vet's own calendar (mirrors the staff-side conflict check and the DB's
  * (veterinarian_id, appointment_date, appointment_time) uniqueness
  * constraint); otherwise falls back to the v1 shared capacity pool.
- * Returns an error message string, or null if OK.
+ * Returns `{ message, status }` on failure, or null if OK - `status` lets
+ * each caller return 400 for "this request can never work" (closed day,
+ * outside hours, too little lead time) vs 409 for "this exact slot is
+ * taken right now" (vet conflict, capacity), matching the distinction the
+ * routes made before this function was shared.
  *
  * Exported for aiController.js's confirmAction (the AI assistant's
- * book/reschedule-appointment actions) - hours and capacity apply to every
+ * book/reschedule-appointment actions) - day and capacity apply to every
  * booking path regardless of who/what initiates it, but the 48-hour lead
- * time is skipped there via `enforceLeadTime: false`, matching the staff
- * manual-booking path (appointmentController.js createNewAppointment),
- * which has never enforced it either - only the self-service pet-owner
- * portal does.
+ * time and clinic-hours window are both skipped for staff/AI callers via
+ * `enforceLeadTime: false` / `enforceClinicHours: false`, matching the
+ * staff manual-booking path (appointmentController.js createNewAppointment),
+ * which has never enforced either - staff and the AI assistant routinely
+ * book same-day/emergency/after-hours visits. Only the self-service
+ * pet-owner portal enforces both (the defaults below).
  */
 export const validateRequestedSlot = async (
-  date, time, veterinarianId = null, excludeAppointmentId = null, { enforceLeadTime = true } = {}
+  date, time, veterinarianId = null, excludeAppointmentId = null,
+  { enforceLeadTime = true, enforceClinicHours = true } = {}
 ) => {
   if (!isClinicOpenDay(date)) {
-    return 'The clinic is closed on that day. Please choose a date from Monday to Saturday.';
+    return { message: 'The clinic is closed on that day. Please choose a date from Monday to Saturday.', status: 400 };
   }
-  if (!isWithinClinicHours(time, APPOINTMENT_DURATION_MINUTES)) {
-    return 'Please choose a time between 9:00 AM and 6:30 PM.';
+  if (enforceClinicHours && !isWithinClinicHours(time, APPOINTMENT_DURATION_MINUTES)) {
+    return { message: 'Please choose a time between 9:00 AM and 6:30 PM.', status: 400 };
   }
   if (enforceLeadTime && !meetsLeadTime(date, time)) {
-    return `Appointments must be booked at least ${MIN_LEAD_HOURS} hours in advance.`;
+    return { message: `Appointments must be booked at least ${MIN_LEAD_HOURS} hours in advance.`, status: 400 };
   }
 
   if (veterinarianId) {
@@ -174,14 +181,14 @@ export const validateRequestedSlot = async (
       excludeAppointmentId
     );
     if (hasConflict) {
-      return 'That veterinarian is not available at this time. Please choose another time or vet.';
+      return { message: 'That veterinarian is not available at this time. Please choose another time or vet.', status: 409 };
     }
     return null;
   }
 
   const bookedCount = await getSlotBookingCount(date, time, excludeAppointmentId);
   if (bookedCount >= MAX_CONCURRENT_APPOINTMENTS) {
-    return 'That time slot is fully booked. Please choose another time.';
+    return { message: 'That time slot is fully booked. Please choose another time.', status: 409 };
   }
   return null;
 };
@@ -210,7 +217,7 @@ export const createMyAppointment = async (req, res) => {
 
     const slotError = await validateRequestedSlot(appointment_date, appointment_time, veterinarianId);
     if (slotError) {
-      return res.status(409).json({ status: 'error', message: slotError });
+      return res.status(slotError.status).json({ status: 'error', message: slotError.message });
     }
 
     const newAppointment = await createAppointment({
@@ -278,7 +285,7 @@ export const updateMyAppointment = async (req, res) => {
 
     const slotError = await validateRequestedSlot(newDate, newTime, newVeterinarianId, id);
     if (slotError) {
-      return res.status(409).json({ status: 'error', message: slotError });
+      return res.status(slotError.status).json({ status: 'error', message: slotError.message });
     }
 
     await updateAppointment(id, {

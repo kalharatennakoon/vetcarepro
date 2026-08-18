@@ -230,14 +230,15 @@ const executeBookAppointment = async (slots, req, res) => {
   // action_intent.py resolves dates from free text ("next Tuesday") without
   // knowing which day of the week that lands on - clinic-day, hours, and
   // capacity/conflict are only checked here, at the actual write, same as
-  // the pet-owner customerAppointmentController.js path. Lead time is
-  // skipped (staff booking directly has never enforced it either - see
-  // appointmentController.js's createNewAppointment).
+  // the pet-owner customerAppointmentController.js path. Lead time and the
+  // clinic-hours window are both skipped (staff booking directly has never
+  // enforced either - see appointmentController.js's createNewAppointment).
   const slotError = await validateRequestedSlot(
-    slots.appointment_date, slots.appointment_time, slots.veterinarian_id || null, null, { enforceLeadTime: false }
+    slots.appointment_date, slots.appointment_time, slots.veterinarian_id || null, null,
+    { enforceLeadTime: false, enforceClinicHours: false }
   );
   if (slotError) {
-    return res.status(409).json({ success: false, message: slotError });
+    return res.status(slotError.status).json({ success: false, message: slotError.message });
   }
 
   const newAppointment = await createAppointment({
@@ -288,10 +289,10 @@ const executeRescheduleAppointment = async (slots, req, res) => {
 
   const slotError = await validateRequestedSlot(
     slots.appointment_date, slots.appointment_time, existingAppointment.veterinarian_id || null,
-    slots.appointment_id, { enforceLeadTime: false }
+    slots.appointment_id, { enforceLeadTime: false, enforceClinicHours: false }
   );
   if (slotError) {
-    return res.status(409).json({ success: false, message: slotError });
+    return res.status(slotError.status).json({ success: false, message: slotError.message });
   }
 
   const updatedAppointment = await updateAppointment(slots.appointment_id, {
