@@ -291,7 +291,7 @@ const PetOwnerAppointments = () => {
           <nav className="po-profile-nav">
             {navItem('/pet-owner/profile', 'fa-user-circle', 'My Profile')}
             {navItem('/pet-owner/appointments', 'fa-calendar-check', 'Appointments')}
-            {navItem('/pet-owner/ai-photo-guidance', 'fa-camera', 'AI Photo Guidance')}
+            {navItem('/pet-owner/ai-photo-guidance', 'fa-camera', 'AI Visual Care Guidance')}
             {navItem('/pet-owner/change-password', 'fa-lock', 'Change Password')}
           </nav>
 

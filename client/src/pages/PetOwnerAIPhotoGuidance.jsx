@@ -239,7 +239,7 @@ const PetOwnerAIPhotoGuidance = () => {
           <nav className="po-profile-nav">
             {navItem('/pet-owner/profile', 'fa-user-circle', 'My Profile')}
             {navItem('/pet-owner/appointments', 'fa-calendar-check', 'Appointments')}
-            {navItem('/pet-owner/ai-photo-guidance', 'fa-camera', 'AI Photo Guidance')}
+            {navItem('/pet-owner/ai-photo-guidance', 'fa-camera', 'AI Visual Care Guidance')}
             {navItem('/pet-owner/change-password', 'fa-lock', 'Change Password')}
           </nav>
 
@@ -250,24 +250,16 @@ const PetOwnerAIPhotoGuidance = () => {
 
         <main className="po-profile-main">
           <div className="po-profile-welcome">
-            <h1>AI Photo Guidance</h1>
+            <h1>AI Visual Care Guidance</h1>
             <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
           </div>
 
           <div className="po-photo-disclaimer">
             <i className="fas fa-shield-heart"></i>
-            <span>This is general guidance, not a diagnosis or medical advice. Always see a veterinarian for anything concerning.</span>
-          </div>
-
-          <div className="po-photo-privacy-notice">
-            <i className="fas fa-lock"></i>
             <span>
-              Photos you upload here are personal data and are used only to generate this guidance, in line with Sri
-              Lanka's{' '}
-              <a href="https://www.dpa.gov.lk/" target="_blank" rel="noopener noreferrer">
-                Personal Data Protection Act (PDPA)
-              </a>
-              .
+              This is general guidance, not a diagnosis or medical advice - please see a veterinarian for anything
+              concerning. Photos you upload are used only to generate this guidance and are handled as personal data
+              under Sri Lanka's Personal Data Protection Act (PDPA).
             </span>
           </div>
 

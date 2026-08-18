@@ -69,7 +69,7 @@ struct PhotoGuidanceView: View {
             .padding(20)
         }
         .background(Color.appBackground)
-        .navigationTitle("AI Photo Guidance")
+        .navigationTitle("AI Visual Care Guidance")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadInitial() }
         .onChange(of: selectedPetId) { _, _ in Task { await loadHistory() } }
@@ -89,7 +89,7 @@ struct PhotoGuidanceView: View {
             Image(systemName: "exclamationmark.shield")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("This is general visual guidance only — not a diagnosis. Always visit a vet for anything concerning.")
+            Text("This is general visual guidance only — not a diagnosis. Always visit a vet for anything concerning. Photos you upload are used only to generate this guidance and are handled as personal data under Sri Lanka's Personal Data Protection Act (PDPA).")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer(minLength: 0)
