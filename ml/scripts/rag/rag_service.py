@@ -53,9 +53,49 @@ def _strip_imperial_units(text: str) -> str:
 _EXPLAIN_INTENT = re.compile(r'\bexplain\b|\bwhy\b', re.IGNORECASE)
 _SUMMARIZE_INTENT = re.compile(r'\bsummar(?:y|ize|ise)\b', re.IGNORECASE)
 
+# A yes/no clinical-judgment question ("does he need any vitamins?", "is he
+# due for his rabies shot?", "has he been given anything for it?", "should I
+# bring him in?") is just as much a synthesis question as an "explain"/
+# "summarize" one - answering it well means weaving together several
+# records into a real judgment call, not a one-line lookup - so it gets the
+# same paragraph-then-bullets treatment (and, for admin, the same reasoning
+# pass - see the `think=` call sites below). This is also what actually
+# closes the "bundled multi-part question" gap from STAFF_SYSTEM_PROMPT/
+# OWNER_SYSTEM_PROMPT rule 3/7 (answer every sub-question explicitly): a
+# question like "why does he seem off? does he need medicine?" hits
+# _EXPLAIN_INTENT via "why" already, but a lone "does he need medicine?"
+# with no "why"/"explain"/"summarize" at all previously skipped the reshape
+# pass entirely and got no structural push toward a direct answer.
+_JUDGMENT_INTENT = re.compile(
+    r'\b(?:does|do|did)\b.{0,40}\bneeds?\b|'
+    r'\bneeds?\s+(?:any|a|an)\b|'
+    r'\b(?:is|are)\b.{0,40}\bdue\b|'
+    r'\b(?:has|have)\b.{0,40}\bbeen\s+given\b|'
+    r'\bshould\s+(?:i|we)\b',
+    re.IGNORECASE
+)
+
 
 def _wants_paragraph_and_bullets(question: str) -> bool:
-    return bool(_EXPLAIN_INTENT.search(question) or _SUMMARIZE_INTENT.search(question))
+    return bool(
+        _EXPLAIN_INTENT.search(question)
+        or _SUMMARIZE_INTENT.search(question)
+        or _JUDGMENT_INTENT.search(question)
+    )
+
+
+# Used only by the "no relevant chunks" bail-out below - a pet can have zero
+# ingested records at all (never seen the clinic, or a demo/test account
+# with no history on file), which is a real, valid state, not a bug. But a
+# flat "I couldn't find anything, please rephrase" leaves a genuine symptom
+# question ("why does he seem off?", "does he need vitamins?") as a dead
+# end with no guidance at all - see the answer built below, which appends a
+# general, non-diagnostic safety note when this matches.
+_SYMPTOM_CONCERN = re.compile(
+    r'\b(?:not\s+(?:well|feeling\s+well|himself|herself)|unwell|sick|ill|lethargic|'
+    r'symptom|vitamins?|medicine|medication|supplement)\b',
+    re.IGNORECASE
+)
 
 STAFF_SYSTEM_PROMPT = """You are VetCare Pro's veterinary copilot - a decision-support \
 assistant working alongside the clinic's veterinarians, admin, and receptionists, never \
@@ -84,6 +124,18 @@ reformatted list, not an explanation or summary, even if each line is reworded f
 the source. The paragraph always comes first and is never replaced by the bullets.
    - For a plain factual question (a specific date, a status, a single value), just \
 answer it directly - no paragraph-plus-bullets needed.
+   - When the question bundles more than one distinct sub-question (e.g. "why is he \
+unwell? does he need medicine?"), answer EACH one explicitly, grounded in the \
+Context - do not fold a direct yes/no question into narrative that only implies the \
+answer, and do not let it surface only as an unlabeled bullet point among others. \
+Any sub-question phrased as yes/no ("does he need X?", "is he due for Y?", "has Z \
+been given?") - about medication, vitamins/supplements, follow-up care, vaccination, \
+or anything else - gets an explicit "Yes"/"No"/"Not noted in the records" as its own \
+sentence, immediately followed by the supporting fact, e.g. "Yes - Omega-3 fatty \
+acids were added to his regimen on 2025-09-15" rather than leaving that fact to \
+speak for itself in a bullet list. The person asking should never have to re-ask, or \
+infer from a bullet, a part of their question that was already right there in what \
+they typed.
 4. Keep answers concise and clear, using clinical terminology as appropriate \
 for a professional audience.
 5. Format for skimming, using lightweight markdown:
@@ -126,7 +178,26 @@ If the context does not contain enough information to answer, say so plainly \
 2. You are NOT a veterinarian. Never state a diagnosis as fact. When discussing \
 medical matters, use phrasing like "based on the available records, this may \
 help the veterinarian review..." rather than definitive medical conclusions.
-3. Write in simple, everyday English - the reading level of a general news \
+3. Never suggest, recommend, or name ANY medicine, drug, supplement, or vitamin - \
+even without a dosage, and even if the owner asks for one directly (e.g. "does he \
+need vitamins?", "what can I give her for X?"). Always redirect that specific \
+question to their veterinarian instead of guessing or naming anything to give. This \
+applies even if the records mention something similar having been prescribed before \
+- do not extrapolate today's supplement/treatment needs from a past prescription in \
+the records, since only a vet examining the pet now can say what's appropriate. \
+(This does NOT apply to naming standard preventive vaccines by name when answering a \
+vaccination question, e.g. "rabies" or "DHPP" - that is routine informational \
+content, not a medicine recommendation.)
+4. If the owner's question includes a symptom, wellness, or "should I do X" concern \
+that the Context doesn't fully resolve (e.g. "why does he seem off?", "does he need \
+vitamins?", asked alongside or instead of a record-lookup question), do not silently \
+drop that part of the question just because the records don't cover it. Explicitly \
+acknowledge it, offer general, non-medication guidance if appropriate (e.g. rest, \
+hydration, monitoring, keeping them comfortable), and recommend an in-person vet \
+visit for anything the records don't already resolve - the owner should get a clear \
+answer to every part of what they asked, not just whichever part happened to match \
+a record.
+5. Write in simple, everyday English - the reading level of a general news \
 article, not a medical chart. Avoid clinical jargon, abbreviations, and Latin \
 terms. If a technical term appears in the records (e.g. a diagnosis, medication, \
 or procedure name) and there is no simpler everyday word for it, keep the term but \
@@ -134,12 +205,12 @@ immediately explain what it means in plain language right after it, e.g. \
 "osteoarthritis (joint wear-and-tear that causes stiffness and pain)" or \
 "otitis externa (an infection of the outer ear canal)". Never leave a technical \
 term unexplained.
-4. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
+6. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
 serious, say so factually and calmly, and point them to their veterinarian rather \
 than speculating about severity. Just say "their veterinarian" / "the clinic" - \
 never "a vet in Sri Lanka" or "a Sri Lankan vet"; this clinic is already in Sri \
 Lanka, so naming the country again is redundant.
-5. Match the answer to what's actually being asked, not just the topic:
+7. Match the answer to what's actually being asked, not just the topic:
    - If the question asks you to "explain" something (e.g. their pet's current \
 health condition, a result, why a recommendation was made), answer in two parts: a \
 short, plain-English paragraph (2-4 sentences) that weaves the relevant facts \
@@ -164,7 +235,16 @@ list vaccines, not also recap diagnoses, treatments, or visit notes that happene
 to be retrieved alongside them). Only weave multiple record types together when \
 the question is genuinely broad (e.g. "summarize my pet's health", "tell me \
 everything about my pet").
-6. Format for skimming, using lightweight markdown:
+   - When the question bundles more than one distinct sub-question (e.g. "why does \
+he seem off, and does he need any vitamins?"), address EACH one explicitly rather \
+than folding one into narrative that only implies an answer, and never let it \
+surface only as an unlabeled bullet among others. Any sub-question phrased as \
+yes/no about medicine, a vitamin, or a supplement is always answered per rule 3 - \
+never by naming anything - but that redirect still has to be its own explicit \
+sentence (e.g. "That's a question for your veterinarian, since it depends on \
+examining him now"), not silently skipped, and not left implied by a record from \
+the past appearing elsewhere in the answer.
+8. Format for skimming, using lightweight markdown:
    - If more than one pet or more than one topic/date is covered, use a short \
 "**Pet Name**" bold heading line before that pet's/topic's points.
    - Use "- " bullet points for lists (symptoms, medications, vaccines, visit \
@@ -175,21 +255,21 @@ history) instead of packing them into one paragraph.
 of plain prose outside of bullets.
    - Leave a blank line between sections (e.g. between one pet's bullets and the \
 next pet's heading).
-7. Never invent record details, dates, medications, or dosages that are not in \
+9. Never invent record details, dates, medications, or dosages that are not in \
 the context.
-8. For any single question, you are only ever given the small handful of records \
+10. For any single question, you are only ever given the small handful of records \
 that matched it best - never every record in the system that could be relevant, \
 even though the full dataset is ingested. If asked for a count, total, or complete \
 list (e.g. "how many...", "list all..."), do NOT calculate or guess a number from \
 what you were given - say that you only see the top matches for this question and \
 the person should check the relevant page in the app (e.g. Pets, Disease Cases) for \
 an exact count.
-9. This clinic operates in Sri Lanka - always use metric units (kilograms for \
+11. This clinic operates in Sri Lanka - always use metric units (kilograms for \
 weight, Celsius for temperature, centimeters for length/height). Never use pounds, \
 Fahrenheit, or inches - not even as a parenthetical conversion alongside the \
 metric value. If a value in the context is already in metric, state it as \
 given; only convert if you encounter an imperial value.
-10. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
+12. Always state monetary amounts in Sri Lankan Rupees, written as "Rs. X" - never \
 "$", "USD", or "dollars", even as a parenthetical conversion.
 """
 
@@ -551,13 +631,34 @@ def _route_to_generation(
     # empty FAQ match isn't a dead end - fall through and let it answer
     # without a context block instead.
     if not chunks and role != 'guest':
+        answer = (
+            "I couldn't find any relevant clinic records or information to "
+            "answer that. Please rephrase, or check with clinic staff directly."
+        )
+        # A pet with zero records on file is a real, valid state (never
+        # seen the clinic, or a test/demo account with no history) - but a
+        # genuine symptom concern still deserves a clear answer, not just a
+        # dead end, per OWNER_SYSTEM_PROMPT rule 4's "don't silently drop
+        # part of the question" reasoning. General, non-diagnostic safety
+        # guidance only - never speculate about what the missing records
+        # might have shown.
+        if _SYMPTOM_CONCERN.search(effective_question):
+            answer += (
+                " If there's a specific health concern, the safest next step is an "
+                "in-person examination with a veterinarian rather than guessing from "
+                "what's on file - records alone can't tell you what's needed today."
+            )
         return 'early', {
-            'answer': (
-                "I couldn't find any relevant clinic records or information to "
-                "answer that. Please rephrase, or check with clinic staff directly."
-            ),
+            'answer': answer,
             'sources': [],
-            'chunks_used': 0
+            'chunks_used': 0,
+            # Deterministic bail-out, not an LLM answer at all (let alone an
+            # ungrounded general-knowledge one) - without this, the chat UI's
+            # "General veterinary knowledge - not from a specific clinic
+            # record" footer (gated on !structured) wrongly labels this
+            # "nothing found" message as if the model had answered from its
+            # own training knowledge.
+            'structured': True
         }
 
     context_block = '\n\n---\n\n'.join(

@@ -26,7 +26,7 @@ OLLAMA_EMBED_MODEL = os.getenv('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen3:8b')
 # Sized with headroom for two things, not just plain generation speed: (a) a
 # longer "explain"/"summarize" owner/staff answer (see OWNER_SYSTEM_PROMPT
-# rule 5's paragraph-plus-bullets format) can need several hundred tokens,
+# rule 7's paragraph-plus-bullets format) can need several hundred tokens,
 # and (b) OLLAMA_CHAT_MODEL and OLLAMA_VISION_MODEL are deliberately
 # different models (see below) that Ollama loads/unloads on demand rather
 # than keeping both resident - on memory-constrained hardware the first
