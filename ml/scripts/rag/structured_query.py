@@ -656,8 +656,18 @@ APPT_COUNT_NO_SHOW = re.compile(
 )
 
 # Matches: "how many appointments are scheduled?", "how many appointments were cancelled?"
+# "scheduled" specifically excludes being immediately followed by a
+# preposition/determiner that signals it's being used as the ordinary verb
+# "scheduled for/on/this/next <date>" - not as the (barely-used - the
+# booking flow sets appointments straight to 'confirmed', so 'scheduled'
+# rows are effectively always zero) literal status filter. Without this,
+# "how many appointments are scheduled for today?" - an extremely natural
+# way to ask about today's appointment count - got hijacked into a
+# status=scheduled query answering "0" instead of falling through to
+# APPT_COUNT_TIMEFRAME below, which is what the question actually meant.
 APPT_COUNT_BY_STATUS = re.compile(
-    r'how many appointments?\b.*?\b(scheduled|confirmed|in[\s-]?progress|completed|cancelled|no[\s-]?show)\b',
+    r'how many appointments?\b.*?\b(scheduled(?!\s+(?:for|on|this|next|today|tomorrow|yesterday)\b)|'
+    r'confirmed|in[\s-]?progress|completed|cancelled|no[\s-]?show)\b',
     re.IGNORECASE
 )
 
@@ -791,15 +801,24 @@ BILLING_PAYMENT_STATUS_BY_CUSTOMER = re.compile(
 # "how much do I owe?", "have I paid my last bill?". Scoped to the caller's
 # own customer_id, never a name lookup (unlike the staff versions, which
 # must resolve an ambiguous customer name first).
+# "my ... balance" uses a bounded gap (not a literal "my balance"/"my
+# outstanding balance") so natural phrasing like "my CURRENT BILLING
+# balance" or "my account balance" still matches - a literal-adjacency
+# match missed exactly that phrasing, silently falling through to unscoped
+# RAG retrieval (wrong sources, a nonsense "please log in" answer) instead
+# of the deterministic SQL lookup below.
 OWNER_BALANCE = re.compile(
     r'\bhow\s+much\s+do\s+i\s+owe\b|\bwhat\s+do\s+i\s+owe\b|'
-    r'\bmy\s+(?:outstanding\s+)?balance\b|\bdo\s+i\s+owe\s+anything\b',
+    r'\bmy\b.{0,25}\bbalance\b|\bdo\s+i\s+owe\s+anything\b',
     re.IGNORECASE
 )
 
 # Matches: "have I paid?", "is my bill paid?", "what's my payment status"
+# ("my" and "payment status"/"bill paid" bounded rather than adjacent, same
+# reasoning as OWNER_BALANCE above - "what's my current payment status?"
+# has a word in between that a literal-adjacency match would miss).
 OWNER_PAYMENT_STATUS = re.compile(
-    r'\bhave\s+i\s+paid\b|\bis\s+my\s+bill\s+paid\b|\bmy\s+payment\s+status\b',
+    r'\bhave\s+i\s+paid\b|\bis\s+my\b.{0,15}\bbill\b.{0,10}\bpaid\b|\bmy\b.{0,15}\bpayment\s+status\b',
     re.IGNORECASE
 )
 
@@ -1816,8 +1835,16 @@ def _count_appointments_timeframe(timeframe: str) -> dict:
     conn = get_raw_db_connection()
     try:
         with conn.cursor() as cur:
+            # Excludes cancelled - a cancelled appointment isn't on the
+            # day's schedule any more, so counting it as "scheduled" would
+            # overstate what's actually happening (same convention as
+            # _next_appointment_for_pet/_owner_next_appointment below,
+            # which already exclude it from upcoming-appointment lookups).
+            # completed/no_show stay counted - both genuinely occupied the
+            # slot they were scheduled for.
             cur.execute(
-                "SELECT appointment_id, status FROM appointments WHERE appointment_date BETWEEN %s AND %s",
+                "SELECT appointment_id, status FROM appointments "
+                "WHERE appointment_date BETWEEN %s AND %s AND status != 'cancelled'",
                 (start, end)
             )
             rows = cur.fetchall()
@@ -1857,7 +1884,7 @@ def _list_appointments_timeframe(timeframe: str) -> dict:
                 JOIN pets p ON p.pet_id = a.pet_id
                 JOIN customers c ON c.customer_id = a.customer_id
                 LEFT JOIN users u ON u.user_id = a.veterinarian_id
-                WHERE a.appointment_date BETWEEN %s AND %s
+                WHERE a.appointment_date BETWEEN %s AND %s AND a.status != 'cancelled'
                 ORDER BY a.appointment_date, a.appointment_time
             """, (start, end))
             rows = cur.fetchall()
@@ -1916,7 +1943,7 @@ def _list_appointments_on_date(target_date: date) -> dict:
                 JOIN pets p ON p.pet_id = a.pet_id
                 JOIN customers c ON c.customer_id = a.customer_id
                 LEFT JOIN users u ON u.user_id = a.veterinarian_id
-                WHERE a.appointment_date = %s
+                WHERE a.appointment_date = %s AND a.status != 'cancelled'
                 ORDER BY a.appointment_time
             """, (target_date,))
             rows = cur.fetchall()
@@ -2090,6 +2117,7 @@ def _owner_appointments_timeframe(customer_id: str, timeframe: str) -> dict:
                 JOIN pets p ON p.pet_id = a.pet_id
                 LEFT JOIN users u ON u.user_id = a.veterinarian_id
                 WHERE a.customer_id = %s AND a.appointment_date BETWEEN %s AND %s
+                  AND a.status != 'cancelled'
                 ORDER BY a.appointment_date, a.appointment_time
             """, (customer_id, start, end))
             rows = cur.fetchall()

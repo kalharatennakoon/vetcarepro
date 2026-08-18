@@ -92,7 +92,6 @@ const AIAssistant = () => {
   // server-side conversation session, so this (plus recent message history)
   // is how the assistant remembers what it already asked.
   const [pendingIntent, setPendingIntent] = useState(null);
-  const bottomRef = useRef(null);
   const chatContainerRef = useRef(null);
   // Tracks whether the view should auto-scroll to the newest content. Starts
   // true (initial load / a fresh question should land at the bottom), but
@@ -109,8 +108,20 @@ const AIAssistant = () => {
       : CLINICAL_SUGGESTED_PROMPTS;
 
   useEffect(() => {
+    // Scrolls chatContainerRef itself directly, NOT via a sentinel child's
+    // scrollIntoView() - scrollIntoView walks up through every scrollable
+    // ancestor needed to bring the target into view, which on this page
+    // includes Layout.jsx's #main-content (the page's own scrollbar, wrapped
+    // around this whole chat). During an admin reasoning stream this effect
+    // re-runs on every token, so scrollIntoView kept re-asserting itself on
+    // #main-content too - even after the admin manually scrolled the PAGE
+    // (not just the chat box) up to read something above it, the very next
+    // token yanked it back down, making the page scrollbar feel unusable
+    // until streaming finished. Scrolling only this container leaves
+    // #main-content (and every other ancestor) alone entirely.
     if (stickToBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      const el = chatContainerRef.current;
+      el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, loading]);
 
@@ -450,7 +461,6 @@ const AIAssistant = () => {
               </div>
             </div>
           )}
-          <div ref={bottomRef} />
         </div>
 
         {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}

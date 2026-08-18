@@ -1626,6 +1626,46 @@ def _extract_time_horizon(question, unit='days', default=30, minimum=7, maximum=
     return clamped, clamped != requested
 
 
+# Same message as structured_query.py's _clinical_detail_redirect() -
+# duplicated here rather than imported, since the four live-model-gate
+# role-denials below fully short-circuit the request before
+# rag_service.answer_question (and structured_query.py's own redirect)
+# ever runs. Keep this in sync with _clinical_detail_redirect() if that
+# wording changes.
+_CLINICAL_DETAIL_REDIRECT_NOTE = (
+    "Medical record and diagnosis details aren't available through this "
+    "assistant for your role - please check with a veterinarian or admin "
+    "for clinical specifics."
+)
+
+# Broad "does this question also ask for clinical detail" check - not the
+# narrower LIST_RECORDS_BY_PET intent match in structured_query.py (which
+# requires specific list/show phrasing), just whether the words are present
+# at all, since this is used to decide whether to APPEND a second denial,
+# not to answer the clinical-detail request itself.
+_MENTIONS_CLINICAL_DETAIL = re.compile(
+    r'\bmedical\s+records?\b|\bmedical\s+history\b|\bdiagnos(?:is|es)\b|'
+    r'\bdisease\s+cases?\b|\blab\s+reports?\b',
+    re.IGNORECASE
+)
+
+
+def _with_clinical_detail_note(answer: str, question: str, role: str) -> str:
+    """
+    A bundled question like "can I see pet Max's medical history, and
+    what's our revenue forecast?" has two independently-restricted halves
+    for a receptionist - but the live-model gates below return as soon as
+    ONE role-denial matches, so without this the medical-history half was
+    silently dropped instead of also denied (see the answer-every-
+    sub-question rule in rag_service.py's system prompts, which this
+    mirrors for the one path that short-circuits before either prompt is
+    ever read).
+    """
+    if role == 'receptionist' and _MENTIONS_CLINICAL_DETAIL.search(question):
+        return f'{answer} {_CLINICAL_DETAIL_REDIRECT_NOTE}'
+    return answer
+
+
 def _match_live_model_gate(question: str, role: str):
     """
     Pure matching logic shared by _try_live_model_gate (blocking) and the
@@ -1672,20 +1712,22 @@ def _match_live_model_gate(question: str, role: str):
     ) and not _outbreak_forecast_intent:
         if role not in ('admin', 'veterinarian'):
             return 'early', {
-                'answer': (
+                'answer': _with_clinical_detail_note((
                     "Disease outbreak risk assessments aren't available through "
                     "this assistant for your role - check the Analytics page, "
                     "or ask a veterinarian or admin."
-                ),
+                ), question, role),
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         if not disease_model:
             return 'early', {
                 'answer': "The outbreak risk model isn't loaded right now - please try again shortly.",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         risk_assessment = disease_model.predict_outbreak_risk(days_lookback=30)
@@ -1724,20 +1766,22 @@ def _match_live_model_gate(question: str, role: str):
     ):
         if role not in ('admin', 'veterinarian'):
             return 'early', {
-                'answer': (
+                'answer': _with_clinical_detail_note((
                     "Disease trend forecasts aren't available through this "
                     "assistant for your role - check the Analytics page, "
                     "or ask a veterinarian or admin."
-                ),
+                ), question, role),
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         if not disease_model:
             return 'early', {
                 'answer': "The disease prediction model isn't loaded right now - please try again shortly.",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         months, was_clamped = _extract_time_horizon(question, unit='months', default=12, minimum=1, maximum=60)
@@ -1746,7 +1790,8 @@ def _match_live_model_gate(question: str, role: str):
             return 'early', {
                 'answer': f"Couldn't generate a disease trend forecast right now: {trends['error']}",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         # 'predictions', 'activity_forecast' (one row per forecasted
@@ -1782,19 +1827,21 @@ def _match_live_model_gate(question: str, role: str):
     ):
         if role not in ('admin', 'veterinarian'):
             return 'early', {
-                'answer': (
+                'answer': _with_clinical_detail_note((
                     "Revenue forecasts aren't available through this assistant "
                     "for your role - check the Analytics page, or ask an admin."
-                ),
+                ), question, role),
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         if not sales_model:
             return 'early', {
                 'answer': "The sales forecasting model isn't loaded right now - please try again shortly.",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         days, was_clamped = _extract_time_horizon(question, unit='days', default=90)
@@ -1803,7 +1850,8 @@ def _match_live_model_gate(question: str, role: str):
             return 'early', {
                 'answer': f"Couldn't generate a revenue forecast right now: {forecast['error']}",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         # forecast_revenue's 'daily_forecast' is ~90+ individual rows -
@@ -1841,19 +1889,21 @@ def _match_live_model_gate(question: str, role: str):
     ):
         if role not in ('admin', 'veterinarian'):
             return 'early', {
-                'answer': (
+                'answer': _with_clinical_detail_note((
                     "Inventory demand forecasts aren't available through this "
                     "assistant for your role - check the Analytics page, or ask an admin."
-                ),
+                ), question, role),
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         if not inventory_model:
             return 'early', {
                 'answer': "The inventory forecasting model isn't loaded right now - please try again shortly.",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         days, was_clamped = _extract_time_horizon(question, unit='days', default=30)
@@ -1862,7 +1912,8 @@ def _match_live_model_gate(question: str, role: str):
             return 'early', {
                 'answer': f"Couldn't generate reorder suggestions right now: {recommendations['error']}",
                 'sources': [],
-                'chunks_used': 0
+                'chunks_used': 0,
+                'structured': True
             }
 
         # 'sufficient_stock' lists every well-stocked item (often most of
@@ -1909,7 +1960,7 @@ def _try_live_model_gate(question: str, role: str) -> dict:
     # "what should I reorder soon?" doesn't need the ~24x-slower thinking
     # pass just to turn a JSON model output into a sentence or two.
     think = role == 'admin' and _wants_paragraph_and_bullets(question)
-    explanation, reasoning = explain_ml_output(payload['output_type'], payload['data'], think=think)
+    explanation, reasoning = explain_ml_output(payload['output_type'], payload['data'], think=think, question=question)
     if payload['note']:
         explanation += payload['note']
     return {
@@ -1947,7 +1998,7 @@ def _stream_live_model_gate(question: str, role: str):
     explanation = ''
     reasoning = None
     think = role == 'admin' and _wants_paragraph_and_bullets(question)
-    for event in stream_explain_ml_output(payload['output_type'], payload['data'], think=think):
+    for event in stream_explain_ml_output(payload['output_type'], payload['data'], think=think, question=question):
         if event['type'] == 'reasoning_delta':
             yield event
         elif event['type'] == 'done':

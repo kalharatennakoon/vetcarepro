@@ -64,6 +64,24 @@ REGISTER_CUSTOMER = re.compile(
 )
 ADD_PET = re.compile(r'\b(?:register|add|create)\b.*\bpet\b', re.IGNORECASE)
 
+# A hedged/speculative framing ("should we schedule...", "do we need to
+# book...", "is it worth rescheduling...") is asking for a judgment call,
+# not issuing a command - e.g. "why is Max's disease-recurrence risk
+# elevated, and should we schedule a follow-up?" is a pet-health question
+# with a rhetorical aside, not a booking request. The four write-intent
+# triggers above can't tell a bare "schedule...follow-up" apart from that on
+# their own, so try_action_intent checks this first and suppresses ALL of
+# them when it matches - without it, action_intent.py claimed the entire
+# question ahead of pet_health_intent.py/clinical_tools.py (it's checked
+# first in the pipeline) and asked "which pet is this appointment for?"
+# instead of ever getting to the disease-recurrence-risk question at all.
+_HEDGED_SUGGESTION = re.compile(
+    r'\bshould\s+(?:we|i|they)\b|\bdo(?:es)?\s+(?:we|i|they)\s+need\s+to\b|'
+    r'\bmight\s+(?:we|i|they)?\s*need\s+to\b|\bis\s+it\s+worth\b|'
+    r'\bwould\s+it\s+help\s+to\b',
+    re.IGNORECASE
+)
+
 # Admin-only - a distinct trigger vocabulary (staff/team member/employee, or
 # an explicit role name) so it never overlaps with REGISTER_CUSTOMER/ADD_PET
 # above. Matched for any staff role (so a receptionist/vet asking still gets
@@ -810,7 +828,9 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return _RESOLVERS[intent_type](updated_slots)
     else:
         intent_type = None
-        if RESCHEDULE_APPOINTMENT.search(question):
+        if _HEDGED_SUGGESTION.search(question):
+            pass
+        elif RESCHEDULE_APPOINTMENT.search(question):
             intent_type = 'reschedule_appointment'
         elif CANCEL_APPOINTMENT.search(question):
             intent_type = 'cancel_appointment'

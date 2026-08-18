@@ -44,8 +44,15 @@ from datetime import date
 from config.db_connection import get_raw_db_connection
 from scripts.rag.action_intent import _find_pet_by_name
 from scripts.rag.clinical_tools import _extract_pet_name, _owner_options
+from scripts.rag.structured_query import STAFF_ROLES, CLINICAL_STAFF_ROLES
 
-PET_HEALTH_ADMIN_ROLES = {'admin'}
+# Vets need these risk predictions for actual clinical decisions, not just
+# admin oversight - reuses CLINICAL_STAFF_ROLES (admin + veterinarian)
+# rather than keeping a second, separately-maintained role set that would
+# only drift out of sync with clinical_tools.py's identical boundary.
+# Receptionist is still excluded, same clinical-detail line drawn
+# everywhere else in this app.
+PET_HEALTH_ROLES = CLINICAL_STAFF_ROLES
 
 CANCER_RISK = re.compile(r'\bcancer\b|\btumor\b', re.IGNORECASE)
 PANDEMIC_RISK = re.compile(r'\bpandemic\b', re.IGNORECASE)
@@ -174,7 +181,7 @@ def run_pet_health_generation(intent_type: str, pet_id: str, question: str, role
     # Same "only think for explain/summarize questions" gating as the other
     # three generation paths in rag_service.py/app.py.
     think = role == 'admin' and _wants_paragraph_and_bullets(question)
-    explanation, reasoning = explain_ml_output(prep['output_type'], prep['data'], think=think)
+    explanation, reasoning = explain_ml_output(prep['output_type'], prep['data'], think=think, question=question)
     return _finalize_pet_health(explanation, reasoning, prep)
 
 
@@ -199,7 +206,7 @@ def stream_pet_health_generation(intent_type: str, pet_id: str, question: str, r
     explanation = ''
     reasoning = None
     think = role == 'admin' and _wants_paragraph_and_bullets(question)
-    for event in stream_explain_ml_output(prep['output_type'], prep['data'], think=think):
+    for event in stream_explain_ml_output(prep['output_type'], prep['data'], think=think, question=question):
         if event['type'] == 'reasoning_delta':
             yield event
         elif event['type'] == 'done':
@@ -226,7 +233,13 @@ def _route_pet_health_intent(question: str, role: str, history=None, pending_int
     of the actual live-model + explanation call so rag_service.answer_question
     (blocking) and stream_answer_question (real-time streamed, admin-only
     "show reasoning" view) can each run that final step their own way, via
-    run_pet_health_generation/stream_pet_health_generation. Admin-only.
+    run_pet_health_generation/stream_pet_health_generation. Restricted to
+    PET_HEALTH_ROLES (admin + veterinarian) - vets need these predictions
+    for actual clinical decisions, not just admin oversight. The admin-only
+    "show reasoning" view is a separate, narrower restriction (see the
+    think= gating in rag_service.py/app.py) - vets get the prediction
+    itself, just not the reasoning trace, same as every other live-model
+    feature.
 
     Returns:
         tuple: (None, None) - role not allowed, or `question` doesn't match
@@ -238,7 +251,34 @@ def _route_pet_health_intent(question: str, role: str, history=None, pending_int
             for pandemic_risk, no pet at all) and intent are resolved, ready
             for run_pet_health_generation/stream_pet_health_generation
     """
-    if role not in PET_HEALTH_ADMIN_ROLES:
+    if role not in PET_HEALTH_ROLES:
+        # Guest/pet_owner asking this kind of phrasing is ordinary general-
+        # knowledge territory (same reasoning as the four live-model gates
+        # in ml/app.py's _match_live_model_gate) - fall through silently to
+        # the normal pipeline, no denial needed. Receptionist asking is
+        # clearly asking about THIS clinic's live risk model though, not
+        # general knowledge - silently falling through for them used to
+        # land on a confusing "not mentioned in the context" RAG answer
+        # (nothing about cancer/pandemic/disease risk is ever ingested into
+        # rag_chunks - it's a live computation, so retrieval has nothing to
+        # find), instead of the same clear "not available for your role"
+        # message the other three live-model features already give. Only
+        # fires when the question actually matches one of the three risk
+        # intents below - an unrelated staff question still falls through
+        # normally.
+        if role in STAFF_ROLES and (
+            CANCER_RISK.search(question) or PANDEMIC_RISK.search(question)
+            or INDIVIDUAL_DISEASE_RISK.search(question)
+        ):
+            return 'early', {
+                'answer': (
+                    "Pet health risk predictions aren't available through this "
+                    "assistant for your role - please ask a veterinarian or admin."
+                ),
+                'sources': [],
+                'chunks_used': 0,
+                'structured': True
+            }
         return None, None
 
     if pending_intent and pending_intent.get('type') in _PREPARERS:

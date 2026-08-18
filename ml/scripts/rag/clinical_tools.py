@@ -30,7 +30,8 @@ import re
 from config.db_connection import get_raw_db_connection
 from scripts.rag.ollama_client import generate_answer, stream_chat, normalize_currency, strip_non_english, OllamaError
 from scripts.rag.structured_query import (
-    CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, _first_possessive_pet_name, _first_non_stopword_match
+    CLINICAL_STAFF_ROLES, PET_MENTION, PET_BY_MENTION, OWNER_MENTION,
+    _first_possessive_pet_name, _first_non_stopword_match
 )
 from scripts.rag.action_intent import _find_pet_by_name
 
@@ -744,10 +745,21 @@ def _route_clinical_tool(question: str, role: str, history=None, pending_intent:
                 'structured': True
             }
 
+        # The vet may have already named the owner in this same message
+        # ("summarize pet Duke's history - owner Kavindra Dissanayake") -
+        # without checking for it here, a name shared by multiple pets
+        # always triggered the disambiguation round-trip below even though
+        # the question already disambiguated it, forcing the vet to repeat
+        # information they'd just typed. Same OWNER_MENTION extraction the
+        # disambiguate_pet stage above uses once asked - just applied a
+        # turn earlier, when the answer was there from the start.
+        owner_match = OWNER_MENTION.search(question)
+        owner_name = owner_match.group(1) if owner_match else None
+
         conn = get_raw_db_connection()
         try:
             with conn.cursor() as cur:
-                pet_rows = _find_pet_by_name(cur, pet_name)
+                pet_rows = _find_pet_by_name(cur, pet_name, owner_name=owner_name)
         finally:
             conn.close()
 

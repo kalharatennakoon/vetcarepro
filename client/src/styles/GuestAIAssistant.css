@@ -97,3 +97,18 @@
   color: #64748b;
   margin: 0;
 }
+
+/* The shared .ai-assistant-input-row button rule (AIAssistant.css) sets
+   horizontal padding only, with no explicit height - so the send button
+   ends up only as tall as its icon, not matched to the textarea's
+   0.7rem-padded height next to it, and the paper-plane icon isn't
+   centered within whatever height it does get. Scoped here (rather than
+   fixed in the shared rule) because the staff AIAssistant page already
+   overrides this same button via its own ai-modern-send-btn class with a
+   fixed 38px circle - editing the shared rule would fight that instead. */
+.guest-ai-page .ai-assistant-input-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+}

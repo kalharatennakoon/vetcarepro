@@ -104,9 +104,16 @@ in place of their clinical judgment. You must follow these rules strictly:
 1. Answer ONLY using the information given in the "Context" section below. \
 If the context does not contain enough information to answer, say so plainly \
 - do not guess or use outside knowledge.
-2. You are NOT a veterinarian. Never state a diagnosis as fact. When discussing \
-medical matters, use phrasing like "based on the available records, this may \
-help the veterinarian review..." rather than definitive medical conclusions.
+2. You are NOT a veterinarian. Never state a diagnosis as fact. The Context is \
+historical clinic records, never a live observation of the pet right now - if the \
+question assumes a current/"today" state (e.g. "why does he seem unwell today?"), \
+do not present what's in a past record as if it were confirmed to be happening now. \
+Say plainly that there's no record of today, then use hedged language grounded in \
+the pattern in the records (e.g. "if he's showing similar signs to the January \
+flare noted in his history, this could be a related flare-up") rather than \
+restating a past episode as an ongoing fact. When discussing medical matters more \
+generally, use phrasing like "based on the available records, this may help the \
+veterinarian review..." rather than definitive medical conclusions.
 3. Match the answer to what's actually being asked, not just the topic:
    - If the question asks you to "explain" something (e.g. a pet's current health \
 condition, a result, why a recommendation was made), answer in two parts: a short \
@@ -175,19 +182,31 @@ rules strictly:
 1. Answer ONLY using the information given in the "Context" section below. \
 If the context does not contain enough information to answer, say so plainly \
 - do not guess or use outside knowledge.
-2. You are NOT a veterinarian. Never state a diagnosis as fact. When discussing \
-medical matters, use phrasing like "based on the available records, this may \
-help the veterinarian review..." rather than definitive medical conclusions.
-3. Never suggest, recommend, or name ANY medicine, drug, supplement, or vitamin - \
-even without a dosage, and even if the owner asks for one directly (e.g. "does he \
-need vitamins?", "what can I give her for X?"). Always redirect that specific \
-question to their veterinarian instead of guessing or naming anything to give. This \
-applies even if the records mention something similar having been prescribed before \
-- do not extrapolate today's supplement/treatment needs from a past prescription in \
-the records, since only a vet examining the pet now can say what's appropriate. \
-(This does NOT apply to naming standard preventive vaccines by name when answering a \
-vaccination question, e.g. "rabies" or "DHPP" - that is routine informational \
-content, not a medicine recommendation.)
+2. You are NOT a veterinarian. Never state a diagnosis as fact. The Context is \
+historical clinic records, never a live observation of the pet right now - if the \
+question assumes a current/"today" state (e.g. "why does he seem unwell today?"), \
+do not present what's in a past record as if it were confirmed to be happening now. \
+Say plainly that there's no record of today, then use hedged language grounded in \
+the pattern in the records (e.g. "if he's showing similar signs to the January \
+flare noted in his history, this could be a related flare-up") rather than \
+restating a past episode as an ongoing fact. When discussing medical matters more \
+generally, use phrasing like "based on the available records, this may help the \
+veterinarian review..." rather than definitive medical conclusions.
+3. Never suggest, recommend, or invent a NEW medicine, drug, supplement, or vitamin \
+that isn't already documented in the records - even without a dosage, and even if \
+the owner asks for one directly (e.g. "does he need vitamins?", "what can I give \
+her for X?"). For that kind of forward-looking question, always redirect to their \
+veterinarian instead of guessing or naming anything new - only a vet examining the \
+pet now can say what's appropriate today. This is different from RECALLING a \
+medication already in the records: if the Context shows something was prescribed \
+or added (ongoing or past), you may state that fact plainly by name (e.g. \
+"Gabapentin was added to his plan on 2026-01-14") - reporting an existing \
+prescription is not the same as recommending one, and an owner needs to know what \
+their pet is or has been taking. Don't let that fact alone stand in for an answer \
+to a forward-looking question, though - a renewal or change to it still needs the \
+vet redirect above. (This does NOT apply to naming standard preventive vaccines by \
+name when answering a vaccination question, e.g. "rabies" or "DHPP" - that is \
+routine informational content, not a medicine recommendation.)
 4. If the owner's question includes a symptom, wellness, or "should I do X" concern \
 that the Context doesn't fully resolve (e.g. "why does he seem off?", "does he need \
 vitamins?", asked alongside or instead of a record-lookup question), do not silently \
@@ -471,8 +490,10 @@ def _route_to_generation(
     # Pet disease-recurrence risk, cancer risk, and clinic-wide pandemic risk
     # are live PetHealthPredictor computations, never ingested into
     # rag_chunks - checked next, same "live model, not RAG" reasoning as the
-    # clinical tools above. Admin-only; the module itself gates on
-    # PET_HEALTH_ADMIN_ROLES and returns (None, None) otherwise.
+    # clinical tools above. Restricted to admin/veterinarian; the module
+    # itself gates on PET_HEALTH_ROLES and returns (None, None) for any
+    # other role (with an explicit denial for receptionist specifically,
+    # when the question actually asks for this).
     health_kind, health_payload = _route_pet_health_intent(
         question, role=role, history=history, pending_intent=pending_intent
     )
@@ -884,39 +905,60 @@ clear, plain language for clinic staff.
 Rules:
 1. Base your explanation ONLY on the numbers/fields given to you. Do not invent \
 figures that are not present.
-2. Do not present the model's output as a certainty - use language like "the model \
+2. Never write a raw field name or a raw enum value from the data verbatim - \
+`trend_direction`, `peak_month`, `pandemic_risk`, `very_low`, `increasing` are JSON \
+data labels, not English words, even though they look like ones. Translate every one \
+into an ordinary English word or phrase before it reaches a sentence: trend_direction \
+"increasing" becomes "an increasing trend" / "trending upward", not the literal word \
+"increasing" left standing in as a noun; peak_month "2027-07" becomes "a peak month of \
+July 2027", not "peak_month of July 2027"; a confidence value of "very_low" becomes \
+"very low confidence", never "very_low"; pandemic_risk "low" becomes "the pandemic \
+risk is low", never a bare label. If you notice yourself about to write an underscore \
+or a bare field name followed by a colon, stop and rewrite that clause in plain prose.
+3. Do not present the model's output as a certainty - use language like "the model \
 estimates" or "based on current trends". This applies doubly to individual pet \
 disease/cancer risk figures: these are statistical estimates from breed/age/history \
 data, never a diagnosis - make that explicit rather than stating a pet "has" or \
 "will get" a condition.
-3. Write in a professional, clinical-report tone suited to staff review - not casual \
+4. Write in a professional, clinical-report tone suited to staff review - not casual \
 or conversational phrasing. Keep it concise: 3-5 sentences, plain English, no jargon \
 unless you also explain it. Bold the key figures and labels (risk level, trend \
 direction, peak period, case/revenue volumes, confidence level) using markdown, e.g. \
-"**low risk**", "**17.2 cases/month**". Do not add section headers, bullet lists, or a \
-"Source:" line - the app displays sources separately from this text.
-4. If the data reports a confidence or reliability level, close with one explicit \
+"**low risk**", "**17.2 cases/month**" - bold the plain-English phrase per rule 2 \
+above, never the raw field name or value itself. Do not add section headers, bullet \
+lists, or a "Source:" line - the app displays sources separately from this text.
+5. If the data reports a confidence or reliability level, close with one explicit \
 sentence stating what that means for how staff should use the numbers (e.g. treat as \
 directional rather than precise, corroborate before acting on it). If the data looks \
 incomplete or you can't make sense of it, say so rather than guessing.
-5. This clinic operates in Sri Lanka - any revenue, cost, or price figure in the data \
+6. This clinic operates in Sri Lanka - any revenue, cost, or price figure in the data \
 is in Sri Lankan Rupees, even though the field itself carries no currency label. \
 Always present it as "Rs. X", never "$", "USD", or "dollars".
+7. When "The staff member specifically asked" is given below, answer THAT question \
+explicitly, as its own sentence - not just a generic readout of the data that happens \
+to contain the answer. In particular, "explain the trend" is asking you to name the \
+direction and rough magnitude in plain terms (e.g. "this reflects a declining trend, \
+down roughly 15% month over month") - simply listing each period's figure in sequence \
+and letting the reader infer the direction themselves is not an explanation of the \
+trend, even if the same numbers are present. If nothing in the data actually supports \
+what was specifically asked, say so plainly rather than silently answering only the \
+part the data does cover.
 """
 
 
-def _explain_prompt(output_type: str, data: dict) -> str:
+def _explain_prompt(output_type: str, data: dict, question: str = None) -> str:
     import json
 
+    asked_line = f'\nThe staff member specifically asked: "{question}"\n' if question else ''
     return f"""Model output type: {output_type}
-
+{asked_line}
 Raw data:
 {json.dumps(data, indent=2, default=str)}
 
 Explain this output in plain language for clinic staff."""
 
 
-def explain_ml_output(output_type: str, data: dict, think: bool = False) -> tuple:
+def explain_ml_output(output_type: str, data: dict, think: bool = False, question: str = None) -> tuple:
     """
     Translate a raw ML model output (outbreak risk, sales forecast, inventory
     forecast, etc.) into a plain-language explanation.
@@ -927,25 +969,38 @@ def explain_ml_output(output_type: str, data: dict, think: bool = False) -> tupl
         data: the raw JSON/dict output from the ML model.
         think: request the model's reasoning pass (admin-only "show reasoning"
             view in the chat UI) - see generate_answer's docstring.
+        question: the staff member's actual chat question, when this call
+            came from the chat pipeline (ml/app.py's live-model gates,
+            pet_health_intent.py) rather than the standalone /api/ml/rag/
+            explain endpoint (which has no question at all - just raw
+            output_type/data). Without this, the model only ever saw
+            "explain this output" generically and had no way to know the
+            question asked for something more specific, e.g. "explain the
+            TREND" - it would readout the figures without ever explicitly
+            characterizing the trend itself, technically using the right
+            numbers but not actually answering what was asked.
 
     Returns:
         tuple: (plain-language explanation, reasoning text or None)
     """
     try:
-        answer, reasoning = generate_answer(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data), think=think)
+        answer, reasoning = generate_answer(
+            EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data, question), think=think
+        )
         return normalize_currency(_strip_imperial_units(strip_non_english(answer))), reasoning
     except OllamaError as e:
         return f"Could not generate an explanation right now: {str(e)}", None
 
 
-def stream_explain_ml_output(output_type: str, data: dict, think: bool = True):
+def stream_explain_ml_output(output_type: str, data: dict, think: bool = True, question: str = None):
     """
     Streaming counterpart to explain_ml_output, for the admin-only real-time
     "show reasoning" chat view on the four live-model gates in ml/app.py
     (outbreak risk, disease trend forecast, revenue forecast, inventory
     reorder suggestions) - the same live-model-explanation call, but
     surfacing reasoning deltas as they're produced instead of only after
-    the full explanation is ready.
+    the full explanation is ready. See explain_ml_output's docstring for
+    what `question` is for.
 
     Yields:
         dict: {'type': 'reasoning_delta', 'text': str} for each incremental
@@ -956,7 +1011,7 @@ def stream_explain_ml_output(output_type: str, data: dict, think: bool = True):
     try:
         content = ''
         reasoning = None
-        for event in stream_chat(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data), think=think):
+        for event in stream_chat(EXPLAIN_SYSTEM_PROMPT, _explain_prompt(output_type, data, question), think=think):
             if event['type'] == 'thinking':
                 yield {'type': 'reasoning_delta', 'text': event['delta']}
             elif event['type'] == 'done':

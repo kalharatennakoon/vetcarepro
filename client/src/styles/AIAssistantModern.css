@@ -226,6 +226,21 @@
   background: #f1f5f9;
   color: #4b5563;
   white-space: pre-wrap;
+  /* A streamed reasoning trace can run to hundreds of tokens - without a
+     cap here the panel just kept growing taller as text arrived, pushing
+     the rest of the conversation down the page. Fixed height + its own
+     scrollbar instead, so the surrounding chat layout stays put. */
+  max-height: 16rem;
+  overflow-y: auto;
+  /* Without this, scrolling this inner box to its top/bottom edge chains
+     into the outer .ai-modern-chat scroll container (AIAssistant.jsx's
+     chatContainerRef) - a mouse-wheel scroll that runs out of reasoning
+     text to scroll keeps going and scrolls the whole conversation instead
+     of stopping, which also fires handleChatScroll and can flip
+     stickToBottomRef off from a scroll the admin only meant to happen
+     inside this box. Containing it here keeps the two scroll regions
+     independent, the way the reasoning panel is meant to behave. */
+  overscroll-behavior: contain;
 }
 
 /* Action confirm/cancel */
