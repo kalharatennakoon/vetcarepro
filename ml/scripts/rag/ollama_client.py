@@ -35,11 +35,14 @@ OLLAMA_CHAT_MODEL = os.getenv('OLLAMA_CHAT_MODEL', 'qwen3:8b')
 # same timeout window. 120s covers both without reaching for the no-limit
 # `timeout: 0` used for streaming.
 OLLAMA_TIMEOUT = int(os.getenv('OLLAMA_TIMEOUT', '120'))
-# Thinking mode measured at ~24x slower (see generate_answer) - the normal
-# OLLAMA_TIMEOUT is sized for non-thinking calls and routinely isn't enough
-# once `think=True`, especially on the larger prompts (e.g. inventory/sales
-# forecast explanations). Only applied when a caller actually requests
-# thinking, so the default fast path's timeout budget is unaffected.
+# Thinking mode measured at ~24x slower on qwen3:8b (see generate_answer) -
+# the normal OLLAMA_TIMEOUT is sized for non-thinking calls and routinely
+# isn't enough once `think=True`, especially on the larger prompts (e.g.
+# inventory/sales forecast explanations). The multiplier is model-dependent,
+# not a fixed constant - a same-shape trivial-prompt test measured ~42x on
+# qwen3.5:9b - so re-check it before assuming this timeout still has margin
+# under a different OLLAMA_CHAT_MODEL. Only applied when a caller actually
+# requests thinking, so the default fast path's timeout budget is unaffected.
 OLLAMA_THINK_TIMEOUT = int(os.getenv('OLLAMA_THINK_TIMEOUT', '240'))
 # Separate vision-capable model, used only by generate_vision_answer (see
 # scripts/rag/photo_guidance.py) - OLLAMA_CHAT_MODEL (qwen3:8b) is text-only.
@@ -153,10 +156,13 @@ def generate_answer(system_prompt: str, user_prompt: str, think: bool = False) -
         think: request the model's internal reasoning pass (only meaningful for
             reasoning-capable models, e.g. qwen3 - ignored harmlessly otherwise).
             Reasoning-capable models default to running this pass regardless, at
-            real latency cost (~24x slower in testing) for no accuracy benefit on
-            this app's already-grounded answers - so it stays off unless a caller
-            explicitly wants the reasoning text back (e.g. an admin-only "show
-            reasoning" view), not on for every request.
+            real latency cost for no accuracy benefit on this app's already-
+            grounded answers - so it stays off unless a caller explicitly wants
+            the reasoning text back (e.g. an admin-only "show reasoning" view),
+            not on for every request. The cost is model-dependent, not a fixed
+            multiplier: ~24x slower in testing on qwen3:8b, ~42x on qwen3.5:9b
+            for the same trivial-prompt shape - re-measure under whichever
+            model OLLAMA_CHAT_MODEL actually points at.
 
     Returns:
         tuple: (answer text, reasoning text or None if `think` was False or the

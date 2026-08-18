@@ -69,7 +69,7 @@ struct PhotoGuidanceView: View {
             .padding(20)
         }
         .background(Color.appBackground)
-        .navigationTitle("AI Visual Care Guidance")
+        .navigationTitle("AI Visual Care")
         .navigationBarTitleDisplayMode(.large)
         .task { await loadInitial() }
         .onChange(of: selectedPetId) { _, _ in Task { await loadHistory() } }

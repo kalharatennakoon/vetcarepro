@@ -237,7 +237,7 @@ struct PetOwnerHomeView: View {
 
     private var photoGuidanceCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("AI Visual Care Guidance", systemImage: "camera")
+            Label("AI Visual Care", systemImage: "camera")
                 .font(.headline)
 
             Text("Upload a photo of your pet for general AI guidance on what to do next. Not a diagnosis - always see a vet for anything concerning.")

@@ -239,7 +239,7 @@ const PetOwnerAIPhotoGuidance = () => {
           <nav className="po-profile-nav">
             {navItem('/pet-owner/profile', 'fa-user-circle', 'My Profile')}
             {navItem('/pet-owner/appointments', 'fa-calendar-check', 'Appointments')}
-            {navItem('/pet-owner/ai-photo-guidance', 'fa-camera', 'AI Visual Care Guidance')}
+            {navItem('/pet-owner/ai-visual-care', 'fa-camera', 'AI Visual Care')}
             {navItem('/pet-owner/change-password', 'fa-lock', 'Change Password')}
           </nav>
 
@@ -250,7 +250,7 @@ const PetOwnerAIPhotoGuidance = () => {
 
         <main className="po-profile-main">
           <div className="po-profile-welcome">
-            <h1>AI Visual Care Guidance</h1>
+            <h1>AI Visual Care</h1>
             <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
           </div>
 

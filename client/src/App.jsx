@@ -108,13 +108,16 @@ function App() {
         }
       />
       <Route
-        path="/pet-owner/ai-photo-guidance"
+        path="/pet-owner/ai-visual-care"
         element={
           <PetOwnerProtectedRoute>
             <PetOwnerAIPhotoGuidance />
           </PetOwnerProtectedRoute>
         }
       />
+      {/* Old slugs from before the AI Photo Guidance -> AI Visual Care rename - kept as redirects for anyone with an old URL bookmarked. */}
+      <Route path="/pet-owner/ai-photo-guidance" element={<Navigate to="/pet-owner/ai-visual-care" replace />} />
+      <Route path="/pet-owner/ai-visual-care-guidance" element={<Navigate to="/pet-owner/ai-visual-care" replace />} />
 
       {/* Protected routes - All authenticated users */}
       <Route 
