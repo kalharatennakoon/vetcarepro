@@ -37,6 +37,7 @@ from scripts.rag.structured_query import (
     _normalize_appointment_type,
     _find_customer_by_name,
 )
+from scripts.rag.chart_intent import CHART_TRIGGER
 
 # ============================================================
 # Intent detection - checked most-specific-first so e.g. "reschedule" isn't
@@ -49,20 +50,35 @@ from scripts.rag.structured_query import (
 # already use, plus "visit", not just "appointment" itself.
 _APPT_NOUN = r'(?:appointments?|visits?|' + APPT_TYPE_WORDS + r')'
 
+# Bounds the verb-to-noun gap to inside the same clause. An unbounded `.*`
+# let the verb and noun pair across unrelated clauses - "make [a chart of]
+# appointments" or "why did the owner cancel [the checkup]" matched a write
+# intent purely because both words appeared anywhere in the sentence, in
+# order, regardless of what came between them.
+_GAP = r'.{0,40}?'
+
 RESCHEDULE_APPOINTMENT = re.compile(
-    r'\breschedule\b.*' + _APPT_NOUN + r'|\bmove\b.*' + _APPT_NOUN + r'.*\bto\b', re.IGNORECASE
+    r'\breschedule\b' + _GAP + _APPT_NOUN + r'|\bmove\b' + _GAP + _APPT_NOUN + _GAP + r'\bto\b',
+    re.IGNORECASE
 )
-CANCEL_APPOINTMENT = re.compile(r'\bcancel\b.*' + _APPT_NOUN, re.IGNORECASE)
+CANCEL_APPOINTMENT = re.compile(r'\bcancel\b' + _GAP + _APPT_NOUN, re.IGNORECASE)
+# "make" is deliberately left out of the general verb list - "make a chart
+# of appointments"/"make a report on X" are far more common in practice than
+# "make an appointment", and an unbounded match on "make" swallowed both.
+# "make an appointment" is still covered, just via its own pattern below
+# that requires the noun to sit immediately after "make".
 BOOK_APPOINTMENT = re.compile(
-    r'\b(?:book|schedule|make|set\s+up)\b.*' + _APPT_NOUN, re.IGNORECASE
+    r'\b(?:book|schedule|set\s+up)\b' + _GAP + _APPT_NOUN, re.IGNORECASE
 )
+_MAKE_APPOINTMENT = re.compile(r'\bmake\b\s+(?:an?\s+)?' + _APPT_NOUN, re.IGNORECASE)
 SEND_REMINDER = re.compile(
-    r'\b(?:send|give)\b.*\breminder\b|\bremind\b.*\b(?:about|of)\b.*' + _APPT_NOUN, re.IGNORECASE
+    r'\b(?:send|give)\b' + _GAP + r'\breminder\b|\bremind\b' + _GAP + r'\b(?:about|of)\b' + _GAP + _APPT_NOUN,
+    re.IGNORECASE
 )
 REGISTER_CUSTOMER = re.compile(
-    r'\b(?:register|add|create)\b.*\b(?:new\s+)?(?:customer|client)\b', re.IGNORECASE
+    r'\b(?:register|add|create)\b' + _GAP + r'\b(?:new\s+)?(?:customer|client)\b', re.IGNORECASE
 )
-ADD_PET = re.compile(r'\b(?:register|add|create)\b.*\bpet\b', re.IGNORECASE)
+ADD_PET = re.compile(r'\b(?:register|add|create)\b' + _GAP + r'\bpet\b', re.IGNORECASE)
 
 # A hedged/speculative framing ("should we schedule...", "do we need to
 # book...", "is it worth rescheduling...") is asking for a judgment call,
@@ -82,13 +98,40 @@ _HEDGED_SUGGESTION = re.compile(
     re.IGNORECASE
 )
 
+# A chart/graph/report request is never a write command, even though it
+# often shares nouns with the write-intent patterns above ("make A GRAPH OF
+# appointments" contains both "make" and "appointments"). Checked before any
+# write-intent pattern, same suppression role as _HEDGED_SUGGESTION - without
+# it, chart_intent.py (which owns these questions, see rag_service.py's
+# _route_to_generation ordering) never got a chance to run, because
+# try_action_intent is tried first in that same ordering and claimed the
+# whole question on the verb/noun pair alone.
+_CHART_OR_REPORT_REQUEST = CHART_TRIGGER
+
+# A read/analysis framing - "what's the schedule for X", "why did Y happen",
+# "how many/which/what... appointments" - names the same nouns a booking
+# request does but is asking a question, not issuing a command. Distinct
+# from _HEDGED_SUGGESTION above (that catches a suggestion embedded in a
+# clinical question; this catches a plain informational question that
+# happens to contain a write-intent verb elsewhere in the sentence, e.g.
+# "why did the owner CANCEL the checkup?" or "can you set up A REPORT on
+# emergency visits?").
+_REPORT_OR_QUESTION_FRAMING = re.compile(
+    r'\b(?:report|summary|breakdown|how\s+many|which|why|'
+    r"what(?:'s|\s+is)\s+the)\b",
+    re.IGNORECASE
+)
+
 # Admin-only - a distinct trigger vocabulary (staff/team member/employee, or
 # an explicit role name) so it never overlaps with REGISTER_CUSTOMER/ADD_PET
 # above. Matched for any staff role (so a receptionist/vet asking still gets
 # a clear "admin only" answer instead of silently falling through to RAG),
-# but only ever resolved for role == 'admin' - see try_action_intent.
+# but only ever resolved for role == 'admin' - see try_action_intent. The verb
+# must sit immediately before an optional article/"new" and the role noun -
+# "add THE vet's performance numbers" or "add a column for THE doctor's name"
+# don't fit that shape (an unbounded gap previously let both match).
 REGISTER_STAFF = re.compile(
-    r'\b(?:register|add|create|hire|onboard)\b.*\b(?:new\s+)?'
+    r'\b(?:register|add|create|hire|onboard)\b\s+(?:an?\s+)?(?:new\s+)?'
     r'(?:staff\s+member|team\s+member|employee|veterinarian|vet|receptionist|administrator|doctor)\b',
     re.IGNORECASE
 )
@@ -286,24 +329,36 @@ def _resolve_date_phrase(phrase):
     return _extract_date_via_llm(phrase)
 
 
+def _escape_like(value: str) -> str:
+    """Pre-escapes LIKE/ILIKE wildcard characters in user-typed text before
+    it's wrapped in %...% or used as-is in a pattern - without this, a pet
+    name (or a slot-filling reply) containing "%" or "_" silently acted as a
+    wildcard instead of a literal character. Paired with ESCAPE '\\' on every
+    query below."""
+    return value.replace('\\', '\\\\').replace('%', r'\%').replace('_', r'\_')
+
+
 def _find_pet_by_name(cur, pet_name: str, owner_name: str = None):
+    escaped_pet_name = _escape_like(pet_name)
     if owner_name:
         cur.execute(
             """
             SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
             FROM pets p JOIN customers c ON c.customer_id = p.customer_id
-            WHERE p.pet_name ILIKE %s AND (c.first_name || ' ' || c.last_name) ILIKE %s AND p.is_active = true
+            WHERE p.pet_name ILIKE %s ESCAPE '\\'
+              AND (c.first_name || ' ' || c.last_name) ILIKE %s ESCAPE '\\'
+              AND p.is_active = true
             """,
-            (pet_name, f'%{owner_name}%')
+            (escaped_pet_name, f'%{_escape_like(owner_name)}%')
         )
     else:
         cur.execute(
             """
             SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
             FROM pets p JOIN customers c ON c.customer_id = p.customer_id
-            WHERE p.pet_name ILIKE %s AND p.is_active = true
+            WHERE p.pet_name ILIKE %s ESCAPE '\\' AND p.is_active = true
             """,
-            (pet_name,)
+            (escaped_pet_name,)
         )
     return cur.fetchall()
 
@@ -312,9 +367,9 @@ def _find_veterinarian_by_name(cur, vet_name: str):
     cur.execute(
         """
         SELECT user_id, first_name, last_name FROM users
-        WHERE role = 'veterinarian' AND (first_name || ' ' || last_name) ILIKE %s
+        WHERE role = 'veterinarian' AND (first_name || ' ' || last_name) ILIKE %s ESCAPE '\\'
         """,
-        (f'%{vet_name}%',)
+        (f'%{_escape_like(vet_name)}%',)
     )
     return cur.fetchall()
 
@@ -788,6 +843,44 @@ _RESOLVERS = {
 }
 
 
+_QUESTION_STARTER = re.compile(
+    r'^\s*(?:how\s+many|how\s+much|what|why|when|where|who|which|is|are|does|do|can|could|should)\b',
+    re.IGNORECASE
+)
+
+
+def _looks_like_fresh_question(reply: str) -> bool:
+    """Used only while a slot-filling follow-up is pending (see
+    try_action_intent): a bare value answering the field we just asked about
+    ("Max", "next Tuesday", "checkup") never matches this, but a genuinely
+    new question does. Without this, a mid-booking "actually, how many
+    appointments do we have today?" got silently injected as the pet_name
+    slot instead of being recognized as a topic change - see the comment at
+    the call site."""
+    reply = reply.strip()
+    if not reply:
+        return False
+    if _CHART_OR_REPORT_REQUEST.search(reply) or _REPORT_OR_QUESTION_FRAMING.search(reply):
+        return True
+    word_count = len(reply.split())
+    if word_count > 8 and reply.endswith('?'):
+        return True
+    if word_count > 3 and _QUESTION_STARTER.match(reply):
+        return True
+    return False
+
+
+def _sanitize_slots(intent_type: str, slots) -> dict:
+    """pending_intent round-trips through the client unvalidated - this
+    keeps a malformed or tampered `slots` payload from reaching a resolver
+    (or being merged into updated_slots below) as anything other than a
+    plain dict restricted to that intent's own known fields."""
+    if not isinstance(slots, dict):
+        return {}
+    fields = set(SLOT_SCHEMAS[intent_type]['fields'])
+    return {k: v for k, v in slots.items() if k in fields}
+
+
 def try_action_intent(question: str, role: str, customer_id: str = None, history=None, pending_intent: dict = None):
     """
     Detects and progresses a write-action request. Staff-only - returns None
@@ -797,14 +890,40 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
     if role not in STAFF_ROLES:
         return None
 
+    # register_staff is admin-only end to end. Checked here - before either
+    # branch below, using pending_intent directly - rather than only on a
+    # fresh request: pending_intent is client-supplied and unvalidated, so a
+    # receptionist could otherwise post a hand-crafted
+    # {"type": "register_staff", ...} pending_intent and walk the whole
+    # slot-filling flow to a confirmation prompt that confirmAction would
+    # only 403 anyway. No actual privilege escalation either way (Node
+    # re-checks role on confirm), but this keeps a non-admin from ever
+    # seeing a "shall I confirm this?" for an action they can't take.
+    if pending_intent and pending_intent.get('type') == 'register_staff' and role != 'admin':
+        return _done(
+            "Staff registration is limited to admin accounts - please ask an admin to add this team member."
+        )
+
     if pending_intent and pending_intent.get('type') in _RESOLVERS:
         if _BREAK_OUT.search(question):
             return _done("No problem, I've dropped that request.")
         intent_type = pending_intent['type']
-        prior_slots = pending_intent.get('slots') or {}
+        prior_slots = _sanitize_slots(intent_type, pending_intent.get('slots'))
         awaiting_field = pending_intent.get('field')
 
         if awaiting_field:
+            reply = question.strip()
+            if _looks_like_fresh_question(reply):
+                # Topic change mid-flow: this doesn't look like an answer to
+                # the field we just asked about, it looks like a new
+                # question ("actually, how many appointments do we have
+                # today?", "make a chart of appointments by type"). Drop the
+                # pending intent instead of injecting the reply into
+                # awaiting_field, and return None so the rest of
+                # _route_to_generation's chain (chart/structured/RAG) gets a
+                # chance to answer it fresh, same as if there were no
+                # pending_intent at all.
+                return None
             # Deterministic: this reply answers the single field we just
             # asked about (see _ask) - inject it directly and re-run the
             # resolver immediately, rather than routing it through the LLM
@@ -813,7 +932,6 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             # on the same question forever instead of ever updating it,
             # especially when the reply overlaps with an already-set field
             # (e.g. "vaccination" answering both appointment_type and reason).
-            reply = question.strip()
             if awaiting_field == 'full_name':
                 # Splitting a full name doesn't need an LLM either - first
                 # word is the first name, the rest is the last name.
@@ -828,13 +946,21 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return _RESOLVERS[intent_type](updated_slots)
     else:
         intent_type = None
-        if _HEDGED_SUGGESTION.search(question):
+        if _CHART_OR_REPORT_REQUEST.search(question) or _REPORT_OR_QUESTION_FRAMING.search(question):
+            # A chart/report request or a plain read/analysis question is
+            # never a write command, even when it shares nouns with the
+            # patterns below ("make A GRAPH OF appointments", "why did the
+            # owner CANCEL the checkup?", "can you set up A REPORT on
+            # emergency visits?"). Checked first so it suppresses every
+            # write-intent pattern at once, same role as _HEDGED_SUGGESTION.
+            pass
+        elif _HEDGED_SUGGESTION.search(question):
             pass
         elif RESCHEDULE_APPOINTMENT.search(question):
             intent_type = 'reschedule_appointment'
         elif CANCEL_APPOINTMENT.search(question):
             intent_type = 'cancel_appointment'
-        elif BOOK_APPOINTMENT.search(question):
+        elif BOOK_APPOINTMENT.search(question) or _MAKE_APPOINTMENT.search(question):
             intent_type = 'book_appointment'
         elif SEND_REMINDER.search(question):
             intent_type = 'send_reminder'
@@ -849,9 +975,10 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
             return None
 
         # Staff-account creation is admin-only (matches adminOnly on
-        # POST /api/users) - caught here, before any slot-filling starts,
-        # rather than letting a receptionist/vet get partway through a
-        # request that will only ever dead-end.
+        # POST /api/users) - caught here too, before any slot-filling
+        # starts, rather than letting a receptionist/vet get partway through
+        # a request that will only ever dead-end. (The pending_intent case
+        # is covered above, ahead of this whole if/else.)
         if intent_type == 'register_staff' and role != 'admin':
             return _done(
                 "Staff registration is limited to admin accounts - please ask an admin to add this team member."

@@ -87,6 +87,14 @@ const AIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Belt-and-braces against a double-submit on the confirm button: the
+  // `disabled={loading}` + `setLoading(true)` before the first await closes
+  // most of the gap, but handleConfirmAction reads `target.resolved` from a
+  // closure over `messages`, which doesn't update until the next render -
+  // two clicks in the same tick could both pass that check. A ref (not
+  // state) so the guard is visible synchronously on the very next call,
+  // not just after a re-render.
+  const confirmingActionsRef = useRef(new Set());
   // Round-trips an in-progress write-action proposal (book/reschedule/cancel
   // an appointment, a reminder, or intake) across turns - there's no
   // server-side conversation session, so this (plus recent message history)
@@ -283,6 +291,8 @@ const AIAssistant = () => {
   const handleConfirmAction = async (messageIndex) => {
     const target = messages[messageIndex];
     if (!target?.action || target.resolved) return;
+    if (confirmingActionsRef.current.has(messageIndex)) return;
+    confirmingActionsRef.current.add(messageIndex);
 
     setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
     setLoading(true);
@@ -310,6 +320,7 @@ const AIAssistant = () => {
         }
       ]);
     } finally {
+      confirmingActionsRef.current.delete(messageIndex);
       setLoading(false);
     }
   };

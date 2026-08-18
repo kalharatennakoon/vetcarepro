@@ -22,8 +22,14 @@ app.use(cors({
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploaded files statically - split per-subdirectory rather than one
+// blanket /uploads mount, so lab-reports/ and pet-ai-photos/ (sensitive:
+// medical documents, AI diagnostic photos) stay reachable only through
+// their authenticated controllers (labReportRoutes.js's vetOrAdmin-gated
+// GET /api/lab-reports/:reportId/view, etc.) instead of an unauthenticated
+// static file path.
+app.use('/uploads/profile-images', express.static(path.join(__dirname, '../uploads/profile-images')));
+app.use('/uploads/pet-images', express.static(path.join(__dirname, '../uploads/pet-images')));
 
 // Request logging middleware
 app.use((req, res, next) => {

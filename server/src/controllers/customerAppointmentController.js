@@ -146,15 +146,25 @@ export const getAvailability = async (req, res) => {
  * (veterinarian_id, appointment_date, appointment_time) uniqueness
  * constraint); otherwise falls back to the v1 shared capacity pool.
  * Returns an error message string, or null if OK.
+ *
+ * Exported for aiController.js's confirmAction (the AI assistant's
+ * book/reschedule-appointment actions) - hours and capacity apply to every
+ * booking path regardless of who/what initiates it, but the 48-hour lead
+ * time is skipped there via `enforceLeadTime: false`, matching the staff
+ * manual-booking path (appointmentController.js createNewAppointment),
+ * which has never enforced it either - only the self-service pet-owner
+ * portal does.
  */
-const validateRequestedSlot = async (date, time, veterinarianId = null, excludeAppointmentId = null) => {
+export const validateRequestedSlot = async (
+  date, time, veterinarianId = null, excludeAppointmentId = null, { enforceLeadTime = true } = {}
+) => {
   if (!isClinicOpenDay(date)) {
     return 'The clinic is closed on that day. Please choose a date from Monday to Saturday.';
   }
   if (!isWithinClinicHours(time, APPOINTMENT_DURATION_MINUTES)) {
     return 'Please choose a time between 9:00 AM and 6:30 PM.';
   }
-  if (!meetsLeadTime(date, time)) {
+  if (enforceLeadTime && !meetsLeadTime(date, time)) {
     return `Appointments must be booked at least ${MIN_LEAD_HOURS} hours in advance.`;
   }
 

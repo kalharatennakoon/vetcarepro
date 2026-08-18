@@ -496,7 +496,7 @@ export const getDiseaseCasesByCategory = async ({ dateFrom, dateTo } = {}) => {
  */
 export const getRecentDiseaseCases = async (days = 30, limit = 10) => {
   const query = `
-    SELECT 
+    SELECT
       dc.*,
       p.pet_name,
       p.species,
@@ -507,11 +507,11 @@ export const getRecentDiseaseCases = async (days = 30, limit = 10) => {
     FROM disease_cases dc
     INNER JOIN pets p ON dc.pet_id = p.pet_id
     INNER JOIN customers c ON p.customer_id = c.customer_id
-    WHERE dc.diagnosis_date >= CURRENT_DATE - INTERVAL '${days} days'
+    WHERE dc.diagnosis_date >= CURRENT_DATE - (INTERVAL '1 day' * $1)
     ORDER BY dc.diagnosis_date DESC, dc.created_at DESC
-    LIMIT $1
+    LIMIT $2
   `;
 
-  const result = await pool.query(query, [limit]);
+  const result = await pool.query(query, [days, limit]);
   return result.rows;
 };

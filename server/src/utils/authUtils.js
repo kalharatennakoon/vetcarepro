@@ -14,6 +14,16 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
+ * Default temporary password assigned to a new staff account when no
+ * password is supplied (admin-created user, admin password reset, or the AI
+ * assistant's register_staff action) - always paired with
+ * password_must_change: true, so this is never a standing credential.
+ * Single source of truth so the literal isn't duplicated across
+ * userController.js/aiController.js.
+ */
+export const DEFAULT_STAFF_PASSWORD = 'VetCare123';
+
+/**
  * Hash a plain text password
  * Converts plain password to secure hash (used when registering)
  * @param {string} password - Plain text password

@@ -1,6 +1,8 @@
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -19,8 +21,12 @@ import {
  * for guest or pet-owner roles, so this component is only ever reached from
  * the staff assistant page.
  *
- * `chart.type` picks the shape - 'bar' (default) or 'pie', set server-side
- * from the question's wording, not this component's choice to make.
+ * `chart.type` picks the shape - 'bar' (default), 'pie', or 'line' - set
+ * server-side, not this component's choice to make. 'line' is used for the
+ * forecast/trend chart categories (disease trend, revenue forecast - see
+ * ml/app.py's _disease_trend_chart/_revenue_forecast_chart) where the x-axis
+ * is a sequence of months and a connecting line reads as the trend it is,
+ * unlike a bar-per-month chart.
  *
  * Two bar rendering modes, chosen by the payload's `multi_color` flag:
  *   true  - one bar per row, each its own colour. Used for categorical
@@ -118,6 +124,46 @@ function AiChartMessage({ chart }) {
   }
 
   const crowded = data.length > CROWDED_LABEL_THRESHOLD;
+
+  if (type === 'line') {
+    return (
+      <div className="ai-message-chart">
+        {title && <div className="ai-message-chart-title">{title}</div>}
+        <ResponsiveContainer width="100%" height={crowded ? 320 : 280}>
+          <LineChart
+            data={data}
+            margin={{ top: 8, right: 12, left: 0, bottom: crowded ? 56 : 8 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="label"
+              style={{ fontSize: '0.7rem' }}
+              interval={0}
+              tickFormatter={crowded ? truncate : undefined}
+              angle={crowded ? -35 : 0}
+              textAnchor={crowded ? 'end' : 'middle'}
+              height={crowded ? 60 : 30}
+            />
+            <YAxis style={{ fontSize: '0.7rem' }} allowDecimals={false} />
+            <Tooltip formatter={formatValue} />
+            {series.length > 1 && <Legend wrapperStyle={{ fontSize: '0.75rem' }} />}
+            {series.map((s) => (
+              <Line
+                key={s.key}
+                type="monotone"
+                dataKey={s.key}
+                name={s.name}
+                stroke={s.color}
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
 
   return (
     <div className="ai-message-chart">

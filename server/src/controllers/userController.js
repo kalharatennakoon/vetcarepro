@@ -6,7 +6,7 @@ import {
   deleteUser,
   emailExists
 } from '../models/userModel.js';
-import { hashPassword, comparePassword, sanitizeUser } from '../utils/authUtils.js';
+import { hashPassword, comparePassword, sanitizeUser, DEFAULT_STAFF_PASSWORD } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
 import { deleteImageFile } from '../config/multer.js';
 import pool from '../config/database.js';
@@ -34,7 +34,7 @@ export const createUserByAdmin = async (req, res) => {
     }
 
     // Use default password if not provided
-    const defaultPassword = password || 'VetCare123';
+    const defaultPassword = password || DEFAULT_STAFF_PASSWORD;
     const password_hash = await hashPassword(defaultPassword);
 
     // Prepare user data
@@ -403,7 +403,7 @@ export const resetUserPassword = async (req, res) => {
       return res.status(403).json({ status: 'error', message: 'Cannot reset password for admin accounts' });
     }
 
-    const newPassword = req.body.password || 'VetCare123';
+    const newPassword = req.body.password || DEFAULT_STAFF_PASSWORD;
     const password_hash = await hashPassword(newPassword);
 
     await updateUser(userId, { password_hash, password_must_change: true }, req.user.user_id);

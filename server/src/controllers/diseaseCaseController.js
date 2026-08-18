@@ -414,8 +414,13 @@ export const addCaseFollowup = async (req, res) => {
 export const getRecentCases = async (req, res) => {
   try {
     const { days = 30, limit = 10 } = req.query;
+    const parsedDays = parseInt(days, 10);
+    const parsedLimit = parseInt(limit, 10);
+    if (!Number.isInteger(parsedDays) || parsedDays <= 0 || !Number.isInteger(parsedLimit) || parsedLimit <= 0) {
+      return res.status(400).json({ status: 'error', message: 'days and limit must be positive integers' });
+    }
 
-    const cases = await getRecentDiseaseCases(parseInt(days), parseInt(limit));
+    const cases = await getRecentDiseaseCases(parsedDays, parsedLimit);
 
     res.status(200).json({
       status: 'success',

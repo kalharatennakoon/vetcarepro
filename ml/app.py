@@ -25,7 +25,31 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+# The browser never talks to this service directly - only the Node backend
+# does (see server/src/services/mlService.js / aiService.js) - so CORS only
+# needs to admit the Node origin, not every origin.
+CORS(app, origins=[os.getenv('CLIENT_URL', 'http://localhost:5173')])
+
+# Shared-secret check on the Node -> Flask hop. This service trusts `role`/
+# `customer_id`/`user_id` straight from the request body (see
+# /api/ml/rag/chat's docstring) on the assumption they were already derived
+# from an authenticated caller by server/src/middleware/auth.js - that
+# assumption only holds if this port is unreachable by anything except the
+# Node backend. The 127.0.0.1 bind below is the primary control; this header
+# check is defense in depth in case that bind is ever loosened back to
+# 0.0.0.0 (e.g. for a containerized deployment).
+ML_INTERNAL_TOKEN = os.getenv('ML_INTERNAL_TOKEN')
+
+
+@app.before_request
+def _check_internal_token():
+    if request.path == '/api/ml/health' or request.method == 'OPTIONS':
+        return None
+    if not ML_INTERNAL_TOKEN:
+        return None
+    if request.headers.get('X-Internal-Token') != ML_INTERNAL_TOKEN:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    return None
 
 # Configuration
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True') == 'True'
@@ -1666,6 +1690,172 @@ def _with_clinical_detail_note(answer: str, question: str, role: str) -> str:
     return answer
 
 
+def _outbreak_risk_chart(question: str):
+    """Builds the `chart` payload (just the {type, title, data, series,
+    multi_color} spec the client renders, not a full response dict)
+    attached to the outbreak-risk live-model gate below when the question
+    contains a chart trigger word - see that gate's comment for why this
+    can't just be handled by try_chart_intent. Returns None when there are
+    no cases in the window to chart (chart_recent_disease_cases' _no_data
+    path) - the LLM's text explanation already covers that case on its own,
+    so nothing needs attaching."""
+    from scripts.rag.chart_intent import chart_recent_disease_cases, _requested_chart_type
+    by = 'severity' if re.search(r'\bsever(?:ity|ities)\b', question, re.IGNORECASE) else 'category'
+    result = chart_recent_disease_cases(days_lookback=30, by=by, chart_type=_requested_chart_type(question))
+    return result.get('chart')
+
+
+# Matches forecast_disease_trends' own historical_monthly_avg window
+# (hist_avg = merged['disease_cases'].tail(6).mean()) - keeping the chart's
+# "actual" months and the text answer's historical average describing the
+# same period, rather than two different windows that could disagree.
+_HISTORICAL_TREND_MONTHS = 6
+
+
+def _historical_monthly_disease_counts(months_back: int = _HISTORICAL_TREND_MONTHS) -> list:
+    """Real-SQL monthly disease-case counts for the months leading up to
+    now - prepended onto the forecast chart below so the line shows where
+    the trend is actually coming from, not just where it's projected to go
+    (a forecast-only line doesn't visually read as "increasing"/"decreasing"
+    on its own - that direction is a comparison against history, currently
+    only stated in the text). Same generate_series zero-fill pattern as
+    chart_intent.py's _chart_revenue_by_month, so a month with no cases is a
+    real zero point, not an absent one."""
+    from scripts.rag.chart_intent import _query
+    rows = _query(
+        """
+        WITH months AS (
+            SELECT generate_series(
+                date_trunc('month', CURRENT_DATE) - make_interval(months => %s),
+                date_trunc('month', CURRENT_DATE),
+                interval '1 month'
+            )::date AS month_start
+        )
+        SELECT m.month_start, COUNT(dc.case_id)
+        FROM months m
+        LEFT JOIN disease_cases dc
+               ON date_trunc('month', dc.diagnosis_date)::date = m.month_start
+        GROUP BY m.month_start
+        ORDER BY m.month_start
+        """,
+        (months_back - 1,)
+    )
+    return [{'month': r[0].strftime('%Y-%m'), 'count': int(r[1])} for r in rows]
+
+
+def _disease_trend_chart(question: str, predictions: list):
+    """Builds the chart attached to the disease-trend-forecast live-model
+    gate below when the question contains a chart trigger word - same
+    reasoning as _outbreak_risk_chart (this gate also runs before
+    try_chart_intent ever gets a look at the question). Unlike
+    _outbreak_risk_chart, the forecast half of this data comes straight from
+    the Prophet forecast itself (forecast_disease_trends' `predictions`),
+    not a real-SQL aggregation - chart_intent.py's "every number here comes
+    from real SQL, the model is not involved" invariant doesn't apply to a
+    genuine forecast, so this stays here rather than living in
+    chart_intent.py. The historical half (see
+    _historical_monthly_disease_counts) IS real SQL, prepended so the trend
+    is visible in the chart's shape, not just asserted in the text."""
+    from scripts.rag.chart_intent import CHART_TYPE_PIE, PRIMARY_COLOR, SECONDARY_COLOR
+    if not predictions:
+        return None
+
+    forecast_points = [
+        {'label': datetime.strptime(p['month'], '%Y-%m').strftime('%b %Y'), 'forecast': p['predicted_cases']}
+        for p in predictions
+    ]
+
+    if CHART_TYPE_PIE.search(question):
+        # A pie has no notion of "leading up to" - explicitly asking for one
+        # still gets just the forecast slices, same as before this change.
+        return {
+            'type': 'pie',
+            'title': f'Forecasted Disease Cases - Next {len(predictions)} Months',
+            'data': [{'label': p['label'], 'count': p['forecast']} for p in forecast_points],
+            'series': [{'key': 'count', 'name': 'Predicted Cases', 'color': PRIMARY_COLOR}],
+            'multi_color': False,
+        }
+
+    historical_points = [
+        {'label': datetime.strptime(h['month'], '%Y-%m').strftime('%b %Y'), 'historical': h['count']}
+        for h in _historical_monthly_disease_counts()
+    ]
+    # AiChartMessage.jsx's line renderer only draws a series where its
+    # dataKey has a value, so without this the "Actual Cases" and
+    # "Predicted Cases" lines would show a visible gap at the boundary
+    # instead of one continuing into the other. Carrying the last actual
+    # month's value into 'forecast' too (not just 'historical') makes it
+    # the shared point both lines pass through.
+    if historical_points:
+        historical_points[-1]['forecast'] = historical_points[-1]['historical']
+
+    return {
+        'type': 'line',
+        'title': f'Disease Case Trend - Last {len(historical_points)} Months & Next {len(predictions)}-Month Forecast',
+        'data': historical_points + forecast_points,
+        'series': [
+            {'key': 'historical', 'name': 'Actual Cases', 'color': SECONDARY_COLOR},
+            {'key': 'forecast', 'name': 'Predicted Cases', 'color': PRIMARY_COLOR},
+        ],
+        'multi_color': False,
+    }
+
+
+def _revenue_forecast_chart(question: str, monthly_forecast: list):
+    """Builds the chart attached to the revenue-forecast live-model gate
+    below when the question contains a chart trigger word - same reasoning
+    as _disease_trend_chart (this gate also runs before try_chart_intent
+    ever gets a look at the question, and this data is a genuine Prophet
+    forecast, not a real-SQL aggregation, so it can't just be handled by
+    chart_intent.py's _chart_revenue_by_month, which charts ACTUAL past
+    revenue instead)."""
+    from scripts.rag.chart_intent import CHART_TYPE_PIE, PRIMARY_COLOR
+    if not monthly_forecast:
+        return None
+    data = []
+    for row in monthly_forecast:
+        try:
+            label = datetime.strptime(str(row.get('month')), '%Y-%m').strftime('%b %Y')
+        except (ValueError, TypeError):
+            label = str(row.get('month'))
+        data.append({'label': label, 'revenue': row.get('monthly_revenue', 0)})
+    return {
+        # See _disease_trend_chart's comment - 'line' by default, a trend
+        # over months, not a categorical breakdown.
+        'type': 'pie' if CHART_TYPE_PIE.search(question) else 'line',
+        'title': f'Forecasted Revenue - Next {len(data)} Months',
+        'data': data,
+        'series': [{'key': 'revenue', 'name': 'Revenue (Rs.)', 'color': PRIMARY_COLOR}],
+        'multi_color': False,
+    }
+
+
+def _inventory_reorder_chart(question: str, recommendations: dict):
+    """Builds the chart attached to the inventory-reorder-forecast
+    live-model gate below when the question contains a chart trigger word -
+    same reasoning as _disease_trend_chart/_revenue_forecast_chart. Distinct
+    from chart_intent.py's _chart_inventory_levels, which charts CURRENT
+    stock vs reorder level for every active item - this charts the
+    suggested order quantity for just the items this forecast actually
+    flags as urgent/upcoming, which is what a "what should I reorder"
+    question is asking for."""
+    from scripts.rag.chart_intent import _requested_chart_type, PRIMARY_COLOR
+    items = (recommendations.get('urgent_reorder') or []) + (recommendations.get('reorder_soon') or [])
+    if not items:
+        return None
+    # Already sorted by urgency (days_until_stockout ascending) - top 10
+    # matches the row cap every other chart handler in chart_intent.py uses.
+    items = items[:10]
+    data = [{'label': i['item_name'], 'quantity': i['suggested_order_quantity']} for i in items]
+    return {
+        'type': _requested_chart_type(question),
+        'title': 'Suggested Reorder Quantities',
+        'data': data,
+        'series': [{'key': 'quantity', 'name': 'Suggested Order Qty', 'color': PRIMARY_COLOR}],
+        'multi_color': False,
+    }
+
+
 def _match_live_model_gate(question: str, role: str):
     """
     Pure matching logic shared by _try_live_model_gate (blocking) and the
@@ -1685,10 +1875,15 @@ def _match_live_model_gate(question: str, role: str):
           ('early', dict) - fully resolved already (role-not-allowed
             message, model-not-loaded message, or a computation error) -
             return/yield as-is, nothing left to generate
-          ('explain', dict) - {'output_type', 'data', 'source', 'note'},
-            everything needed to call (stream_)explain_ml_output and
-            finish building the response
+          ('explain', dict) - {'output_type', 'data', 'source', 'note',
+            'chart'}, everything needed to call (stream_)explain_ml_output
+            and finish building the response ('chart' is only non-None when
+            the question contained a chart trigger word - see
+            _outbreak_risk_chart/_disease_trend_chart/_revenue_forecast_chart/
+            _inventory_reorder_chart, one per branch below)
     """
+    from scripts.rag.chart_intent import CHART_TRIGGER
+
     # Staff-only gate: guests/owners asking a general "what do I do
     # during a disease outbreak" question are asking a legitimate
     # general-knowledge question the guest/owner pipeline already
@@ -1741,7 +1936,16 @@ def _match_live_model_gate(question: str, role: str):
             'output_type': 'outbreak_risk',
             'data': risk_assessment,
             'source': {'source_type': 'outbreak_risk_model', 'source_id': 'current', 'metadata': risk_assessment},
-            'note': None
+            'note': None,
+            # This whole gate runs before rag_service.answer_question (and
+            # therefore before try_chart_intent) ever gets a look at the
+            # question - so "graph/chart the outbreak risk" would otherwise
+            # always get the plain-text explanation below, never a chart,
+            # no matter how explicitly a picture was asked for. Attach one
+            # directly here, scoped to the SAME 30-day window risk_assessment
+            # just used, rather than falling through to a differently-scoped
+            # all-time chart.
+            'chart': _outbreak_risk_chart(question) if CHART_TRIGGER.search(question) else None
         }
 
     # "Disease prediction/forecast for the next N months/years" is a
@@ -1811,7 +2015,8 @@ def _match_live_model_gate(question: str, role: str):
             'note': (
                 f"\n\n(Note: the disease prediction model forecasts up to 60 months ahead, so this "
                 f"reflects a {months}-month window rather than the full period you asked about.)"
-            ) if was_clamped else None
+            ) if was_clamped else None,
+            'chart': _disease_trend_chart(question, trends.get('predictions')) if CHART_TRIGGER.search(question) else None
         }
 
     # "Forecast/predict revenue" is the same shape of problem as outbreak
@@ -1868,7 +2073,8 @@ def _match_live_model_gate(question: str, role: str):
             'note': (
                 f"\n\n(Note: the sales model forecasts up to 365 days ahead, so this reflects "
                 f"a {days}-day window rather than the full period you asked about.)"
-            ) if was_clamped else None
+            ) if was_clamped else None,
+            'chart': _revenue_forecast_chart(question, forecast.get('monthly_forecast')) if CHART_TRIGGER.search(question) else None
         }
 
     # "What should we reorder/restock soon" - clinic-wide inventory
@@ -1929,7 +2135,8 @@ def _match_live_model_gate(question: str, role: str):
             'note': (
                 f"\n\n(Note: the inventory model forecasts up to 365 days ahead, so this reflects "
                 f"a {days}-day window rather than the full period you asked about.)"
-            ) if was_clamped else None
+            ) if was_clamped else None,
+            'chart': _inventory_reorder_chart(question, recommendations) if CHART_TRIGGER.search(question) else None
         }
 
     return None, None
@@ -1967,7 +2174,8 @@ def _try_live_model_gate(question: str, role: str) -> dict:
         'answer': explanation,
         'sources': [payload['source']],
         'chunks_used': 0,
-        **({'reasoning': reasoning} if reasoning else {})
+        **({'reasoning': reasoning} if reasoning else {}),
+        **({'chart': payload['chart']} if payload.get('chart') else {})
     }
 
 
@@ -2010,6 +2218,8 @@ def _stream_live_model_gate(question: str, role: str):
     result = {'answer': explanation, 'sources': [payload['source']], 'chunks_used': 0}
     if reasoning:
         result['reasoning'] = reasoning
+    if payload.get('chart'):
+        result['chart'] = payload['chart']
     yield {'type': 'final', 'result': result}
 
 
@@ -2147,6 +2357,12 @@ def internal_error(error):
 
 if __name__ == '__main__':
     port = app.config['PORT']
-    print(f"Starting ML Service on port {port}...")
+    # 127.0.0.1 by default - this service has no auth of its own beyond the
+    # shared-secret check above, and trusts caller-supplied role/customer_id.
+    # Only bind wider (ML_HOST=0.0.0.0) in a deployment where the Node
+    # backend reaches this service over a network hop, and only alongside
+    # ML_INTERNAL_TOKEN being set.
+    host = os.getenv('ML_HOST', '127.0.0.1')
+    print(f"Starting ML Service on {host}:{port}...")
     print(f"Health check: http://localhost:{port}/api/ml/health")
-    app.run(host='0.0.0.0', port=port, debug=app.config['DEBUG'])
+    app.run(host=host, port=port, debug=app.config['DEBUG'])

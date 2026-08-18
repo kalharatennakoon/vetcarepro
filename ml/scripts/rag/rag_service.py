@@ -97,9 +97,17 @@ def _wants_paragraph_and_bullets(question: str) -> bool:
 # "summarize Max's health" (a named pet) never reaches this check at all
 # (resolved_pet_id already narrows it down before this fires), so this only
 # ever affects the genuinely-unscoped "my pet(s)" phrasing.
+#
+# A "how is/are ... doing/health" alternative used to live here too, but
+# "how (?:are|is)" alone can't tell "how are my dogs doing?" (plural, truly
+# unscoped) from "how is my dog's health?" (singular, one named species) -
+# for an owner with a dog and a cat, the latter wrongly skipped
+# disambiguation and fair-sampled both pets when scoping to the dog was
+# correct. Dropped in favor of relying on _PLURAL_SELF_PET_MENTION below,
+# which only fires on an actual plural noun - the one reliable signal that
+# a question isn't about just one pet.
 _BROAD_MULTI_PET_INTENT = re.compile(
-    r'\bsummar(?:y|ize|ise)\b|\beverything\s+about\b|\boverall\s+health\b|'
-    r'\bhow\s+(?:are|is)\b.{0,20}\b(?:doing|health)\b',
+    r'\bsummar(?:y|ize|ise)\b|\beverything\s+about\b|\boverall\s+health\b',
     re.IGNORECASE
 )
 

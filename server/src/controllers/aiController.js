@@ -11,23 +11,47 @@ import {
   createAppointment,
   updateAppointment,
   updateAppointmentStatus,
-  checkAppointmentConflict,
   getAppointmentById,
   markReminderSent
 } from '../models/appointmentModel.js';
 import { createCustomer, getCustomerById, phoneExists, emailExists } from '../models/customerModel.js';
 import { createPet, getPetById } from '../models/petModel.js';
 import { createUser, emailExists as staffEmailExists } from '../models/userModel.js';
-import { hashPassword, sanitizeUser } from '../utils/authUtils.js';
+import { hashPassword, sanitizeUser, DEFAULT_STAFF_PASSWORD } from '../utils/authUtils.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
-import { isClinicOpenDay } from '../utils/appointmentRules.js';
+import { validateRequestedSlot } from './customerAppointmentController.js';
 import { sendAppointmentReminder, sendCustomEmail } from '../services/emailService.js';
 
 const VALID_STAFF_ROLES = ['admin', 'veterinarian', 'receptionist'];
+// Same clinical-staff set clinical_tools.py/pet_health_intent.py restrict
+// send_aftercare_email's proposal to - re-checked here since confirmAction
+// is reachable directly with any staff-confirmed action payload.
+const CLINICAL_STAFF_ROLES = ['admin', 'veterinarian'];
 // Matches server/src/middleware/validation.js's phone format for staff -
 // the AI action path writes via createUser() directly, bypassing that
 // express-validator chain, so it's re-checked here.
 const STAFF_PHONE_RE = /^\+94[0-9]{9}$/;
+// Matches the DB CHECK constraint on appointments.appointment_type and the
+// same list validation.js's express-validator chain uses for the manual
+// REST endpoint - action_intent.py fills this correctly on the happy path,
+// but a malformed/tampered action payload would otherwise reach Postgres
+// and surface as a raw 500 instead of a clean 400.
+const VALID_APPOINTMENT_TYPES = ['checkup', 'vaccination', 'surgery', 'emergency', 'follow_up', 'consultation'];
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const APPOINTMENT_TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// Bounds on chat input forwarded to the ML service. The happy path is
+// already bounded client-side (AIAssistant.jsx sends history.slice(-6)) and
+// server-side (action_intent.py's _conversation_text/_extract_slots_via_llm
+// only look at the last 8 turns) - these exist for a crafted request that
+// skips the client, so an unbounded array/string can't reach Flask/Ollama.
+const MAX_QUESTION_LENGTH = 2000;
+const MAX_HISTORY_TURNS = 10;
+
+const normalizeChatInput = (question, history) => ({
+  question: String(question).slice(0, MAX_QUESTION_LENGTH),
+  history: Array.isArray(history) ? history.slice(-MAX_HISTORY_TURNS) : []
+});
 
 /**
  * @desc    Check AI assistant (Ollama/RAG) health
@@ -55,10 +79,11 @@ const checkHealth = async (req, res) => {
  */
 const staffChat = async (req, res) => {
   try {
-    const { question, history, pending_intent } = req.body;
-    if (!question || !question.trim()) {
+    const { question: rawQuestion, history: rawHistory, pending_intent } = req.body;
+    if (!rawQuestion || !String(rawQuestion).trim()) {
       return res.status(400).json({ success: false, message: 'question is required' });
     }
+    const { question, history } = normalizeChatInput(rawQuestion, rawHistory);
 
     const result = await aiService.askAssistant({
       question,
@@ -85,10 +110,11 @@ const staffChat = async (req, res) => {
  * @access  Private (admin only - enforced by the adminOnly route middleware)
  */
 const streamChat = async (req, res) => {
-  const { question, history, pending_intent } = req.body;
-  if (!question || !question.trim()) {
+  const { question: rawQuestion, history: rawHistory, pending_intent } = req.body;
+  if (!rawQuestion || !String(rawQuestion).trim()) {
     return res.status(400).json({ success: false, message: 'question is required' });
   }
+  const { question, history } = normalizeChatInput(rawQuestion, rawHistory);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -173,12 +199,17 @@ const confirmAction = async (req, res) => {
 };
 
 const executeBookAppointment = async (slots, req, res) => {
-  // action_intent.py resolves dates from free text ("next Tuesday") without
-  // knowing which day of the week that lands on - the clinic-day rule (see
-  // appointmentRules.js) is only checked here, at the actual write, same as
-  // the staff appointmentController.js and pet-owner customerAppointmentController.js paths.
-  if (slots.appointment_date && !isClinicOpenDay(slots.appointment_date)) {
-    return res.status(400).json({ success: false, message: 'The clinic is closed on Sundays - please choose another date' });
+  if (!ISO_DATE_RE.test(slots.appointment_date || '')) {
+    return res.status(400).json({ success: false, message: 'A valid appointment date is required' });
+  }
+  if (!APPOINTMENT_TIME_RE.test(slots.appointment_time || '')) {
+    return res.status(400).json({ success: false, message: 'A valid appointment time (HH:MM) is required' });
+  }
+  if (!VALID_APPOINTMENT_TYPES.includes(slots.appointment_type)) {
+    return res.status(400).json({ success: false, message: 'Invalid appointment type' });
+  }
+  if (!slots.reason || !String(slots.reason).trim()) {
+    return res.status(400).json({ success: false, message: 'A reason for the visit is required' });
   }
 
   const customer = await getCustomerById(slots.customer_id);
@@ -189,16 +220,24 @@ const executeBookAppointment = async (slots, req, res) => {
   if (!pet) {
     return res.status(404).json({ success: false, message: 'Pet not found' });
   }
+  // _find_pet_by_name resolves by name (+ optional owner name) - on a
+  // common pet name shared across owners, a wrong row could otherwise slip
+  // through. Mirrors appointmentController.js's createNewAppointment check.
+  if (pet.customer_id !== slots.customer_id) {
+    return res.status(400).json({ success: false, message: 'Pet does not belong to the selected customer' });
+  }
 
-  if (slots.veterinarian_id) {
-    const hasConflict = await checkAppointmentConflict({
-      veterinarian_id: slots.veterinarian_id,
-      appointment_date: slots.appointment_date,
-      appointment_time: slots.appointment_time
-    });
-    if (hasConflict) {
-      return res.status(409).json({ success: false, message: 'This time slot is already booked for the selected veterinarian' });
-    }
+  // action_intent.py resolves dates from free text ("next Tuesday") without
+  // knowing which day of the week that lands on - clinic-day, hours, and
+  // capacity/conflict are only checked here, at the actual write, same as
+  // the pet-owner customerAppointmentController.js path. Lead time is
+  // skipped (staff booking directly has never enforced it either - see
+  // appointmentController.js's createNewAppointment).
+  const slotError = await validateRequestedSlot(
+    slots.appointment_date, slots.appointment_time, slots.veterinarian_id || null, null, { enforceLeadTime: false }
+  );
+  if (slotError) {
+    return res.status(409).json({ success: false, message: slotError });
   }
 
   const newAppointment = await createAppointment({
@@ -231,8 +270,15 @@ const executeBookAppointment = async (slots, req, res) => {
 };
 
 const executeRescheduleAppointment = async (slots, req, res) => {
-  if (slots.appointment_date && !isClinicOpenDay(slots.appointment_date)) {
-    return res.status(400).json({ success: false, message: 'The clinic is closed on Sundays - please choose another date' });
+  // Reachable via a direct payload even though _resolve_reschedule_appointment
+  // always falls back to the old time - guards checkAppointmentConflict
+  // below from a NULL appointment_time, which Postgres would otherwise
+  // compare with `= NULL` and never match, silently passing the check.
+  if (!ISO_DATE_RE.test(slots.appointment_date || '')) {
+    return res.status(400).json({ success: false, message: 'A valid appointment date is required' });
+  }
+  if (!APPOINTMENT_TIME_RE.test(slots.appointment_time || '')) {
+    return res.status(400).json({ success: false, message: 'A valid appointment time (HH:MM) is required' });
   }
 
   const existingAppointment = await getAppointmentById(slots.appointment_id);
@@ -240,21 +286,29 @@ const executeRescheduleAppointment = async (slots, req, res) => {
     return res.status(404).json({ success: false, message: 'Appointment not found' });
   }
 
-  if (existingAppointment.veterinarian_id) {
-    const hasConflict = await checkAppointmentConflict({
-      veterinarian_id: existingAppointment.veterinarian_id,
-      appointment_date: slots.appointment_date,
-      appointment_time: slots.appointment_time
-    }, slots.appointment_id);
-    if (hasConflict) {
-      return res.status(409).json({ success: false, message: 'This time slot is already booked for the selected veterinarian' });
-    }
+  const slotError = await validateRequestedSlot(
+    slots.appointment_date, slots.appointment_time, existingAppointment.veterinarian_id || null,
+    slots.appointment_id, { enforceLeadTime: false }
+  );
+  if (slotError) {
+    return res.status(409).json({ success: false, message: slotError });
   }
 
   const updatedAppointment = await updateAppointment(slots.appointment_id, {
     appointment_date: slots.appointment_date,
     appointment_time: slots.appointment_time
   }, req.user.user_id);
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'UPDATE',
+    tableName: 'appointments',
+    recordId: slots.appointment_id,
+    oldValues: { appointment_date: existingAppointment.appointment_date, appointment_time: existingAppointment.appointment_time },
+    newValues: { appointment_date: updatedAppointment.appointment_date, appointment_time: updatedAppointment.appointment_time },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
 
   res.status(200).json({ success: true, message: 'Appointment rescheduled successfully', data: { appointment: updatedAppointment } });
 };
@@ -268,6 +322,17 @@ const executeCancelAppointment = async (slots, req, res) => {
   const updatedAppointment = await updateAppointmentStatus(
     slots.appointment_id, 'cancelled', req.user.user_id, slots.cancellation_reason || null
   );
+
+  await logAuditEntry({
+    userId: req.user.user_id,
+    action: 'UPDATE',
+    tableName: 'appointments',
+    recordId: slots.appointment_id,
+    oldValues: { status: existingAppointment.status },
+    newValues: { status: 'cancelled', cancellation_reason: slots.cancellation_reason || null },
+    ipAddress: req.ip,
+    userAgent: req.get('user-agent')
+  });
 
   res.status(200).json({ success: true, message: 'Appointment cancelled successfully', data: { appointment: updatedAppointment } });
 };
@@ -310,6 +375,15 @@ const executeSendReminder = async (slots, req, res) => {
 };
 
 const executeSendAftercareEmail = async (slots, req, res) => {
+  // clinical_tools.py only ever proposes this action for CLINICAL_STAFF_ROLES
+  // (admin/veterinarian) - confirmAction is reachable directly with any
+  // staff-confirmed action payload though, so without this a receptionist
+  // could send arbitrary (slots.message is fully client-supplied) email to
+  // any customer under the clinic's name.
+  if (!CLINICAL_STAFF_ROLES.includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: 'Sending aftercare instructions is limited to admin and veterinarian accounts' });
+  }
+
   const customer = await getCustomerById(slots.customer_id);
   if (!customer || !customer.email) {
     return res.status(400).json({ success: false, message: 'This customer has no email on file' });
@@ -320,7 +394,11 @@ const executeSendAftercareEmail = async (slots, req, res) => {
     customerName: `${customer.first_name} ${customer.last_name}`,
     subject: slots.subject,
     message: slots.message,
-    senderName: `Dr. ${req.user.first_name} ${req.user.last_name}`
+    // "Dr." only fits a veterinarian - an admin sending aftercare
+    // instructions isn't necessarily a doctor.
+    senderName: req.user.role === 'veterinarian'
+      ? `Dr. ${req.user.first_name} ${req.user.last_name}`
+      : `${req.user.first_name} ${req.user.last_name}`
   });
 
   await logAuditEntry({
@@ -418,7 +496,7 @@ const executeRegisterStaff = async (slots, req, res) => {
   // Matches createUserByAdmin's default-password convention (POST /api/users) -
   // the account is created with password_must_change so this is never a
   // standing credential.
-  const password_hash = await hashPassword('VetCare123');
+  const password_hash = await hashPassword(DEFAULT_STAFF_PASSWORD);
 
   const newUser = await createUser({
     first_name: slots.first_name,
@@ -447,7 +525,7 @@ const executeRegisterStaff = async (slots, req, res) => {
   res.status(201).json({
     success: true,
     message: `Staff account created for ${newUser.first_name} ${newUser.last_name} (${newUser.role}). ` +
-      "Temporary password: VetCare123 - they'll be required to change it on first login.",
+      `Temporary password: ${DEFAULT_STAFF_PASSWORD} - they'll be required to change it on first login.`,
     data: { user: sanitizeUser(newUser) }
   });
 };
@@ -460,10 +538,11 @@ const executeRegisterStaff = async (slots, req, res) => {
  */
 const customerChat = async (req, res) => {
   try {
-    const { question, history, pending_intent } = req.body;
-    if (!question || !question.trim()) {
+    const { question: rawQuestion, history: rawHistory, pending_intent } = req.body;
+    if (!rawQuestion || !String(rawQuestion).trim()) {
       return res.status(400).json({ success: false, message: 'question is required' });
     }
+    const { question, history } = normalizeChatInput(rawQuestion, rawHistory);
 
     const result = await aiService.askAssistant({
       question,
@@ -491,10 +570,11 @@ const customerChat = async (req, res) => {
  */
 const publicChat = async (req, res) => {
   try {
-    const { question } = req.body;
-    if (!question || !question.trim()) {
+    const { question: rawQuestion } = req.body;
+    if (!rawQuestion || !String(rawQuestion).trim()) {
       return res.status(400).json({ success: false, message: 'question is required' });
     }
+    const { question } = normalizeChatInput(rawQuestion, []);
 
     const result = await aiService.askAssistant({ question, role: 'guest' });
     res.json(result);

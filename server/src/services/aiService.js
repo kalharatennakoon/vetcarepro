@@ -17,7 +17,12 @@ const AI_SERVICE_TIMEOUT = 130000;
 const aiClient = axios.create({
   baseURL: ML_SERVICE_URL,
   timeout: AI_SERVICE_TIMEOUT,
-  headers: { 'Content-Type': 'application/json' }
+  headers: {
+    'Content-Type': 'application/json',
+    // Authenticates this hop to Flask's before_request check (see ml/app.py) -
+    // must match ML_INTERNAL_TOKEN there. No-op (Flask skips the check) if unset.
+    ...(process.env.ML_INTERNAL_TOKEN && { 'X-Internal-Token': process.env.ML_INTERNAL_TOKEN })
+  }
 });
 
 /**

@@ -14,7 +14,10 @@ const mlClient = axios.create({
   baseURL: ML_SERVICE_URL,
   timeout: ML_SERVICE_TIMEOUT,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    // Authenticates this hop to Flask's before_request check (see ml/app.py) -
+    // must match ML_INTERNAL_TOKEN there. No-op (Flask skips the check) if unset.
+    ...(process.env.ML_INTERNAL_TOKEN && { 'X-Internal-Token': process.env.ML_INTERNAL_TOKEN })
   }
 });
 

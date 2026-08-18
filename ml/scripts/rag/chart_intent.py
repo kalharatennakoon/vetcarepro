@@ -360,6 +360,59 @@ def _chart_disease_by_category(chart_type: str = 'bar') -> dict:
     )
 
 
+def chart_recent_disease_cases(days_lookback: int, by: str = 'category', chart_type: str = 'bar') -> dict:
+    """
+    Disease-case breakdown scoped to a lookback window, rather than
+    _chart_disease_by_category/_chart_disease_by_severity's all-time totals.
+
+    Called directly from ml/app.py's outbreak-risk live-model gate (not via
+    try_chart_intent below) when a chart trigger word is present alongside
+    an outbreak-risk question ("graph the outbreak risk") - that gate short-
+    circuits before try_chart_intent ever runs (see CLAUDE.md's description
+    of the pre-pipeline live-model gates), so without this a chart request
+    for outbreak risk silently got a text-only answer. Scoped to the SAME
+    days_lookback the risk model used, so the chart can't show a different
+    case count than the risk score/reasons text next to it describes (an
+    all-time chart could show live cases while the text says "no cases in
+    the last 30 days").
+    """
+    column = 'severity' if by == 'severity' else 'disease_category'
+    rows = _query(
+        f"""
+        SELECT {column}, COUNT(*)
+        FROM disease_cases
+        WHERE {column} IS NOT NULL AND diagnosis_date >= CURRENT_DATE - (INTERVAL '1 day' * %s)
+        GROUP BY {column}
+        ORDER BY COUNT(*) DESC
+        """,
+        (days_lookback,)
+    )
+    if not rows:
+        return _no_data('disease case')
+
+    if by == 'severity':
+        counts = {str(r[0]): int(r[1]) for r in rows}
+        ordered = [s for s in SEVERITY_ORDER if s in counts]
+        ordered += [s for s in counts if s not in SEVERITY_ORDER]
+        data = [{'label': _humanize(s), 'count': counts[s]} for s in ordered]
+        title = f'Disease Cases by Severity (Last {days_lookback} Days)'
+        breakdown = 'severity'
+    else:
+        data = [{'label': _humanize(r[0]), 'count': int(r[1])} for r in rows]
+        title = f'Disease Cases by Category (Last {days_lookback} Days)'
+        breakdown = 'category'
+
+    total = sum(d['count'] for d in data)
+    return _chart_result(
+        answer=f'Here are {total} disease cases from the last {days_lookback} days, broken down by {breakdown}.',
+        title=title,
+        data=data,
+        series=[{'key': 'count', 'name': 'Cases', 'color': PRIMARY_COLOR}],
+        multi_color=True,
+        chart_type=chart_type,
+    )
+
+
 def _chart_disease_by_severity(chart_type: str = 'bar') -> dict:
     rows = _query("""
         SELECT severity, COUNT(*)
