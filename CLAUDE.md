@@ -62,12 +62,15 @@ Verify changes accordingly:
 
 ### Ollama dependency
 
-The AI assistant requires Ollama running locally with both models pulled:
+The AI assistant requires Ollama running locally with all three models pulled:
 
 ```bash
 ollama pull nomic-embed-text          # embeddings, 768-dim
-ollama pull qwen3.5:9b                # generation (text AND vision); override via OLLAMA_CHAT_MODEL
+ollama pull qwen3:8b                  # text generation; override via OLLAMA_CHAT_MODEL
+ollama pull qwen3.5:9b                # vision generation (photo guidance only); override via OLLAMA_VISION_MODEL
 ```
+
+Text and vision are deliberately two separate models, not one vision-capable model handling both — this deployment's 16GB of unified memory can't hold both resident at once, so Ollama loads/unloads whichever is needed on demand (its default ~5min idle keep_alive) rather than the app keeping both warm. Expect a one-time delay on the first request after switching between a text question and photo guidance, while Ollama swaps the loaded model.
 
 Without Ollama, chat endpoints degrade to an "unavailable" message rather than erroring — a passing health check does not imply the assistant is functional.
 

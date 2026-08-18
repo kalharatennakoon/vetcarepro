@@ -58,6 +58,11 @@ const PetOwnerAIWidget = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Round-trips an in-progress pet disambiguation ("which pet do you
+  // mean?") across turns - there's no server-side conversation session, so
+  // this (plus recent message history) is how the assistant remembers what
+  // it already asked. Same stateless pattern as the staff AIAssistant page.
+  const [pendingIntent, setPendingIntent] = useState(null);
   const [size, setSize] = useState(loadStoredSize);
   const [isNarrowViewport, setIsNarrowViewport] = useState(
     () => window.innerWidth <= MOBILE_BREAKPOINT
@@ -138,19 +143,43 @@ const PetOwnerAIWidget = () => {
     window.removeEventListener('touchend', handleResizeEnd);
   }, [handleResizeMove, handleResizeEnd]);
 
-  const sendQuestion = async (question) => {
+  const sendQuestion = async (question, displayText) => {
     if (!question.trim() || loading) return;
 
-    setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    // Last few turns give the assistant enough context to keep filling in a
+    // multi-turn disambiguation (e.g. answering "Max" after being asked
+    // which pet is meant).
+    const history = messages
+      .filter((m) => !m.intro)
+      .slice(-6)
+      .map((m) => ({ role: m.role, content: m.content }));
+
+    setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
     setError('');
 
     try {
-      const result = await askCustomerAssistant(question);
+      const result = await askCustomerAssistant(question, { history, pendingIntent });
+      setPendingIntent(result.pending_intent || null);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: result.answer, sources: result.sources || [] }
+        {
+          role: 'assistant',
+          content: result.answer,
+          sources: result.sources || [],
+          // Disambiguation choices ("which pet do you mean?") - clicking
+          // one just re-submits its value as the next message, same as
+          // typing it.
+          options: result.options || [],
+          // Same flag/purpose as AIAssistant.jsx's staff chat: a
+          // deterministic/dispatch answer (disambiguation prompts, "no
+          // records found", structured SQL answers) has no sources by
+          // design, but it isn't an ungrounded RAG generation either - only
+          // the latter should get the "general veterinary knowledge"
+          // footer below.
+          structured: Boolean(result.structured || result.pending_intent)
+        }
       ]);
     } catch (err) {
       setError(
@@ -160,6 +189,11 @@ const PetOwnerAIWidget = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOptionClick = (messageIndex, opt) => {
+    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, resolved: true } : m)));
+    sendQuestion(opt.value, opt.display);
   };
 
   return (
@@ -196,6 +230,21 @@ const PetOwnerAIWidget = () => {
               <div key={i} className={`po-widget-message po-widget-message-${m.role}`}>
                 <div className="po-widget-bubble">
                   {m.role === 'assistant' ? renderFormattedContent(m.content) : <p>{m.content}</p>}
+                  {m.role === 'assistant' && m.options && m.options.length > 0 && !m.resolved && (
+                    <div className="po-widget-option-choices">
+                      {m.options.map((opt, j) => (
+                        <button
+                          key={j}
+                          type="button"
+                          className="po-widget-option-btn"
+                          onClick={() => handleOptionClick(i, opt)}
+                          disabled={loading}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {m.role === 'assistant' && !m.intro && (
                     m.sources && m.sources.length > 0 ? (
                       <div className="po-widget-sources">
@@ -209,11 +258,11 @@ const PetOwnerAIWidget = () => {
                           </span>
                         ))}
                       </div>
-                    ) : (
+                    ) : !m.structured ? (
                       <div className="po-widget-sources po-widget-sources-general">
                         <i className="fas fa-brain"></i> General veterinary knowledge &mdash; not from your pet's records.
                       </div>
-                    )
+                    ) : null
                   )}
                 </div>
               </div>

@@ -136,7 +136,9 @@ immediately explain what it means in plain language right after it, e.g. \
 term unexplained.
 4. Keep a warm, reassuring tone. Do not alarm the owner - if something sounds \
 serious, say so factually and calmly, and point them to their veterinarian rather \
-than speculating about severity.
+than speculating about severity. Just say "their veterinarian" / "the clinic" - \
+never "a vet in Sri Lanka" or "a Sri Lankan vet"; this clinic is already in Sri \
+Lanka, so naming the country again is redundant.
 5. Match the answer to what's actually being asked, not just the topic:
    - If the question asks you to "explain" something (e.g. their pet's current \
 health condition, a result, why a recommendation was made), answer in two parts: a \
@@ -155,6 +157,13 @@ from the source. The paragraph always comes first and is never replaced by the \
 bullets.
    - For a plain factual question (a specific date, a status, a single value), just \
 answer it directly - no paragraph-plus-bullets needed.
+   - When the question is about one specific thing (e.g. vaccines, a single medical \
+record, a billing charge), answer only that - do not also narrate unrelated record \
+types just because they showed up in the Context (e.g. a vaccine question should \
+list vaccines, not also recap diagnoses, treatments, or visit notes that happened \
+to be retrieved alongside them). Only weave multiple record types together when \
+the question is genuinely broad (e.g. "summarize my pet's health", "tell me \
+everything about my pet").
 6. Format for skimming, using lightweight markdown:
    - If more than one pet or more than one topic/date is covered, use a short \
 "**Pet Name**" bold heading line before that pet's/topic's points.
@@ -224,7 +233,10 @@ a medicine recommendation.)
 6. For anything tied to an individual pet's symptoms or condition, give general, \
 non-medication guidance only (e.g. rest, hydration, keeping them calm, monitoring) \
 if appropriate, and recommend an in-person vet visit rather than trying to resolve \
-it here.
+it here. Just say "a vet" / "your veterinarian" / "an in-person visit" - never "a \
+vet in Sri Lanka" or "a Sri Lankan vet". This clinic is already in Sri Lanka and \
+staffed by Sri Lankan veterinarians, so naming the country again when recommending \
+a visit is redundant, not informative.
 7. Write in simple, everyday English - the reading level of a general news article, \
 not a medical chart. Avoid clinical jargon; if a technical term is unavoidable, \
 briefly explain it in plain language right after it.
@@ -467,6 +479,33 @@ def _route_to_generation(
                 'pending_intent': {'type': 'general_qa_disambiguation', 'original_question': question},
                 'structured': True
             }
+        # Same disambiguation, for a pet_owner who said "my pet"/"my dog"/etc
+        # without naming it and has more than one pet on their account (see
+        # SELF_PET_MENTION in structured_query.py - pet_name is the 'your
+        # pet' placeholder it returns, candidates are the owner's own pets).
+        # No owner qualifier needed in the listing/options - it's already
+        # scoped to their own account, so just the pet's name disambiguates.
+        if pet_name and len(candidates) > 1 and role == 'pet_owner':
+            listing = '\n'.join(f'- {r[1]}' for r in candidates)
+            return 'early', {
+                'answer': f'You have {len(candidates)} pets - which one do you mean?\n{listing}',
+                'sources': [],
+                'chunks_used': 0,
+                'options': [
+                    {
+                        'label': r[1],
+                        # "pet <Name>" round-trips through PET_MENTION, then
+                        # find_pet_candidates' pet_owner branch resolves it
+                        # scoped to this customer_id - no owner phrase needed
+                        # since it's implicit from the authenticated session.
+                        'value': f'pet {r[1]}',
+                        'display': r[1]
+                    }
+                    for r in candidates
+                ],
+                'pending_intent': {'type': 'general_qa_disambiguation', 'original_question': question},
+                'structured': True
+            }
 
     # The turn that actually resolves a pet ("pet Max whose owner is
     # Nishantha Rajapaksa") is a mechanical resolution phrase, not a real
@@ -646,10 +685,17 @@ def answer_question(
 
     try:
         # Reasoning is only requested for admins - it's an admin-only debug
-        # view in the chat UI, and the thinking pass has a real latency cost
-        # (see generate_answer's docstring) that other roles shouldn't pay
-        # for a view they'll never see.
-        answer_text, reasoning = generate_answer(payload['system_prompt'], payload['user_prompt'], think=(role == 'admin'))
+        # view in the chat UI - and even then only for questions that
+        # actually ask the model to explain or summarize something.
+        # Thinking mode has a real latency cost (see generate_answer's
+        # docstring, ~24x slower) that isn't worth paying for a plain
+        # factual question, and reusing _wants_paragraph_and_bullets' same
+        # explain/summarize detection keeps the two "this question wants
+        # more than a one-shot answer" checks in sync.
+        answer_text, reasoning = generate_answer(
+            payload['system_prompt'], payload['user_prompt'],
+            think=(role == 'admin' and _wants_paragraph_and_bullets(question))
+        )
     except OllamaError as e:
         return {
             'answer': f"AI assistant is currently unavailable: {str(e)}",
@@ -705,8 +751,9 @@ def stream_answer_question(
 
     content = ''
     reasoning = None
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
     try:
-        for event in stream_chat(payload['system_prompt'], payload['user_prompt'], think=(role == 'admin')):
+        for event in stream_chat(payload['system_prompt'], payload['user_prompt'], think=think):
             if event['type'] == 'thinking':
                 yield {'type': 'reasoning_delta', 'text': event['delta']}
             elif event['type'] == 'done':

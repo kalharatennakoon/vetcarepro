@@ -460,7 +460,7 @@ const executeRegisterStaff = async (slots, req, res) => {
  */
 const customerChat = async (req, res) => {
   try {
-    const { question } = req.body;
+    const { question, history, pending_intent } = req.body;
     if (!question || !question.trim()) {
       return res.status(400).json({ success: false, message: 'question is required' });
     }
@@ -468,7 +468,13 @@ const customerChat = async (req, res) => {
     const result = await aiService.askAssistant({
       question,
       role: 'pet_owner', // never trusted from the client
-      customerId: req.customer.customer_id // enforced server-side from the authenticated customer
+      customerId: req.customer.customer_id, // enforced server-side from the authenticated customer
+      // Round-trips a pending pet disambiguation ("which pet do you mean?")
+      // across turns, same stateless mechanism as the staff chat endpoint -
+      // there's no server-side conversation session, so the client resends
+      // this each turn (see rag_service.py's general_qa_disambiguation).
+      history,
+      pendingIntent: pending_intent
     });
 
     res.json(result);

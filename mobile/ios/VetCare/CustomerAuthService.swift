@@ -161,6 +161,42 @@ struct CustomerAuthService {
         return response.data.customer
     }
 
+    // MARK: - Photo Guidance
+
+    func submitPhotoGuidance(petId: String, imageData: Data, note: String?, token: String) async throws -> PhotoGuidanceJob {
+        var fields: [String: String] = [:]
+        if let note, !note.isEmpty { fields["note"] = note }
+        let response = try await client.postMultipart(
+            "customer-auth/pets/\(petId)/ai-photo-guidance",
+            fields: fields,
+            fileField: "photo",
+            fileData: imageData,
+            fileName: "photo.jpg",
+            mimeType: "image/jpeg",
+            bearerToken: token,
+            as: PhotoGuidanceSubmitResponse.self
+        )
+        return response.job
+    }
+
+    func getPhotoGuidanceStatus(jobId: Int, token: String) async throws -> PhotoGuidanceJob {
+        let response = try await client.get(
+            "customer-auth/ai-photo-guidance/\(jobId)",
+            bearerToken: token,
+            as: PhotoGuidanceStatusResponse.self
+        )
+        return response.job
+    }
+
+    func listPhotoGuidanceHistory(petId: String, token: String) async throws -> [PhotoGuidanceJob] {
+        let response = try await client.get(
+            "customer-auth/pets/\(petId)/ai-photo-guidance",
+            bearerToken: token,
+            as: PhotoGuidanceHistoryResponse.self
+        )
+        return response.jobs
+    }
+
     func cancelAppointment(id: String, token: String) async throws -> Appointment {
         let response = try await client.delete(
             "customer-auth/appointments/\(id)",

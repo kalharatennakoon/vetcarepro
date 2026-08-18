@@ -165,13 +165,16 @@ def run_pet_health_generation(intent_type: str, pet_id: str, question: str, role
     explain_ml_output. See
     stream_pet_health_generation for the real-time streamed counterpart.
     """
-    from scripts.rag.rag_service import explain_ml_output
+    from scripts.rag.rag_service import explain_ml_output, _wants_paragraph_and_bullets
 
     prep_kind, prep = _PREPARERS[intent_type](pet_id, question)
     if prep_kind == 'early':
         return prep
 
-    explanation, reasoning = explain_ml_output(prep['output_type'], prep['data'], think=(role == 'admin'))
+    # Same "only think for explain/summarize questions" gating as the other
+    # three generation paths in rag_service.py/app.py.
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
+    explanation, reasoning = explain_ml_output(prep['output_type'], prep['data'], think=think)
     return _finalize_pet_health(explanation, reasoning, prep)
 
 
@@ -186,7 +189,7 @@ def stream_pet_health_generation(intent_type: str, pet_id: str, question: str, r
         dict: {'type': 'reasoning_delta', 'text': str} zero or more times,
             followed by exactly one {'type': 'final', 'result': dict}
     """
-    from scripts.rag.rag_service import stream_explain_ml_output
+    from scripts.rag.rag_service import stream_explain_ml_output, _wants_paragraph_and_bullets
 
     prep_kind, prep = _PREPARERS[intent_type](pet_id, question)
     if prep_kind == 'early':
@@ -195,7 +198,8 @@ def stream_pet_health_generation(intent_type: str, pet_id: str, question: str, r
 
     explanation = ''
     reasoning = None
-    for event in stream_explain_ml_output(prep['output_type'], prep['data'], think=(role == 'admin')):
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
+    for event in stream_explain_ml_output(prep['output_type'], prep['data'], think=think):
         if event['type'] == 'reasoning_delta':
             yield event
         elif event['type'] == 'done':

@@ -96,12 +96,17 @@ export const confirmAiAction = async (action) => {
  * Ask the AI assistant a question as a logged-in pet owner (scoped to their
  * own pets/records only). Uses the customer-portal token, not the staff one.
  * @param {string} question
+ * @param {Object} [options]
+ * @param {Array} [options.history] - recent {role, content} turns, needed for multi-turn
+ *   pet disambiguation ("which pet do you mean?") to round-trip statelessly
+ * @param {Object} [options.pendingIntent] - an in-progress pet disambiguation echoed back
+ *   from the previous turn's response, so picking an option resolves the original question
  */
-export const askCustomerAssistant = async (question) => {
+export const askCustomerAssistant = async (question, { history, pendingIntent } = {}) => {
   const customerToken = localStorage.getItem('customerToken');
   const response = await axios.post(
     `${API_URL}/ai/customer-chat`,
-    { question },
+    { question, history, pending_intent: pendingIntent },
     { headers: { Authorization: `Bearer ${customerToken}` } }
   );
   return response.data;

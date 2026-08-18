@@ -217,6 +217,35 @@
   40% { transform: scale(1); opacity: 1; }
 }
 
+.po-widget-option-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.po-widget-option-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.po-widget-option-btn:not(:disabled):hover {
+  background: #e0e7ff;
+  transform: translateY(-1px);
+}
+
+.po-widget-option-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .po-widget-sources {
   margin-top: 0.5rem;
   font-size: 0.7rem;

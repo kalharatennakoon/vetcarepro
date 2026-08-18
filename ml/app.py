@@ -1896,7 +1896,7 @@ def _try_live_model_gate(question: str, role: str) -> dict:
             shape) if one of the four patterns matched, else None - caller
             should fall through to answer_question.
     """
-    from scripts.rag.rag_service import explain_ml_output
+    from scripts.rag.rag_service import explain_ml_output, _wants_paragraph_and_bullets
 
     kind, payload = _match_live_model_gate(question, role)
     if kind is None:
@@ -1904,7 +1904,12 @@ def _try_live_model_gate(question: str, role: str) -> dict:
     if kind == 'early':
         return payload
 
-    explanation, reasoning = explain_ml_output(payload['output_type'], payload['data'], think=(role == 'admin'))
+    # Same "only think for explain/summarize questions" gating as
+    # answer_question/stream_answer_question in rag_service.py - a plain
+    # "what should I reorder soon?" doesn't need the ~24x-slower thinking
+    # pass just to turn a JSON model output into a sentence or two.
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
+    explanation, reasoning = explain_ml_output(payload['output_type'], payload['data'], think=think)
     if payload['note']:
         explanation += payload['note']
     return {
@@ -1930,7 +1935,7 @@ def _stream_live_model_gate(question: str, role: str):
             (caller should check _match_live_model_gate itself, not this
             generator, to decide whether to fall through - see rag_chat_stream)
     """
-    from scripts.rag.rag_service import stream_explain_ml_output
+    from scripts.rag.rag_service import stream_explain_ml_output, _wants_paragraph_and_bullets
 
     kind, payload = _match_live_model_gate(question, role)
     if kind is None:
@@ -1941,7 +1946,8 @@ def _stream_live_model_gate(question: str, role: str):
 
     explanation = ''
     reasoning = None
-    for event in stream_explain_ml_output(payload['output_type'], payload['data'], think=(role == 'admin')):
+    think = role == 'admin' and _wants_paragraph_and_bullets(question)
+    for event in stream_explain_ml_output(payload['output_type'], payload['data'], think=think):
         if event['type'] == 'reasoning_delta':
             yield event
         elif event['type'] == 'done':

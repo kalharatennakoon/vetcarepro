@@ -93,6 +93,14 @@ const AIAssistant = () => {
   // is how the assistant remembers what it already asked.
   const [pendingIntent, setPendingIntent] = useState(null);
   const bottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  // Tracks whether the view should auto-scroll to the newest content. Starts
+  // true (initial load / a fresh question should land at the bottom), but
+  // flips to false the moment the user scrolls up - e.g. to read an earlier
+  // message while the admin reasoning stream keeps appending tokens below -
+  // so the streaming updates stop yanking them back down. Flips back to true
+  // once they scroll back near the bottom themselves, or send a new question.
+  const stickToBottomRef = useRef(true);
   const textareaRef = useRef(null);
   const suggestedPrompts = user?.role === 'receptionist'
     ? RECEPTIONIST_SUGGESTED_PROMPTS
@@ -101,8 +109,24 @@ const AIAssistant = () => {
       : CLINICAL_SUGGESTED_PROMPTS;
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (stickToBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, loading]);
+
+  // A streamed reasoning trace can append dozens of tokens a second, each
+  // one re-running the effect above - if it always scrolled unconditionally,
+  // manually scrolling up mid-stream (e.g. to re-read an earlier answer)
+  // would get fought every few hundred milliseconds. Track how close to the
+  // bottom the user actually is instead, and only keep auto-scrolling while
+  // they're already there.
+  const NEAR_BOTTOM_PX = 80;
+  const handleChatScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < NEAR_BOTTOM_PX;
+  };
 
   // Grows the input with its content instead of scrolling text horizontally
   // inside a fixed-height box - re-measured on every keystroke since a
@@ -157,6 +181,10 @@ const AIAssistant = () => {
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
+    // A new question is the user's own action - always land on it and follow
+    // the reply as it streams in, even if they'd scrolled up to re-read
+    // earlier history first.
+    stickToBottomRef.current = true;
     setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
@@ -307,7 +335,7 @@ const AIAssistant = () => {
           </div>
         </div>
 
-        <div className="ai-assistant-chat ai-modern-chat">
+        <div className="ai-assistant-chat ai-modern-chat" ref={chatContainerRef} onScroll={handleChatScroll}>
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role} ai-modern-message`}>
               <div className={`ai-modern-avatar ai-modern-avatar-${m.role}`}>

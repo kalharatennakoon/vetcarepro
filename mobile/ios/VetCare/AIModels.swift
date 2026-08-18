@@ -9,9 +9,56 @@
 
 import Foundation
 
+/// A single prior turn, sent back on the pet-owner endpoint so the assistant
+/// has enough context to keep filling in a multi-turn disambiguation (e.g.
+/// answering "Max" after being asked which pet is meant). There is no
+/// server-side conversation session - see rag_service.py's docstring.
+struct ChatHistoryTurn: Encodable {
+    let role: String
+    let content: String
+}
+
+/// Round-trips an in-progress pet disambiguation ("which pet do you mean?")
+/// across turns. For the pet-owner endpoint this is always exactly
+/// {"type": "general_qa_disambiguation", "original_question": "..."} - see
+/// rag_service.py's _route_to_generation, the only pending_intent shape it
+/// ever returns for role='pet_owner' (the richer shapes with `slots`/`stage`
+/// belong to action_intent.py/clinical_tools.py/pet_health_intent.py, which
+/// are staff/admin-only and never reached via this endpoint).
+struct PendingIntent: Codable, Equatable {
+    let type: String
+    let originalQuestion: String
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case originalQuestion = "original_question"
+    }
+}
+
+/// A disambiguation choice ("Loki" / "Max") offered alongside `answer` when
+/// the question needs clarifying. Tapping one re-submits `value` as the next
+/// question (round-tripping `pendingIntent` from the same response) while
+/// showing `display` in the chat bubble - mirrors the web widget's
+/// handleOptionClick.
+struct ChatOption: Decodable, Identifiable, Hashable {
+    let label: String
+    let value: String
+    let display: String
+
+    var id: String { value }
+}
+
 /// Request body for any AI chat endpoint.
 struct ChatRequest: Encodable {
     let question: String
+    var history: [ChatHistoryTurn]?
+    var pendingIntent: PendingIntent?
+
+    enum CodingKeys: String, CodingKey {
+        case question
+        case history
+        case pendingIntent = "pending_intent"
+    }
 }
 
 /// Response envelope returned by the AI chat endpoints.
@@ -19,11 +66,15 @@ struct ChatResponse: Decodable {
     let answer: String
     let sources: [ChatSource]
     let chunksUsed: Int
+    let options: [ChatOption]
+    let pendingIntent: PendingIntent?
 
     enum CodingKeys: String, CodingKey {
         case answer
         case sources
         case chunksUsed = "chunks_used"
+        case options
+        case pendingIntent = "pending_intent"
     }
 
     init(from decoder: Decoder) throws {
@@ -31,6 +82,8 @@ struct ChatResponse: Decodable {
         answer = try container.decode(String.self, forKey: .answer)
         sources = (try? container.decode([ChatSource].self, forKey: .sources)) ?? []
         chunksUsed = (try? container.decode(Int.self, forKey: .chunksUsed)) ?? 0
+        options = (try? container.decode([ChatOption].self, forKey: .options)) ?? []
+        pendingIntent = try? container.decode(PendingIntent.self, forKey: .pendingIntent)
     }
 }
 

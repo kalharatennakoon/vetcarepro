@@ -357,6 +357,17 @@ LIST_RECORDS_BY_CUSTOMER = re.compile(
 )
 
 
+# A pet_owner referring to their own pet without naming it - "my pet", "my
+# dog", "my cat", etc. Only meaningful for role='pet_owner' - staff have no
+# "my pet" of their own to resolve. Without this, a question like "what
+# vaccines has my pet had?" mentions no name at all, so find_pet_candidates()
+# treats it exactly like a genuinely pet-less question (e.g. "what vaccines
+# does a puppy need?") and falls through to slow, unscoped RAG retrieval -
+# wasteful for a single-pet owner (there's only one possible answer) and
+# outright wrong for a multi-pet owner (nothing tells retrieval which pet is
+# meant, so it mixes both pets' records into one ungrounded answer).
+SELF_PET_MENTION = re.compile(r'\bmy\s+(?:pet|dog|cat|puppy|kitten|companion)s?\b', re.IGNORECASE)
+
 # Matches "pet Max" specifically - tried first since it's unambiguous.
 PET_MENTION = re.compile(r'\bpet\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
 
@@ -859,6 +870,47 @@ def _summary_source(source_type: str, source_id: str, **metadata) -> list:
     return [{'source_type': source_type, 'source_id': source_id, 'metadata': metadata}]
 
 
+def _self_pet_fallback(question: str, role: str, customer_id: str):
+    """
+    Nameless self-reference ("my pet"/"my dog"/"my cat"/etc, see
+    SELF_PET_MENTION) fallback for role='pet_owner', called from
+    find_pet_candidates() wherever it would otherwise give up and return
+    (None, []) - both when no name was extracted at all, and when a
+    permissive extraction produced a false positive later rejected as not a
+    real name (e.g. "had" out of "...has my pet had?").
+
+    Returns:
+        ('your pet', rows) - same (pet_id, pet_name, customer_id,
+            owner_first, owner_last) row shape as a real name match, if the
+            question is a self-reference and the customer has at least one
+            pet on file. 'your pet' is a placeholder, not an extracted name -
+            callers only care about len(rows); the disambiguation message
+            (rag_service.py) is built from the candidate pet_names
+            (rows[i][1]), not this string.
+        (None, []) - otherwise, so the caller falls through to normal
+            unscoped retrieval exactly as it would have before this fallback
+            existed.
+    """
+    if not (role == 'pet_owner' and customer_id and SELF_PET_MENTION.search(question)):
+        return None, []
+
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT p.pet_id, p.pet_name, p.customer_id, c.first_name, c.last_name
+                FROM pets p
+                JOIN customers c ON c.customer_id = p.customer_id
+                WHERE p.customer_id = %s
+                ORDER BY p.pet_name
+            """, (customer_id,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    return ('your pet', rows) if rows else (None, [])
+
+
 def find_pet_candidates(question: str, role: str, customer_id: str = None):
     """
     Name-extraction + SQL lookup shared by resolve_pet_id() and by
@@ -885,7 +937,7 @@ def find_pet_candidates(question: str, role: str, customer_id: str = None):
         pet_name = _bare_staff_pet_mention(question)
 
     if not pet_name:
-        return None, []
+        return _self_pet_fallback(question, role, customer_id)
 
     owner_match = OWNER_MENTION.search(question)
     owner_name = owner_match.group(1) if owner_match else None
@@ -927,8 +979,14 @@ def find_pet_candidates(question: str, role: str, customer_id: str = None):
     # is almost certainly not a name at all ("a pet emergency", "my pet after
     # surgery") - report it as "no pet mentioned" so the caller falls through
     # to normal retrieval instead of raising the hard "no pet named X" error.
+    # Also try the self-reference fallback here, not just when extraction
+    # found nothing at all: PET_MENTION's `pet\s+(\w+)` is greedy enough to
+    # misfire on ordinary grammar, not just real names - "...has my pet
+    # had?" extracts "had" as a bogus name, which would otherwise mask a
+    # genuine "my pet" self-reference the exact same way a real rejected
+    # guess would.
     if not rows and not _names_a_pet_explicitly(question, pet_name):
-        return None, []
+        return _self_pet_fallback(question, role, customer_id)
 
     return pet_name, rows
 
@@ -1088,6 +1146,19 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
                     return _list_vaccinations_for_pet(pet_id, role, customer_id)
                 if COUNT_VACCINATIONS.search(question):
                     return _count_vaccinations_for_pet(pet_id, role, customer_id)
+                # _looks_like_vaccine_question's broad \bvaccin\w*\b|\bshots?\b
+                # gate is intentionally wider than these four specific
+                # sub-patterns (e.g. "my pet's vaccine info", "vaccination
+                # status", "details about my pet's vaccination" match the
+                # gate but none of the four above). Without a default, those
+                # questions fell all the way through this vaccine-specific
+                # branch - past every other check below - to unscoped RAG
+                # retrieval, which surfaces medical_record chunks alongside
+                # vaccination ones and narrates both instead of answering
+                # the vaccine question that was actually asked. Listing is
+                # the safest default: it's the full vaccine picture rather
+                # than a guess at count/last/status.
+                return _list_vaccinations_for_pet(pet_id, role, customer_id)
 
             if is_next_appointment_query:
                 return _next_appointment_for_pet(pet_id)

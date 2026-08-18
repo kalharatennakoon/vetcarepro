@@ -7,7 +7,12 @@
 import axios from 'axios';
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
-const AI_SERVICE_TIMEOUT = 60000; // generation can be slower than ML predictions
+// Kept a few seconds above the ML service's own OLLAMA_TIMEOUT (120s, see
+// ml/scripts/rag/ollama_client.py) so that side's timeout fires first and
+// returns a graceful "AI assistant is currently unavailable" message,
+// rather than this axios call cutting the connection first and surfacing
+// the generic "Failed to get a response" error instead.
+const AI_SERVICE_TIMEOUT = 130000;
 
 const aiClient = axios.create({
   baseURL: ML_SERVICE_URL,

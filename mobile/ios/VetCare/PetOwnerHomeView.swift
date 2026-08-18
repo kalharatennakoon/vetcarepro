@@ -30,6 +30,7 @@ struct PetOwnerHomeView: View {
                     petsSection
                     appointmentsCard
                     aiCard
+                    photoGuidanceCard
                 }
                 .padding(20)
             }

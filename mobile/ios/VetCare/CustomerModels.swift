@@ -585,6 +585,66 @@ struct CustomerUpdateData: Decodable {
     let customer: Customer
 }
 
+// MARK: - Photo Guidance
+
+struct PhotoGuidanceJob: Decodable, Identifiable {
+    let jobId: Int
+    let petId: String
+    let ownerNote: String?
+    let status: String          // "pending" | "processing" | "completed" | "failed"
+    let guidanceText: String?
+    let errorMessage: String?
+    let createdAt: String?
+
+    var id: Int { jobId }
+
+    var isFinished: Bool { status == "completed" || status == "failed" }
+
+    var statusDisplay: String {
+        switch status {
+        case "pending":    return "Waiting to start…"
+        case "processing": return "Analyzing photo…"
+        case "completed":  return "Ready"
+        case "failed":     return "Failed"
+        default:           return status.capitalized
+        }
+    }
+
+    var createdAtDisplay: String? {
+        guard let raw = createdAt else { return nil }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = iso.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        guard let date else { return nil }
+        let df = DateFormatter()
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df.string(from: date)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case jobId        = "job_id"
+        case petId        = "pet_id"
+        case ownerNote    = "owner_note"
+        case status
+        case guidanceText = "guidance_text"
+        case errorMessage = "error_message"
+        case createdAt    = "created_at"
+    }
+}
+
+struct PhotoGuidanceSubmitResponse: Decodable {
+    let job: PhotoGuidanceJob
+}
+
+struct PhotoGuidanceStatusResponse: Decodable {
+    let job: PhotoGuidanceJob
+}
+
+struct PhotoGuidanceHistoryResponse: Decodable {
+    let jobs: [PhotoGuidanceJob]
+}
+
 struct UpdateAppointmentRequest: Encodable {
     let appointmentDate: String
     let appointmentTime: String

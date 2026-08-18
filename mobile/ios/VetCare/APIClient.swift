@@ -39,10 +39,15 @@ struct APIClient {
     init(baseURL: URL = APIConfig.baseURL) {
         self.baseURL = baseURL
         let configuration = URLSessionConfiguration.default
-        // AI answers are generated locally by Ollama and can take 15s+, so we
-        // allow a generous per-request timeout.
-        configuration.timeoutIntervalForRequest = 90
-        configuration.timeoutIntervalForResource = 120
+        // AI answers are generated locally by Ollama and can take a while - a
+        // longer "explain"/"summarize" answer measured at only ~9 tokens/sec
+        // on constrained hardware can comfortably exceed 90s. Kept a bit
+        // above the server-side timeout stack (Node's AI_SERVICE_TIMEOUT:
+        // 130s, ML service's OLLAMA_TIMEOUT: 120s - see aiService.js /
+        // ollama_client.py) so a slow-but-working answer doesn't get cut off
+        // client-side before either of those has a chance to.
+        configuration.timeoutIntervalForRequest = 150
+        configuration.timeoutIntervalForResource = 180
         self.session = URLSession(configuration: configuration)
     }
 

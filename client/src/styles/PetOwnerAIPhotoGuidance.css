@@ -17,6 +17,31 @@
   font-size: 1rem;
 }
 
+.po-photo-privacy-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0 0 1.25rem;
+}
+
+.po-photo-privacy-notice i {
+  color: #2563eb;
+  font-size: 1rem;
+}
+
+.po-photo-privacy-notice a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
 /* Photo picker */
 
 .po-photo-file-input {
@@ -183,10 +208,37 @@
 }
 
 .po-photo-guidance-text {
-  white-space: pre-line;
   color: #1e293b;
   line-height: 1.65;
   font-size: 0.92rem;
+}
+
+.po-photo-guidance-text p,
+.po-photo-guidance-text ul,
+.po-photo-guidance-text ol {
+  margin: 0 0 0.65rem;
+}
+
+.po-photo-guidance-text p:last-child,
+.po-photo-guidance-text ul:last-child,
+.po-photo-guidance-text ol:last-child {
+  margin-bottom: 0;
+}
+
+.po-photo-guidance-text strong {
+  font-weight: 700;
+}
+
+.po-photo-list {
+  padding-left: 1.2rem;
+}
+
+.po-photo-list li {
+  margin-bottom: 0.3rem;
+}
+
+.po-photo-list li:last-child {
+  margin-bottom: 0;
 }
 
 .po-photo-guidance-error {
@@ -242,4 +294,20 @@
   font-size: 0.85rem;
   color: #475569;
   line-height: 1.5;
+}
+
+.po-photo-history-text p,
+.po-photo-history-text ul,
+.po-photo-history-text ol {
+  margin: 0 0 0.5rem;
+}
+
+.po-photo-history-text p:last-child,
+.po-photo-history-text ul:last-child,
+.po-photo-history-text ol:last-child {
+  margin-bottom: 0;
+}
+
+.po-photo-history-text strong {
+  font-weight: 700;
 }

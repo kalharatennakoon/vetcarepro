@@ -8,9 +8,16 @@ import {
   getPhotoGuidanceStatus,
   listPhotoGuidanceHistory
 } from '../services/petPhotoGuidanceService';
+import { formatMessageContent } from '../utils/aiChatFormat';
 import '../styles/PetOwnerProfile.css';
 import '../styles/PetOwnerAppointments.css';
 import '../styles/PetOwnerAIPhotoGuidance.css';
+
+// Same markdown-ish rendering (paragraphs, bullets, bold) used by the guest/
+// pet-owner/staff chat surfaces, so the AI's guidance shows up the way it
+// was actually written instead of being flattened into one paragraph.
+const renderGuidance = (content) =>
+  formatMessageContent(content, { listClassName: 'po-photo-list' });
 
 // AI generation takes ~3 minutes on a vision-capable local model - this is an
 // async submit-then-poll flow, not a blocking spinner. See
@@ -252,6 +259,18 @@ const PetOwnerAIPhotoGuidance = () => {
             <span>This is general guidance, not a diagnosis or medical advice. Always see a veterinarian for anything concerning.</span>
           </div>
 
+          <div className="po-photo-privacy-notice">
+            <i className="fas fa-lock"></i>
+            <span>
+              Photos you upload here are personal data and are used only to generate this guidance, in line with Sri
+              Lanka's{' '}
+              <a href="https://www.dpa.gov.lk/" target="_blank" rel="noopener noreferrer">
+                Personal Data Protection Act (PDPA)
+              </a>
+              .
+            </span>
+          </div>
+
           {!(job && (job.status === 'pending' || job.status === 'processing')) && (
             <section className="po-profile-card">
               <h2 className="po-profile-section-title">
@@ -328,7 +347,9 @@ const PetOwnerAIPhotoGuidance = () => {
                 <i className={`fas ${statusIcon[job.status] || 'fa-circle'}`}></i>
                 {statusLabel[job.status] || job.status}
               </div>
-              {job.status === 'completed' && <p className="po-photo-guidance-text">{job.guidance_text}</p>}
+              {job.status === 'completed' && (
+                <div className="po-photo-guidance-text">{renderGuidance(job.guidance_text)}</div>
+              )}
               {job.status === 'failed' && (
                 <p className="po-photo-guidance-error">
                   {job.error_message || 'Something went wrong generating guidance for this photo.'}
@@ -360,7 +381,9 @@ const PetOwnerAIPhotoGuidance = () => {
                       </span>
                       <span className="po-photo-history-date">{formatWhen(h.created_at)}</span>
                     </div>
-                    {h.status === 'completed' && <p className="po-photo-history-text">{h.guidance_text}</p>}
+                    {h.status === 'completed' && (
+                      <div className="po-photo-history-text">{renderGuidance(h.guidance_text)}</div>
+                    )}
                   </div>
                 ))}
               </div>
