@@ -710,10 +710,20 @@ APPT_RELATIVE_WEEKDAY = re.compile(
 # needed - "my"/implicit own pet, scoped to customer_id) and the staff
 # branch (a named pet, resolved clinic-wide by resolve_pet_id like the
 # medical-record/vaccine patterns above it).
+# Every "appointment" here is "appointments?" - a plural-pets owner
+# naturally asks "what ARE the next appointmentS for my pets", and a bare
+# "appointment" (no trailing s) leaves a \b boundary that can't match inside
+# the plural word at all. "what(?:'s|\s+is|\s+are)" similarly covers "what
+# ARE", not just the singular "what is"/"what's" - without both fixes,
+# "what are the next appointments for my pets?" matched none of these
+# alternatives and fell all the way through to unscoped RAG retrieval,
+# which has zero real appointment data ingested and answered from whatever
+# scored highest anyway (vaccination due-date chunks, mistaken for
+# appointments).
 NEXT_APPOINTMENT_MENTION = re.compile(
-    r'\b(?:when(?:\'s|\s+is)|what(?:\'s|\s+is))\b.*\bnext\b.*\bappointment|'
-    r'\bnext\s+appointment\b|'
-    r'\b(?:do\s+i|does\s+my\s+pet)\s+have\s+(?:an?\s+)?(?:upcoming\s+)?appointment|'
+    r'\b(?:when(?:\'s|\s+is|\s+are)|what(?:\'s|\s+is|\s+are))\b.*\bnext\b.*\bappointments?|'
+    r'\bnext\s+appointments?\b|'
+    r'\b(?:do\s+i|does\s+my\s+pet)\s+have\s+(?:an?\s+)?(?:upcoming\s+)?appointments?|'
     r'\bupcoming\s+appointments?\b',
     re.IGNORECASE
 )

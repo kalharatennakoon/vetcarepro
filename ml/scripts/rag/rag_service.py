@@ -84,6 +84,39 @@ def _wants_paragraph_and_bullets(question: str) -> bool:
     )
 
 
+# "Summarize my pet's health condition" from an owner with more than one pet
+# is not the same ambiguity as "does my pet need medicine" - the owner is
+# explicitly asking for a broad rundown, not naming (even implicitly) one
+# specific pet. retrieve_chunks' pet_owner branch already ranks chunks fairly
+# across every pet on the account for exactly this shape of question (see
+# retrieval.py's "what health issues do my pets have?" example) - used below
+# to skip the multi-pet disambiguation prompt and let a question matching
+# this straight through to that per-pet-fair-sampling retrieval instead,
+# rather than making the owner pick just one pet for a question that was
+# never about just one. Deliberately narrower than _SUMMARIZE_INTENT alone:
+# "summarize Max's health" (a named pet) never reaches this check at all
+# (resolved_pet_id already narrows it down before this fires), so this only
+# ever affects the genuinely-unscoped "my pet(s)" phrasing.
+_BROAD_MULTI_PET_INTENT = re.compile(
+    r'\bsummar(?:y|ize|ise)\b|\beverything\s+about\b|\boverall\s+health\b|'
+    r'\bhow\s+(?:are|is)\b.{0,20}\b(?:doing|health)\b',
+    re.IGNORECASE
+)
+
+# A stronger, standalone signal than _BROAD_MULTI_PET_INTENT above: the
+# owner used the PLURAL "pets"/"dogs"/etc, not "pet"/"dog" - SELF_PET_MENTION
+# in structured_query.py matches both ("s?" makes the plural optional) and
+# can't tell them apart on its own, but grammatically "my pets" is never
+# asking about just one, regardless of which verb/keyword surrounds it (e.g.
+# "explain my pets' current health issues" says nothing that
+# _BROAD_MULTI_PET_INTENT's word list catches - no "summarize", no
+# "overall" - the plural noun alone is what actually disambiguates it).
+# Checked independently of, not instead of, _BROAD_MULTI_PET_INTENT below.
+_PLURAL_SELF_PET_MENTION = re.compile(
+    r'\bmy\s+(?:pets|dogs|cats|puppies|kittens|companions)\b', re.IGNORECASE
+)
+
+
 # Used only by the "no relevant chunks" bail-out below - a pet can have zero
 # ingested records at all (never seen the clinic, or a demo/test account
 # with no history on file), which is a real, valid state, not a bug. But a
@@ -586,7 +619,19 @@ def _route_to_generation(
         # pet' placeholder it returns, candidates are the owner's own pets).
         # No owner qualifier needed in the listing/options - it's already
         # scoped to their own account, so just the pet's name disambiguates.
-        if pet_name and len(candidates) > 1 and role == 'pet_owner':
+        # Skipped for a broad multi-pet question (_BROAD_MULTI_PET_INTENT,
+        # e.g. "summarize my pets' health condition") OR whenever the owner
+        # used the plural "pets"/"dogs"/etc at all (_PLURAL_SELF_PET_MENTION
+        # - "explain my pets' current health issues" matches neither
+        # "summarize" nor "overall", but the plural noun alone already says
+        # this isn't "which one do you mean") - either way it falls through
+        # instead to retrieve_chunks' pet_owner branch, which already
+        # fairly samples every pet on the account rather than forcing a
+        # pick between them.
+        if (
+            pet_name and len(candidates) > 1 and role == 'pet_owner'
+            and not (_BROAD_MULTI_PET_INTENT.search(question) or _PLURAL_SELF_PET_MENTION.search(question))
+        ):
             listing = '\n'.join(f'- {r[1]}' for r in candidates)
             return 'early', {
                 'answer': f'You have {len(candidates)} pets - which one do you mean?\n{listing}',
