@@ -848,7 +848,20 @@ class DiseasePredictionModel(BaseMLModel):
                     'upper_bound': max(0, round(float(row['yhat_upper'])))
                 })
 
-            hist_avg = float(merged['disease_cases'].tail(6).mean())
+            # merged is built from a GROUP BY over disease_cases, so months
+            # with zero cases are absent rather than zero-filled - a plain
+            # tail(6) is "the last 6 months that had a case", which can span
+            # more than 6 calendar months whenever a month had none. That
+            # silently disagreed with app.py's _historical_monthly_disease_
+            # counts, which zero-fills its window - exactly the mismatch
+            # the comment on _HISTORICAL_TREND_MONTHS says this is meant to
+            # avoid. Reindexing onto an explicit 6-calendar-month range
+            # ending at last_date (zero-filling any gap) keeps both windows
+            # describing the same span.
+            recent_months = pd.date_range(end=last_date, periods=6, freq='MS')
+            hist_avg = float(
+                merged.set_index('ds')['disease_cases'].reindex(recent_months, fill_value=0).mean()
+            )
             fc_avg = float(future_fc['yhat'].mean())
             trend_direction = 'increasing' if fc_avg > hist_avg * 1.15 else ('decreasing' if fc_avg < hist_avg * 0.85 else 'stable')
             peak_row = future_fc.loc[future_fc['yhat'].idxmax()]

@@ -102,6 +102,19 @@ _HEDGED_SUGGESTION = re.compile(
     re.IGNORECASE
 )
 
+# _HEDGED_SUGGESTION alone also caught a plain, polite booking request -
+# "should I book Max for a checkup tomorrow?" is ordinary receptionist
+# phrasing, not a judgment call, but "should I" still matches. Requiring a
+# clinical/risk term alongside it scopes the suppression back to the case
+# the docstring above actually describes (a risk/recurrence question with a
+# hedged aside), and lets a bare "should I book..." fall through to
+# BOOK_APPOINTMENT below.
+_CLINICAL_RISK_TERM = re.compile(
+    r'\brisk\b|\brecurrence\b|\bwhy\s+is\b|\bsymptoms?\b|\bcancer\b|\btumou?r\b|'
+    r'\bpandemic\b|\boutbreak\b',
+    re.IGNORECASE
+)
+
 # A chart/graph/report request is never a write command, even though it
 # often shares nouns with the write-intent patterns above ("make A GRAPH OF
 # appointments" contains both "make" and "appointments"). Checked before any
@@ -139,15 +152,48 @@ _REPORT_OR_QUESTION_FRAMING = re.compile(
 #
 # Restricting _REPORT_OR_QUESTION_FRAMING to the sentence's *leading clause*
 # (the text before the first comma/dash/semicolon, via _leading_clause
-# below) fixes the four examples above without an absolute `^` anchor, which
-# would itself break a genuine case this guard already has to handle -
-# "can you set up A REPORT on emergency visits?" has "report" several words
-# in, not at position 0, same shape as "why did the owner cancel the
-# checkup?" which has no clause break at all and still matches. For the
-# chart trigger, "pie" specifically is additionally required to sit next to
-# a chart-requesting verb (chart/graph/plot/visualize need no such
+# below) handles the trailing-clause cases above, but a clause break is not
+# the only way a framing word can trail a real write command - "?" isn't a
+# _CLAUSE_BREAK, so a sentence with no comma or dash still has its *entire*
+# question as the "leading clause". That over-suppressed real bookings like
+# "book a checkup for Max which is due this week" and "please book Max in
+# for a vaccination next Monday and tell me why he needs it" - both contain
+# a framing word (which/why) with no clause break, so the whole sentence got
+# treated as read-framing and the booking never started.
+#
+# _leading_clause alone can't tell those apart from "why did the owner
+# cancel the checkup?" or "can you set up A REPORT on emergency visits?",
+# which also have no clause break and genuinely are framing. What
+# distinguishes them is *position*: in the two false positives, the
+# write verb (book) comes before the framing word (which/why); in the two
+# genuine cases, the framing word (why / the report noun) comes first, or -
+# for "report"/"summary"/"breakdown" specifically - appears at all, since
+# those nouns describe the request itself rather than a rhetorical aside
+# regardless of where they fall ("set up A REPORT on..." has "report" well
+# after "set up" but is still never a booking request). Checking the framing
+# word's position against the first write verb's position (both compared as
+# plain string offsets) captures that without an absolute `^` anchor, which
+# would itself break "can you set up A REPORT on emergency visits?" (report
+# isn't at position 0 either).
+#
+# For the chart trigger, "pie" specifically is additionally required to sit
+# next to a chart-requesting verb (chart/graph/plot/visualize need no such
 # restriction - they aren't also common pet names).
 _CLAUSE_BREAK = re.compile(r'[,;]|\s[-–—]\s')
+
+# The write verbs try_action_intent's elif chain below can act on, used only
+# to compare position against _REPORT_OR_QUESTION_FRAMING - not a
+# replacement for the more specific per-intent patterns (RESCHEDULE_
+# APPOINTMENT, BOOK_APPOINTMENT, etc.) those still gate the actual intent.
+_FIRST_WRITE_VERB = re.compile(
+    r'\b(?:book|schedule|make|set\s+up|cancel|reschedule|move|register|add|create|send)\b',
+    re.IGNORECASE
+)
+
+# Framing nouns that mean "this is a report/summary request" regardless of
+# where they fall relative to the write verb - see the position-vs-presence
+# split in the comment above.
+_REPORT_NOUNS = {'report', 'summary', 'breakdown'}
 
 
 def _leading_clause(text: str) -> str:
@@ -1004,15 +1050,24 @@ def try_action_intent(question: str, role: str, customer_id: str = None, history
     else:
         intent_type = None
         leading = _leading_clause(question)
-        if _LEADING_CHART_REQUEST.search(leading) or _REPORT_OR_QUESTION_FRAMING.search(leading):
+        verb_match = _FIRST_WRITE_VERB.search(question)
+        framing_match = _REPORT_OR_QUESTION_FRAMING.search(leading)
+        framing_wins = framing_match and (
+            not verb_match
+            or framing_match.start() < verb_match.start()
+            or framing_match.group(0).lower() in _REPORT_NOUNS
+        )
+        if _LEADING_CHART_REQUEST.search(leading) or framing_wins:
             # A chart/report request or a plain read/analysis question is
             # never a write command, even when it shares nouns with the
             # patterns below ("make A GRAPH OF appointments", "why did the
             # owner CANCEL the checkup?", "can you set up A REPORT on
             # emergency visits?"). Checked first so it suppresses every
             # write-intent pattern at once, same role as _HEDGED_SUGGESTION.
+            # Gated on framing_wins rather than bare presence - see the
+            # _FIRST_WRITE_VERB comment above for why position matters here.
             pass
-        elif _HEDGED_SUGGESTION.search(question):
+        elif _HEDGED_SUGGESTION.search(question) and _CLINICAL_RISK_TERM.search(question):
             pass
         elif RESCHEDULE_APPOINTMENT.search(question):
             intent_type = 'reschedule_appointment'

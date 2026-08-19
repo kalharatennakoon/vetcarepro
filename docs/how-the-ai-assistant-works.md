@@ -73,7 +73,7 @@ Restricted to administrators and veterinarians, matching the clinical boundary a
 
 Handles an individual pet's disease-recurrence/cancer risk, and clinic-wide pandemic risk — computed live by `PetHealthPredictor`, the same "live model, not a text sample" reasoning as the pre-pipeline gates in §3's opening paragraph. This one runs inside `rag_service.py` rather than `ml/app.py` because it needs the resolved-pet-name machinery the other handlers share, not because the underlying computation is any less live.
 
-Admin-only (`PET_HEALTH_ADMIN_ROLES`). The module gates internally and returns `None` for any other role, so the question falls through to the next handler rather than erroring.
+Restricted to administrators and veterinarians (`PET_HEALTH_ROLES`) — vets need these predictions for actual clinical decisions, not just admin oversight. The module gates internally and returns `None` for guest/pet_owner, or an explicit role-denial for receptionist, so the question falls through to the next handler rather than erroring.
 
 ### Between handlers 3 and 4 — chart requests (`chart_intent.py`)
 

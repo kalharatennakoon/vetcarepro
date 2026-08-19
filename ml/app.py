@@ -4,7 +4,6 @@ Provides REST API endpoints for machine learning predictions
 """
 
 from flask import Flask, request, jsonify, Response, stream_with_context
-from flask_cors import CORS
 import os
 import glob
 import re
@@ -25,10 +24,12 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-# The browser never talks to this service directly - only the Node backend
-# does (see server/src/services/mlService.js / aiService.js) - so CORS only
-# needs to admit the Node origin, not every origin.
-CORS(app, origins=[os.getenv('CLIENT_URL', 'http://localhost:5173')])
+# No CORS setup here - the browser never talks to this service directly,
+# only the Node backend does (see server/src/services/mlService.js /
+# aiService.js), and server-to-server axios calls don't send an Origin
+# header, so a CORS allow-list would enforce nothing on that hop anyway.
+# The 127.0.0.1 bind and the X-Internal-Token check below are what actually
+# gate access to this service.
 
 # Shared-secret check on the Node -> Flask hop. This service trusts `role`/
 # `customer_id`/`user_id` straight from the request body (see
@@ -1720,14 +1721,23 @@ def _historical_monthly_disease_counts(months_back: int = _HISTORICAL_TREND_MONT
     on its own - that direction is a comparison against history, currently
     only stated in the text). Same generate_series zero-fill pattern as
     chart_intent.py's _chart_revenue_by_month, so a month with no cases is a
-    real zero point, not an absent one."""
+    real zero point, not an absent one.
+
+    Ends at the last *complete* calendar month, not the current one - the
+    window used to run through date_trunc('month', CURRENT_DATE), so on any
+    day but the 1st the final "Actual Cases" point was a partial month
+    (e.g. 19 days of data) sitting next to five full months, reading as a
+    cliff. Since the chart also carries that last point's value into the
+    forecast series to bridge the two lines (see the comment below), the
+    understated partial-month value was anchoring the forecast line too,
+    making it look like a drop followed by a jump."""
     from scripts.rag.chart_intent import _query
     rows = _query(
         """
         WITH months AS (
             SELECT generate_series(
                 date_trunc('month', CURRENT_DATE) - make_interval(months => %s),
-                date_trunc('month', CURRENT_DATE),
+                date_trunc('month', CURRENT_DATE) - interval '1 month',
                 interval '1 month'
             )::date AS month_start
         )
@@ -1738,7 +1748,7 @@ def _historical_monthly_disease_counts(months_back: int = _HISTORICAL_TREND_MONT
         GROUP BY m.month_start
         ORDER BY m.month_start
         """,
-        (months_back - 1,)
+        (months_back,)
     )
     return [{'month': r[0].strftime('%Y-%m'), 'count': int(r[1])} for r in rows]
 
