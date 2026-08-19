@@ -84,42 +84,29 @@ def _wants_paragraph_and_bullets(question: str) -> bool:
     )
 
 
-# "Summarize my pet's health condition" from an owner with more than one pet
-# is not the same ambiguity as "does my pet need medicine" - the owner is
-# explicitly asking for a broad rundown, not naming (even implicitly) one
-# specific pet. retrieve_chunks' pet_owner branch already ranks chunks fairly
-# across every pet on the account for exactly this shape of question (see
-# retrieval.py's "what health issues do my pets have?" example) - used below
-# to skip the multi-pet disambiguation prompt and let a question matching
-# this straight through to that per-pet-fair-sampling retrieval instead,
-# rather than making the owner pick just one pet for a question that was
-# never about just one. Deliberately narrower than _SUMMARIZE_INTENT alone:
-# "summarize Max's health" (a named pet) never reaches this check at all
-# (resolved_pet_id already narrows it down before this fires), so this only
-# ever affects the genuinely-unscoped "my pet(s)" phrasing.
+# Whether to skip the multi-pet disambiguation prompt below is decided purely
+# on singular vs. plural grammar, not on which verb/keyword the question
+# uses: "my pet"/"my pet's" (singular) always means one specific pet - just
+# not named, so it still needs disambiguation - while "my pets"/"my pets'"
+# (plural) always means every pet on the account, so disambiguation would be
+# asking a question the owner didn't pose. A keyword-based signal like
+# "summarize"/"everything about" used to live here instead of grammar, but
+# that wrongly swallowed genuinely singular phrasing too - "summarize my
+# pet's health condition" (singular "pet's") was being treated the same as
+# "summarize my pets' health condition" (plural "pets'") and skipped straight
+# to an ungoverned answer instead of asking which pet, even though the
+# wording named exactly one pet, just not by name. SELF_PET_MENTION in
+# structured_query.py matches both singular and plural ("s?" makes the
+# plural optional) and can't tell them apart on its own - this regex is the
+# one reliable signal that isolates the plural case.
 #
 # A "how is/are ... doing/health" alternative used to live here too, but
 # "how (?:are|is)" alone can't tell "how are my dogs doing?" (plural, truly
 # unscoped) from "how is my dog's health?" (singular, one named species) -
 # for an owner with a dog and a cat, the latter wrongly skipped
 # disambiguation and fair-sampled both pets when scoping to the dog was
-# correct. Dropped in favor of relying on _PLURAL_SELF_PET_MENTION below,
-# which only fires on an actual plural noun - the one reliable signal that
-# a question isn't about just one pet.
-_BROAD_MULTI_PET_INTENT = re.compile(
-    r'\bsummar(?:y|ize|ise)\b|\beverything\s+about\b|\boverall\s+health\b',
-    re.IGNORECASE
-)
-
-# A stronger, standalone signal than _BROAD_MULTI_PET_INTENT above: the
-# owner used the PLURAL "pets"/"dogs"/etc, not "pet"/"dog" - SELF_PET_MENTION
-# in structured_query.py matches both ("s?" makes the plural optional) and
-# can't tell them apart on its own, but grammatically "my pets" is never
-# asking about just one, regardless of which verb/keyword surrounds it (e.g.
-# "explain my pets' current health issues" says nothing that
-# _BROAD_MULTI_PET_INTENT's word list catches - no "summarize", no
-# "overall" - the plural noun alone is what actually disambiguates it).
-# Checked independently of, not instead of, _BROAD_MULTI_PET_INTENT below.
+# correct. Dropped in favor of this plural-noun check, the one reliable
+# signal that a question isn't about just one pet.
 _PLURAL_SELF_PET_MENTION = re.compile(
     r'\bmy\s+(?:pets|dogs|cats|puppies|kittens|companions)\b', re.IGNORECASE
 )
@@ -295,6 +282,15 @@ list vaccines, not also recap diagnoses, treatments, or visit notes that happene
 to be retrieved alongside them). Only weave multiple record types together when \
 the question is genuinely broad (e.g. "summarize my pet's health", "tell me \
 everything about my pet").
+   - This is a different axis from which PET the Context covers. A broad question \
+like "summarize my pet's health" is answered for every pet the Context contains \
+records for, not just whichever one has the most or closest-matching records - the \
+owner may have more than one pet, and "my pet" (singular wording) does not mean \
+only one pet's records were retrieved. Check the "for {pet name}" naming at the \
+start of each record's content before writing the answer: if more than one distinct \
+pet name appears, address each of them by name (see rule 8's per-pet heading format \
+below) - never silently produce an answer that reads as if there were only one pet \
+on the account.
    - When the question bundles more than one distinct sub-question (e.g. "why does \
 he seem off, and does he need any vitamins?"), address EACH one explicitly rather \
 than folding one into narrative that only implies an answer, and never let it \
@@ -627,18 +623,22 @@ def _route_to_generation(
         # pet' placeholder it returns, candidates are the owner's own pets).
         # No owner qualifier needed in the listing/options - it's already
         # scoped to their own account, so just the pet's name disambiguates.
-        # Skipped for a broad multi-pet question (_BROAD_MULTI_PET_INTENT,
-        # e.g. "summarize my pets' health condition") OR whenever the owner
-        # used the plural "pets"/"dogs"/etc at all (_PLURAL_SELF_PET_MENTION
-        # - "explain my pets' current health issues" matches neither
-        # "summarize" nor "overall", but the plural noun alone already says
-        # this isn't "which one do you mean") - either way it falls through
-        # instead to retrieve_chunks' pet_owner branch, which already
-        # fairly samples every pet on the account rather than forcing a
-        # pick between them.
+        # Skipped only when the owner used the PLURAL "pets"/"dogs"/etc
+        # (_PLURAL_SELF_PET_MENTION - "summarize my pets' health condition",
+        # "explain my pets' current health issues") - grammatically that can
+        # only mean every pet on the account, so asking "which one?" would be
+        # answering a question the owner didn't ask. Singular "my pet"/"my
+        # pet's", even alongside a broad-sounding verb like "summarize" or
+        # "everything about", still names exactly one (unnamed) pet and must
+        # still disambiguate - a keyword-only check used to skip
+        # disambiguation for singular phrasing too, which silently answered
+        # for whichever pet's records happened to retrieve closest instead of
+        # asking. When plural phrasing does skip this, it falls through
+        # instead to retrieve_chunks' pet_owner branch, which fairly samples
+        # every pet on the account rather than forcing a pick between them.
         if (
             pet_name and len(candidates) > 1 and role == 'pet_owner'
-            and not (_BROAD_MULTI_PET_INTENT.search(question) or _PLURAL_SELF_PET_MENTION.search(question))
+            and not _PLURAL_SELF_PET_MENTION.search(question)
         ):
             listing = '\n'.join(f'- {r[1]}' for r in candidates)
             return 'early', {
