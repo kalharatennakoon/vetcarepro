@@ -1,11 +1,11 @@
-# VetCare Pro: Smart Web-Based Veterinary Clinic Management System
+# VetCare Pro: Veterinary Clinic Management, Extended with a Local RAG AI Assistant
 
 ![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red)
 
 ![VetCare Pro Overview](docs/images/overview.png)
 *Overview generated using [NotebookLM](https://notebooklm.google.com) — for illustrative purposes only.*
 
-A full-stack veterinary clinic management system that handles everything from appointment scheduling and electronic medical records to AI-powered sales forecasting, disease outbreak analytics, and inventory demand forecasting.
+A full-stack veterinary clinic management system for Pro Pet Animal Hospital, covering appointment scheduling, electronic medical records, billing, and inventory. Under an eight-week **AI Launchpad** programme it was extended with two additions: a retrieval-augmented AI assistant that answers questions and drafts clinical content grounded in the clinic's own data (never the model's general training), and a companion iOS app giving pet owners and guests their own self-service access. A separate ML layer forecasts disease outbreak risk, sales revenue, and inventory demand from the clinic's history.
 
 ---
 
@@ -15,6 +15,7 @@ A full-stack veterinary clinic management system that handles everything from ap
 - **Backend:** Node.js, Express 5, PostgreSQL, JWT Auth, Multer
 - **ML Service:** Python, Flask, scikit-learn, Prophet, Pandas
 - **AI Assistant:** Retrieval-Augmented Generation (RAG) over [Ollama](https://ollama.com), running fully local/free (no external API keys or per-token cost)
+- **Mobile:** SwiftUI (iOS) — pet-owner and guest client only; no staff-facing mobile app
 
 ---
 
@@ -42,9 +43,12 @@ ollama pull qwen3.5:9b
 
 **What it does:**
 - Answers questions grounded in pet records, FAQs, and care instructions, citing its sources
-- Generates plain-language summaries (medical history, consultation notes, owner-friendly aftercare instructions)
+- For veterinarians and admins: drafts full patient history summaries, consultation notes, owner-friendly aftercare instructions, and pre-appointment briefings from a pet's complete record set — always a draft, nothing saved without human review
+- For veterinarians and admins: assesses an individual pet's disease-recurrence/cancer risk and clinic-wide outbreak/pandemic risk, computed live from breed and clinical data rather than guessed from a retrieval sample
 - Translates existing ML outputs (disease outbreak risk, sales/inventory forecasts) into clear natural-language explanations
-- For receptionists specifically: can also answer billing questions (balances, payment status, price estimates), and - after an explicit confirm step - book/reschedule/cancel appointments, send appointment reminders, and register new customers/pets conversationally
+- Generates bar/pie charts (revenue, appointments, disease cases, inventory) on the web app when explicitly asked for one ("chart", "graph", "plot") — a plain question stays a plain answer
+- For staff, after an explicit confirmation step: books/reschedules/cancels appointments, sends reminders, and registers new customers, pets, and (admin only) staff conversationally
+- For receptionists specifically: also answers billing questions — balances, payment status, price estimates
 
 **Access is scoped by role**, so private clinic data stays protected:
 - **Guest** (no login) - general pet-care info only, no clinic/account data
@@ -52,6 +56,14 @@ ollama pull qwen3.5:9b
 - **Clinic staff** (admin/veterinarian/receptionist) - full clinic data, scoped further per role (e.g. receptionists don't get clinical diagnosis detail)
 
 Exact/aggregate questions ("how many appointments today?") are answered via deterministic SQL rather than semantic search, since RAG only ever sees a small sample of matching records and would otherwise risk a confidently-wrong guess at a count.
+
+**Further reading**, under [`docs/`](docs/):
+- [`ARCHITECTURE.md`](docs/ARCHITECTURE.md) — full system architecture, the assistant's request pipeline, and where access control is enforced
+- [`rbac.md`](docs/rbac.md) — what each staff role can and cannot do
+- [`ml-system-overview.md`](docs/ml-system-overview.md) — the four ML/analytics models, in plain terms
+- [`rag-query-coverage.md`](docs/rag-query-coverage.md) — exactly which assistant questions get an exact SQL answer vs. AI-generated
+- [`ai-assistant-sample-questions.md`](docs/ai-assistant-sample-questions.md) — graded test questions for every access mode (guest, pet owner, and each staff role)
+- [`SCOPE.md`](docs/SCOPE.md) — what's in scope, what's deliberately excluded, and known gaps
 
 ---
 
@@ -145,7 +157,7 @@ Every other pet owner account — whether seeded or created later by staff — s
 ## Notes
 
 - The ML service is optional - the core app works without it, but analytics features will be unavailable.
-- The AI assistant requires Ollama running locally with both models pulled (see [AI Assistant (RAG)](#ai-assistant-rag) above) - without it, chat requests will return a "currently unavailable" message instead of failing the app.
+- The AI assistant requires Ollama running locally with all three models pulled (see [AI Assistant (RAG)](#ai-assistant-rag) above) - without it, chat requests will return a "currently unavailable" message instead of failing the app.
 - Email features require a valid SMTP configuration (e.g. a Gmail app password).
 - Uploaded files (pet images, lab reports) are stored in `server/uploads/` and are not included in this repository.
 
