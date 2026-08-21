@@ -65,4 +65,4 @@ New to the project? Read [`SCOPE.md`](SCOPE.md), then [`ARCHITECTURE.md`](ARCHIT
 
 **Source of truth.** Where a document describes behaviour, the code is authoritative. `api/` and `database-schema.md` are generated from route annotations and `schema.sql` respectively; regenerate rather than hand-edit them.
 
-**Not in this directory.** `PersonalContext/PROJECT_NOTES.md` holds private working notes and deployment planning. It is not a deliverable and is not published here.
+**Not in this directory.** `PersonalContext/PROJECT_NOTES.txt` holds private working notes and deployment planning. It is not a deliverable and is not published here.
