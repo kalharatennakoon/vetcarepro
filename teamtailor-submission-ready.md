@@ -155,6 +155,3 @@ To ensure the analytical models are trained on realistic timelines, the database
 In keeping with clean engineering honesty, two gaps are explicitly documented:
 1. **No Automated Test Suites (`docs/SCOPE.md` §4.10):** While we have documented a rigid manual verification protocol (`docs/tests/README.md`) and the 35-question graded assistant test, the backend test suite uses an unimplemented stub, and Swift test targets are unmodified Xcode scaffolding.
 2. **Decision Support, Not Automated Diagnosis:** While the system offers consultation-drafting and pet health risk prediction via `clinical_tools.py` and `pet_health_intent.py`, it serves strictly as clinical decision support. The system does not automate professional veterinary judgment, a constraint explicitly enforced in `docs/SCOPE.md` §2.
-
-#### ⚡ Compressed Version (~400 characters)
-Committed Assets: 5 design specs, 4 diagrams (system, DFD, use-case), wireframes, and 20 documents. Seed DB (2024-2026): 596 bills, 369 appointments, 389 disease cases, 217 medical logs, 127 customers, 270 pets, and 701 pgvector chunks. Known Gaps: No automated test suite (rely on 35-question manual graded set); AI features serve as Decision Support (docs/SCOPE.md §2) and never automate veterinary diagnostics.
