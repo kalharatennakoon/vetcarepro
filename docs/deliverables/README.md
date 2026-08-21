@@ -14,7 +14,7 @@ High-fidelity screen designs live in [`../design/`](../design/) alongside the [d
 
 ## What is and is not a deliverable
 
-Deliverables are documentation, wireframes, and presentation materials. **The source repository is private and is not itself a deliverable** — it is not shared, demonstrated by walkthrough, or submitted.
+This repository contains the complete codebase, system architecture, database migrations, and technical documentation for the VetCare Pro ecosystem, serving as the primary source of truth for the final evaluation. Deliverables in this directory — documentation, wireframes, and presentation materials — supplement the repository rather than replace it.
 
 ---
 

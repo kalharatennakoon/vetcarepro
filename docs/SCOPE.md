@@ -139,7 +139,7 @@ Each exclusion below is a decision, not an oversight.
 
 ### 4.10 Automated test suite
 
-**Not implemented.** There is no unit or integration test suite for any service. Verification is manual: health endpoints, direct API calls, `npm run build` and `npm run lint` for the frontend, and browser confirmation of UI changes. This is a known gap rather than a design decision — see §5.
+**Partial.** Unit tests now cover critical logic in each service — backend RBAC/auth/appointment rules (`server/tests/`, run via `npm test`), ML RAG helpers (`ml/tests/`, run via `pytest`), and frontend AI-chat formatting (`client/tests/`, run via `npm test`). There is no integration or end-to-end suite and no CI wiring, so broader verification is still manual: health endpoints, direct API calls, `npm run build` and `npm run lint` for the frontend, and browser confirmation of UI changes. This remains a known gap — see §5.
 
 ---
 
@@ -149,7 +149,7 @@ Honest limitations of the system as it stands.
 
 | Gap | Impact | Notes |
 |---|---|---|
-| No automated tests | Regressions surface only through manual checking | `server` has a stub `test` script; `ml/test_setup.py` checks connectivity, not behaviour; Swift test targets are scaffolding |
+| No integration/e2e tests or CI | Regressions in cross-service flows surface only through manual checking | Unit tests exist per-service (`server/tests/`, `ml/tests/`, `client/tests/`); `ml/test_setup.py` checks DB connectivity, not model behaviour; Swift test targets are scaffolding; nothing runs these automatically on push |
 | No migration runner | Database state must be verified before assuming it | Migrations in `database/migrations/` are applied by hand |
 | No design token layer | Visual inconsistency; costly restyling | ~1,400 inline style objects, 146 distinct hex colours, no CSS custom properties |
 | Web/iOS brand divergence | The two clients do not look like one product | Web uses blue (`#3b82f6`, `#137fec`); iOS uses teal (`#127d8c`) |
@@ -163,7 +163,7 @@ Honest limitations of the system as it stands.
 
 ## 6. Deliverables
 
-Programme deliverables are documentation, wireframes, and presentation materials. The source repository is private and is not itself a deliverable.
+The source repository is the primary deliverable and source of truth for evaluation, alongside supporting documentation, wireframes, and the presentation materials listed below.
 
 - Architecture and scope documentation (this set)
 - Design specification: tokens, component library, screen designs

@@ -6,7 +6,7 @@ Diagrams and screenshots referenced from documentation.
 
 | File | Referenced by | Status |
 |---|---|---|
-| `overview.png` | `README.md:5` | **Missing** — currently renders as a broken image |
+| `overview.png` | `README.md:5` | Committed |
 | `ai_launchpad_double_diamond.svg` | [`../ai-assistant-problem-solution.md`](../ai-assistant-problem-solution.md) | Not yet produced |
 | `ai_launchpad_moscow.svg` | [`../ai-assistant-problem-solution.md`](../ai-assistant-problem-solution.md) | Not yet produced |
 

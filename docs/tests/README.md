@@ -2,7 +2,7 @@
 
 Manual test procedures and recorded results.
 
-The project has no automated test suite — see [`../SCOPE.md`](../SCOPE.md) §4.10. Verification is manual, and this directory holds the procedures that make it repeatable.
+Unit tests cover critical logic per service (`server/tests/`, `ml/tests/`, `client/tests/` — see [`../SCOPE.md`](../SCOPE.md) §4.10), but there is no integration/e2e suite or CI wiring. Verification of cross-service behaviour is manual, and this directory holds the procedures that make it repeatable.
 
 ---
 

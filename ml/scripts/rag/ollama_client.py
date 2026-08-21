@@ -331,7 +331,7 @@ def stream_chat(system_prompt: str, user_prompt: str, think: bool = True):
 # rag_service.py and clinical_tools.py can share it without a circular import
 # between them.
 _DOLLAR_AMOUNT = re.compile(r'\$\s?([\d,]+(?:\.\d+)?)')
-_DOLLAR_WORD = re.compile(r'\bUSD\b|\bU\.S\.\s?dollars?\b|\bdollars?\b', re.IGNORECASE)
+_DOLLAR_WORD = re.compile(r'\bUSD\b|\bU\.?S\.?\s?dollars?\b|\bdollars?\b', re.IGNORECASE)
 
 
 def normalize_currency(text: str) -> str:
