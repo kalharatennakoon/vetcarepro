@@ -64,11 +64,11 @@ const fetchDashboardData = async () => {
     const [petsResponse, customersResponse, appointmentsResponse, medicalRecordsResponse, billingResponse, lowStockResponse, diseaseCasesResponse] = await Promise.all([
       getPets({}),
       getCustomers({}),
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/appointments`, {
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/appointments`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       }),
       getMedicalRecords({ limit: 5 }),
-      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/billing`, {
+      axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/billing`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       }).catch(() => ({ data: { bills: [] } })),
       inventoryService.getLowStockItems().catch(() => ({ data: [] })),

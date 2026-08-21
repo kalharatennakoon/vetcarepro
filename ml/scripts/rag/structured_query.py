@@ -665,8 +665,12 @@ APPT_COUNT_NO_SHOW = re.compile(
 # way to ask about today's appointment count - got hijacked into a
 # status=scheduled query answering "0" instead of falling through to
 # APPT_COUNT_TIMEFRAME below, which is what the question actually meant.
+# The lookahead needs every preposition/determiner a timeframe can follow
+# "scheduled" with, not just some - "how many appointments are scheduled in
+# August?" was still being read as the status filter (answering 0) because
+# "in" wasn't in the list.
 APPT_COUNT_BY_STATUS = re.compile(
-    r'how many appointments?\b.*?\b(scheduled(?!\s+(?:for|on|this|next|today|tomorrow|yesterday)\b)|'
+    r'how many appointments?\b.*?\b(scheduled(?!\s+(?:for|on|in|at|during|between|from|this|next|today|tomorrow|yesterday)\b)|'
     r'confirmed|in[\s-]?progress|completed|cancelled|no[\s-]?show)\b',
     re.IGNORECASE
 )
@@ -811,15 +815,17 @@ BILLING_PAYMENT_STATUS_BY_CUSTOMER = re.compile(
 # "how much do I owe?", "have I paid my last bill?". Scoped to the caller's
 # own customer_id, never a name lookup (unlike the staff versions, which
 # must resolve an ambiguous customer name first).
-# "my ... balance" uses a bounded gap (not a literal "my balance"/"my
-# outstanding balance") so natural phrasing like "my CURRENT BILLING
-# balance" or "my account balance" still matches - a literal-adjacency
-# match missed exactly that phrasing, silently falling through to unscoped
-# RAG retrieval (wrong sources, a nonsense "please log in" answer) instead
-# of the deterministic SQL lookup below.
+# "my ... balance" only admits billing modifiers between "my" and "balance"
+# (current/outstanding/account/billing/total) rather than an arbitrary
+# {0,25}-char gap - the gap was wide enough to also swallow clinical
+# questions like "is my dog's calcium balance okay?" and "what is my pet's
+# electrolyte balance?", routing a health question into a billing SQL
+# lookup. The bounded modifier list still matches "my current billing
+# balance" and "my account balance", the phrasing this pattern exists for.
 OWNER_BALANCE = re.compile(
     r'\bhow\s+much\s+do\s+i\s+owe\b|\bwhat\s+do\s+i\s+owe\b|'
-    r'\bmy\b.{0,25}\bbalance\b|\bdo\s+i\s+owe\s+anything\b',
+    r'\bmy\s+(?:current\s+|outstanding\s+|account\s+|billing\s+|total\s+){0,2}balance\b|'
+    r'\bdo\s+i\s+owe\s+anything\b',
     re.IGNORECASE
 )
 

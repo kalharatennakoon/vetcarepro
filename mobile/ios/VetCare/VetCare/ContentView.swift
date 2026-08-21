@@ -4,7 +4,6 @@
 //
 //  Created by Kalhara Tennakoon on 2026-07-24.
 //
-
 import SwiftUI
 
 /// Destinations reachable from the welcome screen.
