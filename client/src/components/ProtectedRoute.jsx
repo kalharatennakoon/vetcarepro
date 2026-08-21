@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children, requiredRoles }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/staff/login" replace />;
   }
 
   // Force password change before accessing any other page

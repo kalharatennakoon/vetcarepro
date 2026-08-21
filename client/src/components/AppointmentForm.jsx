@@ -24,7 +24,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
   });
 
   const isEditMode = !!appointmentId;
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
   const { showSuccess } = useNotification();
 
   useEffect(() => {
@@ -126,6 +126,13 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
     }
     if (!formData.appointment_date) {
       setError('Please select an appointment date');
+      return false;
+    }
+    // The clinic is closed Sundays (see server/src/utils/appointmentRules.js,
+    // the source of truth this mirrors) - checked client-side for immediate
+    // feedback; the server rejects it too regardless of this check.
+    if (new Date(`${formData.appointment_date}T00:00:00`).getDay() === 0) {
+      setError('The clinic is closed on Sundays - please choose another date');
       return false;
     }
     if (!formData.appointment_time) {

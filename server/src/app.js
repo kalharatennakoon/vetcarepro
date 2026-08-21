@@ -22,8 +22,14 @@ app.use(cors({
 app.use(express.json()); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploaded files statically - split per-subdirectory rather than one
+// blanket /uploads mount, so lab-reports/ and pet-ai-photos/ (sensitive:
+// medical documents, AI diagnostic photos) stay reachable only through
+// their authenticated controllers (labReportRoutes.js's vetOrAdmin-gated
+// GET /api/lab-reports/:reportId/view, etc.) instead of an unauthenticated
+// static file path.
+app.use('/uploads/profile-images', express.static(path.join(__dirname, '../uploads/profile-images')));
+app.use('/uploads/pet-images', express.static(path.join(__dirname, '../uploads/pet-images')));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -43,6 +49,7 @@ app.get('/health', (req, res) => {
 
 // Import routes
 import authRoutes from './routes/authRoutes.js';
+import customerAuthRoutes from './routes/customerAuthRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import petRoutes from './routes/petRoutes.js';
@@ -54,6 +61,7 @@ import billingRoutes from './routes/billingRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import mlRoutes from './routes/mlRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 import emailRoutes from './routes/emailRoutes.js';
 import labReportRoutes from './routes/labReportRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
@@ -78,13 +86,15 @@ app.get('/api', (req, res) => {
       billing: '/api/billing',
       payments: '/api/payments',
       reports: '/api/reports',
-      ml: '/api/ml'
+      ml: '/api/ml',
+      ai: '/api/ai'
     }
   });
 });
 
 // Mount routes
 app.use('/api/auth', authRoutes);
+app.use('/api/customer-auth', customerAuthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/pets', petRoutes);
@@ -95,6 +105,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/ml', mlRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/lab-reports', labReportRoutes);

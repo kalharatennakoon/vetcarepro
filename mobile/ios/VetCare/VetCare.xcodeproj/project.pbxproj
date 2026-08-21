@@ -1,0 +1,701 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D99AEDC03015F07100D117CA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDBF3015F07000D117CA /* Theme.swift */; };
+		D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC13015F07400D117CA /* AuthMode.swift */; };
+		D99AEDC43015F08300D117CA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC33015F08300D117CA /* WelcomeView.swift */; };
+		D99AEDC63015F09600D117CA /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDC53015F09600D117CA /* LoginView.swift */; };
+		D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCB3015F41300D117CA /* APIConfig.swift */; };
+		D99AEDCE3015F41E00D117CA /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCD3015F41E00D117CA /* APIClient.swift */; };
+		D99AEDD03015F42B00D117CA /* AIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDCF3015F42B00D117CA /* AIModels.swift */; };
+		D99AEDD23015F42E00D117CA /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD13015F42E00D117CA /* AIService.swift */; };
+		D99AEDD43015F43000D117CA /* ChatMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD33015F43000D117CA /* ChatMessage.swift */; };
+		D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */; };
+		D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99AEDD73015F46A00D117CA /* GuestAIView.swift */; };
+		D99E86C63018AC8600B730BC /* PetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D99E86C53018AC8500B730BC /* PetDetailView.swift */; };
+		D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */; };
+		D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A6E27630197F4700ACE00D /* SetPasswordView.swift */; };
+		D9B6B47C3033E31E00BE01E6 /* PhotoGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */; };
+		D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */; };
+		D9D2205E301F49CD009B9CD1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */; };
+		D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D2205F301F82B3009B9CD1 /* ProfileView.swift */; };
+		D9EA01313016F67300FCFE3B /* CustomerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01303016F67300FCFE3B /* CustomerModels.swift */; };
+		D9EA01333016F67600FCFE3B /* CustomerAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */; };
+		D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01343016F68200FCFE3B /* CustomerSession.swift */; };
+		D9EA01373016F69500FCFE3B /* ChangePasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01363016F69500FCFE3B /* ChangePasswordView.swift */; };
+		D9EA01393016F6AF00FCFE3B /* PetOwnerHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA01383016F6AF00FCFE3B /* PetOwnerHomeView.swift */; };
+		D9EA013B3016FAB200FCFE3B /* PetOwnerChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA013A3016FAB200FCFE3B /* PetOwnerChatViewModel.swift */; };
+		D9EA013D3016FACA00FCFE3B /* PetOwnerAIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EA013C3016FACA00FCFE3B /* PetOwnerAIView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D9B9EC383013A4C200C8C883 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D9B9EC223013A4C100C8C883 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D9B9EC293013A4C100C8C883;
+			remoteInfo = VetCare;
+		};
+		D9B9EC423013A4C200C8C883 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D9B9EC223013A4C100C8C883 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D9B9EC293013A4C100C8C883;
+			remoteInfo = VetCare;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D99AEDBF3015F07000D117CA /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		D99AEDC13015F07400D117CA /* AuthMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthMode.swift; sourceTree = "<group>"; };
+		D99AEDC33015F08300D117CA /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		D99AEDC53015F09600D117CA /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		D99AEDCB3015F41300D117CA /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
+		D99AEDCD3015F41E00D117CA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		D99AEDCF3015F42B00D117CA /* AIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModels.swift; sourceTree = "<group>"; };
+		D99AEDD13015F42E00D117CA /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		D99AEDD33015F43000D117CA /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
+		D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestChatViewModel.swift; sourceTree = "<group>"; };
+		D99AEDD73015F46A00D117CA /* GuestAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuestAIView.swift; sourceTree = "<group>"; };
+		D99E86C53018AC8500B730BC /* PetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetDetailView.swift; sourceTree = "<group>"; };
+		D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerifyIdentityView.swift; sourceTree = "<group>"; };
+		D9A6E27630197F4700ACE00D /* SetPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetPasswordView.swift; sourceTree = "<group>"; };
+		D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGuidanceView.swift; sourceTree = "<group>"; };
+		D9B9EC2A3013A4C100C8C883 /* VetCare.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VetCare.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VetCareUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsView.swift; sourceTree = "<group>"; };
+		D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
+		D9D2205F301F82B3009B9CD1 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		D9EA01303016F67300FCFE3B /* CustomerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerModels.swift; sourceTree = "<group>"; };
+		D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerAuthService.swift; sourceTree = "<group>"; };
+		D9EA01343016F68200FCFE3B /* CustomerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomerSession.swift; sourceTree = "<group>"; };
+		D9EA01363016F69500FCFE3B /* ChangePasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangePasswordView.swift; sourceTree = "<group>"; };
+		D9EA01383016F6AF00FCFE3B /* PetOwnerHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetOwnerHomeView.swift; sourceTree = "<group>"; };
+		D9EA013A3016FAB200FCFE3B /* PetOwnerChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetOwnerChatViewModel.swift; sourceTree = "<group>"; };
+		D9EA013C3016FACA00FCFE3B /* PetOwnerAIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetOwnerAIView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D99AEDDA3015F66900D117CA /* Exceptions for "VetCare" folder in "VetCare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D9B9EC293013A4C100C8C883 /* VetCare */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D9B9EC2C3013A4C100C8C883 /* VetCare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D99AEDDA3015F66900D117CA /* Exceptions for "VetCare" folder in "VetCare" target */,
+			);
+			path = VetCare;
+			sourceTree = "<group>";
+		};
+		D9B9EC3A3013A4C200C8C883 /* VetCareTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VetCareTests;
+			sourceTree = "<group>";
+		};
+		D9B9EC443013A4C200C8C883 /* VetCareUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = VetCareUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D9B9EC273013A4C100C8C883 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC343013A4C200C8C883 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC3E3013A4C200C8C883 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D9B9EC213013A4C100C8C883 = {
+			isa = PBXGroup;
+			children = (
+				D9B9EC2C3013A4C100C8C883 /* VetCare */,
+				D9B9EC3A3013A4C200C8C883 /* VetCareTests */,
+				D9B9EC443013A4C200C8C883 /* VetCareUITests */,
+				D9B9EC2B3013A4C100C8C883 /* Products */,
+				D99AEDBF3015F07000D117CA /* Theme.swift */,
+				D99AEDC13015F07400D117CA /* AuthMode.swift */,
+				D99AEDC33015F08300D117CA /* WelcomeView.swift */,
+				D99AEDC53015F09600D117CA /* LoginView.swift */,
+				D99AEDCB3015F41300D117CA /* APIConfig.swift */,
+				D99AEDCD3015F41E00D117CA /* APIClient.swift */,
+				D99AEDCF3015F42B00D117CA /* AIModels.swift */,
+				D99AEDD13015F42E00D117CA /* AIService.swift */,
+				D99AEDD33015F43000D117CA /* ChatMessage.swift */,
+				D99AEDD53015F43900D117CA /* GuestChatViewModel.swift */,
+				D99AEDD73015F46A00D117CA /* GuestAIView.swift */,
+				D9EA01303016F67300FCFE3B /* CustomerModels.swift */,
+				D9EA01323016F67600FCFE3B /* CustomerAuthService.swift */,
+				D9EA01343016F68200FCFE3B /* CustomerSession.swift */,
+				D9EA01363016F69500FCFE3B /* ChangePasswordView.swift */,
+				D9EA01383016F6AF00FCFE3B /* PetOwnerHomeView.swift */,
+				D9EA013A3016FAB200FCFE3B /* PetOwnerChatViewModel.swift */,
+				D9EA013C3016FACA00FCFE3B /* PetOwnerAIView.swift */,
+				D99E86C53018AC8500B730BC /* PetDetailView.swift */,
+				D9A6E27430197F3800ACE00D /* VerifyIdentityView.swift */,
+				D9A6E27630197F4700ACE00D /* SetPasswordView.swift */,
+				D9D2205B301F499D009B9CD1 /* AppointmentsView.swift */,
+				D9D2205D301F49CD009B9CD1 /* BookAppointmentView.swift */,
+				D9D2205F301F82B3009B9CD1 /* ProfileView.swift */,
+				D9B6B47B3033E31E00BE01E6 /* PhotoGuidanceView.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		D9B9EC2B3013A4C100C8C883 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D9B9EC2A3013A4C100C8C883 /* VetCare.app */,
+				D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */,
+				D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D9B9EC293013A4C100C8C883 /* VetCare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9B9EC4B3013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCare" */;
+			buildPhases = (
+				D9B9EC263013A4C100C8C883 /* Sources */,
+				D9B9EC273013A4C100C8C883 /* Frameworks */,
+				D9B9EC283013A4C100C8C883 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D9B9EC2C3013A4C100C8C883 /* VetCare */,
+			);
+			name = VetCare;
+			packageProductDependencies = (
+			);
+			productName = VetCare;
+			productReference = D9B9EC2A3013A4C100C8C883 /* VetCare.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D9B9EC363013A4C200C8C883 /* VetCareTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9B9EC4E3013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCareTests" */;
+			buildPhases = (
+				D9B9EC333013A4C200C8C883 /* Sources */,
+				D9B9EC343013A4C200C8C883 /* Frameworks */,
+				D9B9EC353013A4C200C8C883 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D9B9EC393013A4C200C8C883 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D9B9EC3A3013A4C200C8C883 /* VetCareTests */,
+			);
+			name = VetCareTests;
+			packageProductDependencies = (
+			);
+			productName = VetCareTests;
+			productReference = D9B9EC373013A4C200C8C883 /* VetCareTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D9B9EC403013A4C200C8C883 /* VetCareUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D9B9EC513013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCareUITests" */;
+			buildPhases = (
+				D9B9EC3D3013A4C200C8C883 /* Sources */,
+				D9B9EC3E3013A4C200C8C883 /* Frameworks */,
+				D9B9EC3F3013A4C200C8C883 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D9B9EC433013A4C200C8C883 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D9B9EC443013A4C200C8C883 /* VetCareUITests */,
+			);
+			name = VetCareUITests;
+			packageProductDependencies = (
+			);
+			productName = VetCareUITests;
+			productReference = D9B9EC413013A4C200C8C883 /* VetCareUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D9B9EC223013A4C100C8C883 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					D9B9EC293013A4C100C8C883 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					D9B9EC363013A4C200C8C883 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = D9B9EC293013A4C100C8C883;
+					};
+					D9B9EC403013A4C200C8C883 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = D9B9EC293013A4C100C8C883;
+					};
+				};
+			};
+			buildConfigurationList = D9B9EC253013A4C100C8C883 /* Build configuration list for PBXProject "VetCare" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D9B9EC213013A4C100C8C883;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D9B9EC2B3013A4C100C8C883 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D9B9EC293013A4C100C8C883 /* VetCare */,
+				D9B9EC363013A4C200C8C883 /* VetCareTests */,
+				D9B9EC403013A4C200C8C883 /* VetCareUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D9B9EC283013A4C100C8C883 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC353013A4C200C8C883 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC3F3013A4C200C8C883 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D9B9EC263013A4C100C8C883 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9EA013D3016FACA00FCFE3B /* PetOwnerAIView.swift in Sources */,
+				D99AEDD23015F42E00D117CA /* AIService.swift in Sources */,
+				D9EA01313016F67300FCFE3B /* CustomerModels.swift in Sources */,
+				D99E86C63018AC8600B730BC /* PetDetailView.swift in Sources */,
+				D99AEDC63015F09600D117CA /* LoginView.swift in Sources */,
+				D9EA01373016F69500FCFE3B /* ChangePasswordView.swift in Sources */,
+				D9EA013B3016FAB200FCFE3B /* PetOwnerChatViewModel.swift in Sources */,
+				D9D2205E301F49CD009B9CD1 /* BookAppointmentView.swift in Sources */,
+				D99AEDC43015F08300D117CA /* WelcomeView.swift in Sources */,
+				D99AEDD83015F46A00D117CA /* GuestAIView.swift in Sources */,
+				D99AEDCC3015F41300D117CA /* APIConfig.swift in Sources */,
+				D9EA01353016F68200FCFE3B /* CustomerSession.swift in Sources */,
+				D9D22060301F82B3009B9CD1 /* ProfileView.swift in Sources */,
+				D9B6B47C3033E31E00BE01E6 /* PhotoGuidanceView.swift in Sources */,
+				D99AEDC23015F07400D117CA /* AuthMode.swift in Sources */,
+				D9D2205C301F499D009B9CD1 /* AppointmentsView.swift in Sources */,
+				D99AEDC03015F07100D117CA /* Theme.swift in Sources */,
+				D99AEDD43015F43000D117CA /* ChatMessage.swift in Sources */,
+				D9EA01333016F67600FCFE3B /* CustomerAuthService.swift in Sources */,
+				D99AEDCE3015F41E00D117CA /* APIClient.swift in Sources */,
+				D99AEDD03015F42B00D117CA /* AIModels.swift in Sources */,
+				D99AEDD63015F43900D117CA /* GuestChatViewModel.swift in Sources */,
+				D9A6E27730197F4700ACE00D /* SetPasswordView.swift in Sources */,
+				D9EA01393016F6AF00FCFE3B /* PetOwnerHomeView.swift in Sources */,
+				D9A6E27530197F3800ACE00D /* VerifyIdentityView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC333013A4C200C8C883 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D9B9EC3D3013A4C200C8C883 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D9B9EC393013A4C200C8C883 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D9B9EC293013A4C100C8C883 /* VetCare */;
+			targetProxy = D9B9EC383013A4C200C8C883 /* PBXContainerItemProxy */;
+		};
+		D9B9EC433013A4C200C8C883 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D9B9EC293013A4C100C8C883 /* VetCare */;
+			targetProxy = D9B9EC423013A4C200C8C883 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D9B9EC493013A4C200C8C883 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D9B9EC4A3013A4C200C8C883 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D9B9EC4C3013A4C200C8C883 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VetCare/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D9B9EC4D3013A4C200C8C883 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = VetCare/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D9B9EC4F3013A4C200C8C883 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCareTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VetCare.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VetCare";
+			};
+			name = Debug;
+		};
+		D9B9EC503013A4C200C8C883 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCareTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/VetCare.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/VetCare";
+			};
+			name = Release;
+		};
+		D9B9EC523013A4C200C8C883 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCareUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = VetCare;
+			};
+			name = Debug;
+		};
+		D9B9EC533013A4C200C8C883 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 588ZPKAXB6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vetcare.VetCareUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = VetCare;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D9B9EC253013A4C100C8C883 /* Build configuration list for PBXProject "VetCare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9B9EC493013A4C200C8C883 /* Debug */,
+				D9B9EC4A3013A4C200C8C883 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D9B9EC4B3013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9B9EC4C3013A4C200C8C883 /* Debug */,
+				D9B9EC4D3013A4C200C8C883 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D9B9EC4E3013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCareTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9B9EC4F3013A4C200C8C883 /* Debug */,
+				D9B9EC503013A4C200C8C883 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D9B9EC513013A4C200C8C883 /* Build configuration list for PBXNativeTarget "VetCareUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D9B9EC523013A4C200C8C883 /* Debug */,
+				D9B9EC533013A4C200C8C883 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D9B9EC223013A4C100C8C883 /* Project object */;
+}

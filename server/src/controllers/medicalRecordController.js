@@ -10,6 +10,7 @@ import {
   getMedicalRecordCount
 } from '../models/medicalRecordModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { ingestMedicalRecord, deleteChunk } from '../services/aiService.js';
 
 /**
  * Medical Record Controller
@@ -110,6 +111,11 @@ export const createNewMedicalRecord = async (req, res) => {
       userAgent: req.get('user-agent')
     });
 
+    // Keep the AI assistant's knowledge fresh. Fire-and-forget: ingestion
+    // failures (e.g. Ollama not running locally) must never block saving
+    // the medical record itself.
+    ingestMedicalRecord(newRecord.record_id).catch(() => {});
+
     res.status(201).json({
       status: 'success',
       message: 'Medical record created successfully',
@@ -150,6 +156,8 @@ export const updateMedicalRecordById = async (req, res) => {
       recordData,
       req.user.user_id
     );
+
+    ingestMedicalRecord(updatedRecord.record_id).catch(() => {});
 
     res.status(200).json({
       status: 'success',
@@ -197,6 +205,7 @@ export const deleteMedicalRecordById = async (req, res) => {
     });
 
     await deleteMedicalRecord(parseInt(id));
+    deleteChunk('medical_record', id).catch(() => {});
 
     res.status(200).json({
       status: 'success',

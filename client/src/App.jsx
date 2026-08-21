@@ -3,7 +3,8 @@ import ScrollToTop from './components/ScrollToTop';
 import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Welcome from './pages/Welcome';
-import Dashboard from './pages/Dashboard';
+import StaffLogin from './pages/StaffLogin';
+import DashboardRouter from './pages/DashboardRouter';
 import Appointments from './pages/Appointments';
 import AppointmentCreate from './pages/AppointmentCreate';
 import Patients from './pages/Patients';
@@ -35,6 +36,16 @@ import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import BreedingRegistry from './pages/BreedingRegistry';
 import SystemLogs from './pages/SystemLogs';
+import AIAssistant from './pages/AIAssistant';
+import GuestAIAssistant from './pages/GuestAIAssistant';
+import PetOwnerLogin from './pages/PetOwnerLogin';
+import PetOwnerVerifyIdentity from './pages/PetOwnerVerifyIdentity';
+import PetOwnerSetPassword from './pages/PetOwnerSetPassword';
+import PetOwnerChangePassword from './pages/PetOwnerChangePassword';
+import PetOwnerProfile from './pages/PetOwnerProfile';
+import PetOwnerAppointments from './pages/PetOwnerAppointments';
+import PetOwnerAIPhotoGuidance from './pages/PetOwnerAIPhotoGuidance';
+import PetOwnerProtectedRoute from './components/PetOwnerProtectedRoute';
 
 
 function App() {
@@ -54,17 +65,66 @@ function App() {
     <ScrollToTop />
     <Routes>
       {/* Public routes */}
-      <Route 
-        path="/" 
-        element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />} 
+      <Route
+        path="/"
+        element={!isAuthenticated ? <Welcome /> : <Navigate to="/dashboard" replace />}
       />
+
+      {/* Staff sign-in - separate URL from the public/pet-owner landing page */}
+      <Route
+        path="/staff/login"
+        element={!isAuthenticated ? <StaffLogin /> : <Navigate to="/dashboard" replace />}
+      />
+
+      {/* Guest AI Assistant - public, general pet care info only, no clinic data */}
+      <Route path="/guest/ai-assistant" element={<GuestAIAssistant />} />
+
+      {/* Pet Owner Portal - separate login/session from staff, scoped to own pets */}
+      <Route path="/pet-owner/login" element={<PetOwnerLogin />} />
+      <Route path="/pet-owner/verify-identity" element={<PetOwnerVerifyIdentity />} />
+      <Route path="/pet-owner/set-password" element={<PetOwnerSetPassword />} />
+      <Route
+        path="/pet-owner/change-password"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerChangePassword />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/profile"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerProfile />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/appointments"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerAppointments />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      <Route
+        path="/pet-owner/ai-visual-care"
+        element={
+          <PetOwnerProtectedRoute>
+            <PetOwnerAIPhotoGuidance />
+          </PetOwnerProtectedRoute>
+        }
+      />
+      {/* Old slugs from before the AI Photo Guidance -> AI Visual Care rename - kept as redirects for anyone with an old URL bookmarked. */}
+      <Route path="/pet-owner/ai-photo-guidance" element={<Navigate to="/pet-owner/ai-visual-care" replace />} />
+      <Route path="/pet-owner/ai-visual-care-guidance" element={<Navigate to="/pet-owner/ai-visual-care" replace />} />
 
       {/* Protected routes - All authenticated users */}
       <Route 
         path="/dashboard" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardRouter />
           </ProtectedRoute>
         } 
       />
@@ -92,6 +152,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Patients />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/ai-assistant" 
+        element={
+          <ProtectedRoute>
+            <AIAssistant />
           </ProtectedRoute>
         } 
       />

@@ -1,174 +1,21 @@
-import { useState, useRef, useEffect} from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useNotification } from '../context/NotificationContext';
 import '../styles/Welcome.css';
 
 const Welcome = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const errorRef = useRef(null);
-
-  useEffect(() => {
-    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [error]);
-  const [loading, setLoading] = useState(false);
-  const [showLoginForm, setShowLoginForm] = useState(false);
-const [showPassword, setShowPassword] = useState(false);
-
-  const { login } = useAuth();
-  const { showSuccess } = useNotification();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    const result = await login(email, password);
-
-    if (result.success) {
-      showSuccess(`Welcome back, ${result.user.first_name}!`);
-      navigate('/dashboard');
-    } else {
-      setError(result.message || 'Login failed. Please check your credentials.');
-    }
-
-    setLoading(false);
+  const handleStaffLoginClick = () => {
+    navigate('/staff/login');
   };
 
-  const handleLoginClick = () => {
-    setShowLoginForm(true);
+  const handleGuestClick = () => {
+    navigate('/guest/ai-assistant');
   };
 
-  if (showLoginForm) {
-    return (
-      <div style={styles.container}>
-        <header style={styles.header}>
-          <div style={styles.headerLeft}>
-            <div style={styles.logoIcon}>
-              <i className="fas fa-paw" style={styles.iconText}></i>
-            </div>
-            <div>
-              <h2 style={styles.logoTitle}>VetCare Pro</h2>
-              <p style={styles.logoSubtitle}>Pro Pet Animal Hospital</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => setShowLoginForm(false)} 
-            style={styles.backButton}
-            className="welcome-back-button"
-            type="button"
-          >
-            ← Back to Welcome
-          </button>
-        </header>
+  const handlePetOwnerClick = () => {
+    navigate('/pet-owner/login');
+  };
 
-        <main style={styles.mainLogin}>
-          <div style={styles.loginCard}>
-            <div style={styles.loginHeader}>
-              <div style={styles.badge}>
-                <i className="fas fa-lock" style={styles.badgeIcon}></i>
-                <span style={styles.badgeText}>Authorized Staff Only</span>
-              </div>
-              <h1 style={styles.loginTitle}>Welcome Back</h1>
-              <p style={styles.loginSubtitle}>
-                Please enter your details to sign in.
-              </p>
-            </div>
-
-            {error && (
-              <div ref={errorRef} style={styles.errorBox}>
-                <i className="fas fa-exclamation-triangle" style={styles.errorIcon}></i>
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} style={styles.form}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Email</label>
-                <div style={styles.inputWrapper}>
-                  <i className="fas fa-envelope" style={styles.inputIcon}></i>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@propet.lk"
-                    required
-                    style={styles.input}
-                    className="welcome-input"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Password</label>
-                <div style={styles.inputWrapper}>
-                  <i className="fas fa-lock" style={styles.inputIcon}></i>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    style={styles.input}
-                    className="welcome-input"
-                    disabled={loading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={styles.togglePasswordButton}
-                    className="welcome-toggle-password"
-                    disabled={loading}
-                  >
-                    <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit" 
-                style={{
-                  ...styles.submitButton,
-                  ...(loading ? styles.submitButtonDisabled : {})
-                }}
-                className="welcome-login-button"
-                disabled={loading}
-              >
-                {loading ? 'Logging in...' : 'Log In'}
-              </button>
-            </form>
-
-            <div style={styles.loginFooter}>
-              <p style={styles.supportText}>
-                Need help accessing your account?
-              </p>
-              <a href="mailto:support@vetcarepro.lk" style={styles.supportLink}>
-                <i className="fas fa-headset" style={styles.supportIconSmall}></i>
-                Contact Support
-              </a>
-              <p style={styles.footerText}>
-                All rights reserved.
-              </p>
-            </div>
-          </div>
-        </main>
-
-        <footer style={styles.footer}>
-          <div style={styles.footerContent}>
-            <p style={styles.footerCopyright}>
-              © 2026 VetCare Systems
-            </p>
-          </div>
-        </footer>
-      </div>
-    );
-  }
-
-  // Welcome Screen
   return (
     <div style={styles.container} className="welcome-container">
       <header style={styles.header} className="welcome-header">
@@ -193,8 +40,8 @@ const [showPassword, setShowPassword] = useState(false);
           <div style={styles.centerPanel} className="welcome-left-panel">
             <div style={styles.leftContent}>
               <div style={styles.badge}>
-                <i className="fas fa-check" style={styles.badgeIcon}></i>
-                <span style={styles.badgeText}>Authorized Staff Only</span>
+                <i className="fas fa-paw" style={styles.badgeIcon}></i>
+                <span style={styles.badgeText}>Trusted Veterinary Care</span>
               </div>
 
               <div style={styles.heroSection}>
@@ -203,28 +50,59 @@ const [showPassword, setShowPassword] = useState(false);
                   <span style={styles.heroHighlight}>VetCare Pro</span>
                 </h1>
                 <p style={styles.heroDescription} className="welcome-hero-description">
-                  The comprehensive management system for <span style={styles.hospitalName}><br />Pro Pet Animal Hospital</span>
+                  Your online portal for <span style={styles.hospitalName}><br />Pro Pet Animal Hospital</span>
                 </p>
                 <p style={styles.heroSubtext} className="welcome-hero-subtext">
-                  Securely manage patient records, pharmacy inventory, and appointments in one place.
+                  View your pet&rsquo;s records, book appointments, and chat with our AI assistant about pet care &mdash; all in one place.
                 </p>
               </div>
 
               <div style={styles.actionSection}>
                 <button
-                  style={styles.loginButton}
-                  className="welcome-login-button"
-                  onClick={handleLoginClick}
+                  style={styles.petOwnerButton}
+                  className="welcome-petowner-button"
+                  onClick={handlePetOwnerClick}
                   type="button"
                 >
-                  Log In to System
+                  <i className="fas fa-user" style={styles.guestButtonIcon}></i>
+                  Sign In &mdash; Pet Owner
                 </button>
+
+                <div style={styles.dividerRow}>
+                  <span style={styles.dividerLine}></span>
+                  <span style={styles.dividerText}>or</span>
+                  <span style={styles.dividerLine}></span>
+                </div>
+
+                <button
+                  style={styles.guestButton}
+                  className="welcome-guest-button"
+                  onClick={handleGuestClick}
+                  type="button"
+                >
+                  <i className="fas fa-comment-dots" style={styles.guestButtonIcon}></i>
+                  Continue as Guest
+                </button>
+                <div style={styles.aiHighlight}>
+                  <i className="fas fa-wand-magic-sparkles" style={styles.aiHighlightIcon}></i>
+                  <span style={styles.aiHighlightText} className="welcome-ai-highlight-text">
+                    Ask our <strong style={styles.aiHighlightStrong}>AI Assistant</strong> general pet care questions &mdash; no account needed.
+                  </span>
+                </div>
               </div>
 
               <div style={styles.disclaimer}>
                 <p style={styles.disclaimerText}>
-                  Unauthorized access is prohibited. <br />All activity on this system is monitored for security purposes.
+                  Your account and pet records are kept private and secure.
                 </p>
+                <button
+                  type="button"
+                  onClick={handleStaffLoginClick}
+                  style={styles.staffLoginLink}
+                  className="welcome-staff-login-link"
+                >
+                  Clinic Staff Login
+                </button>
               </div>
             </div>
           </div>
@@ -312,17 +190,6 @@ const styles = {
   },
   supportIcon: {
     fontSize: '1.25rem',
-  },
-  backButton: {
-    padding: '0.5rem 1.25rem',
-    backgroundColor: '#f1f5f9',
-    border: 'none',
-    borderRadius: '0.5rem',
-    color: '#475569',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
   },
   main: {
     flex: 1,
@@ -419,8 +286,19 @@ const styles = {
     paddingTop: '0.75rem',
     width: '100%',
   },
-  loginButton: {
+  forgotLink: {
+    fontSize: '0.875rem',
+    color: '#64748b',
+    textDecoration: 'none',
+    fontWeight: '500',
+    transition: 'color 0.2s',
+  },
+  petOwnerButton: {
     width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
     padding: '0.875rem 2rem',
     backgroundColor: '#137fec',
     color: '#ffffff',
@@ -433,12 +311,70 @@ const styles = {
     boxShadow: '0 10px 15px -3px rgba(19, 127, 236, 0.25)',
     transition: 'all 0.2s',
   },
-  forgotLink: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    textDecoration: 'none',
+  dividerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    margin: '0.25rem 0',
+  },
+  dividerLine: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  guestButton: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    padding: '0.875rem 2rem',
+    backgroundColor: '#ffffff',
+    color: '#137fec',
+    fontSize: '1.05rem',
+    fontWeight: '700',
+    letterSpacing: '0.01em',
+    border: '1.5px solid #137fec',
+    borderRadius: '0.75rem',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+  },
+  guestButtonIcon: {
+    fontSize: '1rem',
+  },
+  aiHighlight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.55rem',
+    padding: '0.65rem 0.9rem',
+    borderRadius: '0.75rem',
+    background: 'linear-gradient(135deg, #eef2ff 0%, #eff6ff 100%)',
+    border: '1px solid #c7d2fe',
+    marginTop: '0.4rem',
+  },
+  aiHighlightIcon: {
+    fontSize: '1.1rem',
+    color: '#6366f1',
+    flexShrink: 0,
+  },
+  aiHighlightText: {
+    fontSize: '0.8rem',
     fontWeight: '500',
-    transition: 'color 0.2s',
+    color: '#4338ca',
+    textAlign: 'left',
+    lineHeight: '1.4',
+    whiteSpace: 'nowrap',
+  },
+  aiHighlightStrong: {
+    color: '#4f46e5',
+    fontWeight: '800',
   },
   disclaimer: {
     borderTop: '1px solid #f1f5f9',
@@ -452,6 +388,17 @@ const styles = {
     lineHeight: '1.5',
     color: '#94a3b8',
     margin: 0,
+  },
+  staffLoginLink: {
+    marginTop: '0.75rem',
+    background: 'none',
+    border: 'none',
+    color: '#94a3b8',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    textDecoration: 'underline',
+    cursor: 'pointer',
+    padding: 0,
   },
   footer: {
     borderTop: '1px solid #e2e8f0',
@@ -485,184 +432,6 @@ const styles = {
   },
   securityIcon: {
     fontSize: '1rem',
-  },
-
-  // Login Form Specific Styles
-  mainLogin: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1rem 1rem',
-    maxHeight: 'calc(100vh - 140px)',
-    overflow: 'auto',
-  },
-  loginCard: {
-    width: '100%',
-    maxWidth: '420px',
-    backgroundColor: '#ffffff',
-    borderRadius: '1.25rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    padding: '1.75rem 1.75rem',
-    border: '1px solid #f1f5f9',
-  },
-  loginHeader: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-    marginBottom: '1.25rem',
-  },
-  loginTitle: {
-    fontSize: '1.625rem',
-    fontWeight: '900',
-    color: '#1e293b',
-    margin: 0,
-    letterSpacing: '-0.02em',
-  },
-  loginSubtitle: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    margin: 0,
-  },
-  errorBox: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.75rem',
-    backgroundColor: '#fef2f2',
-    border: '1px solid #fecaca',
-    borderRadius: '0.5rem',
-    color: '#991b1b',
-    fontSize: '0.8125rem',
-    marginBottom: '1rem',
-  },
-  errorIcon: {
-    fontSize: '1.25rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.875rem',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.375rem',
-  },
-  label: {
-    fontSize: '0.8125rem',
-    fontWeight: '600',
-    color: '#334155',
-  },
-  inputWrapper: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#f6f7f8',
-    border: '1px solid #e2e8f0',
-    borderRadius: '0.5rem',
-    overflow: 'hidden',
-    transition: 'all 0.2s',
-    height: '2.75rem',
-  },
-  inputIcon: {
-    paddingLeft: '0.875rem',
-    paddingRight: '0.5rem',
-    fontSize: '1.125rem',
-    color: '#64748b',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    padding: '0 1rem',
-    fontSize: '0.875rem',
-    border: 'none',
-    backgroundColor: 'transparent',
-    color: '#1e293b',
-    outline: 'none',
-    height: '100%',
-  },
-  togglePasswordButton: {
-    paddingRight: '0.875rem',
-    paddingLeft: '0.5rem',
-    fontSize: '1.125rem',
-    color: '#64748b',
-    backgroundColor: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'color 0.2s',
-    outline: 'none',
-  },
-  rememberForgotRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: '0.125rem',
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.375rem',
-    cursor: 'pointer',
-    userSelect: 'none',
-  },
-  checkbox: {
-    width: '0.875rem',
-    height: '0.875rem',
-    cursor: 'pointer',
-    accentColor: '#137fec',
-  },
-  checkboxText: {
-    fontSize: '0.8125rem',
-    color: '#64748b',
-  },
-  submitButton: {
-    width: '100%',
-    padding: '0.625rem 2rem',
-    backgroundColor: '#137fec',
-    color: '#ffffff',
-    fontSize: '0.875rem',
-    fontWeight: '700',
-    letterSpacing: '0.01em',
-    border: 'none',
-    borderRadius: '0.5rem',
-    cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(19, 127, 236, 0.25)',
-    transition: 'all 0.2s',
-    marginTop: '0.375rem',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-    cursor: 'not-allowed',
-  },
-  loginFooter: {
-    borderTop: '1px solid #f1f5f9',
-    paddingTop: '1rem',
-    marginTop: '1rem',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '0.625rem',
-    textAlign: 'center',
-  },
-  supportText: {
-    fontSize: '0.75rem',
-    color: '#64748b',
-    margin: 0,
-  },
-  supportIconSmall: {
-    fontSize: '0.9375rem',
-  },
-  footerText: {
-    fontSize: '0.625rem',
-    lineHeight: '1.4',
-    color: '#94a3b8',
-    margin: 0,
-    marginTop: '0.5rem',
   },
 };
 

@@ -57,3 +57,36 @@ export const deleteLabReport = async (reportId) => {
   const result = await pool.query(query, [reportId]);
   return result.rows[0] || null;
 };
+
+// Pet-owner-facing variants: joined against pets.customer_id so a report/pet
+// that doesn't belong to the requesting customer simply isn't found, rather
+// than needing a separate ownership check after the fact.
+export const getLabReportsForCustomerPet = async (petId, customerId) => {
+  const query = `
+    SELECT
+      lr.report_id,
+      lr.pet_id,
+      lr.report_name,
+      lr.report_type,
+      lr.file_type,
+      lr.notes,
+      lr.created_at
+    FROM lab_reports lr
+    JOIN pets p ON p.pet_id = lr.pet_id
+    WHERE lr.pet_id = $1 AND p.customer_id = $2
+    ORDER BY lr.created_at DESC
+  `;
+  const result = await pool.query(query, [petId, customerId]);
+  return result.rows;
+};
+
+export const getLabReportForCustomer = async (reportId, customerId) => {
+  const query = `
+    SELECT lr.*
+    FROM lab_reports lr
+    JOIN pets p ON p.pet_id = lr.pet_id
+    WHERE lr.report_id = $1 AND p.customer_id = $2
+  `;
+  const result = await pool.query(query, [reportId, customerId]);
+  return result.rows[0] || null;
+};

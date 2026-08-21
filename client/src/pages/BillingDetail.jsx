@@ -664,7 +664,7 @@ const BillingDetail = () => {
         {/* Print Footer - Only visible when printing */}
         <div className="print-footer" style={{display: 'none'}}>
           <strong>Pro Pet Animal Hospital</strong><br />
-          Mawathagama, Kurunegala, Sri Lanka<br />
+          Kurunegala, Sri Lanka<br />
           Phone: +94 37 123 4567 | Email: info@propet.lk<br />
           <small>Printed on: {new Date().toLocaleString('en-US', { 
             year: 'numeric', 

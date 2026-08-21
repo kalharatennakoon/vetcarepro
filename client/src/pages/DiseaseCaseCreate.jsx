@@ -67,7 +67,7 @@ const DiseaseCaseCreate = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { showSuccess } = useNotification();
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
   useEffect(() => {
     fetchPets();

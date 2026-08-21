@@ -261,6 +261,64 @@ export const getAppointmentCount = async () => {
 };
 
 /**
+ * Mark an appointment's reminder as sent (the AI assistant's on-demand
+ * "send a reminder" action is the first thing in the codebase to write to
+ * this column - the client-side 30-min auto-reminder never persists it).
+ */
+export const markReminderSent = async (appointmentId) => {
+  const query = 'UPDATE appointments SET reminder_sent = true WHERE appointment_id = $1 RETURNING *';
+  const result = await pool.query(query, [appointmentId]);
+  return result.rows[0];
+};
+
+/**
+ * Get a customer's own appointments (pet owner portal). Deliberately
+ * selects only their own booking's fields - no other customer's data is
+ * ever joined in, unlike the staff-facing getAllAppointments above.
+ */
+export const getAppointmentsByCustomer = async (customerId) => {
+  const query = `
+    SELECT
+      a.appointment_id, a.pet_id, a.appointment_date, a.appointment_time,
+      a.duration_minutes, a.appointment_type, a.reason, a.status,
+      a.cancellation_reason, a.created_at, a.veterinarian_id,
+      NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), '') as veterinarian_name,
+      p.pet_name, p.species
+    FROM appointments a
+    INNER JOIN pets p ON a.pet_id = p.pet_id
+    LEFT JOIN users u ON a.veterinarian_id = u.user_id
+    WHERE a.customer_id = $1
+    ORDER BY a.appointment_date DESC, a.appointment_time DESC
+  `;
+  const result = await pool.query(query, [customerId]);
+  return result.rows;
+};
+
+/**
+ * Count how many active appointments occupy a given date/time slot,
+ * regardless of which customer/vet they belong to. Used to enforce the
+ * v1 "max N concurrent appointments per slot" capacity rule for the pet
+ * owner portal without exposing whose appointments they are.
+ */
+export const getSlotBookingCount = async (date, time, excludeAppointmentId = null) => {
+  let query = `
+    SELECT COUNT(*) as count FROM appointments
+    WHERE appointment_date = $1
+    AND appointment_time = $2
+    AND status NOT IN ('cancelled', 'no_show')
+  `;
+  const params = [date, time];
+
+  if (excludeAppointmentId) {
+    query += ' AND appointment_id != $3';
+    params.push(excludeAppointmentId);
+  }
+
+  const result = await pool.query(query, params);
+  return parseInt(result.rows[0].count, 10);
+};
+
+/**
  * Check for appointment conflicts
  */
 export const checkAppointmentConflict = async (appointmentData, excludeId = null) => {

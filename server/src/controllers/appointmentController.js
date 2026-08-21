@@ -5,12 +5,12 @@ import {
   updateAppointment,
   deleteAppointment,
   updateAppointmentStatus,
-  getAppointmentCount,
-  checkAppointmentConflict
+  getAppointmentCount
 } from '../models/appointmentModel.js';
 import { getCustomerById } from '../models/customerModel.js';
 import { getPetById } from '../models/petModel.js';
 import { logAuditEntry } from '../models/diseaseCaseModel.js';
+import { validateRequestedSlot } from './customerAppointmentController.js';
 
 /**
  * Appointment Controller
@@ -97,6 +97,26 @@ export const createNewAppointment = async (req, res) => {
   try {
     const appointmentData = req.body;
 
+    // Clinic day and slot capacity - shared with the pet-owner self-service
+    // flow and the AI assistant's booking action via validateRequestedSlot,
+    // so all three booking paths agree on what's bookable. The 48-hour lead
+    // time and the clinic-hours window are both skipped here, same as the
+    // AI path, since staff routinely book same-day/emergency/after-hours
+    // visits - only the self-service portal enforces either.
+    const createSlotError = await validateRequestedSlot(
+      appointmentData.appointment_date,
+      appointmentData.appointment_time,
+      appointmentData.veterinarian_id || null,
+      null,
+      { enforceLeadTime: false, enforceClinicHours: false }
+    );
+    if (createSlotError) {
+      return res.status(createSlotError.status).json({
+        status: 'error',
+        message: createSlotError.message
+      });
+    }
+
     // Verify customer exists
     const customer = await getCustomerById(appointmentData.customer_id);
     if (!customer) {
@@ -119,17 +139,6 @@ export const createNewAppointment = async (req, res) => {
         status: 'error',
         message: 'Pet does not belong to the selected customer'
       });
-    }
-
-    // Check for appointment conflicts if veterinarian is assigned
-    if (appointmentData.veterinarian_id) {
-      const hasConflict = await checkAppointmentConflict(appointmentData);
-      if (hasConflict) {
-        return res.status(409).json({
-          status: 'error',
-          message: 'This time slot is already booked for the selected veterinarian'
-        });
-      }
     }
 
     const newAppointment = await createAppointment(appointmentData, req.user.user_id);
@@ -180,7 +189,13 @@ export const updateAppointmentById = async (req, res) => {
       });
     }
 
-    // If veterinarian, date, or time is being changed, check for conflicts
+    // If veterinarian, date, or time is being changed, re-validate the
+    // resulting slot - clinic day and capacity, same as create above. Hours
+    // and lead time are both skipped, same reasoning as create - this also
+    // matters for editing an existing appointment that predates strict hours
+    // enforcement (e.g. an 08:30 seed record) via a vet-only change: without
+    // the flag, re-validating against that unchanged time would 409 a
+    // reassignment that never touched the date or time at all.
     if (appointmentData.veterinarian_id || appointmentData.appointment_date || appointmentData.appointment_time) {
       const checkData = {
         veterinarian_id: appointmentData.veterinarian_id || existingAppointment.veterinarian_id,
@@ -188,14 +203,18 @@ export const updateAppointmentById = async (req, res) => {
         appointment_time: appointmentData.appointment_time || existingAppointment.appointment_time
       };
 
-      if (checkData.veterinarian_id) {
-        const hasConflict = await checkAppointmentConflict(checkData, id);
-        if (hasConflict) {
-          return res.status(409).json({
-            status: 'error',
-            message: 'This time slot is already booked for the selected veterinarian'
-          });
-        }
+      const updateSlotError = await validateRequestedSlot(
+        checkData.appointment_date,
+        checkData.appointment_time,
+        checkData.veterinarian_id || null,
+        id,
+        { enforceLeadTime: false, enforceClinicHours: false }
+      );
+      if (updateSlotError) {
+        return res.status(updateSlotError.status).json({
+          status: 'error',
+          message: updateSlotError.message
+        });
       }
     }
 
@@ -281,6 +300,15 @@ export const updateStatus = async (req, res) => {
       return res.status(404).json({
         status: 'error',
         message: 'Appointment not found'
+      });
+    }
+
+    // A veterinarian may only start/update appointments assigned to them -
+    // admin and receptionist manage the full schedule and are unrestricted.
+    if (req.user.role === 'veterinarian' && existingAppointment.veterinarian_id !== req.user.user_id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'You can only update appointments assigned to you'
       });
     }
 

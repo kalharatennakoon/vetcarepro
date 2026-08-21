@@ -14,6 +14,13 @@ Thumbs.db
 *.swo
 *~
 
+# ── Xcode ─────────────────────────────────────────────────────────────────────
+xcuserdata/
+*.xcuserstate
+DerivedData/
+*.xccheckout
+*.moved-aside
+
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
@@ -45,7 +52,8 @@ server/uploads/profile-images/
 server/uploads/lab-reports/
 
 # ── Docs ──────────────────────────────────────────────────────────────────────
-docs/insights/
+docs/insights/*
+!docs/insights/README.md
 docs/tests/*.json
 
 # ── Temporary / backup files ──────────────────────────────────────────────────
@@ -53,3 +61,18 @@ docs/tests/*.json
 .tmp/
 *.jsx.bak
 *.bak
+
+# ── Local task tracking ──────────────────────────────────────────────────────
+TODO.md
+
+# ── Graphify (regenerable code knowledge graph) ────────────────────────────────
+graphify-out/
+
+# ── Claude Code local settings ─────────────────────────────────────────────────
+# commands/ and skills/ are shared team tooling (the OpenSpec workflow) and
+# stay tracked; everything else under .claude/ - settings.local.json, and any
+# future personal/local file dropped in here - is untracked by default so it
+# never needs its own line added later.
+.claude/*
+!.claude/commands/
+!.claude/skills/

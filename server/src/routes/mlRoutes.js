@@ -6,7 +6,7 @@
 import express from 'express';
 import * as mlController from '../controllers/mlController.js';
 import { authenticate } from '../middleware/auth.js';
-import { authorize } from '../middleware/roleCheck.js';
+import { authorize, vetOrAdmin, staffOnly } from '../middleware/roleCheck.js';
 
 const router = express.Router();
 
@@ -63,12 +63,12 @@ router.get('/disease/trends', mlController.getDiseaseTrends);
 // @route   POST /api/ml/disease/pet-risk
 // @desc    Predict individual pet disease risk over time horizons
 // @access  Private (vet + admin)
-router.post('/disease/pet-risk', mlController.predictPetRisk);
+router.post('/disease/pet-risk', vetOrAdmin, mlController.predictPetRisk);
 
 // @route   POST /api/ml/disease/cancer-risk
 // @desc    Estimate cancer/tumor risk based on breed and age
 // @access  Private (vet + admin)
-router.post('/disease/cancer-risk', mlController.predictCancerRisk);
+router.post('/disease/cancer-risk', vetOrAdmin, mlController.predictCancerRisk);
 
 // @route   POST /api/ml/disease/outbreak-risk
 // @desc    Assess disease activity risk based on recent cases
@@ -88,7 +88,16 @@ router.get('/disease/outbreak-trend', mlController.getOutbreakTrend);
 // @route   GET /api/ml/disease/pandemic-risk
 // @desc    Assess pandemic/epidemic potential (?species=)
 // @access  Private (vet + admin)
-router.get('/disease/pandemic-risk', mlController.getPandemicRisk);
+router.get('/disease/pandemic-risk', vetOrAdmin, mlController.getPandemicRisk);
+
+// ============================================
+// AI Daily Briefing Route
+// ============================================
+
+// @route   GET /api/ml/briefing
+// @desc    Get the role-scoped AI Daily Briefing for the requesting staff user
+// @access  Private (staff - admin, veterinarian, receptionist)
+router.get('/briefing', staffOnly, mlController.getDailyBriefing);
 
 // ============================================
 // Sales Forecasting Routes (Phase 3)

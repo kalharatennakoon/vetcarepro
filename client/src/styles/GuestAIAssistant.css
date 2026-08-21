@@ -1,0 +1,114 @@
+.guest-ai-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f6f7f8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.guest-ai-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 1rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.guest-ai-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.guest-ai-logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.5rem;
+  background-color: #137fec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 14px rgba(19, 127, 236, 0.3);
+}
+
+.guest-ai-logo-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.guest-ai-mode-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #eef2f6;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.guest-ai-signin-btn {
+  padding: 0.5rem 1.1rem;
+  background-color: #137fec;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(19, 127, 236, 0.25);
+}
+
+.guest-ai-signin-btn:hover {
+  filter: brightness(1.05);
+}
+
+.guest-ai-main {
+  flex: 1;
+  width: 100%;
+  padding-top: 1.5rem;
+}
+
+.guest-ai-footer {
+  border-top: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  padding: 1.25rem 0;
+  margin-top: auto;
+  text-align: center;
+}
+
+.guest-ai-footer p {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  margin: 0;
+}
+
+/* The shared .ai-assistant-input-row button rule (AIAssistant.css) sets
+   horizontal padding only, with no explicit height - so the send button
+   ends up only as tall as its icon, not matched to the textarea's
+   0.7rem-padded height next to it, and the paper-plane icon isn't
+   centered within whatever height it does get. Scoped here (rather than
+   fixed in the shared rule) because the staff AIAssistant page already
+   overrides this same button via its own ai-modern-send-btn class with a
+   fixed 38px circle - editing the shared rule would fight that instead. */
+.guest-ai-page .ai-assistant-input-row button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6rem;
+}

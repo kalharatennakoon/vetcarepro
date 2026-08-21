@@ -175,7 +175,7 @@ function SystemLogs() {
     if (filters.date_to)    params.set('date_to',    filters.date_to);
     const token = localStorage.getItem('token');
     const query = params.toString();
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/audit-logs/export${query ? '?' + query : ''}`;
+    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/audit-logs/export${query ? '?' + query : ''}`;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {

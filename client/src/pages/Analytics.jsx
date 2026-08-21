@@ -19,6 +19,7 @@ import {
 } from '../services/predictionService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import ExplainWithAI from '../components/ExplainWithAI';
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('cases');
@@ -1186,6 +1187,8 @@ const Analytics = () => {
                           <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
                           <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
                         </div>
+
+                        <ExplainWithAI outputType="outbreak_risk" data={outbreakRisk} />
                         <p style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.45)', margin: '0.5rem 0 0' }}>
                           Score based on case volume, contagious rate, severity &amp; disease clustering (0–10).&nbsp;
                           <span style={{ fontWeight: '600' }}>Low: 0–2</span> ·&nbsp;
@@ -1383,6 +1386,10 @@ const Analytics = () => {
                     </div>
                   ) : null;
                 })()}
+
+                {salesData.forecast?.success !== false && salesData.forecast?.forecast && (
+                  <ExplainWithAI outputType="sales_forecast" data={salesData.forecast.forecast} />
+                )}
               </div>
             </div>
 
@@ -1512,6 +1519,10 @@ const Analytics = () => {
                     </div>
                   );
                 })()}
+
+                {inventoryData.reorderSuggestions?.success !== false && inventoryData.reorderSuggestions?.recommendations?.summary && (
+                  <ExplainWithAI outputType="inventory_forecast" data={inventoryData.reorderSuggestions.recommendations.summary} />
+                )}
               </div>
             </div>
 

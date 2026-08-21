@@ -14,6 +14,16 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 /**
+ * Default temporary password assigned to a new staff account when no
+ * password is supplied (admin-created user, admin password reset, or the AI
+ * assistant's register_staff action) - always paired with
+ * password_must_change: true, so this is never a standing credential.
+ * Single source of truth so the literal isn't duplicated across
+ * userController.js/aiController.js.
+ */
+export const DEFAULT_STAFF_PASSWORD = 'VetCare123';
+
+/**
  * Hash a plain text password
  * Converts plain password to secure hash (used when registering)
  * @param {string} password - Plain text password
@@ -69,6 +79,63 @@ export const verifyToken = (token) => {
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
+};
+
+/**
+ * Generate JWT token for a customer (pet owner)
+ * Kept separate from generateToken() so staff and pet-owner sessions never
+ * collide - `type: 'customer'` lets authenticateCustomer() distinguish this
+ * token from a staff token, and role is always 'pet_owner' for RAG scoping.
+ * @param {Object} customer - Customer object
+ * @returns {string} - JWT token
+ */
+export const generateCustomerToken = (customer) => {
+  const payload = {
+    customer_id: customer.customer_id,
+    first_name: customer.first_name,
+    last_name: customer.last_name,
+    email: customer.email,
+    phone: customer.phone,
+    type: 'customer',
+    role: 'pet_owner'
+  };
+
+  return jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRE || '7d' }
+  );
+};
+
+/**
+ * Generate a short-lived token authorizing a pet owner to set their password
+ * for the first time, issued after they verify their email + phone match an
+ * account (see verifyIdentity in customerAuthController.js). Deliberately a
+ * different token `type` than generateCustomerToken() so it can't be used to
+ * access the portal itself - only to call /customer-auth/set-password.
+ * @param {Object} customer - Customer object
+ * @returns {string} - JWT token, expires in 15 minutes
+ */
+export const generateCustomerSetupToken = (customer) => {
+  const payload = {
+    customer_id: customer.customer_id,
+    type: 'customer-setup'
+  };
+
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+};
+
+/**
+ * Verify a customer setup token (see generateCustomerSetupToken)
+ * @param {string} token - JWT token
+ * @returns {Object} - Decoded token payload
+ */
+export const verifyCustomerSetupToken = (token) => {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  if (decoded.type !== 'customer-setup') {
+    throw new Error('Invalid or expired setup token');
+  }
+  return decoded;
 };
 
 /**

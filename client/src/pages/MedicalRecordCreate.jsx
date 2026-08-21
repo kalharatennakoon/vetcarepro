@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect} from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import MedicalRecordForm from '../components/MedicalRecordForm';
 import Layout from '../components/Layout';
 
@@ -11,8 +11,10 @@ const MedicalRecordCreate = () => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const petId = searchParams.get('petId');
+  const appointmentData = location.state?.appointmentData || null;
+  const petId = appointmentData?.pet_id || searchParams.get('petId');
 
   const handleSuccess = (newRecord) => {
     navigate(`/medical-records/${newRecord.record_id}`);
@@ -38,6 +40,7 @@ const MedicalRecordCreate = () => {
       <div style={styles.formContainer}>
         <MedicalRecordForm
           petId={petId ? parseInt(petId) : null}
+          appointmentData={appointmentData}
           onSuccess={handleSuccess}
           onCancel={handleCancel}
         />

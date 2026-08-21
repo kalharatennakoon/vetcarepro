@@ -12,7 +12,7 @@ const SPECIES_LIST = [
 ];
 import Layout from '../components/Layout';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const BreedingRegistry = () => {
   const [pets, setPets] = useState([]);

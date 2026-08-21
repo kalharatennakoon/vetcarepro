@@ -1,9 +1,32 @@
+import crypto from 'crypto';
 import pool from '../config/database.js';
+import { hashPassword } from '../utils/authUtils.js';
 
 /**
  * Customer Model
  * Database operations for customers table
  */
+
+/**
+ * Normalizes a Sri Lankan phone number to the "+94XXXXXXXXX" format the rest
+ * of the app assumes (validation.js's regex, CustomerForm.jsx's placeholder).
+ * The manual create/update REST routes already reject anything else via
+ * express-validator before it reaches this model, but other write paths
+ * (e.g. the AI assistant's conversational intake) don't go through that
+ * middleware - normalizing here, at the one place all customer writes
+ * funnel through, guarantees consistency regardless of caller.
+ */
+const normalizePhone = (phone) => {
+  if (!phone) return phone;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10 && digits.startsWith('0')) {
+    return `+94${digits.slice(1)}`;
+  }
+  if (digits.length === 11 && digits.startsWith('94')) {
+    return `+${digits}`;
+  }
+  return phone;
+};
 
 /**
  * Get all customers with optional filters and search
@@ -92,15 +115,24 @@ export const getCustomerById = async (customerId) => {
 
 /**
  * Create new customer
+ * Every new customer starts with password_must_change = true and an
+ * unguessable random password hash - they can't log in with it directly.
+ * Portal access is unlocked by verifying identity (email + phone) via
+ * POST /api/customer-auth/verify-identity and then setting their own
+ * password via POST /api/customer-auth/set-password.
  */
 export const createCustomer = async (customerData, createdBy) => {
+  const randomPassword = crypto.randomBytes(32).toString('hex');
+  const defaultPasswordHash = await hashPassword(randomPassword);
+
   const query = `
     INSERT INTO customers (
       first_name, last_name, email, phone, alternate_phone,
       address, city, postal_code, nic, emergency_contact,
-      emergency_phone, preferred_contact_method, notes, created_by
+      emergency_phone, preferred_contact_method, notes, created_by,
+      password_hash, password_must_change
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
     RETURNING *
   `;
 
@@ -108,17 +140,18 @@ export const createCustomer = async (customerData, createdBy) => {
     customerData.first_name,
     customerData.last_name,
     customerData.email || null,
-    customerData.phone,
-    customerData.alternate_phone || null,
+    normalizePhone(customerData.phone),
+    normalizePhone(customerData.alternate_phone) || null,
     customerData.address || null,
     customerData.city || null,
     customerData.postal_code || null,
     customerData.nic || null,
     customerData.emergency_contact || null,
-    customerData.emergency_phone || null,
+    normalizePhone(customerData.emergency_phone) || null,
     customerData.preferred_contact_method || 'phone',
     customerData.notes || null,
-    createdBy
+    createdBy,
+    defaultPasswordHash
   ];
 
   const result = await pool.query(query, values);
@@ -150,12 +183,12 @@ export const updateCustomer = async (customerId, customerData, updatedBy) => {
   }
   if (customerData.phone) {
     fields.push(`phone = $${paramCount}`);
-    values.push(customerData.phone);
+    values.push(normalizePhone(customerData.phone));
     paramCount++;
   }
   if (customerData.alternate_phone !== undefined) {
     fields.push(`alternate_phone = $${paramCount}`);
-    values.push(customerData.alternate_phone);
+    values.push(normalizePhone(customerData.alternate_phone));
     paramCount++;
   }
   if (customerData.address !== undefined) {
@@ -185,7 +218,7 @@ export const updateCustomer = async (customerId, customerData, updatedBy) => {
   }
   if (customerData.emergency_phone !== undefined) {
     fields.push(`emergency_phone = $${paramCount}`);
-    values.push(customerData.emergency_phone);
+    values.push(normalizePhone(customerData.emergency_phone));
     paramCount++;
   }
   if (customerData.preferred_contact_method) {
@@ -275,6 +308,36 @@ export const nicExists = async (nic, excludeCustomerId = null) => {
 };
 
 /**
+ * Check if address exists (only when a value is provided)
+ */
+export const addressExists = async (address, excludeCustomerId = null) => {
+  if (!address) return false;
+  let query = 'SELECT 1 FROM customers WHERE address = $1';
+  const params = [address];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
+ * Check if emergency phone exists (only when a value is provided)
+ */
+export const emergencyPhoneExists = async (emergencyPhone, excludeCustomerId = null) => {
+  if (!emergencyPhone) return false;
+  let query = 'SELECT 1 FROM customers WHERE emergency_phone = $1';
+  const params = [emergencyPhone];
+  if (excludeCustomerId) {
+    query += ' AND customer_id <> $2';
+    params.push(excludeCustomerId);
+  }
+  const result = await pool.query(query, params);
+  return result.rows.length > 0;
+};
+
+/**
  * Get customer count
  */
 export const getCustomerCount = async () => {
@@ -335,4 +398,69 @@ export const hardDeleteCustomer = async (customerId) => {
   await pool.query('DELETE FROM pets WHERE customer_id = $1', [customerId]);
   const result = await pool.query('DELETE FROM customers WHERE customer_id = $1', [customerId]);
   return result.rowCount > 0;
+};
+
+// ============================================================
+// Pet-owner portal authentication
+// ============================================================
+
+/**
+ * Find an active customer by email OR phone (used as the portal username).
+ * Includes password_hash - only for use by the auth layer, never returned
+ * to the client directly (see sanitizeUser in authUtils.js).
+ */
+export const findCustomerByEmailOrPhone = async (identifier) => {
+  const query = `
+    SELECT * FROM customers
+    WHERE (email = $1 OR phone = $1) AND is_active = true
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [identifier]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Find an active customer whose email AND phone both match (used by the
+ * identity-verification step that unlocks first-time password setup).
+ * Requiring both to match, rather than either, is what confirms the
+ * requester is the same pet owner on file - not just someone who knows one
+ * of the two values.
+ */
+export const findCustomerByEmailAndPhone = async (email, phone) => {
+  const query = `
+    SELECT * FROM customers
+    WHERE email = $1 AND phone = $2 AND is_active = true
+    LIMIT 1
+  `;
+  const result = await pool.query(query, [email, phone]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Find a customer by ID for auth purposes (includes password_hash).
+ * Distinct from getCustomerById(), which also joins pets and is used by
+ * the customer-management screens, not the auth layer.
+ */
+export const findCustomerAuthById = async (customerId) => {
+  const result = await pool.query('SELECT * FROM customers WHERE customer_id = $1', [customerId]);
+  return result.rows[0] || null;
+};
+
+/**
+ * Update last_login timestamp after a successful portal login.
+ */
+export const updateCustomerLastLogin = async (customerId) => {
+  await pool.query('UPDATE customers SET last_login = NOW() WHERE customer_id = $1', [customerId]);
+};
+
+/**
+ * Update a customer's password hash. Optionally clears password_must_change
+ * (used by the first-login change-password flow).
+ */
+export const updateCustomerPassword = async (customerId, passwordHash, { clearMustChange = false } = {}) => {
+  const query = clearMustChange
+    ? 'UPDATE customers SET password_hash = $1, password_must_change = false WHERE customer_id = $2 RETURNING *'
+    : 'UPDATE customers SET password_hash = $1 WHERE customer_id = $2 RETURNING *';
+  const result = await pool.query(query, [passwordHash, customerId]);
+  return result.rows[0];
 };

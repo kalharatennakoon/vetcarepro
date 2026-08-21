@@ -364,7 +364,53 @@ export const validateCustomerUpdate = [
     .optional()
     .isBoolean()
     .withMessage('is_active must be a boolean'),
-  
+
+  handleValidationErrors
+];
+
+/**
+ * Pet owner portal self-service profile update rules. Deliberately only
+ * covers the fields a pet owner is allowed to self-edit (alternate phone,
+ * address, city, preferred contact, emergency contact) - name/email/
+ * phone/NIC are identity fields owners can't change themselves, so they
+ * have no validators here and the controller never reads them from the body.
+ */
+export const validateCustomerProfileUpdate = [
+  body('alternate_phone')
+    .optional({ checkFalsy: true })
+    .trim()
+    .custom((value) => !value || /^\+94[0-9]{9}$/.test(value))
+    .withMessage('Alternate phone must be in format +94XXXXXXXXX'),
+
+  body('address')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 255 })
+    .withMessage('Address must be 255 characters or fewer'),
+
+  body('city')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('City must be 50 characters or fewer'),
+
+  body('preferred_contact_method')
+    .optional()
+    .isIn(['phone', 'email', 'sms'])
+    .withMessage('Preferred contact method must be phone, email, or sms'),
+
+  body('emergency_contact')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Emergency contact must be 100 characters or fewer'),
+
+  body('emergency_phone')
+    .optional({ checkFalsy: true })
+    .trim()
+    .custom((value) => !value || /^\+94[0-9]{9}$/.test(value))
+    .withMessage('Emergency phone must be in format +94XXXXXXXXX'),
+
   handleValidationErrors
 ];
 
@@ -537,7 +583,86 @@ export const validateAppointmentUpdate = [
     .optional({ nullable: true })
     .isInt({ min: 1 })
     .withMessage('Veterinarian ID must be a valid number'),
-  
+
+  handleValidationErrors
+];
+
+/**
+ * Pet owner portal appointment validation rules
+ * Narrower than the staff validateAppointmentCreate/Update above - no
+ * customer_id/veterinarian_id/status fields, since owners can't set those.
+ * Also excludes surgery/emergency - those need clinical triage by staff,
+ * not self-service booking, so owners must call the clinic for those.
+ */
+const SELF_BOOKABLE_APPOINTMENT_TYPES = ['checkup', 'vaccination', 'follow_up', 'consultation'];
+
+export const validateCustomerAppointmentCreate = [
+  body('pet_id')
+    .notEmpty()
+    .withMessage('Pet ID is required')
+    .matches(/^PET-\d{4}$/)
+    .withMessage('Pet ID must be in format PET-XXXX'),
+
+  body('appointment_date')
+    .notEmpty()
+    .withMessage('Appointment date is required')
+    .isISO8601()
+    .withMessage('Appointment date must be a valid date'),
+
+  body('appointment_time')
+    .notEmpty()
+    .withMessage('Appointment time is required')
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Appointment time must be in HH:MM format'),
+
+  body('appointment_type')
+    .notEmpty()
+    .withMessage('Appointment type is required')
+    .isIn(SELF_BOOKABLE_APPOINTMENT_TYPES)
+    .withMessage('This appointment type requires calling the clinic directly'),
+
+  body('reason')
+    .trim()
+    .notEmpty()
+    .withMessage('Reason for visit is required')
+    .isLength({ min: 3, max: 255 })
+    .withMessage('Reason must be between 3 and 255 characters'),
+
+  body('veterinarian_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage('Veterinarian ID must be a valid number'),
+
+  handleValidationErrors
+];
+
+export const validateCustomerAppointmentUpdate = [
+  body('appointment_date')
+    .optional()
+    .isISO8601()
+    .withMessage('Appointment date must be a valid date'),
+
+  body('appointment_time')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Appointment time must be in HH:MM format'),
+
+  body('appointment_type')
+    .optional()
+    .isIn(SELF_BOOKABLE_APPOINTMENT_TYPES)
+    .withMessage('This appointment type requires calling the clinic directly'),
+
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 255 })
+    .withMessage('Reason must be between 3 and 255 characters'),
+
+  body('veterinarian_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isInt({ min: 1 })
+    .withMessage('Veterinarian ID must be a valid number'),
+
   handleValidationErrors
 ];
 

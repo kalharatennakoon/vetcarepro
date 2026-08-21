@@ -14,6 +14,8 @@ import {
   addFollowupRecord
 } from '../models/diseaseCaseModel.js';
 
+import { ingestDiseaseCase, deleteChunk } from '../services/aiService.js';
+
 /**
  * Disease Case Controller
  * Handles CRUD operations for disease cases
@@ -173,6 +175,8 @@ export const addDiseaseCase = async (req, res) => {
 
     const newCase = await createDiseaseCase(caseData, userId);
 
+    ingestDiseaseCase(newCase.case_id).catch(() => {});
+
     res.status(201).json({
       status: 'success',
       message: 'Disease case created successfully',
@@ -229,6 +233,8 @@ export const modifyDiseaseCase = async (req, res) => {
 
     const updatedCase = await updateDiseaseCase(id, caseData, userId);
 
+    ingestDiseaseCase(updatedCase.case_id).catch(() => {});
+
     res.status(200).json({
       status: 'success',
       message: 'Disease case updated successfully',
@@ -283,6 +289,7 @@ export const removeDiseaseCase = async (req, res) => {
     });
 
     await deleteDiseaseCase(id);
+    deleteChunk('disease_case', id).catch(() => {});
 
     res.status(200).json({
       status: 'success',
@@ -407,8 +414,13 @@ export const addCaseFollowup = async (req, res) => {
 export const getRecentCases = async (req, res) => {
   try {
     const { days = 30, limit = 10 } = req.query;
+    const parsedDays = parseInt(days, 10);
+    const parsedLimit = parseInt(limit, 10);
+    if (!Number.isInteger(parsedDays) || parsedDays <= 0 || !Number.isInteger(parsedLimit) || parsedLimit <= 0) {
+      return res.status(400).json({ status: 'error', message: 'days and limit must be positive integers' });
+    }
 
-    const cases = await getRecentDiseaseCases(parseInt(days), parseInt(limit));
+    const cases = await getRecentDiseaseCases(parsedDays, parsedLimit);
 
     res.status(200).json({
       status: 'success',

@@ -1,0 +1,578 @@
+.po-appt-success {
+  color: #059669;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+}
+
+.po-appt-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.po-appt-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.po-appt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.po-appt-field-wide {
+  grid-column: 1 / -1;
+}
+
+.po-appt-field label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.po-appt-field-hint {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.po-appt-field select,
+.po-appt-field input,
+.po-appt-field textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+  font-family: inherit;
+  background: #fff;
+}
+
+.po-appt-field select:focus,
+.po-appt-field input:focus,
+.po-appt-field textarea:focus {
+  outline: none;
+  border-color: #137fec;
+  box-shadow: 0 0 0 3px rgba(19, 127, 236, 0.12);
+}
+
+.po-appt-field textarea {
+  resize: vertical;
+}
+
+.po-appt-datepicker {
+  position: relative;
+}
+
+.po-appt-datepicker-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.po-appt-datepicker-trigger i {
+  color: #137fec;
+}
+
+.po-appt-datepicker-trigger:hover {
+  border-color: #137fec;
+}
+
+.po-appt-datepicker-placeholder {
+  color: #94a3b8;
+}
+
+.po-appt-datepicker-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: 270px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.65rem;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  padding: 0.85rem;
+}
+
+.po-appt-datepicker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.po-appt-datepicker-month {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.po-appt-datepicker-nav {
+  border: none;
+  background: #f1f5f9;
+  color: #334155;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.po-appt-datepicker-nav:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.po-appt-datepicker-nav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.po-appt-datepicker-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin-bottom: 0.2rem;
+}
+
+.po-appt-datepicker-weekdays span {
+  text-align: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.po-appt-datepicker-sun {
+  color: #dc2626 !important;
+}
+
+.po-appt-datepicker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.15rem;
+}
+
+.po-appt-datepicker-day {
+  aspect-ratio: 1;
+  border: none;
+  background: none;
+  border-radius: 0.4rem;
+  font-size: 0.78rem;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.po-appt-datepicker-day:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #137fec;
+}
+
+.po-appt-datepicker-day.selected {
+  background: #137fec;
+  color: #fff;
+  font-weight: 700;
+}
+
+.po-appt-datepicker-day.outside {
+  color: #cbd5e1;
+}
+
+.po-appt-datepicker-day.disabled {
+  color: #e2e8f0;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.po-appt-datepicker-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.po-appt-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+
+.po-appt-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.4rem;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.po-appt-slot-time {
+  line-height: 1.1;
+}
+
+.po-appt-slot-capacity {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #059669;
+}
+
+.po-appt-slot:hover:not(:disabled) {
+  border-color: #137fec;
+  color: #137fec;
+}
+
+.po-appt-slot.selected {
+  background: #137fec;
+  border-color: #137fec;
+  color: #fff;
+}
+
+.po-appt-slot.selected .po-appt-slot-capacity {
+  color: #dbeafe;
+}
+
+.po-appt-slot.full,
+.po-appt-slot:disabled {
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.po-appt-slot.full .po-appt-slot-time,
+.po-appt-slot:disabled .po-appt-slot-time {
+  text-decoration: line-through;
+}
+
+.po-appt-slot.full .po-appt-slot-capacity,
+.po-appt-slot:disabled .po-appt-slot-capacity {
+  color: #cbd5e1;
+}
+
+.po-appt-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.po-appt-btn {
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.po-appt-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.po-appt-btn-primary {
+  background: #137fec;
+  color: #fff;
+}
+
+.po-appt-btn-primary:hover:not(:disabled) {
+  background: #0f6bd0;
+}
+
+.po-appt-btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.po-appt-btn-secondary:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.po-appt-btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.po-appt-btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.po-appt-required {
+  color: #dc2626;
+}
+
+.po-appt-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.po-appt-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.po-appt-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.po-appt-modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.po-appt-modal-header h3 i {
+  color: #dc2626;
+}
+
+.po-appt-modal-close {
+  border: none;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.po-appt-modal-close:hover {
+  color: #334155;
+}
+
+.po-appt-modal-body {
+  padding: 1.1rem 1.25rem;
+}
+
+.po-appt-modal-body p {
+  margin: 0 0 0.6rem;
+  font-size: 0.875rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.po-appt-modal-note {
+  color: #94a3b8 !important;
+  font-size: 0.78rem !important;
+}
+
+.po-appt-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  background: #f8fafc;
+}
+
+.po-appt-list {
+  margin-top: 1.25rem;
+}
+
+.po-appt-list:first-child {
+  margin-top: 0;
+}
+
+.po-appt-list-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.po-appt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.6rem;
+  background: #fbfcfe;
+}
+
+.po-appt-row:last-child {
+  margin-bottom: 0;
+}
+
+.po-appt-row-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.po-appt-row-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  flex-shrink: 0;
+  border-right: 1px solid #e2e8f0;
+  padding-right: 1rem;
+}
+
+.po-appt-row-date-day {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: center;
+}
+
+.po-appt-row-date-time {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.po-appt-row-info {
+  min-width: 0;
+}
+
+.po-appt-row-pet {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.po-appt-row-type {
+  font-weight: 500;
+  color: #64748b;
+}
+
+.po-appt-row-reason {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  overflow-wrap: anywhere;
+}
+
+.po-appt-row-vet {
+  margin: 0.3rem 0 0;
+  font-size: 0.75rem;
+  color: #137fec;
+  font-weight: 600;
+}
+
+.po-appt-row-vet i {
+  margin-right: 0.3rem;
+}
+
+.po-appt-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.po-appt-status {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.po-appt-status-scheduled,
+.po-appt-status-confirmed {
+  background: #eff6ff;
+  color: #137fec;
+}
+
+.po-appt-status-in_progress {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.po-appt-status-completed {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.po-appt-status-cancelled,
+.po-appt-status-no_show {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.po-appt-btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #137fec;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.po-appt-btn-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.po-appt-btn-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.po-appt-btn-link-danger {
+  color: #dc2626;
+}
+
+.po-appt-locked-note {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .po-appt-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .po-appt-row-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

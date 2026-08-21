@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:5001/api/ml';
+const ML_API_URL = import.meta.env.VITE_ML_API_URL || 'http://localhost:3000/api/ml';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const getAuthHeaders = () => ({

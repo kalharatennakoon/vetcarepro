@@ -1,0 +1,396 @@
+/* Modern restyle for the staff AI Assistant page only. Scoped entirely
+   under ai-modern-* classes (set only in pages/AIAssistant.jsx) so the
+   guest assistant and the Explain-with-AI widget, which share the base
+   classes in AIAssistant.css, are unaffected. */
+
+.ai-modern-page {
+  max-width: 1120px;
+  background: transparent;
+}
+
+/* Header */
+
+.ai-modern-header {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-modern-header-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 6px 16px -4px rgba(79, 70, 229, 0.45);
+}
+
+.ai-modern-title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
+}
+
+.ai-modern-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Chat container */
+
+.ai-modern-chat {
+  background: #ffffff;
+  border: 1px solid #f1f2f6;
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 16px 40px -20px rgba(15, 23, 42, 0.12);
+  padding: 1.5rem;
+  gap: 1.1rem;
+  /* Taller than the shared .ai-assistant-chat default (55vh) - admin
+     reasoning blocks add a lot of extra content per message, so the
+     staff page benefits from more vertical room before it scrolls. */
+  min-height: 480px;
+  max-height: 78vh;
+}
+
+/* Messages + avatars */
+
+.ai-modern-message {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+/* justify-content: flex-end (from the base .ai-message-user rule) combined
+   with flex-direction: row-reverse would put flex-end on the visual LEFT
+   (row-reverse flips main-start/main-end), pushing user bubbles the wrong
+   way - use `order` on the children instead so the row stays normal and
+   flex-end reliably means the physical right. */
+.ai-message-user.ai-modern-message .ai-modern-avatar {
+  order: 2;
+}
+
+.ai-message-user.ai-modern-message .ai-modern-bubble {
+  order: 1;
+}
+
+.ai-modern-avatar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  overflow: hidden;
+}
+
+.ai-modern-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-modern-avatar span {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ai-modern-avatar-assistant {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+}
+
+.ai-modern-avatar-user {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.ai-modern-bubble {
+  max-width: calc(100% - 3rem);
+  border-radius: 16px;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  box-shadow: none;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.ai-message-assistant .ai-modern-bubble {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  color: #1f2937;
+}
+
+.ai-message-user .ai-modern-bubble {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+}
+
+/* Intro/guidance message - de-emphasized so it reads as a small helper
+   note rather than a full reply. */
+.ai-modern-intro {
+  font-size: 0.88rem;
+  color: #6b7280;
+  background: #fafafa;
+}
+
+.ai-modern-loading {
+  color: #9ca3af;
+}
+
+/* Headings/lists rendered inside a modern bubble via formatMessageContent */
+.ai-modern-bubble .ai-message-heading {
+  color: inherit;
+}
+
+.ai-modern-bubble .ai-message-list {
+  font-size: 0.98rem;
+}
+
+/* Sources */
+
+.ai-modern-sources {
+  font-size: 0.74rem;
+  color: #9ca3af;
+}
+
+.ai-modern-source-tag {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 500;
+}
+
+.ai-modern-sources-general {
+  color: #9ca3af;
+}
+
+/* Model reasoning (admin-only) */
+
+.ai-modern-reasoning {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.ai-modern-reasoning-summary {
+  cursor: pointer;
+  color: #9ca3af;
+  font-weight: 500;
+  list-style: none;
+}
+
+.ai-modern-reasoning-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ai-modern-reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-reasoning-thinking-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-style: italic;
+  color: #1f2937;
+}
+
+.ai-reasoning-chevron {
+  color: #9ca3af;
+  font-size: 0.68rem;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.ai-modern-reasoning[open] > .ai-modern-reasoning-summary .ai-reasoning-chevron {
+  transform: rotate(180deg);
+}
+
+.ai-modern-reasoning-text {
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #4b5563;
+  white-space: pre-wrap;
+  /* A streamed reasoning trace can run to hundreds of tokens - without a
+     cap here the panel just kept growing taller as text arrived, pushing
+     the rest of the conversation down the page. Fixed height + its own
+     scrollbar instead, so the surrounding chat layout stays put. */
+  max-height: 16rem;
+  overflow-y: auto;
+  /* Without this, scrolling this inner box to its top/bottom edge chains
+     into the outer .ai-modern-chat scroll container (AIAssistant.jsx's
+     chatContainerRef) - a mouse-wheel scroll that runs out of reasoning
+     text to scroll keeps going and scrolls the whole conversation instead
+     of stopping, which also fires handleChatScroll and can flip
+     stickToBottomRef off from a scroll the admin only meant to happen
+     inside this box. Containing it here keeps the two scroll regions
+     independent, the way the reasoning panel is meant to behave. */
+  overscroll-behavior: contain;
+}
+
+/* Action confirm/cancel */
+
+.ai-modern-action-confirm {
+  gap: 0.5rem;
+}
+
+.ai-modern-btn-confirm,
+.ai-modern-btn-cancel {
+  border-radius: 999px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.ai-modern-btn-confirm {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  box-shadow: 0 4px 12px -4px rgba(79, 70, 229, 0.5);
+}
+
+.ai-modern-btn-confirm:not(:disabled):hover,
+.ai-modern-btn-cancel:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ai-modern-btn-cancel {
+  background: #f3f4f6;
+}
+
+/* Disambiguation options */
+
+.ai-modern-option-btn {
+  border-radius: 999px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.ai-modern-option-btn:not(:disabled):hover {
+  background: #e0e7ff;
+  transform: translateY(-1px);
+}
+
+/* Error banner */
+
+.ai-modern-error {
+  border-radius: 12px;
+}
+
+/* Suggested prompts */
+
+.ai-modern-prompts {
+  gap: 0.5rem;
+}
+
+/* Veterinarian's 4 prompts are full sentences of uneven length - left-aligned
+   flex-wrap left them ragged, with rows starting/ending at different widths.
+   A 2-column grid keeps both columns equal width so rows line up cleanly. */
+.ai-modern-prompts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.ai-modern-prompts-grid .ai-modern-prompt-btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .ai-modern-prompts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ai-modern-prompt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.84rem;
+  color: #4b5563;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-modern-prompt-btn i {
+  color: #7c3aed;
+  font-size: 0.72rem;
+}
+
+.ai-modern-prompt-btn:hover {
+  border-color: #c7d2fe;
+  color: #4338ca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -4px rgba(79, 70, 229, 0.3);
+}
+
+/* Input row - unified pill */
+
+.ai-modern-input-row {
+  align-items: center;
+  gap: 0;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.3rem 0.3rem 0.3rem 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-modern-input-row:focus-within {
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.ai-modern-input {
+  border: none !important;
+  outline: none;
+  padding: 0.6rem 0.5rem !important;
+  font-size: 0.95rem;
+  background: transparent;
+  border-radius: 0 !important;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.ai-modern-send-btn {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.ai-modern-send-btn:not(:disabled):hover {
+  transform: scale(1.05);
+}
+
+@media (max-width: 640px) {
+  .ai-modern-bubble {
+    max-width: calc(100% - 2.2rem);
+  }
+}

@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 const CLINIC_NAME = 'Pro Pet Animal Hospital';
 const CLINIC_EMAIL = 'contact@propet.lk';
 const CLINIC_PHONE = process.env.CLINIC_PHONE || '+94 37 123 4567';
-const CLINIC_ADDRESS = 'Mawathagama, Kurunegala, Sri Lanka';
+const CLINIC_ADDRESS = 'Kurunegala, Sri Lanka';
 
 const createTransporter = () => {
   return nodemailer.createTransport({
@@ -15,6 +15,35 @@ const createTransporter = () => {
       pass: process.env.SMTP_PASS
     }
   });
+};
+
+const escapeHtml = (text) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Converts the assistant's lightweight markdown - the same convention
+// client/src/utils/aiChatFormat.jsx already renders in the chat UI
+// (**bold**, "- " bullets, blank-line-separated paragraphs) - into real
+// HTML. Without this, AI-generated text (e.g. aftercare instructions) shows
+// up in the recipient's inbox with literal "**" characters and dashes,
+// since raw markdown isn't valid/rendered HTML.
+const markdownToEmailHtml = (text) => {
+  const formatInline = (line) => escapeHtml(line).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  return text.trim().split(/\n\s*\n/).map((block) => {
+    const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+    const isBulletList = lines.length > 0 && lines.every((l) => /^[-*]\s+/.test(l));
+    const isNumberedList = lines.length > 0 && lines.every((l) => /^\d+[.)]\s+/.test(l));
+
+    if (isBulletList) {
+      const items = lines.map((l) => `<li>${formatInline(l.replace(/^[-*]\s+/, ''))}</li>`).join('');
+      return `<ul style="margin:8px 0; padding-left:20px;">${items}</ul>`;
+    }
+    if (isNumberedList) {
+      const items = lines.map((l) => `<li>${formatInline(l.replace(/^\d+[.)]\s+/, ''))}</li>`).join('');
+      return `<ol style="margin:8px 0; padding-left:20px;">${items}</ol>`;
+    }
+    return `<p style="margin:0 0 12px;">${lines.map(formatInline).join('<br>')}</p>`;
+  }).join('');
 };
 
 const baseTemplate = (bodyContent) => `
@@ -77,7 +106,7 @@ export const sendAppointmentConfirmation = async ({ to, customerName, petName, a
       ${reason ? `<tr><td>Reason</td><td>${reason}</td></tr>` : ''}
     </table>
     <p>Please arrive 10 minutes before your scheduled time. If you need to reschedule or cancel, contact us at least 24 hours in advance.</p>
-    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong><br>${note}</p></div>` : ''}
+    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0 0 4px; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong></p><div style="font-size:13px; color:#374151;">${markdownToEmailHtml(note)}</div></div>` : ''}
     <p style="color:#6b7280; font-size:13px;">If you have any questions, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
   `);
 
@@ -85,6 +114,32 @@ export const sendAppointmentConfirmation = async ({ to, customerName, petName, a
     from: `"${CLINIC_NAME}" <${CLINIC_EMAIL}>`,
     to,
     subject: `Appointment Confirmation – ${appointmentDate} at ${appointmentTime}`,
+    html
+  });
+};
+
+export const sendAppointmentReminder = async ({ to, customerName, petName, appointmentDate, appointmentTime, vetName, reason }) => {
+  const transporter = createTransporter();
+
+  const html = baseTemplate(`
+    <h2>Appointment Reminder</h2>
+    <p>Dear ${customerName},</p>
+    <p>This is a friendly reminder of your upcoming appointment at <strong>${CLINIC_NAME}</strong>.</p>
+    <table class="info-table">
+      <tr><td>Patient (Pet)</td><td>${petName}</td></tr>
+      <tr><td>Date</td><td>${appointmentDate}</td></tr>
+      <tr><td>Time</td><td>${appointmentTime}</td></tr>
+      ${vetName ? `<tr><td>Veterinarian</td><td>${vetName}</td></tr>` : ''}
+      ${reason ? `<tr><td>Reason</td><td>${reason}</td></tr>` : ''}
+    </table>
+    <p>Please arrive 10 minutes before your scheduled time. If you need to reschedule or cancel, contact us as soon as possible.</p>
+    <p style="color:#6b7280; font-size:13px;">If you have any questions, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
+  `);
+
+  await transporter.sendMail({
+    from: `"${CLINIC_NAME}" <${CLINIC_EMAIL}>`,
+    to,
+    subject: `Appointment Reminder – ${appointmentDate} at ${appointmentTime}`,
     html
   });
 };
@@ -124,7 +179,7 @@ export const sendBillEmail = async ({ to, customerName, billId, billDate, items,
       <tr><td>Amount Paid</td><td>Rs. ${parseFloat(paidAmount || 0).toFixed(2)}</td></tr>
       <tr><td>Balance Due</td><td style="color:${parseFloat(balanceAmount) > 0 ? '#ef4444' : '#16a34a'}">Rs. ${parseFloat(balanceAmount || 0).toFixed(2)}</td></tr>
     </table>
-    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong><br>${note}</p></div>` : ''}
+    ${note ? `<div style="margin:16px 0; padding:12px 16px; background:#f9fafb; border-left:3px solid #3b82f6; border-radius:4px;"><p style="margin:0 0 4px; font-size:13px; color:#374151;"><strong>Note from the clinic:</strong></p><div style="font-size:13px; color:#374151;">${markdownToEmailHtml(note)}</div></div>` : ''}
     <p style="color:#6b7280; font-size:13px;">For any billing queries, please contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
   `);
 
@@ -154,7 +209,7 @@ export const sendLabReportEmail = async ({ to, ownerName, petName, reportName, r
       <tr><td>Report Type</td><td>${formattedType}</td></tr>
       ${formattedDate ? `<tr><td>Date</td><td>${formattedDate}</td></tr>` : ''}
     </table>
-    ${message ? `<p><strong>Message from your veterinary team:</strong></p><div style="background:#f0f9ff; border-left:4px solid #2563eb; padding:12px 16px; margin:16px 0; color:#1e40af; white-space:pre-line; font-size:14px;">${message}</div>` : ''}
+    ${message ? `<p><strong>Message from your veterinary team:</strong></p><div style="background:#f0f9ff; border-left:4px solid #2563eb; padding:12px 16px; margin:16px 0; color:#1e40af; font-size:14px;">${markdownToEmailHtml(message)}</div>` : ''}
     <hr class="divider">
     <p style="color:#6b7280; font-size:13px;">This report was sent by <strong>${senderName}</strong> at ${CLINIC_NAME}.<br>
     For any questions, contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>
@@ -175,7 +230,7 @@ export const sendCustomEmail = async ({ to, customerName, subject, message, send
   const html = baseTemplate(`
     <h2>${subject}</h2>
     <p>Dear ${customerName},</p>
-    <div style="white-space: pre-line; line-height: 1.8;">${message}</div>
+    <div style="line-height: 1.8;">${markdownToEmailHtml(message)}</div>
     <hr class="divider">
     <p style="color:#6b7280; font-size:13px;">This message was sent by <strong>${senderName}</strong> at ${CLINIC_NAME}.<br>
     For enquiries, contact us at <a href="mailto:${CLINIC_EMAIL}">${CLINIC_EMAIL}</a>.</p>

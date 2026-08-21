@@ -1,0 +1,376 @@
+"""
+RAG Ingestion
+Pulls source records from Postgres, converts them to text chunks, embeds them
+via Ollama, and upserts into rag_chunks. Covers six source types: medical
+records, disease cases, lab reports, vaccinations, public FAQs, and staff FAQs.
+
+Full chunk lifecycle a new source_type must follow:
+  - CREATE/UPDATE: call the matching ingest_*(id) after the write, from the
+    Node controller (see server/src/services/aiService.js's ingest* wrappers
+    and their call sites). Upsert-by-(source_type, source_id) makes this
+    idempotent, so re-ingesting on every update is safe and cheap.
+  - DELETE: call delete_chunk(source_type, source_id) from the delete
+    handler. rag_chunks has no FK to medical_records/disease_cases/
+    lab_reports/vaccinations (only to pets/customers, which cascade on
+    their own delete), so nothing removes a chunk automatically - skipping
+    this step leaves the assistant citing data that no longer exists.
+  - RENAME/FIELD CHANGE: if the chunk text embeds a mutable field from a
+    joined table (e.g. chunk_medical_record embeds pets.pet_name), a rename
+    of that field elsewhere doesn't update already-ingested chunks - see
+    reingest_pet() for the pattern (re-run every ingest_*(id) for a given
+    pet after its name/species/breed changes).
+
+Add a new source_type by adding a loader + chunker (chunking.py) and a new
+ingest_*() function below, then wiring create/update/delete call sites in
+the Node layer per the lifecycle above.
+"""
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from config.db_connection import get_raw_db_connection
+from scripts.rag.chunking import chunk_medical_record, chunk_disease_case, chunk_lab_report, chunk_vaccination, chunk_faq, chunk_staff_faq
+from scripts.rag.faq_data import FAQS, STAFF_FAQS
+from scripts.rag.ollama_client import embed_text, OllamaError
+
+
+def _upsert_chunk(conn, chunk: dict):
+    """Insert or update a single rag_chunks row, keyed on (source_type, source_id)."""
+    embedding = embed_text(chunk['content'])
+    # pgvector expects a string like '[0.1,0.2,...]'
+    embedding_literal = '[' + ','.join(str(x) for x in embedding) + ']'
+
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO rag_chunks (source_type, source_id, pet_id, customer_id, content, embedding, metadata, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s::vector, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (source_type, source_id)
+            DO UPDATE SET
+                content = EXCLUDED.content,
+                embedding = EXCLUDED.embedding,
+                metadata = EXCLUDED.metadata,
+                pet_id = EXCLUDED.pet_id,
+                customer_id = EXCLUDED.customer_id,
+                updated_at = CURRENT_TIMESTAMP
+        """, (
+            chunk['source_type'], chunk['source_id'], chunk.get('pet_id'),
+            chunk.get('customer_id'), chunk['content'], embedding_literal,
+            _to_jsonb(chunk.get('metadata', {}))
+        ))
+    conn.commit()
+
+
+def _to_jsonb(d: dict) -> str:
+    import json
+    return json.dumps(d)
+
+
+def delete_chunk(source_type: str, source_id) -> bool:
+    """
+    Remove a single rag_chunks row, keyed on (source_type, source_id).
+
+    Call this from a record's delete handler so the assistant stops citing
+    data that no longer exists in the app (rag_chunks has no FK to
+    medical_records/disease_cases/lab_reports/vaccinations, so nothing does
+    this automatically the way pet/customer deletion cascades do).
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM rag_chunks WHERE source_type = %s AND source_id = %s",
+                (source_type, str(source_id))
+            )
+            deleted = cur.rowcount > 0
+        conn.commit()
+        return deleted
+    finally:
+        conn.close()
+
+
+def ingest_medical_records(record_id: int = None) -> dict:
+    """
+    Ingest medical records into rag_chunks.
+
+    Args:
+        record_id: if given, only (re)ingest this single record (used for
+                   on-write ingestion right after a create/update). If None,
+                   backfills all existing medical records.
+
+    Returns:
+        dict summary: {ingested: int, failed: int, errors: [...]}
+    """
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        query = """
+            SELECT
+                mr.record_id, mr.pet_id, p.customer_id, p.pet_name, p.species, p.breed,
+                mr.visit_date, mr.chief_complaint, mr.symptoms, mr.diagnosis,
+                mr.treatment, mr.prescription, mr.follow_up_required, mr.follow_up_date,
+                (u.first_name || ' ' || u.last_name) AS veterinarian_name
+            FROM medical_records mr
+            JOIN pets p ON p.pet_id = mr.pet_id
+            LEFT JOIN users u ON u.user_id = mr.veterinarian_id
+        """
+        params = ()
+        if record_id is not None:
+            query += " WHERE mr.record_id = %s"
+            params = (record_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+        for row in rows:
+            try:
+                chunk = chunk_medical_record(row)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+                print(f'  [{ingested + failed}/{len(rows)}] medical_record #{row["record_id"]} ingested')
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"record_id={row['record_id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def ingest_disease_cases(case_id: int = None) -> dict:
+    """
+    Ingest disease cases into rag_chunks. Same on-write / backfill pattern
+    as ingest_medical_records.
+    """
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        query = """
+            SELECT
+                dc.case_id, dc.pet_id, p.customer_id, p.pet_name, p.species, p.breed,
+                dc.disease_name, dc.disease_category, dc.diagnosis_date, dc.severity,
+                dc.outcome, dc.symptoms, dc.is_contagious, dc.transmission_method,
+                dc.notes, dc.requires_followup, dc.next_followup_date
+            FROM disease_cases dc
+            JOIN pets p ON p.pet_id = dc.pet_id
+        """
+        params = ()
+        if case_id is not None:
+            query += " WHERE dc.case_id = %s"
+            params = (case_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+        for row in rows:
+            try:
+                chunk = chunk_disease_case(row)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+                print(f'  [{ingested + failed}/{len(rows)}] disease_case #{row["case_id"]} ingested')
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"case_id={row['case_id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def ingest_lab_reports(report_id: int = None) -> dict:
+    """
+    Ingest lab report metadata (not file contents - see chunk_lab_report
+    docstring) into rag_chunks.
+    """
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        query = """
+            SELECT
+                lr.report_id, lr.pet_id, p.customer_id, p.pet_name,
+                lr.report_name, lr.report_type, lr.notes, lr.created_at
+            FROM lab_reports lr
+            JOIN pets p ON p.pet_id = lr.pet_id
+        """
+        params = ()
+        if report_id is not None:
+            query += " WHERE lr.report_id = %s"
+            params = (report_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+        for row in rows:
+            try:
+                chunk = chunk_lab_report(row)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+                print(f'  [{ingested + failed}/{len(rows)}] lab_report #{row["report_id"]} ingested')
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"report_id={row['report_id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def ingest_vaccinations(vaccination_id: int = None) -> dict:
+    """
+    Ingest vaccination records into rag_chunks. Same on-write / backfill
+    pattern as the other ingest_* functions.
+    """
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        query = """
+            SELECT
+                v.vaccination_id, v.pet_id, p.customer_id, p.pet_name, p.species, p.breed,
+                v.vaccine_name, v.vaccine_type, v.vaccination_date, v.next_due_date,
+                v.manufacturer, v.adverse_reaction, v.reaction_details, v.notes,
+                (u.first_name || ' ' || u.last_name) AS administered_by_name
+            FROM vaccinations v
+            JOIN pets p ON p.pet_id = v.pet_id
+            LEFT JOIN users u ON u.user_id = v.administered_by
+        """
+        params = ()
+        if vaccination_id is not None:
+            query += " WHERE v.vaccination_id = %s"
+            params = (vaccination_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = [dict(zip(columns, r)) for r in cur.fetchall()]
+
+        for row in rows:
+            try:
+                chunk = chunk_vaccination(row)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+                print(f"  [{ingested + failed}/{len(rows)}] vaccination #{row['vaccination_id']} ingested")
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"vaccination_id={row['vaccination_id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def ingest_faqs() -> dict:
+    """Ingest the static FAQ/care-instruction content (public, no owner scope)."""
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        for faq in FAQS:
+            try:
+                chunk = chunk_faq(faq)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"faq_id={faq['id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def ingest_staff_faqs() -> dict:
+    """Ingest the static staff/internal FAQ content (source_type='staff_faq',
+    excluded from guest/pet_owner retrieval - see retrieval.py)."""
+    conn = get_raw_db_connection()
+    ingested, failed, errors = 0, 0, []
+
+    try:
+        for faq in STAFF_FAQS:
+            try:
+                chunk = chunk_staff_faq(faq)
+                _upsert_chunk(conn, chunk)
+                ingested += 1
+            except OllamaError as e:
+                failed += 1
+                errors.append(f"faq_id={faq['id']}: {str(e)}")
+
+        return {'ingested': ingested, 'failed': failed, 'errors': errors}
+
+    finally:
+        conn.close()
+
+
+def reingest_pet(pet_id: str) -> dict:
+    """
+    Re-ingest every chunk belonging to a single pet across all source types.
+
+    Chunk content embeds pet_name at ingestion time (see chunking.py), so
+    renaming a pet leaves its old name baked into existing chunks until
+    they're re-embedded. Call this after a pet's name changes (or any other
+    field the chunk text includes, e.g. species/breed).
+    """
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT record_id FROM medical_records WHERE pet_id = %s", (pet_id,))
+            record_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT case_id FROM disease_cases WHERE pet_id = %s", (pet_id,))
+            case_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT report_id FROM lab_reports WHERE pet_id = %s", (pet_id,))
+            report_ids = [r[0] for r in cur.fetchall()]
+            cur.execute("SELECT vaccination_id FROM vaccinations WHERE pet_id = %s", (pet_id,))
+            vaccination_ids = [r[0] for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    def _summarize(results):
+        return {
+            'ingested': sum(r['ingested'] for r in results),
+            'failed': sum(r['failed'] for r in results),
+            'errors': [e for r in results for e in r['errors']]
+        }
+
+    return {
+        'medical_records': _summarize([ingest_medical_records(record_id=rid) for rid in record_ids]),
+        'disease_cases': _summarize([ingest_disease_cases(case_id=cid) for cid in case_ids]),
+        'lab_reports': _summarize([ingest_lab_reports(report_id=rid) for rid in report_ids]),
+        'vaccinations': _summarize([ingest_vaccinations(vaccination_id=vid) for vid in vaccination_ids]),
+    }
+
+
+def ingest_all() -> dict:
+    """Run every ingestion type in sequence. Used for full backfills."""
+    results = {
+        'medical_records': ingest_medical_records(),
+        'disease_cases': ingest_disease_cases(),
+        'lab_reports': ingest_lab_reports(),
+        'vaccinations': ingest_vaccinations(),
+        'faqs': ingest_faqs(),
+        'staff_faqs': ingest_staff_faqs(),
+    }
+    return results
+
+
+if __name__ == '__main__':
+    # Manual full backfill: python scripts/rag/ingest.py
+    print("Backfilling rag_chunks from all sources...")
+    results = ingest_all()
+    for source, result in results.items():
+        print(f"{source}: ingested={result['ingested']}, failed={result['failed']}")
+        for e in result['errors']:
+            print(f"    - {e}")

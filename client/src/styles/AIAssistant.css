@@ -1,0 +1,359 @@
+.ai-assistant-page {
+  font-family: 'Inter', sans-serif;
+  background-color: #f9fafb;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+}
+
+.ai-assistant-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.ai-assistant-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-assistant-subtitle {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.ai-assistant-chat {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  min-height: 320px;
+  max-height: 55vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ai-message {
+  display: flex;
+}
+
+.ai-message-user {
+  justify-content: flex-end;
+}
+
+.ai-message-assistant {
+  justify-content: flex-start;
+}
+
+.ai-message-bubble {
+  max-width: 80%;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.ai-message-bubble p {
+  margin: 0 0 0.6rem;
+}
+
+.ai-message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.ai-message-heading {
+  margin: 0.7rem 0 0.35rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ai-message-heading:first-child {
+  margin-top: 0;
+}
+
+.ai-message-heading-1 {
+  font-size: 1.05rem;
+}
+
+.ai-message-heading-2 {
+  font-size: 0.98rem;
+}
+
+.ai-message-heading-3 {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.ai-message-list {
+  margin: 0 0 0.6rem;
+  padding-left: 1.25rem;
+}
+
+.ai-message-list:last-child {
+  margin-bottom: 0;
+}
+
+.ai-message-list li {
+  margin-bottom: 0.25rem;
+}
+
+.ai-message-user .ai-message-bubble {
+  background: #4338ca;
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.ai-message-assistant .ai-message-bubble {
+  background: #f3f4f6;
+  color: #1f2937;
+  border-bottom-left-radius: 4px;
+}
+
+.ai-message-loading {
+  color: #9ca3af;
+  font-style: italic;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.ai-thinking-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ai-thinking-bounce 1.2s infinite ease-in-out both;
+}
+
+.ai-thinking-dots span:nth-child(1) { animation-delay: -0.32s; }
+.ai-thinking-dots span:nth-child(2) { animation-delay: -0.16s; }
+.ai-thinking-dots span:nth-child(3) { animation-delay: 0s; }
+
+@keyframes ai-thinking-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Chart returned for an explicit "graph/chart/plot this" request. Sits
+   between the answer sentence and the sources row inside the bubble. */
+.ai-message-chart {
+  /* A definite width matters twice over: recharts' ResponsiveContainer
+     measures its parent (a percentage of an auto-sized flex item would
+     resolve to zero and render nothing), and the bubble is content-sized,
+     so this is what widens it enough for the chart to be readable. The
+     bubble's own max-width still caps it on narrow viewports. */
+  width: 520px;
+  max-width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.4rem 0.2rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  /* The bubble sets pre-wrap for the answer text; inside the chart that
+     would turn the JSX's own indentation into visible gaps. */
+  white-space: normal;
+}
+
+.ai-message-chart-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+/* Custom pie-chart hover tooltip (PieTooltip in AiChartMessage.jsx) - shows
+   every series' value for the hovered row, not just the one sizing the
+   slice, so replaces recharts' default single-value tooltip content. */
+.ai-chart-tooltip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-chart-tooltip-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.2rem;
+}
+
+.ai-chart-tooltip-row {
+  color: #4b5563;
+}
+
+/* Below this the 80%-wide bubble is too narrow for angled axis labels to
+   stay legible, so let the chart use the full bubble instead. */
+@media (max-width: 768px) {
+  .ai-message-chart {
+    width: 100%;
+  }
+}
+
+.ai-message-sources {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.ai-message-sources-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.ai-source-tag {
+  display: inline-block;
+  background: #e5e7eb;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  margin: 0.15rem 0.2rem 0 0;
+}
+
+.ai-message-sources-general {
+  font-style: italic;
+}
+
+.ai-action-confirm {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ai-action-confirm-btn,
+.ai-action-cancel-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ai-action-confirm-btn {
+  background: #4338ca;
+  color: #fff;
+}
+
+.ai-action-confirm-btn:disabled,
+.ai-action-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-action-cancel-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.ai-option-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ai-option-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-option-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-assistant-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.ai-suggested-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ai-suggested-prompts button {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.8rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.ai-suggested-prompts button:hover {
+  background: #f3f4f6;
+}
+
+.ai-assistant-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.ai-assistant-input-row textarea {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: none;
+  overflow-y: auto;
+  max-height: 9rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
+}
+
+.ai-assistant-input-row button {
+  background: #4338ca;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0 1.1rem;
+  cursor: pointer;
+}
+
+.ai-assistant-input-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
