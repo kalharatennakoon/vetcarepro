@@ -2,12 +2,19 @@
  * AI Daily Briefing Service
  * Aggregates existing ML model outputs into a role-scoped numeric payload,
  * summarizes it via mlService.summarizeBriefing (Ollama, behind the ML
- * service), and caches the result once per user per day in ai_briefings.
+ * service), and caches the result in ai_briefings.
+ *
+ * The numeric aggregation (DB/ML calls) is cheap and re-runs on every
+ * request, so a same-day change (e.g. a new appointment) is never missed.
+ * The Ollama summarization call is the slow part, so it only re-runs when
+ * that aggregated data has actually changed since the cached version -
+ * tracked via a hash of the data payload in ai_briefings.data_hash.
  *
  * Deliberately outside the RAG pipeline (ml/scripts/rag/) - this is
  * summarization of numbers the caller already has, not retrieval.
  */
 
+import crypto from 'crypto';
 import pool from '../config/database.js';
 import * as mlService from './mlService.js';
 import { getAllAppointments } from '../models/appointmentModel.js';
@@ -40,21 +47,23 @@ const hasContent = (data) => Object.values(data).some((v) => {
 // Cache
 // ---------------------------------------------------------------------------
 
+const hashData = (data) => crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+
 const getCachedBriefing = async (userId, briefingDate) => {
   const result = await pool.query(
-    'SELECT content FROM ai_briefings WHERE user_id = $1 AND briefing_date = $2',
+    'SELECT content, data_hash FROM ai_briefings WHERE user_id = $1 AND briefing_date = $2',
     [userId, briefingDate]
   );
-  return result.rows[0]?.content || null;
+  return result.rows[0] || null;
 };
 
-const cacheBriefing = async (userId, role, briefingDate, content) => {
+const cacheBriefing = async (userId, role, briefingDate, content, dataHash) => {
   await pool.query(
-    `INSERT INTO ai_briefings (user_id, role, briefing_date, content)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO ai_briefings (user_id, role, briefing_date, content, data_hash)
+     VALUES ($1, $2, $3, $4, $5)
      ON CONFLICT (user_id, briefing_date)
-     DO UPDATE SET content = EXCLUDED.content, role = EXCLUDED.role`,
-    [userId, role, briefingDate, JSON.stringify(content)]
+     DO UPDATE SET content = EXCLUDED.content, role = EXCLUDED.role, data_hash = EXCLUDED.data_hash`,
+    [userId, role, briefingDate, JSON.stringify(content), dataHash]
   );
 };
 
@@ -219,16 +228,17 @@ export const getBriefing = async (user) => {
   }
 
   const date = todayLocal();
-  const cached = await getCachedBriefing(user.user_id, date);
-  if (cached) {
-    return { ...cached, cached: true };
-  }
-
   const data = await builder(user);
+  const dataHash = hashData(data);
+
+  const cached = await getCachedBriefing(user.user_id, date);
+  if (cached && cached.data_hash === dataHash) {
+    return { ...cached.content, cached: true };
+  }
 
   if (!hasContent(data)) {
     const empty = { summary: 'Nothing notable to report today.', bullets: [] };
-    await cacheBriefing(user.user_id, user.role, date, empty);
+    await cacheBriefing(user.user_id, user.role, date, empty, dataHash);
     return { ...empty, cached: false };
   }
 
@@ -240,6 +250,6 @@ export const getBriefing = async (user) => {
   }
 
   const content = summarizeRes.data.briefing;
-  await cacheBriefing(user.user_id, user.role, date, content);
+  await cacheBriefing(user.user_id, user.role, date, content, dataHash);
   return { ...content, cached: false };
 };
