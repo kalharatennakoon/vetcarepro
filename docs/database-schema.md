@@ -25,6 +25,11 @@ Changes made after the base schema live in `database/migrations/*.sql`.
 | `add_unique_constraints_customers.sql` | Uniqueness on customer identifiers |
 | `add_unique_address_emergency_phone_customers.sql` | Further customer uniqueness constraints |
 | `populate_disease_cases.sql` | Backfills disease cases from existing records |
+| `add_ai_briefings.sql` | `ai_briefings` table caching the staff dashboard's AI daily briefing |
+| `add_ai_briefings_data_hash.sql` | `data_hash` column on `ai_briefings` so same-day data changes invalidate the cache |
+| `add_pet_photo_guidance.sql` | `pet_photo_guidance` table backing the pet-owner photo AI guidance job queue |
+| `fix_business_hours_setting.sql` | Corrects seeded `business_hours_start`/`end` to match `appointmentRules.js` |
+| `fix_rag_vector_index.sql` | Replaces the `rag_chunks` ivfflat index with HNSW to fix retrieval recall |
 
 Adding a migration means writing the `.sql` file *and* noting it here.
 

@@ -37,6 +37,8 @@ psql -U postgres -d vetcarepro -f database/schema.sql
 psql -U postgres -d vetcarepro -f database/seed.sql
 ```
 
+`schema.sql` + `seed.sql` alone leaves out everything added since the base schema — including `ai_briefings`, `pet_photo_guidance`, and the `pgvector`/`rag_chunks` store the AI assistant needs to start up. Apply `database/migrations/*.sql` next; see [`docs/setup.md`](docs/setup.md#migrations) for the individual commands.
+
 ---
 
 ## Password Management
@@ -58,12 +60,4 @@ WHERE email = 'user@propet.lk';
 
 ## Test Login Credentials
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin1@propet.lk | admin1@pass |
-| Admin | admin2@propet.lk | admin2@pass |
-| Veterinarian | dulani@propet.lk | password123 |
-| Veterinarian | nimal@propet.lk | password123 |
-| Veterinarian | ayesha@propet.lk | password123 |
-| Receptionist | kumari@propet.lk | password123 |
-| Receptionist | sanduni@propet.lk | password123 |
+Seeded staff accounts and their passwords are listed in `database/seed.sql` (or `demo_seed.sql`) alongside the `INSERT INTO users` statements — check there rather than here.
