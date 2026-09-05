@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getBriefing } from '../../services/briefingService';
 
 // Fetches independently of the main dashboard stat fetch, so a slow or
@@ -6,7 +6,7 @@ import { getBriefing } from '../../services/briefingService';
 const AiDailyBriefing = () => {
   const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
 
-  const fetchBriefing = (isManual = false) => {
+  const fetchBriefing = useCallback((isManual = false) => {
     if (isManual) {
       setState((prev) => ({ ...prev, refreshing: true }));
     } else {
@@ -24,11 +24,11 @@ const AiDailyBriefing = () => {
       .catch(() => {
         setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
       });
-  };
+  }, []);
 
   useEffect(() => {
     fetchBriefing(false);
-  }, []);
+  }, [fetchBriefing]);
 
   return (
     <div style={styles.card}>
