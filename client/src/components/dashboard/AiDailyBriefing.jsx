@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getBriefing } from '../../services/briefingService';
 
 // Fetches independently of the main dashboard stat fetch, so a slow or
@@ -6,13 +6,7 @@ import { getBriefing } from '../../services/briefingService';
 const AiDailyBriefing = () => {
   const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
 
-  const fetchBriefing = useCallback((isManual = false) => {
-    if (isManual) {
-      setState((prev) => ({ ...prev, refreshing: true }));
-    } else {
-      setState((prev) => ({ ...prev, loading: true }));
-    }
-
+  const loadBriefing = () => {
     getBriefing()
       .then((res) => {
         if (!res.success || res.unavailable) {
@@ -24,11 +18,16 @@ const AiDailyBriefing = () => {
       .catch(() => {
         setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
       });
-  }, []);
+  };
+
+  const handleRefresh = () => {
+    setState((prev) => ({ ...prev, refreshing: true }));
+    loadBriefing();
+  };
 
   useEffect(() => {
-    fetchBriefing(false);
-  }, [fetchBriefing]);
+    loadBriefing();
+  }, []);
 
   return (
     <div style={styles.card}>
@@ -40,7 +39,7 @@ const AiDailyBriefing = () => {
           <h4 style={styles.title}>AI Daily Briefing</h4>
         </div>
         <button
-          onClick={() => fetchBriefing(true)}
+          onClick={handleRefresh}
           disabled={state.loading || state.refreshing}
           title="Refresh AI briefing"
           style={styles.refreshBtn}
