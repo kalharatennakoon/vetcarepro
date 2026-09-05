@@ -231,11 +231,6 @@ export const getBriefing = async (user) => {
   const data = await builder(user);
   const dataHash = hashData(data);
 
-  const cached = await getCachedBriefing(user.user_id, date);
-  if (cached && cached.data_hash === dataHash) {
-    return { ...cached.content, cached: true };
-  }
-
   if (!hasContent(data)) {
     const empty = { summary: 'Nothing notable to report today.', bullets: [] };
     await cacheBriefing(user.user_id, user.role, date, empty, dataHash);
@@ -244,8 +239,11 @@ export const getBriefing = async (user) => {
 
   const summarizeRes = await mlService.summarizeBriefing({ role: user.role, data });
   if (!summarizeRes.success || !summarizeRes.data?.success) {
-    // Ollama unreachable or summarization failed - degrade gracefully, don't cache a failure
-    // so the next request retries rather than being stuck with "unavailable" for the rest of the day.
+    // If Ollama is unreachable or summarization fails, fall back to cached content if available
+    const cached = await getCachedBriefing(user.user_id, date);
+    if (cached) {
+      return { ...cached.content, cached: true };
+    }
     return { summary: null, bullets: [], unavailable: true, cached: false };
   }
 

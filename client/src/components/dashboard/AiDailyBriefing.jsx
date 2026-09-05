@@ -4,25 +4,30 @@ import { getBriefing } from '../../services/briefingService';
 // Fetches independently of the main dashboard stat fetch, so a slow or
 // unavailable Ollama never blocks or delays the rest of the dashboard.
 const AiDailyBriefing = () => {
-  const [state, setState] = useState({ loading: true, briefing: null, unavailable: false });
+  const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchBriefing = (isManual = false) => {
+    if (isManual) {
+      setState((prev) => ({ ...prev, refreshing: true }));
+    } else {
+      setState((prev) => ({ ...prev, loading: true }));
+    }
 
     getBriefing()
       .then((res) => {
-        if (cancelled) return;
         if (!res.success || res.unavailable) {
-          setState({ loading: false, briefing: null, unavailable: true });
+          setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
         } else {
-          setState({ loading: false, briefing: res, unavailable: false });
+          setState({ loading: false, briefing: res, unavailable: false, refreshing: false });
         }
       })
       .catch(() => {
-        if (!cancelled) setState({ loading: false, briefing: null, unavailable: true });
+        setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
       });
+  };
 
-    return () => { cancelled = true; };
+  useEffect(() => {
+    fetchBriefing(false);
   }, []);
 
   return (
@@ -34,6 +39,14 @@ const AiDailyBriefing = () => {
           </div>
           <h4 style={styles.title}>AI Daily Briefing</h4>
         </div>
+        <button
+          onClick={() => fetchBriefing(true)}
+          disabled={state.loading || state.refreshing}
+          title="Refresh AI briefing"
+          style={styles.refreshBtn}
+        >
+          <i className={`fas fa-arrows-rotate ${state.refreshing ? 'fa-spin' : ''}`}></i>
+        </button>
       </div>
 
       {state.loading ? (
@@ -48,8 +61,8 @@ const AiDailyBriefing = () => {
         </p>
       ) : (
         <>
-          {state.briefing.summary && <p style={styles.summary}>{state.briefing.summary}</p>}
-          {Array.isArray(state.briefing.bullets) && state.briefing.bullets.length > 0 && (
+          {state.briefing?.summary && <p style={styles.summary}>{state.briefing.summary}</p>}
+          {Array.isArray(state.briefing?.bullets) && state.briefing.bullets.length > 0 && (
             <ul style={styles.bulletList}>
               {state.briefing.bullets.map((bullet, i) => (
                 <li key={i} style={styles.bulletItem}>{bullet}</li>
@@ -142,6 +155,17 @@ const styles = {
     fontSize: '0.8rem',
     color: '#4b5563',
     lineHeight: 1.6,
+  },
+  refreshBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#6d28d9',
+    cursor: 'pointer',
+    padding: '0.2rem 0.4rem',
+    borderRadius: '4px',
+    fontSize: '0.85rem',
+    opacity: 0.8,
+    transition: 'opacity 0.2s',
   },
 };
 

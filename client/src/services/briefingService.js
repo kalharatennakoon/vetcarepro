@@ -15,6 +15,18 @@ const getAuthHeader = () => {
  * Get the AI Daily Briefing for the current staff user's role.
  */
 export const getBriefing = async () => {
-  const response = await axios.get(`${API_URL}/ml/briefing`, getAuthHeader());
+  const authConfig = getAuthHeader();
+  const config = {
+    ...authConfig,
+    headers: {
+      ...authConfig.headers,
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    params: {
+      t: Date.now()
+    }
+  };
+  const response = await axios.get(`${API_URL}/ml/briefing`, config);
   return response.data;
 };
