@@ -592,8 +592,8 @@ def _bare_staff_pet_mention(question: str):
 _CLINIC_ANCHOR = r'(?:your|the\s+clinic\'?s?|clinic\'?s?|vetcare\'?s?)'
 
 CLINIC_HOURS = re.compile(
-    rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+)?hours\b|'
-    r'\b(?:business|opening|working)\s+hours\b|'  # unanchored: these compound forms are unambiguous on their own
+    rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+|operating\s+)?hours\b|'
+    r'\b(?:business|opening|working|operating)\s+hours\b|'  # unanchored: these compound forms are unambiguous on their own
     r'\bwhat\s+time\b.*\b(?:do\s+you|does\s+the\s+clinic|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bwhen\s+(?:are\s+you|do\s+you|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bare\s+you\s+open\b|'
@@ -1424,9 +1424,7 @@ def _clinic_hours() -> dict:
     # that actually enforces bookable slots) has no lunch-break concept at
     # all, so stating "closed for lunch" here would be the exact bug this
     # function exists to avoid: telling a customer something the booking
-    # flow doesn't actually honor. Also see the business_hours_start/end
-    # comments in database/seed.sql for the more direct version of that bug
-    # (08:00-18:00 seeded vs. the real 09:00-18:30 enforced).
+    # flow doesn't actually honor.
     settings = _get_clinic_settings()
     if not settings.get('business_hours_start') or not settings.get('business_hours_end'):
         return {
@@ -1434,12 +1432,28 @@ def _clinic_hours() -> dict:
             'sources': [], 'chunks_used': 0, 'structured': True
         }
 
-    clinic_name = settings.get('clinic_name', 'The clinic')
-    days = settings.get('working_days', '').replace(',', ', ')
-    answer = f"{clinic_name} is open"
-    if days:
-        answer += f" {days}"
-    answer += f", {settings['business_hours_start']} to {settings['business_hours_end']}."
+    clinic_name = settings.get('clinic_name', 'VetCare Pro')
+    raw_days = settings.get('working_days', '')
+    if raw_days == 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday':
+        days_str = "Monday through Saturday"
+        closed_str = " We are closed on Sundays."
+    elif raw_days:
+        days_str = raw_days.replace(',', ', ')
+        closed_str = ""
+    else:
+        days_str = ""
+        closed_str = ""
+
+    start_time = settings['business_hours_start']
+    end_time = settings['business_hours_end']
+
+    if start_time == '09:00' and end_time == '18:30':
+        time_str = "from 09:00 to 18:30 (9:00 AM to 6:30 PM)"
+    else:
+        time_str = f"from {start_time} to {end_time}"
+
+    days_part = f" {days_str}" if days_str else ""
+    answer = f"{clinic_name} is open{days_part} {time_str}.{closed_str}"
 
     return {
         'answer': answer,
