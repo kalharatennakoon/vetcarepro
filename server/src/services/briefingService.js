@@ -119,18 +119,30 @@ const buildAdminData = async () => {
 
 const buildVetData = async (user) => {
   const date = todayLocal();
-  const allAppointments = await getAllAppointments({
-    date,
-    veterinarian_id: user.user_id,
-    limit: MAX_VET_APPOINTMENTS
-  });
+  const [myApptsRaw, allClinicApptsRaw] = await Promise.all([
+    getAllAppointments({
+      date,
+      veterinarian_id: user.user_id,
+      limit: MAX_VET_APPOINTMENTS
+    }),
+    getAllAppointments({
+      date
+    })
+  ]);
 
-  const appointments = allAppointments.filter(
+  const myAppointments = myApptsRaw.filter(
     (a) => a.status !== 'cancelled' && a.status !== 'no_show'
   );
 
+  const allClinicAppointments = allClinicApptsRaw.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
+
+  // If vet has personal assigned appointments today, evaluate those; if none assigned, evaluate clinic-wide scheduled pets today
+  const targetAppointments = myAppointments.length > 0 ? myAppointments : allClinicAppointments.slice(0, MAX_VET_APPOINTMENTS);
+
   const flaggedPetRisks = [];
-  for (const appt of appointments) {
+  for (const appt of targetAppointments) {
     try {
       const pet = await getPetById(appt.pet_id);
       if (!pet) continue;
@@ -172,7 +184,9 @@ const buildVetData = async (user) => {
     .catch(() => null);
 
   const data = {
-    todays_appointment_count: appointments.length,
+    todays_appointment_count: allClinicAppointments.length,
+    todays_personal_appointments: myAppointments.length,
+    todays_total_clinic_appointments: allClinicAppointments.length,
     flagged_pet_risks: flaggedPetRisks
   };
 

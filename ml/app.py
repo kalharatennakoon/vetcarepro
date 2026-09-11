@@ -1310,8 +1310,10 @@ _BRIEFING_ROLE_FOCUS = {
     ),
     'veterinarian': (
         'You are summarizing today\'s clinical signals for a veterinarian: today\'s scheduled '
-        'appointments cross-referenced with any elevated pet disease-recurrence or cancer risk, '
-        'plus a note on disease trends. Do not mention pandemic risk - that is not part of this data.'
+        'appointments (clearly state if personal assigned appointments are 0 while total clinic appointments today is > 0) '
+        'cross-referenced with any elevated pet disease-recurrence or cancer risk, '
+        'plus a note on disease trends. Never claim that no appointments are scheduled today '
+        'if todays_appointment_count or todays_total_clinic_appointments is greater than 0.'
     ),
     'receptionist': (
         'You are summarizing today\'s front-desk operational signals for a receptionist: '
