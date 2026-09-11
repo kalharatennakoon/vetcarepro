@@ -30,7 +30,15 @@ const GuestAIAssistant = () => {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    document.getElementById('main-content')?.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (messages.length > 1 || loading) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, loading]);
 
   // Grows the input with its content instead of scrolling text horizontally
@@ -75,7 +83,7 @@ const GuestAIAssistant = () => {
       <main className="ai-assistant-page guest-ai-main">
         <div className="ai-assistant-header">
           <div>
-            <h1><i className="fas fa-robot"></i> AI Assistant</h1>
+            <h1><i className="fas fa-wand-magic-sparkles"></i> VetCare Pro AI Assistant</h1>
             <p className="ai-assistant-subtitle">
               General pet care info only &mdash; sign in to ask about your own pet&rsquo;s records.
             </p>
