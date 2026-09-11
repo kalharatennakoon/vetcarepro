@@ -113,10 +113,18 @@ const PetOwnerAppointments = () => {
   }, [form.appointment_date, form.veterinarian_id]);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTo(0, 0);
-    document.getElementById('main-content')?.scrollTo(0, 0);
-  }, []);
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTo(0, 0);
+      if (document.body) document.body.scrollTop = 0;
+      document.getElementById('main-content')?.scrollTo(0, 0);
+      const page = document.querySelector('.po-profile-page');
+      if (page) page.scrollTop = 0;
+    };
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 50);
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   const handleSignOut = async () => {
     await logout();
@@ -131,7 +139,10 @@ const PetOwnerAppointments = () => {
         e.preventDefault();
         window.scrollTo(0, 0);
         document.documentElement.scrollTo(0, 0);
+        if (document.body) document.body.scrollTop = 0;
         document.getElementById('main-content')?.scrollTo(0, 0);
+        const page = document.querySelector('.po-profile-page');
+        if (page) page.scrollTop = 0;
         navigate(path);
       }}
     >
