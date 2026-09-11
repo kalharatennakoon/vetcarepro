@@ -53,7 +53,7 @@ const Layout = ({ children }) => {
 
   const handleLogout = async () => {
     await logout();
-    showSuccess('You have been signed out successfully');
+    showSuccess('You have been signed out successfully', 2000);
     navigate('/staff/login');
   };
 

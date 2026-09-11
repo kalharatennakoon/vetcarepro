@@ -22,12 +22,14 @@ const NotificationToast = () => {
       flexDirection: 'column',
       gap: '10px',
       maxWidth: '380px',
-      width: '100%'
+      width: '100%',
+      pointerEvents: 'none'
     }}>
-      {notifications.map(({ id, type, message }) => {
+      {notifications.map(({ id, type, message, exiting }) => {
         const c = config[type] || config.info;
         return (
           <div key={id} style={{
+            pointerEvents: 'auto',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '12px',
@@ -37,7 +39,10 @@ const NotificationToast = () => {
             borderLeft: `4px solid ${c.border}`,
             borderRadius: '8px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            animation: 'slideIn 0.2s ease'
+            animation: exiting
+              ? 'toastSlideOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards'
+              : 'toastSlideIn 0.3s cubic-bezier(0, 0, 0.2, 1) forwards',
+            willChange: 'transform, opacity'
           }}>
             <i className={`fas ${c.icon}`} style={{ color: c.color, fontSize: '16px', marginTop: '1px', flexShrink: 0 }}></i>
             <span style={{ flex: 1, fontSize: '14px', color: c.text, lineHeight: '1.5' }}>{message}</span>
@@ -51,9 +56,31 @@ const NotificationToast = () => {
         );
       })}
       <style>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to   { opacity: 1; transform: translateX(0); }
+        @keyframes toastSlideIn {
+          0% {
+            opacity: 0;
+            transform: translate3d(30px, 0, 0) scale(0.95);
+          }
+          100% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+          }
+        }
+        @keyframes toastSlideOut {
+          0% {
+            opacity: 1;
+            transform: translate3d(0, 0, 0) scale(1);
+            max-height: 120px;
+          }
+          100% {
+            opacity: 0;
+            transform: translate3d(40px, 0, 0) scale(0.92);
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            margin-top: -10px;
+            border-width: 0;
+          }
         }
       `}</style>
     </div>

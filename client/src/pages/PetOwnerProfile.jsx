@@ -126,6 +126,7 @@ const PetOwnerProfile = () => {
 
   const handleSignOut = async () => {
     await logout();
+    showSuccess('You have been signed out successfully', 2000);
     navigate('/');
   };
 

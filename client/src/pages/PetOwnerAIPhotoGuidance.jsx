@@ -48,7 +48,7 @@ const statusIcon = {
 
 const PetOwnerAIPhotoGuidance = () => {
   const { customer, logout } = useCustomerAuth();
-  const { showError } = useNotification();
+  const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -211,6 +211,7 @@ const PetOwnerAIPhotoGuidance = () => {
 
   const handleSignOut = async () => {
     await logout();
+    showSuccess('You have been signed out successfully', 2000);
     navigate('/');
   };
 

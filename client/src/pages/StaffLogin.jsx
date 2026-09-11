@@ -34,7 +34,7 @@ const StaffLogin = () => {
     const result = await login(email, password);
 
     if (result.success) {
-      showSuccess(`Welcome back, ${result.user.first_name}!`);
+      showSuccess(`Welcome back, ${result.user.first_name}!`, 2000);
       navigate('/dashboard');
     } else {
       setError(result.message || 'Login failed. Please check your credentials.');
