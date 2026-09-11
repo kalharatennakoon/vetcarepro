@@ -111,7 +111,7 @@ const Welcome = () => {
       <footer style={styles.footer} className="welcome-footer">
         <div style={styles.footerContent} className="welcome-footer-content">
           <p style={styles.footerCopyright}>
-            © 2026 VetCare Systems
+            © 2026 VetCare Pro Systems
           </p>
         </div>
       </footer>

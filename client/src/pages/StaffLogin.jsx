@@ -160,7 +160,7 @@ const StaffLogin = () => {
       <footer style={styles.footer}>
         <div style={styles.footerContent}>
           <p style={styles.footerCopyright}>
-            © 2026 VetCare Systems
+            © 2026 VetCare Pro Systems
           </p>
         </div>
       </footer>

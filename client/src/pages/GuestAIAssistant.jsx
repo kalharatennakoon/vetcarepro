@@ -165,7 +165,7 @@ const GuestAIAssistant = () => {
       </main>
 
       <footer className="guest-ai-footer">
-        <p>&copy; 2026 VetCare Systems</p>
+        <p>&copy; 2026 VetCare Pro Systems</p>
       </footer>
     </div>
   );

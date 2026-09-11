@@ -134,7 +134,7 @@ const PetOwnerVerifyIdentity = () => {
       </main>
 
       <footer className="po-auth-footer-bar">
-        <p>&copy; 2026 VetCare Systems</p>
+        <p>&copy; 2026 VetCare Pro Systems</p>
       </footer>
     </div>
   );
