@@ -5,6 +5,7 @@ import { getBriefing } from '../../services/briefingService';
 // unavailable Ollama never blocks or delays the rest of the dashboard.
 const AiDailyBriefing = () => {
   const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
+  const [isHovered, setIsHovered] = useState(false);
 
   const loadBriefing = () => {
     getBriefing()
@@ -41,10 +42,18 @@ const AiDailyBriefing = () => {
         <button
           onClick={handleRefresh}
           disabled={state.loading || state.refreshing}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           title="Refresh AI briefing"
-          style={styles.refreshBtn}
+          style={{
+            ...styles.refreshBtn,
+            ...(state.refreshing ? styles.refreshBtnActive : {}),
+            ...(isHovered && !state.loading && !state.refreshing ? styles.refreshBtnHover : {}),
+            ...(state.loading && !state.refreshing ? styles.refreshBtnDisabled : {}),
+          }}
         >
-          <i className={`fas fa-arrows-rotate ${state.refreshing ? 'fa-spin' : ''}`}></i>
+          <i className={`fas fa-rotate-right ${state.refreshing ? 'fa-spin' : ''}`} style={{ fontSize: '0.75rem' }}></i>
+          <span style={styles.refreshBtnText}>{state.refreshing ? 'Refreshing…' : 'Refresh'}</span>
         </button>
       </div>
 
@@ -156,15 +165,43 @@ const styles = {
     lineHeight: 1.6,
   },
   refreshBtn: {
-    background: 'none',
-    border: 'none',
+    height: '30px',
+    minWidth: '30px',
+    padding: '0 0.6rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    background: 'rgba(255, 255, 255, 0.85)',
+    border: '1px solid rgba(124, 58, 237, 0.25)',
     color: '#6d28d9',
     cursor: 'pointer',
-    padding: '0.2rem 0.4rem',
-    borderRadius: '4px',
-    fontSize: '0.85rem',
-    opacity: 0.8,
-    transition: 'opacity 0.2s',
+    borderRadius: '15px',
+    fontSize: '0.8rem',
+    backdropFilter: 'blur(6px)',
+    boxShadow: '0 2px 6px -1px rgba(124, 58, 237, 0.12)',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  refreshBtnText: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    letterSpacing: '0.01em',
+  },
+  refreshBtnActive: {
+    background: 'rgba(237, 233, 254, 0.9)',
+    borderColor: '#7c3aed',
+  },
+  refreshBtnHover: {
+    background: '#7c3aed',
+    borderColor: '#7c3aed',
+    color: '#ffffff',
+    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.35)',
+    transform: 'translateY(-1px)',
+  },
+  refreshBtnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+    transform: 'none',
   },
 };
 
