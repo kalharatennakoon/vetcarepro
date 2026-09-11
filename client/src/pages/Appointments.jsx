@@ -352,25 +352,62 @@ const Appointments = () => {
     }
   });
 
-  // Navigate to first filtered appointment when search/filters change in calendar view
+  // Navigate calendar to appropriate month when search/filters change in calendar view
   useEffect(() => {
     const filtersChanged = searchQuery !== lastSearchQuery || 
                           filterStatus !== lastFilterStatus || 
                           selectedVet !== lastSelectedVet;
     
-    if (viewMode === 'calendar' && filtersChanged && filteredAppointments.length > 0) {
-      const firstApt = filteredAppointments[0];
-      const aptDateStr = getISTDate(firstApt.appointment_date);
-      const aptDate = new Date(aptDateStr + 'T00:00:00');
-      setCurrentMonth(new Date(aptDate.getFullYear(), aptDate.getMonth(), 1));
-      
+    if (viewMode === 'calendar' && filtersChanged) {
       setLastSearchQuery(searchQuery);
       setLastFilterStatus(filterStatus);
       setLastSelectedVet(selectedVet);
-    }
-  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments.length]);
 
-  // Get calendar grid data
+      if (filteredAppointments.length > 0) {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonthIdx = today.getMonth();
+        const todayStr = formatDateLocal(today);
+
+        // 1. Check if vet/filtered results have appointments in the current calendar month
+        const currentMonthAppts = filteredAppointments.filter(apt => {
+          const aptDateStr = getISTDate(apt.appointment_date);
+          if (!aptDateStr) return false;
+          const aptDate = new Date(aptDateStr + 'T00:00:00');
+          return aptDate.getFullYear() === currentYear && aptDate.getMonth() === currentMonthIdx;
+        });
+
+        if (currentMonthAppts.length > 0) {
+          // Has appointments in current month -> start on current month
+          setCurrentMonth(new Date(currentYear, currentMonthIdx, 1));
+        } else {
+          // 2. No appointments in current month -> find earliest upcoming month (>= today)
+          const futureAppts = filteredAppointments
+            .filter(apt => {
+              const aptDateStr = getISTDate(apt.appointment_date);
+              return aptDateStr && aptDateStr >= todayStr;
+            })
+            .sort((a, b) => getISTDate(a.appointment_date).localeCompare(getISTDate(b.appointment_date)));
+
+          if (futureAppts.length > 0) {
+            const nextAptStr = getISTDate(futureAppts[0].appointment_date);
+            const nextAptDate = new Date(nextAptStr + 'T00:00:00');
+            setCurrentMonth(new Date(nextAptDate.getFullYear(), nextAptDate.getMonth(), 1));
+          } else {
+            // 3. No upcoming appointments -> find most recent past appointment's month
+            const pastAppts = [...filteredAppointments].sort((a, b) =>
+              getISTDate(b.appointment_date).localeCompare(getISTDate(a.appointment_date))
+            );
+            const pastAptStr = getISTDate(pastAppts[0].appointment_date);
+            const pastAptDate = new Date(pastAptStr + 'T00:00:00');
+            setCurrentMonth(new Date(pastAptDate.getFullYear(), pastAptDate.getMonth(), 1));
+          }
+        }
+      }
+    }
+  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments]);
+
+  // Get calendar grid data (dynamically calculates exact week rows needed for the current month)
   const getCalendarDays = () => {
     try {
       const year = currentMonth.getFullYear();
@@ -379,6 +416,16 @@ const Appointments = () => {
       const startDate = new Date(firstDay);
       // Offset so week starts on Monday (Mon=0 ... Sun=6)
       startDate.setDate(startDate.getDate() - (firstDay.getDay() + 6) % 7);
+
+      // Last day of current month
+      const lastDay = new Date(year, month + 1, 0);
+      const endDate = new Date(lastDay);
+      const remainingDaysInWeek = (7 - ((lastDay.getDay() + 6) % 7 + 1)) % 7;
+      endDate.setDate(endDate.getDate() + remainingDaysInWeek);
+
+      // Calculate exact total days needed to cover only weeks belonging to currentMonth
+      const diffMs = endDate.getTime() - startDate.getTime();
+      const totalDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
       
       const days = [];
       const current = new Date(startDate);
@@ -403,7 +450,7 @@ const Appointments = () => {
         }
       });
       
-      for (let i = 0; i < 42; i++) {
+      for (let i = 0; i < totalDays; i++) {
         const dateStr = formatDateLocal(current);
         const dayAppointments = calendarAppointments.filter(apt => {
           try {
