@@ -313,9 +313,11 @@ const PetOwnerAppointments = () => {
         </aside>
 
         <main className="po-profile-main">
-          <div className="po-profile-welcome">
-            <h1>Appointments</h1>
-            <p>Book, reschedule, or cancel appointments for your pets. Changes need at least {MIN_LEAD_HOURS} hours' notice.</p>
+          <div className="po-profile-hero">
+            <div className="po-profile-welcome">
+              <h1>Appointments</h1>
+              <p>Book, reschedule, or cancel appointments for your pets. Changes need at least {MIN_LEAD_HOURS} hours' notice.</p>
+            </div>
           </div>
 
           <section id="po-appt-form-card" className="po-profile-card">

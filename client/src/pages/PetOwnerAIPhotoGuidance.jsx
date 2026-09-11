@@ -255,9 +255,11 @@ const PetOwnerAIPhotoGuidance = () => {
         </aside>
 
         <main className="po-profile-main">
-          <div className="po-profile-welcome">
-            <h1>AI Visual Care</h1>
-            <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
+          <div className="po-profile-hero">
+            <div className="po-profile-welcome">
+              <h1>AI Visual Care</h1>
+              <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
+            </div>
           </div>
 
           <div className="po-photo-disclaimer">
