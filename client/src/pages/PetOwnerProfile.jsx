@@ -170,9 +170,6 @@ const PetOwnerProfile = () => {
   const initials = customer ? `${customer.first_name?.charAt(0) || ''}${customer.last_name?.charAt(0) || ''}` : '';
   const memberSince = customer?.created_at ? new Date(customer.created_at).getFullYear() : null;
 
-  const totalVaccinations = Object.values(vaccinationsByPet).reduce((acc, list) => acc + (list?.length || 0), 0);
-  const totalLabReports = Object.values(labReportsByPet).reduce((acc, list) => acc + (list?.length || 0), 0);
-
   return (
     <div className="po-profile-page">
       <header className="po-profile-header">
@@ -222,34 +219,6 @@ const PetOwnerProfile = () => {
               <h1>Welcome back{customer?.first_name ? `, ${customer.first_name}` : ''}!</h1>
               <p>Here&rsquo;s an overview of your account, pet health records, and clinic activity.</p>
             </div>
-
-            {!petsLoading && (
-              <div className="po-profile-stats-row">
-                <div className="po-stat-tile">
-                  <div className="po-stat-tile-icon"><i className="fas fa-paw"></i></div>
-                  <div>
-                    <div className="po-stat-tile-val">{pets.length}</div>
-                    <div className="po-stat-tile-lbl">{pets.length === 1 ? 'Registered Pet' : 'Registered Pets'}</div>
-                  </div>
-                </div>
-
-                <div className="po-stat-tile">
-                  <div className="po-stat-tile-icon"><i className="fas fa-syringe"></i></div>
-                  <div>
-                    <div className="po-stat-tile-val">{totalVaccinations}</div>
-                    <div className="po-stat-tile-lbl">Vaccinations</div>
-                  </div>
-                </div>
-
-                <div className="po-stat-tile">
-                  <div className="po-stat-tile-icon"><i className="fas fa-flask"></i></div>
-                  <div>
-                    <div className="po-stat-tile-val">{totalLabReports}</div>
-                    <div className="po-stat-tile-lbl">Lab Reports</div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           <section className="po-profile-card">
