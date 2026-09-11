@@ -119,11 +119,15 @@ const buildAdminData = async () => {
 
 const buildVetData = async (user) => {
   const date = todayLocal();
-  const appointments = await getAllAppointments({
+  const allAppointments = await getAllAppointments({
     date,
     veterinarian_id: user.user_id,
     limit: MAX_VET_APPOINTMENTS
   });
+
+  const appointments = allAppointments.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
 
   const flaggedPetRisks = [];
   for (const appt of appointments) {
@@ -184,11 +188,15 @@ const buildVetData = async (user) => {
 
 const buildReceptionistData = async () => {
   const date = todayLocal();
-  const [appointments, reorderRes, revenueStats] = await Promise.all([
+  const [allAppointments, reorderRes, revenueStats] = await Promise.all([
     getAllAppointments({ date }),
     mlService.getReorderSuggestions().catch(() => null),
     getRevenueStats().catch(() => null)
   ]);
+
+  const appointments = allAppointments.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
 
   const reorderSummary = reorderRes?.recommendations?.summary;
 
