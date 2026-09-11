@@ -66,6 +66,9 @@ const Layout = ({ children }) => {
   };
 
   const handleNavigation = (path) => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    document.getElementById('main-content')?.scrollTo(0, 0);
     navigate(path);
     closeMobileMenu();
   };

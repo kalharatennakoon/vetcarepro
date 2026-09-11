@@ -167,8 +167,9 @@
 }
 
 .ai-modern-source-tag {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
   font-weight: 500;
 }
 

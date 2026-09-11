@@ -217,10 +217,14 @@ const PetOwnerAIWidget = () => {
           )}
           <div className="po-widget-header">
             <div className="po-widget-header-title">
-              <i className="fas fa-robot"></i>
+              <div className="po-widget-header-icon-badge">
+                <i className="fas fa-wand-magic-sparkles"></i>
+              </div>
               <div>
-                <strong>AI Assistant</strong>
-                <span>Scoped to your own pets only</span>
+                <strong>VetCare Pro AI Assistant</strong>
+                <span>
+                  <span className="po-widget-status-dot"></span> Scoped to your pets only
+                </span>
               </div>
             </div>
           </div>
@@ -321,7 +325,7 @@ const PetOwnerAIWidget = () => {
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
       >
-        <i className={`fas ${isOpen ? 'fa-times' : 'fa-robot'}`}></i>
+        <i className={`fas ${isOpen ? 'fa-times' : 'fa-wand-magic-sparkles'}`}></i>
         {!isOpen && <span>Ask AI</span>}
       </button>
     </>

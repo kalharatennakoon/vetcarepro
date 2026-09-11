@@ -571,15 +571,14 @@ def _route_to_generation(
     if chart is not None:
         return 'early', chart
 
-    # Counting/listing questions ("how many pets are named X") are unreliable
-    # with pure semantic retrieval - answer them exactly via SQL when we can.
-    structured = try_structured_answer(question, role=role, customer_id=customer_id)
+    # Try to resolve an exact pet (e.g. "pet Max whose owner is ...") so that
+    # retrieval/structured queries can scope directly to that pet.
+    resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
+
+    # Counting/listing/last visit questions are answered exactly via SQL when matched.
+    structured = try_structured_answer(question, role=role, customer_id=customer_id, known_pet_id=resolved_pet_id)
     if structured is not None:
         return 'early', structured
-
-    # Try to resolve an exact pet (e.g. "pet Max whose owner is ...") so that
-    # retrieval isn't polluted by other pets sharing the same common name.
-    resolved_pet_id = resolve_pet_id(question, role=role, customer_id=customer_id)
 
     # A name that matched MORE THAN ONE pet - or, just as dangerously, ZERO
     # pets - is not the same as "no pet mentioned". Staff can see pets across

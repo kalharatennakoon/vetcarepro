@@ -155,7 +155,13 @@ const PetOwnerProfile = () => {
     <a
       href={path}
       className={`po-profile-nav-item ${location.pathname === path ? 'active' : ''}`}
-      onClick={(e) => { e.preventDefault(); navigate(path); }}
+      onClick={(e) => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTo(0, 0);
+        document.getElementById('main-content')?.scrollTo(0, 0);
+        navigate(path);
+      }}
     >
       <i className={`fas ${icon}`}></i> {label}
     </a>
@@ -173,7 +179,7 @@ const PetOwnerProfile = () => {
           </div>
           <div>
             <h2 className="po-profile-header-title">VetCare Pro</h2>
-            <span className="po-profile-header-badge">Pet Owner</span>
+            <span className="po-profile-header-badge">Pet Owner Portal</span>
           </div>
         </div>
         <div className="po-profile-header-right">
@@ -190,7 +196,7 @@ const PetOwnerProfile = () => {
 
           {!petsLoading && (
             <div className="po-profile-sidebar-stat">
-              <i className="fas fa-paw"></i> {pets.length} {pets.length === 1 ? 'pet' : 'pets'} on file
+              <i className="fas fa-paw"></i> {pets.length} {pets.length === 1 ? 'pet' : 'pets'} registered
             </div>
           )}
 
@@ -208,9 +214,11 @@ const PetOwnerProfile = () => {
 
         {/* Main content */}
         <main className="po-profile-main">
-          <div className="po-profile-welcome">
-            <h1>Welcome back{customer?.first_name ? `, ${customer.first_name}` : ''}!</h1>
-            <p>Here&rsquo;s an overview of your account and your pets.</p>
+          <div className="po-profile-hero">
+            <div className="po-profile-welcome">
+              <h1>Welcome back{customer?.first_name ? `, ${customer.first_name}` : ''}!</h1>
+              <p>Here&rsquo;s an overview of your account, pet health records, and clinic activity.</p>
+            </div>
           </div>
 
           <section className="po-profile-card">

@@ -204,7 +204,13 @@ const PetOwnerAIPhotoGuidance = () => {
     <a
       href={path}
       className={`po-profile-nav-item ${location.pathname === path ? 'active' : ''}`}
-      onClick={(e) => { e.preventDefault(); navigate(path); }}
+      onClick={(e) => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTo(0, 0);
+        document.getElementById('main-content')?.scrollTo(0, 0);
+        navigate(path);
+      }}
     >
       <i className={`fas ${icon}`}></i> {label}
     </a>
