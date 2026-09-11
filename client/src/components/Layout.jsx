@@ -386,27 +386,6 @@ const Layout = ({ children }) => {
                 </a>
               )}
             </nav>
-            
-            {/* Bottom Section with Profile and Sign Out */}
-            <div style={styles.sidebarBottom}>
-              <a
-                href="/profile"
-                style={getNavItemStyle('/profile', styles.bottomNavItem)}
-                {...getNavItemHoverHandlers('/profile')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/profile'); }}
-              >
-                <i className="fas fa-user-circle"></i> Profile
-              </a>
-              <a
-                href="#"
-                style={hoveredNavItem === 'logout' ? {...styles.bottomNavItemLogout, ...styles.bottomNavItemLogoutHover} : styles.bottomNavItemLogout}
-                onMouseEnter={() => setHoveredNavItem('logout')}
-                onMouseLeave={() => setHoveredNavItem((current) => (current === 'logout' ? null : current))}
-                onClick={(e) => { e.preventDefault(); handleLogout(); }}
-              >
-                <i className="fas fa-sign-out-alt"></i> Sign Out
-              </a>
-            </div>
           </div>
         </aside>
 
