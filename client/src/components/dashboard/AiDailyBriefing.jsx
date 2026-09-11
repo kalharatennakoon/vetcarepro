@@ -7,10 +7,16 @@ const AiDailyBriefing = () => {
   const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
   const [isHovered, setIsHovered] = useState(false);
 
-  const loadBriefing = () => {
-    getBriefing()
+  const loadBriefing = (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setState((prev) => ({ ...prev, refreshing: true }));
+    } else {
+      setState((prev) => ({ ...prev, loading: !prev.briefing }));
+    }
+
+    getBriefing({ forceRefresh: isManualRefresh })
       .then((res) => {
-        if (!res.success || res.unavailable) {
+        if (!res || !res.success || res.unavailable) {
           setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
         } else {
           setState({ loading: false, briefing: res, unavailable: false, refreshing: false });
@@ -22,12 +28,11 @@ const AiDailyBriefing = () => {
   };
 
   const handleRefresh = () => {
-    setState((prev) => ({ ...prev, refreshing: true }));
-    loadBriefing();
+    loadBriefing(true);
   };
 
   useEffect(() => {
-    loadBriefing();
+    loadBriefing(false);
   }, []);
 
   return (
