@@ -154,7 +154,12 @@ const PetOwnerAIWidget = () => {
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
+    const msgId = `assistant-${Date.now()}-${Math.random()}`;
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: displayText || question },
+      { id: msgId, role: 'assistant', content: '', sources: [] }
+    ]);
     setInput('');
     setLoading(true);
     setError('');
@@ -162,30 +167,26 @@ const PetOwnerAIWidget = () => {
     try {
       const result = await askCustomerAssistant(question, { history, pendingIntent });
       setPendingIntent(result.pending_intent || null);
-      setMessages((prev) => [
-        ...prev,
-        {
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === msgId);
+        const finalMsg = {
           role: 'assistant',
           content: result.answer,
           sources: result.sources || [],
-          // Disambiguation choices ("which pet do you mean?") - clicking
-          // one just re-submits its value as the next message, same as
-          // typing it.
           options: result.options || [],
-          // Same flag/purpose as AIAssistant.jsx's staff chat: a
-          // deterministic/dispatch answer (disambiguation prompts, "no
-          // records found", structured SQL answers) has no sources by
-          // design, but it isn't an ungrounded RAG generation either - only
-          // the latter should get the "general veterinary knowledge"
-          // footer below.
           structured: Boolean(result.structured || result.pending_intent)
-        }
-      ]);
+        };
+        if (idx === -1) return [...prev, finalMsg];
+        const next = [...prev];
+        next[idx] = finalMsg;
+        return next;
+      });
     } catch (err) {
       setError(
         err.response?.data?.message ||
           'The AI assistant is unavailable right now. Please try again shortly.'
       );
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
     } finally {
       setLoading(false);
     }
@@ -273,7 +274,10 @@ const PetOwnerAIWidget = () => {
             ))}
             {loading && (
               <div className="po-widget-message po-widget-message-assistant">
-                <div className="po-widget-bubble po-widget-bubble-loading">
+                <div className="po-widget-header-icon-badge" style={{ width: '26px', height: '26px', borderRadius: '50%', fontSize: '0.75rem', flexShrink: 0, marginRight: '0.4rem' }}>
+                  <i className="fas fa-robot"></i>
+                </div>
+                <div className="po-widget-thinking-status">
                   <span>Thinking</span>
                   <span className="po-widget-thinking-dots">
                     <span></span><span></span><span></span>

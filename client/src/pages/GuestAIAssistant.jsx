@@ -65,6 +65,12 @@ const GuestAIAssistant = () => {
 
     stickToBottomRef.current = true;
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
+    const msgId = `assistant-${Date.now()}-${Math.random()}`;
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: question },
+      { id: msgId, role: 'assistant', content: '', sources: [], streaming: true }
+    ]);
     setInput('');
     setLoading(true);
     setError('');
@@ -75,11 +81,20 @@ const GuestAIAssistant = () => {
         ...prev,
         { role: 'assistant', content: result.answer, sources: result.sources || [] }
       ]);
+      setMessages((prev) => {
+        const idx = prev.findIndex((m) => m.id === msgId);
+        const finalMsg = { role: 'assistant', content: result.answer, sources: result.sources || [] };
+        if (idx === -1) return [...prev, finalMsg];
+        const next = [...prev];
+        next[idx] = finalMsg;
+        return next;
+      });
     } catch (err) {
       setError(
         err.response?.data?.message ||
           'The AI assistant is unavailable right now. Please try again shortly.'
       );
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
     } finally {
       setLoading(false);
     }
@@ -127,8 +142,11 @@ const GuestAIAssistant = () => {
             </div>
           ))}
           {loading && (
-            <div className="ai-message ai-message-assistant">
-              <div className="ai-message-bubble ai-message-loading">
+            <div className="ai-message ai-message-assistant ai-modern-message">
+              <div className="ai-modern-avatar ai-modern-avatar-assistant">
+                <i className="fas fa-robot"></i>
+              </div>
+              <div className="ai-modern-thinking-status">
                 <span>Thinking</span>
                 <span className="ai-thinking-dots">
                   <span></span><span></span><span></span>

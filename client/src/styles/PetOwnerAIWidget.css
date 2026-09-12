@@ -218,6 +218,39 @@
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
+/* Inline thinking status (borderless, outside bubble) */
+
+.po-widget-thinking-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #64748b;
+  padding: 0.25rem 0.4rem;
+  flex-shrink: 0;
+}
+
+.po-widget-thinking-icon {
+  font-size: 0.8rem;
+  color: #3b82f6;
+  animation: ai-sparkle-pulse 1.5s infinite ease-in-out;
+}
+
+.po-widget-thinking-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.po-widget-thinking-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: ai-thinking-bounce 1.2s infinite ease-in-out both;
+}
+
 .po-widget-bubble-loading {
   color: #64748b;
   font-style: italic;
