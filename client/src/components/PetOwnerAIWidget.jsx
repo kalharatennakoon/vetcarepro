@@ -154,12 +154,7 @@ const PetOwnerAIWidget = () => {
       .slice(-6)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    const msgId = `assistant-${Date.now()}-${Math.random()}`;
-    setMessages((prev) => [
-      ...prev,
-      { role: 'user', content: displayText || question },
-      { id: msgId, role: 'assistant', content: '', sources: [] }
-    ]);
+    setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
     setError('');
@@ -167,26 +162,21 @@ const PetOwnerAIWidget = () => {
     try {
       const result = await askCustomerAssistant(question, { history, pendingIntent });
       setPendingIntent(result.pending_intent || null);
-      setMessages((prev) => {
-        const idx = prev.findIndex((m) => m.id === msgId);
-        const finalMsg = {
+      setMessages((prev) => [
+        ...prev,
+        {
           role: 'assistant',
           content: result.answer,
           sources: result.sources || [],
           options: result.options || [],
           structured: Boolean(result.structured || result.pending_intent)
-        };
-        if (idx === -1) return [...prev, finalMsg];
-        const next = [...prev];
-        next[idx] = finalMsg;
-        return next;
-      });
+        }
+      ]);
     } catch (err) {
       setError(
         err.response?.data?.message ||
           'The AI assistant is unavailable right now. Please try again shortly.'
       );
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
     } finally {
       setLoading(false);
     }
@@ -250,7 +240,7 @@ const PetOwnerAIWidget = () => {
                       ))}
                     </div>
                   )}
-                  {m.role === 'assistant' && !m.intro && (
+                  {m.role === 'assistant' && !m.intro && m.content && m.content.trim() !== '' && (
                     m.sources && m.sources.length > 0 ? (
                       <div className="po-widget-sources">
                         <div className="po-widget-sources-label">

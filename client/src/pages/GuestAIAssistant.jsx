@@ -65,12 +65,6 @@ const GuestAIAssistant = () => {
 
     stickToBottomRef.current = true;
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
-    const msgId = `assistant-${Date.now()}-${Math.random()}`;
-    setMessages((prev) => [
-      ...prev,
-      { role: 'user', content: question },
-      { id: msgId, role: 'assistant', content: '', sources: [], streaming: true }
-    ]);
     setInput('');
     setLoading(true);
     setError('');
@@ -81,20 +75,11 @@ const GuestAIAssistant = () => {
         ...prev,
         { role: 'assistant', content: result.answer, sources: result.sources || [] }
       ]);
-      setMessages((prev) => {
-        const idx = prev.findIndex((m) => m.id === msgId);
-        const finalMsg = { role: 'assistant', content: result.answer, sources: result.sources || [] };
-        if (idx === -1) return [...prev, finalMsg];
-        const next = [...prev];
-        next[idx] = finalMsg;
-        return next;
-      });
     } catch (err) {
       setError(
         err.response?.data?.message ||
           'The AI assistant is unavailable right now. Please try again shortly.'
       );
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
     } finally {
       setLoading(false);
     }
@@ -119,7 +104,7 @@ const GuestAIAssistant = () => {
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
-                {m.role === 'assistant' && !m.intro && (
+                {m.role === 'assistant' && !m.intro && m.content && m.content.trim() !== '' && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources">
                       <div className="ai-message-sources-label">

@@ -442,7 +442,7 @@ const AIAssistant = () => {
                     ))}
                   </div>
                 )}
-                {m.role === 'assistant' && !m.intro && !m.action && !m.streaming && (
+                {m.role === 'assistant' && !m.intro && !m.action && !m.streaming && m.content && m.content.trim() !== '' && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources ai-modern-sources">
                       <div className="ai-message-sources-label">
