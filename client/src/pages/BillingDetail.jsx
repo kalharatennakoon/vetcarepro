@@ -5,6 +5,7 @@ import { sendInvoiceEmail } from '../services/emailService';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import Layout from '../components/Layout';
+import '../styles/BillingDetailModern.css';
 
 const BillingDetail = () => {
   const [bill, setBill] = useState(null);
@@ -144,21 +145,25 @@ const BillingDetail = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      unpaid: { bg: '#FEE2E2', color: '#991B1B', text: 'UNPAID' },
-      partially_paid: { bg: '#FEF3C7', color: '#92400E', text: 'PARTIALLY PAID' },
-      fully_paid: { bg: '#D1FAE5', color: '#065F46', text: 'FULLY PAID' },
-      overdue: { bg: '#FECACA', color: '#7F1D1D', text: 'OVERDUE' },
-      cancelled: { bg: '#F3F4F6', color: '#6B7280', text: 'CANCELLED' }
+      unpaid: { bg: '#fee2e2', color: '#991b1b', border: '#fecaca', text: 'UNPAID', icon: 'fa-clock' },
+      partially_paid: { bg: '#fef3c7', color: '#92400e', border: '#fde68a', text: 'PARTIALLY PAID', icon: 'fa-adjust' },
+      fully_paid: { bg: '#dcfce7', color: '#166534', border: '#bbf7d0', text: 'FULLY PAID', icon: 'fa-circle-check' },
+      overdue: { bg: '#fee2e2', color: '#991b1b', border: '#fecaca', text: 'OVERDUE', icon: 'fa-circle-exclamation' },
+      cancelled: { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0', text: 'CANCELLED', icon: 'fa-ban' }
     };
 
     const config = statusConfig[status] || statusConfig.unpaid;
 
     return (
-      <span style={{
-        ...styles.statusBadge,
-        backgroundColor: config.bg,
-        color: config.color
-      }}>
+      <span
+        className="inv-status-pill"
+        style={{
+          backgroundColor: config.bg,
+          color: config.color,
+          border: `1px solid ${config.border}`
+        }}
+      >
+        <i className={`fas ${config.icon}`}></i>
         {config.text}
       </span>
     );
@@ -167,8 +172,8 @@ const BillingDetail = () => {
   if (loading) {
     return (
       <Layout>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', color: '#64748b' }}>
+          <div style={{ border: '3px solid #e2e8f0', borderTop: '3px solid #2563eb', borderRadius: '50%', width: '42px', height: '42px', animation: 'spin 1s linear infinite', marginBottom: '1rem' }}></div>
           <p>Loading bill details...</p>
         </div>
       </Layout>
@@ -178,11 +183,11 @@ const BillingDetail = () => {
   if (error || !bill) {
     return (
       <Layout>
-        <div ref={errorRef} style={styles.errorContainer}>
-          <h2>Error</h2>
-          <p style={styles.errorText}>{error || 'Bill not found'}</p>
-          <button onClick={() => navigate('/billing')} style={styles.backButton}>
-            Back to Billing
+        <div ref={errorRef} style={{ maxWidth: '600px', margin: '3rem auto', padding: '2rem', background: '#ffffff', border: '1px solid #fee2e2', borderRadius: '16px', textAlign: 'center' }}>
+          <h2 style={{ color: '#dc2626', margin: '0 0 1rem 0' }}>Error</h2>
+          <p style={{ color: '#4b5563', marginBottom: '1.5rem' }}>{error || 'Bill not found'}</p>
+          <button onClick={() => navigate('/billing')} className="inv-detail-back-btn">
+            <i className="fas fa-arrow-left"></i> Back to Billing
           </button>
         </div>
       </Layout>
@@ -282,55 +287,59 @@ const BillingDetail = () => {
           }
         }
       `}</style>
-      <div id="billing-detail-top" style={styles.container}>
-        {/* Header */}
-        <div style={styles.header} className="no-print">
-          <button onClick={() => navigate('/billing')} style={styles.backButton}>
-            ← Back to Billing
+      <div id="billing-detail-top" className="inv-detail-container">
+        {/* Navigation & Action Top Bar */}
+        <div className="inv-detail-top-nav no-print">
+          <button onClick={() => navigate('/billing')} className="inv-detail-back-btn">
+            <i className="fas fa-arrow-left"></i>
+            <span>Back to Billing</span>
           </button>
-          <div style={styles.headerActions}>
+          <div className="inv-detail-actions">
             {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && bill.payment_status !== 'cancelled' && !showPaymentForm && (
               <button
                 onClick={() => {
                   setShowPaymentForm(true);
                   setTimeout(() => document.getElementById('payment-form-section')?.scrollIntoView({ behavior: 'smooth' }), 50);
                 }}
-                style={styles.paymentButton}
+                className="inv-btn-pay"
               >
-                <i className="fas fa-credit-card"></i> Record Payment
+                <i className="fas fa-credit-card"></i>
+                <span>Record Payment</span>
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
               <button
                 onClick={() => setEmailModal(true)}
-                style={{ ...styles.printButton, backgroundColor: '#059669', borderColor: '#059669' }}
+                className="inv-btn-email"
               >
-                <i className="fas fa-envelope"></i> Email Invoice
+                <i className="fas fa-envelope"></i>
+                <span>Email Invoice</span>
               </button>
             )}
             {(user?.role === 'admin' || user?.role === 'receptionist') && (
               <button
                 onClick={() => window.print()}
-                style={styles.printButton}
+                className="inv-btn-print"
               >
-                <i className="fas fa-print"></i> Print Invoice
+                <i className="fas fa-print"></i>
+                <span>Print Invoice</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Invoice Card */}
-        <div style={styles.invoiceCard} className="print-invoice-container invoice-card-print">
+        {/* Invoice Main Card */}
+        <div className="inv-main-card print-invoice-container invoice-card-print">
           {/* Invoice Header */}
-          <div style={styles.invoiceHeader}>
+          <div className="inv-header-row">
             <div>
-              <h1 style={styles.invoiceTitle}>INVOICE</h1>
-              <p style={styles.invoiceNumber}>{bill.bill_number}</p>
+              <h1 className="inv-title">INVOICE</h1>
+              <p className="inv-number">#{bill.bill_number}</p>
             </div>
-            <div style={{textAlign: 'right'}}>
+            <div style={{ textAlign: 'right' }}>
               {getStatusBadge(bill.payment_status)}
-              <p style={styles.invoiceDate}>
-                <strong>Invoice Generated:</strong> {new Date().toLocaleString('en-US', { 
+              <p className="inv-info-text">
+                <strong>Generated:</strong> {new Date().toLocaleString('en-US', { 
                   year: 'numeric', 
                   month: 'short', 
                   day: 'numeric',
@@ -342,208 +351,204 @@ const BillingDetail = () => {
             </div>
           </div>
 
-          <div style={styles.divider}></div>
+          <div className="inv-divider"></div>
 
-          {/* Customer Information */}
-          <div style={styles.infoSection}>
-            <div>
-              <h3 style={styles.sectionTitle}>Bill To:</h3>
-              <p style={styles.customerName}>{bill.customer_name}</p>
-              {bill.customer_email && <p style={styles.infoText}>{bill.customer_email}</p>}
-              {bill.customer_phone && <p style={styles.infoText}>{bill.customer_phone}</p>}
-              {bill.customer_address && <p style={styles.infoText}>{bill.customer_address}</p>}
+          {/* Customer & Staff Information */}
+          <div className="inv-info-grid">
+            <div className="inv-info-block">
+              <span className="inv-info-header">Bill To:</span>
+              <h3 className="inv-customer-name">{bill.customer_name}</h3>
+              {bill.customer_email && <p className="inv-info-text"><i className="fas fa-envelope" style={{ marginRight: '0.4rem', color: '#94a3b8' }}></i>{bill.customer_email}</p>}
+              {bill.customer_phone && <p className="inv-info-text"><i className="fas fa-phone" style={{ marginRight: '0.4rem', color: '#94a3b8' }}></i>{bill.customer_phone}</p>}
+              {bill.customer_address && <p className="inv-info-text"><i className="fas fa-location-dot" style={{ marginRight: '0.4rem', color: '#94a3b8' }}></i>{bill.customer_address}</p>}
             </div>
-            <div style={{textAlign: 'right'}}>
-              <h3 style={styles.sectionTitle}>Created By:</h3>
-              <p style={styles.infoText}>{bill.created_by_name || 'N/A'}</p>
-              {bill.created_at && <p style={styles.infoText}><strong>Created:</strong> {formatDate(bill.created_at)}</p>}
-              {bill.updated_at && bill.updated_at !== bill.created_at && <p style={styles.infoText}><strong>Updated:</strong> {formatDate(bill.updated_at)}</p>}
+            <div className="inv-info-block" style={{ textAlign: 'right', alignItems: 'flex-end' }}>
+              <span className="inv-info-header">Created By:</span>
+              <p className="inv-customer-name" style={{ fontSize: '1rem' }}>{bill.created_by_name || 'N/A'}</p>
+              {bill.created_at && <p className="inv-info-text"><strong>Created:</strong> {formatDate(bill.created_at)}</p>}
+              {bill.updated_at && bill.updated_at !== bill.created_at && <p className="inv-info-text"><strong>Updated:</strong> {formatDate(bill.updated_at)}</p>}
             </div>
           </div>
 
-          <div style={styles.divider}></div>
+          <div className="inv-divider"></div>
 
           {/* Items Table */}
-          <div style={styles.itemsSection}>
-            <h3 style={styles.sectionTitle}>Items</h3>
-            <table style={styles.itemsTable}>
-              <thead>
-                <tr style={styles.tableHeader}>
-                  <th style={styles.th}>Item</th>
-                  <th style={styles.th}>Type</th>
-                  <th style={styles.thRight}>Quantity</th>
-                  <th style={styles.thRight}>Unit Price</th>
-                  <th style={styles.thRight}>Discount</th>
-                  <th style={styles.thRight}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bill.items && bill.items.map((item) => (
-                  <tr key={item.billing_item_id} style={styles.tableRow}>
-                    <td style={styles.td}>{item.item_name}</td>
-                    <td style={styles.td}>
-                      <span style={styles.itemTypeBadge}>
-                        {item.item_type === 'inventory_item' ? 'Inventory Item' : item.item_type === 'service' ? 'Service' : item.item_type || '-'}
-                      </span>
-                    </td>
-                    <td style={styles.tdRight}>{item.quantity}</td>
-                    <td style={styles.tdRight}>{formatCurrency(item.unit_price)}</td>
-                    <td style={styles.tdRight}>{formatCurrency(item.discount)}</td>
-                    <td style={styles.tdRight}><strong>{formatCurrency(item.total_price)}</strong></td>
+          <div>
+            <span className="inv-info-header" style={{ display: 'block', marginBottom: '0.75rem' }}>Line Items</span>
+            <div className="inv-table-wrapper">
+              <table className="inv-table">
+                <thead>
+                  <tr>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Item</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Type</th>
+                    <th className="inv-th" style={{ textAlign: 'right' }}>Qty</th>
+                    <th className="inv-th" style={{ textAlign: 'right' }}>Unit Price</th>
+                    <th className="inv-th" style={{ textAlign: 'right' }}>Discount</th>
+                    <th className="inv-th" style={{ textAlign: 'right' }}>Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {bill.items && bill.items.map((item) => (
+                    <tr key={item.billing_item_id} className="inv-table-row">
+                      <td className="inv-td" style={{ fontWeight: '600' }}>{item.item_name}</td>
+                      <td className="inv-td">
+                        <span className="inv-item-type-badge">
+                          {item.item_type === 'inventory_item' ? 'Inventory Item' : item.item_type === 'service' ? 'Service' : item.item_type || '-'}
+                        </span>
+                      </td>
+                      <td className="inv-td" style={{ textAlign: 'right' }}>{item.quantity}</td>
+                      <td className="inv-td" style={{ textAlign: 'right' }}>{formatCurrency(item.unit_price)}</td>
+                      <td className="inv-td" style={{ textAlign: 'right' }}>{formatCurrency(item.discount)}</td>
+                      <td className="inv-td" style={{ textAlign: 'right', fontWeight: '700' }}>{formatCurrency(item.total_price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Totals Section */}
-          <div style={styles.totalsSection}>
-            <div style={styles.totalsGrid}>
-              <div style={styles.totalRow}>
-                <span>Subtotal:</span>
+          <div className="inv-totals-wrapper">
+            <div className="inv-totals-box">
+              <div className="inv-total-line">
+                <span>Subtotal</span>
                 <span>{formatCurrency(bill.subtotal)}</span>
               </div>
               {bill.discount_amount > 0 && (
-                <div style={styles.totalRow}>
-                  <span>Discount ({bill.discount_percentage}%):</span>
-                  <span style={{color: '#DC2626'}}>-{formatCurrency(bill.discount_amount)}</span>
+                <div className="inv-total-line">
+                  <span>Discount ({bill.discount_percentage}%)</span>
+                  <span style={{ color: '#dc2626' }}>-{formatCurrency(bill.discount_amount)}</span>
                 </div>
               )}
               {bill.tax_amount > 0 && (
-                <div style={styles.totalRow}>
-                  <span>Tax ({bill.tax_percentage}%):</span>
+                <div className="inv-total-line">
+                  <span>Tax ({bill.tax_percentage}%)</span>
                   <span>{formatCurrency(bill.tax_amount)}</span>
                 </div>
               )}
-              <div style={styles.divider}></div>
-              <div style={styles.totalRowLarge}>
-                <span>Total Amount:</span>
+              <div className="inv-total-line-bold">
+                <span>Total Amount</span>
                 <span>{formatCurrency(bill.total_amount)}</span>
               </div>
-              <div style={styles.totalRowPaid}>
-                <span>Paid Amount:</span>
-                <span style={{color: '#059669'}}>{formatCurrency(bill.paid_amount)}</span>
+              <div className="inv-total-line" style={{ fontWeight: '600', color: '#166534' }}>
+                <span>Paid Amount</span>
+                <span>{formatCurrency(bill.paid_amount)}</span>
               </div>
-              <div style={styles.totalRowBalance}>
-                <span>Balance Due:</span>
-                <span style={{color: '#DC2626'}}>{formatCurrency(bill.balance_amount)}</span>
+              <div className="inv-total-line-bold" style={{ color: '#dc2626', paddingTop: '0.35rem' }}>
+                <span>Balance Due</span>
+                <span>{formatCurrency(bill.balance_amount)}</span>
               </div>
             </div>
           </div>
 
           {/* Notes */}
           {bill.notes && (
-            <div style={styles.notesSection}>
-              <h3 style={styles.sectionTitle}>Notes:</h3>
-              <p style={styles.notesText}>{bill.notes}</p>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
+              <span className="inv-info-header">Notes</span>
+              <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', color: '#334155', lineHeight: '1.5' }}>{bill.notes}</p>
             </div>
           )}
         </div>
 
-        {/* Cancellation Reason (internal only — not printed) */}
+        {/* Cancellation Reason (Internal) */}
         {bill.payment_status === 'cancelled' && (
-          <div style={styles.cancelCard} className="no-print">
-            <h2 style={{ ...styles.cardTitle, color: '#991B1B' }}>
-              <i className="fas fa-ban" style={{ marginRight: '8px' }}></i>
+          <div className="inv-sec-card no-print" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fas fa-ban"></i>
               Invoice Cancelled
             </h2>
-            <div style={{ fontSize: '14px', color: '#374151', marginTop: '8px' }}>
-              <span style={{ fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>Reason: </span>
+            <div style={{ fontSize: '0.9rem', color: '#7f1d1d' }}>
+              <span className="inv-info-header" style={{ color: '#991b1b' }}>Reason: </span>
               <span>{bill.cancellation_reason}</span>
             </div>
           </div>
         )}
 
-        {/* Linked Appointment (internal only — not printed) */}
+        {/* Linked Appointment (Internal) */}
         {bill.appointment_id && (
-          <div style={styles.apptCard} className="no-print">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={styles.cardTitle}>
-                <i className="fas fa-calendar-check" style={{ marginRight: '8px', color: '#3B82F6' }}></i>
+          <div className="inv-sec-card no-print" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fas fa-calendar-check" style={{ color: '#2563eb' }}></i>
                 Linked Appointment
               </h2>
               <button
                 onClick={() => navigate('/appointments', { state: { highlightAppointmentId: bill.appointment_id, appointmentDate: bill.appointment_date, appointmentStatus: 'completed' } })}
-                style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                className="inv-detail-back-btn"
+                style={{ color: '#1d4ed8', borderColor: '#bfdbfe', background: '#ffffff', padding: '0.4rem 0.85rem', fontSize: '0.8rem' }}
               >
                 View in Appointments
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
               <div>
-                <p style={styles.apptLabel}>Appointment ID</p>
-                <p style={styles.apptValue}>{bill.appointment_id}</p>
+                <span className="inv-info-header">Appointment ID</span>
+                <p style={{ margin: '0.2rem 0 0 0', fontWeight: '700', color: '#1e3a8a', fontSize: '0.95rem' }}>#{bill.appointment_id}</p>
               </div>
               {bill.pet_name && (
                 <div>
-                  <p style={styles.apptLabel}>Pet</p>
-                  <p style={styles.apptValue}>{bill.pet_name}{bill.species && ` (${bill.species.charAt(0).toUpperCase() + bill.species.slice(1)})`}</p>
+                  <span className="inv-info-header">Pet</span>
+                  <p style={{ margin: '0.2rem 0 0 0', fontWeight: '700', color: '#1e3a8a', fontSize: '0.95rem' }}>
+                    {bill.pet_name}{bill.species && ` (${bill.species.charAt(0).toUpperCase() + bill.species.slice(1)})`}
+                  </p>
                 </div>
               )}
               {bill.appointment_type && (
                 <div>
-                  <p style={styles.apptLabel}>Type</p>
-                  <p style={{ ...styles.apptValue, textTransform: 'capitalize' }}>{bill.appointment_type.replace('_', ' ')}</p>
+                  <span className="inv-info-header">Type</span>
+                  <p style={{ margin: '0.2rem 0 0 0', fontWeight: '700', color: '#1e3a8a', fontSize: '0.95rem', textTransform: 'capitalize' }}>
+                    {bill.appointment_type.replace('_', ' ')}
+                  </p>
                 </div>
               )}
               {bill.appointment_date && (
                 <div>
-                  <p style={styles.apptLabel}>Date</p>
-                  <p style={styles.apptValue}>{new Date(bill.appointment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
-                </div>
-              )}
-              {bill.appointment_time && (
-                <div>
-                  <p style={styles.apptLabel}>Time</p>
-                  <p style={styles.apptValue}>
-                    {(() => {
-                      const [h, m] = bill.appointment_time.split(':');
-                      const hour = parseInt(h);
-                      const ampm = hour >= 12 ? 'PM' : 'AM';
-                      const hour12 = hour % 12 || 12;
-                      return `${hour12}:${m} ${ampm}`;
-                    })()}
+                  <span className="inv-info-header">Date</span>
+                  <p style={{ margin: '0.2rem 0 0 0', fontWeight: '700', color: '#1e3a8a', fontSize: '0.95rem' }}>
+                    {new Date(bill.appointment_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
               )}
               {bill.veterinarian_name && (
                 <div>
-                  <p style={styles.apptLabel}>Veterinarian</p>
-                  <p style={styles.apptValue}>Dr. {bill.veterinarian_name}</p>
+                  <span className="inv-info-header">Veterinarian</span>
+                  <p style={{ margin: '0.2rem 0 0 0', fontWeight: '700', color: '#1e3a8a', fontSize: '0.95rem' }}>
+                    Dr. {bill.veterinarian_name}
+                  </p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Payment Form */}
+        {/* Payment Form (Internal) */}
         {showPaymentForm && (
-          <div id="payment-form-section" style={styles.paymentFormCard} className="no-print">
-            <h2 style={styles.formTitle}>Record Payment</h2>
-            <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
-            <form onSubmit={handlePaymentSubmit}>
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Amount<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
+          <div id="payment-form-section" className="inv-sec-card no-print">
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>Record Payment</h2>
+            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: 0 }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
+            <form onSubmit={handlePaymentSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label className="inv-info-header">Amount <span style={{ color: '#dc2626' }}>*</span></label>
                   <input
                     type="number"
                     step="0.01"
                     value={paymentData.amount}
                     onChange={(e) => setPaymentData({...paymentData, amount: e.target.value})}
-                    style={styles.input}
+                    style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                     required
                     max={bill.balance_amount}
                   />
-                  <small style={styles.helpText}>
+                  <small style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
                     Maximum: {formatCurrency(bill.balance_amount)}
                   </small>
                 </div>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Payment Method<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
+                <div>
+                  <label className="inv-info-header">Payment Method <span style={{ color: '#dc2626' }}>*</span></label>
                   <select
                     value={paymentData.payment_method}
                     onChange={(e) => setPaymentData({...paymentData, payment_method: e.target.value})}
-                    style={styles.input}
+                    style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', backgroundColor: 'white', boxSizing: 'border-box' }}
                     required
                   >
                     <option value="cash">Cash</option>
@@ -555,71 +560,73 @@ const BillingDetail = () => {
                 </div>
               </div>
 
-              <div style={styles.formRow}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Reference Number</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div>
+                  <label className="inv-info-header">Reference Number</label>
                   <input
                     type="text"
                     value={paymentData.payment_reference}
                     onChange={(e) => setPaymentData({...paymentData, payment_reference: e.target.value})}
-                    style={styles.input}
+                    style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                     placeholder="Transaction ID, Check #, etc."
                   />
                 </div>
                 {paymentData.payment_method === 'card' && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Card Type</label>
+                  <div>
+                    <label className="inv-info-header">Card Type</label>
                     <input
                       type="text"
                       value={paymentData.card_type}
                       onChange={(e) => setPaymentData({...paymentData, card_type: e.target.value})}
-                      style={styles.input}
+                      style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                       placeholder="Visa, Mastercard, etc."
                     />
                   </div>
                 )}
                 {paymentData.payment_method === 'bank_transfer' && (
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Bank Name</label>
+                  <div>
+                    <label className="inv-info-header">Bank Name</label>
                     <input
                       type="text"
                       value={paymentData.bank_name}
                       onChange={(e) => setPaymentData({...paymentData, bank_name: e.target.value})}
-                      style={styles.input}
+                      style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                       placeholder="Bank name"
                     />
                   </div>
                 )}
               </div>
 
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Notes</label>
+              <div>
+                <label className="inv-info-header">Notes</label>
                 <textarea
                   value={paymentData.notes}
                   onChange={(e) => setPaymentData({...paymentData, notes: e.target.value})}
-                  style={{...styles.input, minHeight: '80px'}}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
                   placeholder="Additional payment notes..."
                 />
               </div>
 
-              <div style={styles.formActions}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => {
                     setShowPaymentForm(false);
                     document.getElementById('billing-detail-top')?.scrollIntoView({ behavior: 'smooth' });
                   }}
-                  style={styles.cancelButton}
+                  className="inv-detail-back-btn"
                   disabled={submitting}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  style={styles.submitButton}
+                  className="inv-btn-pay"
                   disabled={submitting}
                 >
-                  {submitting ? 'Processing...' : 'Record Payment'}
+                  <i className={`fas fa-${submitting ? 'circle-notch fa-spin' : 'credit-card'}`}></i>
+                  <span>{submitting ? 'Processing...' : 'Record Payment'}</span>
                 </button>
               </div>
             </form>
@@ -628,41 +635,45 @@ const BillingDetail = () => {
 
         {/* Payment History */}
         {bill.payments && bill.payments.length > 0 && (
-          <div style={styles.paymentsCard} className="no-print">
-            <h2 style={styles.cardTitle}>Payment History</h2>
-            <table style={styles.paymentsTable}>
-              <thead>
-                <tr style={styles.tableHeader}>
-                  <th style={styles.th}>Date</th>
-                  <th style={styles.th}>Amount</th>
-                  <th style={styles.th}>Method</th>
-                  <th style={styles.th}>Reference</th>
-                  <th style={styles.th}>Received By</th>
-                  <th style={styles.th}>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bill.payments.map((payment) => (
-                  <tr key={payment.payment_id} style={styles.tableRow}>
-                    <td style={styles.td}>{formatDate(payment.payment_date)}</td>
-                    <td style={styles.td}>
-                      <strong style={{color: '#059669'}}>{formatCurrency(payment.amount)}</strong>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={styles.methodBadge}>{payment.payment_method ? formatPaymentMethod(payment.payment_method) : '-'}</span>
-                    </td>
-                    <td style={styles.td}>{payment.payment_reference || '-'}</td>
-                    <td style={styles.td}>{payment.received_by_name}</td>
-                    <td style={styles.td}>{payment.notes || '-'}</td>
+          <div className="inv-sec-card no-print">
+            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#0f172a' }}>Payment History</h2>
+            <div className="inv-table-wrapper">
+              <table className="inv-table">
+                <thead>
+                  <tr>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Date</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Amount</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Method</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Reference</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Received By</th>
+                    <th className="inv-th" style={{ textAlign: 'left' }}>Notes</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {bill.payments.map((payment) => (
+                    <tr key={payment.payment_id} className="inv-table-row">
+                      <td className="inv-td">{formatDate(payment.payment_date)}</td>
+                      <td className="inv-td" style={{ fontWeight: '700', color: '#166534' }}>
+                        {formatCurrency(payment.amount)}
+                      </td>
+                      <td className="inv-td">
+                        <span style={{ fontSize: '0.72rem', fontWeight: '700', background: '#dbeafe', color: '#1e40af', padding: '0.15rem 0.55rem', borderRadius: '6px' }}>
+                          {payment.payment_method ? formatPaymentMethod(payment.payment_method) : '-'}
+                        </span>
+                      </td>
+                      <td className="inv-td" style={{ fontFamily: 'monospace' }}>{payment.payment_reference || '-'}</td>
+                      <td className="inv-td">{payment.received_by_name}</td>
+                      <td className="inv-td">{payment.notes || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
         {/* Print Footer - Only visible when printing */}
-        <div className="print-footer" style={{display: 'none'}}>
+        <div className="print-footer" style={{ display: 'none' }}>
           <strong>Pro Pet Animal Hospital</strong><br />
           Kurunegala, Sri Lanka<br />
           Phone: +94 37 123 4567 | Email: info@propet.lk<br />
@@ -679,442 +690,56 @@ const BillingDetail = () => {
 
       {/* Email Invoice Modal */}
       {emailModal && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalBox}>
-            <h3 style={styles.modalTitle}>Email Invoice</h3>
-            <p style={styles.modalSubtitle}>Send invoice #{bill.bill_number} to the customer.</p>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span></label>
-              <textarea
-                value={emailNote}
-                onChange={(e) => setEmailNote(e.target.value)}
-                style={{ ...styles.input, minHeight: '90px', resize: 'vertical' }}
-                placeholder="Add a note or message to include in the email..."
-              />
+        <div className="pet-modal-overlay" onClick={() => setEmailModal(false)}>
+          <div className="pet-modal-card" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+            <div className="pet-modal-header">
+              <h3 className="pet-modal-title">
+                <i className="fas fa-envelope" style={{ color: '#0d9488' }}></i>
+                Email Invoice
+              </h3>
+              <button onClick={() => setEmailModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.1rem', color: '#64748b', cursor: 'pointer' }}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
-            <div style={styles.formActions}>
-              <button
-                type="button"
-                onClick={() => { setEmailModal(false); setEmailNote(''); }}
-                style={styles.cancelButton}
-                disabled={emailSending}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleEmailInvoice}
-                style={{ ...styles.submitButton, backgroundColor: '#059669' }}
-                disabled={emailSending}
-              >
-                {emailSending ? 'Sending...' : 'Send Email'}
-              </button>
+            <div className="pet-modal-body">
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155' }}>
+                Send invoice <strong>#{bill.bill_number}</strong> to <strong>{bill.customer_email || 'Customer'}</strong>.
+              </p>
+              <div>
+                <label className="inv-info-header" style={{ marginBottom: '0.35rem' }}>Note to Customer <span style={{ color: '#94a3b8', fontWeight: 400, textTransform: 'none' }}>(optional)</span></label>
+                <textarea
+                  value={emailNote}
+                  onChange={(e) => setEmailNote(e.target.value)}
+                  rows={4}
+                  style={{ width: '100%', padding: '0.65rem 0.75rem', border: '1.5px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', outline: 'none', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  placeholder="Add a note or message to include in the email..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => { setEmailModal(false); setEmailNote(''); }}
+                  className="inv-detail-back-btn"
+                  disabled={emailSending}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEmailInvoice}
+                  className="inv-btn-email"
+                  disabled={emailSending}
+                >
+                  <i className={`fas fa-${emailSending ? 'spinner fa-spin' : 'paper-plane'}`}></i>
+                  <span>{emailSending ? 'Sending...' : 'Send Email'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
     </Layout>
   );
-};
-
-const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '0 auto'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '24px',
-    flexWrap: 'wrap',
-    gap: '16px'
-  },
-  backButton: {
-    backgroundColor: '#6B7280',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  },
-  headerActions: {
-    display: 'flex',
-    gap: '12px'
-  },
-  paymentButton: {
-    backgroundColor: '#059669',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  },
-  printButton: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600'
-  },
-  invoiceCard: {
-    backgroundColor: 'white',
-    padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #E5E7EB',
-    marginBottom: '24px'
-  },
-  invoiceHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '32px'
-  },
-  invoiceTitle: {
-    fontSize: '32px',
-    fontWeight: 'bold',
-    color: '#1F2937',
-    margin: '0 0 8px 0'
-  },
-  invoiceNumber: {
-    fontSize: '18px',
-    color: '#6B7280',
-    margin: 0
-  },
-  invoiceDate: {
-    fontSize: '14px',
-    color: '#6B7280',
-    margin: '4px 0'
-  },
-  statusBadge: {
-    padding: '8px 16px',
-    borderRadius: '12px',
-    fontSize: '12px',
-    fontWeight: '600',
-    display: 'inline-block',
-    marginBottom: '12px'
-  },
-  divider: {
-    height: '1px',
-    backgroundColor: '#E5E7EB',
-    margin: '24px 0'
-  },
-  infoSection: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '32px',
-    marginBottom: '32px'
-  },
-  sectionTitle: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    margin: '0 0 12px 0'
-  },
-  customerName: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1F2937',
-    margin: '0 0 8px 0'
-  },
-  infoText: {
-    fontSize: '14px',
-    color: '#6B7280',
-    margin: '4px 0'
-  },
-  itemsSection: {
-    marginBottom: '32px'
-  },
-  itemsTable: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    marginTop: '16px'
-  },
-  tableHeader: {
-    backgroundColor: '#F9FAFB',
-    borderBottom: '2px solid #E5E7EB'
-  },
-  th: {
-    padding: '12px',
-    textAlign: 'left',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-  },
-  thRight: {
-    padding: '12px',
-    textAlign: 'right',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-  },
-  tableRow: {
-    borderBottom: '1px solid #E5E7EB'
-  },
-  td: {
-    padding: '12px',
-    fontSize: '14px',
-    color: '#1F2937'
-  },
-  tdRight: {
-    padding: '12px',
-    textAlign: 'right',
-    fontSize: '14px',
-    color: '#1F2937'
-  },
-  itemTypeBadge: {
-    backgroundColor: '#EFF6FF',
-    color: '#1E40AF',
-    padding: '4px 8px',
-    borderRadius: '6px',
-    fontSize: '11px',
-    fontWeight: '500',
-    textTransform: 'capitalize'
-  },
-  totalsSection: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    marginTop: '32px'
-  },
-  totalsGrid: {
-    minWidth: '350px'
-  },
-  totalRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 0',
-    fontSize: '14px',
-    color: '#6B7280'
-  },
-  totalRowLarge: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '12px 0',
-    fontSize: '18px',
-    fontWeight: 'bold',
-    color: '#1F2937'
-  },
-  totalRowPaid: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '8px 0',
-    fontSize: '16px',
-    fontWeight: '600'
-  },
-  totalRowBalance: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    padding: '12px 0',
-    fontSize: '18px',
-    fontWeight: 'bold'
-  },
-  notesSection: {
-    marginTop: '32px',
-    padding: '16px',
-    backgroundColor: '#F9FAFB',
-    borderRadius: '8px'
-  },
-  notesText: {
-    fontSize: '14px',
-    color: '#4B5563',
-    margin: '8px 0 0 0',
-    lineHeight: '1.6'
-  },
-  paymentFormCard: {
-    backgroundColor: 'white',
-    padding: '32px',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #E5E7EB',
-    marginBottom: '24px'
-  },
-  formTitle: {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: '24px'
-  },
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '20px'
-  },
-  formGroup: {
-    marginBottom: '20px'
-  },
-  label: {
-    display: 'block',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: '8px'
-  },
-  input: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #D1D5DB',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box'
-  },
-  helpText: {
-    fontSize: '12px',
-    color: '#6B7280',
-    marginTop: '4px',
-    display: 'block'
-  },
-  formActions: {
-    display: 'flex',
-    gap: '12px',
-    justifyContent: 'flex-end',
-    marginTop: '24px'
-  },
-  cancelButton: {
-    backgroundColor: '#F3F4F6',
-    color: '#4B5563',
-    border: 'none',
-    padding: '10px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '500'
-  },
-  submitButton: {
-    backgroundColor: '#059669',
-    color: 'white',
-    border: 'none',
-    padding: '10px 24px',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: '600'
-  },
-  paymentsCard: {
-    backgroundColor: 'white',
-    padding: '32px',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #E5E7EB'
-  },
-  cardTitle: {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: '20px'
-  },
-  paymentsTable: {
-    width: '100%',
-    borderCollapse: 'collapse'
-  },
-  methodBadge: {
-    backgroundColor: '#DBEAFE',
-    color: '#1E40AF',
-    padding: '4px 8px',
-    borderRadius: '6px',
-    fontSize: '11px',
-    fontWeight: '500',
-    textTransform: 'capitalize'
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '60px 20px',
-    color: '#6B7280'
-  },
-  spinner: {
-    border: '4px solid #E5E7EB',
-    borderTop: '4px solid #3B82F6',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-    marginBottom: '16px'
-  },
-  errorContainer: {
-    backgroundColor: 'white',
-    padding: '40px',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    textAlign: 'center'
-  },
-  errorText: {
-    color: '#DC2626',
-    marginBottom: '20px'
-  },
-  modalOverlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000
-  },
-  modalBox: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    padding: '32px',
-    width: '100%',
-    maxWidth: '480px',
-    boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
-  },
-  modalTitle: {
-    fontSize: '18px',
-    fontWeight: '600',
-    color: '#1F2937',
-    margin: '0 0 6px 0'
-  },
-  modalSubtitle: {
-    fontSize: '14px',
-    color: '#6B7280',
-    margin: '0 0 20px 0'
-  },
-  cancelCard: {
-    backgroundColor: '#FEF2F2',
-    border: '1px solid #FECACA',
-    padding: '20px 32px',
-    borderRadius: '12px',
-    marginBottom: '24px'
-  },
-  apptCard: {
-    backgroundColor: '#EFF6FF',
-    border: '1px solid #BFDBFE',
-    padding: '24px 32px',
-    borderRadius: '12px',
-    marginBottom: '24px'
-  },
-  apptLabel: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    margin: '0 0 4px 0'
-  },
-  apptValue: {
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#1E3A8A',
-    margin: 0
-  }
 };
 
 export default BillingDetail;
