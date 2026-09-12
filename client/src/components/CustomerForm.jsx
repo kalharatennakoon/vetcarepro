@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 import { createPet } from '../services/petService';
+import '../styles/FormPagesModern.css';
 
 const SPECIES_LIST = [
   'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
@@ -102,7 +103,6 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   };
 
   const validateForm = () => {
-    // Required fields
     if (!formData.first_name.trim()) {
       setError('First name is required');
       return false;
@@ -116,26 +116,22 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
       return false;
     }
 
-    // Phone format validation
     const phoneRegex = /^\+94[0-9]{9}$/;
     if (!phoneRegex.test(formData.phone)) {
       setError('Phone must be in format +94XXXXXXXXX');
       return false;
     }
 
-    // Alternate phone validation (if provided)
     if (formData.alternate_phone && !phoneRegex.test(formData.alternate_phone)) {
       setError('Alternate phone must be in format +94XXXXXXXXX');
       return false;
     }
 
-    // Emergency phone validation (if provided)
     if (formData.emergency_phone && !phoneRegex.test(formData.emergency_phone)) {
       setError('Emergency phone must be in format +94XXXXXXXXX');
       return false;
     }
 
-    // Email validation (if provided)
     if (formData.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email)) {
@@ -208,536 +204,436 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
 
   if (loading && isEditMode) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
-        <p>Loading customer data...</p>
+      <div className="form-page-loading">
+        <div className="form-page-spinner"></div>
+        <p style={{ color: '#64748b', fontWeight: '500' }}>Loading customer profile...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>
-          {isEditMode ? 'Edit Customer' : 'Add New Customer'}
-        </h2>
-        <button onClick={onCancel} style={styles.closeButton}>×</button>
+    <div>
+      <div className="form-card-header">
+        <div className="form-card-title-group">
+          <h2 className="form-card-title">{isEditMode ? 'Edit Customer Profile' : 'Customer Account Information'}</h2>
+          <p className="form-card-subtitle">Fill in personal information, contact records, and address details below.</p>
+        </div>
+        {onCancel && (
+          <button onClick={onCancel} className="form-card-close-btn" type="button" title="Close form">
+            <i className="fas fa-times"></i>
+          </button>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        {error && (
-          <div ref={errorRef} style={styles.errorBox}>
-            {error}
+      {error && (
+        <div ref={errorRef} className="form-card-error">
+          <i className="fas fa-exclamation-circle form-card-error-icon"></i>
+          <span>{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit}>
+        <div className="form-card-note">
+          <i className="fas fa-info-circle" style={{ color: '#4f46e5' }}></i>
+          <span>Fields marked with <span className="form-card-required">*</span> are required.</span>
+        </div>
+
+        {/* Section 1: Personal Information */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon form-section-icon-purple">
+              <i className="fas fa-user"></i>
+            </div>
+            <h3 className="form-section-title">1. Personal Identification</h3>
           </div>
-        )}
 
-        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
-
-        {/* Personal Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Personal Information</h3>
-          
-          <div style={styles.row}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                First Name <span style={styles.required}>*</span>
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label">
+                <span>First Name <span className="form-card-required">*</span></span>
               </label>
               <input
                 type="text"
                 name="first_name"
                 value={formData.first_name}
                 onChange={handleChange}
-                placeholder="Enter first name"
-                style={styles.input}
+                placeholder="e.g., Suneth"
+                className="form-input"
                 required
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                Last Name <span style={styles.required}>*</span>
+            <div className="form-group">
+              <label className="form-label">
+                <span>Last Name <span className="form-card-required">*</span></span>
               </label>
               <input
                 type="text"
                 name="last_name"
                 value={formData.last_name}
                 onChange={handleChange}
-                placeholder="Enter last name"
-                style={styles.input}
+                placeholder="e.g., Perera"
+                className="form-input"
                 required
               />
             </div>
-          </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>NIC Number</label>
-            <input
-              type="text"
-              name="nic"
-              value={formData.nic}
-              onChange={handleChange}
-              placeholder="Enter NIC number"
-              style={styles.input}
-            />
+            <div className="form-group form-group-full">
+              <label className="form-label"><span>National Identity Card (NIC)</span></label>
+              <input
+                type="text"
+                name="nic"
+                value={formData.nic}
+                onChange={handleChange}
+                placeholder="e.g., 199012345678 or 901234567V"
+                className="form-input"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Contact Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Contact Information</h3>
-          
-          <div style={styles.row}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>
-                Phone <span style={styles.required}>*</span>
+        {/* Section 2: Contact Information */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon form-section-icon-purple">
+              <i className="fas fa-phone"></i>
+            </div>
+            <h3 className="form-section-title">2. Contact Numbers & Preferences</h3>
+          </div>
+
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label">
+                <span>Primary Phone <span className="form-card-required">*</span></span>
               </label>
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="+94XXXXXXXXX"
-                style={styles.input}
+                placeholder="+94771234567"
+                className="form-input"
                 required
               />
-              <small style={styles.hint}>Format: +94XXXXXXXXX</small>
+              <span className="form-hint">Format: +94XXXXXXXXX</span>
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Alternate Phone</label>
+            <div className="form-group">
+              <label className="form-label"><span>Alternate Phone</span></label>
               <input
                 type="tel"
                 name="alternate_phone"
                 value={formData.alternate_phone}
                 onChange={handleChange}
-                placeholder="+94XXXXXXXXX"
-                style={styles.input}
+                placeholder="+94112345678"
+                className="form-input"
+              />
+              <span className="form-hint">Format: +94XXXXXXXXX</span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label"><span>Email Address</span></label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="customer@example.com"
+                className="form-input"
               />
             </div>
-          </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="customer@example.com"
-              style={styles.input}
-            />
-          </div>
-
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Preferred Contact Method</label>
-            <select
-              name="preferred_contact_method"
-              value={formData.preferred_contact_method}
-              onChange={handleChange}
-              style={styles.input}
-            >
-              <option value="phone">Phone</option>
-              <option value="email">Email</option>
-              <option value="sms">SMS</option>
-            </select>
+            <div className="form-group">
+              <label className="form-label"><span>Preferred Contact Method</span></label>
+              <select
+                name="preferred_contact_method"
+                value={formData.preferred_contact_method}
+                onChange={handleChange}
+                className="form-select"
+              >
+                <option value="phone">Phone Call</option>
+                <option value="email">Email</option>
+                <option value="sms">SMS Text</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Address Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Address</h3>
-          
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Street Address</label>
+        {/* Section 3: Address Details */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon form-section-icon-purple">
+              <i className="fas fa-map-marker-alt"></i>
+            </div>
+            <h3 className="form-section-title">3. Residential Address</h3>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label className="form-label"><span>Street Address</span></label>
             <textarea
               name="address"
               value={formData.address}
               onChange={handleChange}
-              placeholder="Enter street address"
-              style={{ ...styles.input, ...styles.textarea }}
+              placeholder="e.g., No. 42, Kandy Road"
+              className="form-textarea"
               rows="2"
             />
           </div>
 
-          <div style={styles.row}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>City</label>
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label"><span>City</span></label>
               <input
                 type="text"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                placeholder="Enter city"
-                style={styles.input}
+                placeholder="e.g., Kurunegala"
+                className="form-input"
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Postal Code</label>
+            <div className="form-group">
+              <label className="form-label"><span>Postal Code</span></label>
               <input
                 type="text"
                 name="postal_code"
                 value={formData.postal_code}
                 onChange={handleChange}
-                placeholder="Enter postal code"
-                style={styles.input}
+                placeholder="e.g., 60000"
+                className="form-input"
               />
             </div>
           </div>
         </div>
 
-        {/* Emergency Contact */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Emergency Contact</h3>
-          
-          <div style={styles.row}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Emergency Contact Name</label>
+        {/* Section 4: Emergency Contact */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon form-section-icon-purple">
+              <i className="fas fa-heart-pulse"></i>
+            </div>
+            <h3 className="form-section-title">4. Emergency Contact</h3>
+          </div>
+
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label"><span>Emergency Contact Person</span></label>
               <input
                 type="text"
                 name="emergency_contact"
                 value={formData.emergency_contact}
                 onChange={handleChange}
-                placeholder="Enter contact name"
-                style={styles.input}
+                placeholder="e.g., Nimal Perera (Spouse)"
+                className="form-input"
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Emergency Phone</label>
+            <div className="form-group">
+              <label className="form-label"><span>Emergency Phone</span></label>
               <input
                 type="tel"
                 name="emergency_phone"
                 value={formData.emergency_phone}
                 onChange={handleChange}
-                placeholder="+94XXXXXXXXX"
-                style={styles.input}
+                placeholder="+94719876543"
+                className="form-input"
               />
+              <span className="form-hint">Format: +94XXXXXXXXX</span>
             </div>
           </div>
         </div>
 
-        {/* Additional Notes */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Additional Notes</h3>
-          
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Notes</label>
+        {/* Section 5: Additional Notes */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon form-section-icon-purple">
+              <i className="fas fa-clipboard"></i>
+            </div>
+            <h3 className="form-section-title">5. Administrative Notes</h3>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label"><span>Account Notes</span></label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              placeholder="Any additional information..."
-              style={{ ...styles.input, ...styles.textarea }}
+              placeholder="Any administrative notes regarding this customer..."
+              className="form-textarea"
               rows="3"
             />
           </div>
         </div>
 
-        {/* Pet Information (new customers only — optional) */}
+        {/* Section 6: Optional Initial Pet Registration */}
         {!isEditMode && (
-          <div style={styles.section}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: addPet ? '1.25rem' : 0 }}>
-              <h3 style={{ ...styles.sectionTitle, margin: 0 }}>Pet Information</h3>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: '#374151', userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={addPet}
-                  onChange={e => setAddPet(e.target.checked)}
-                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                />
-                Register a pet now
-              </label>
+          <div className="form-section-box">
+            <div className="form-add-pet-toggle" onClick={() => setAddPet(!addPet)}>
+              <div className="form-add-pet-left">
+                <div className="form-add-pet-icon">
+                  <i className="fas fa-paw"></i>
+                </div>
+                <div>
+                  <h4 className="form-add-pet-title">Register First Pet Now (Optional)</h4>
+                  <p className="form-add-pet-sub">Shortcut to register a pet patient along with this customer account.</p>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={addPet}
+                onChange={e => setAddPet(e.target.checked)}
+                onClick={e => e.stopPropagation()}
+                style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#2563eb' }}
+              />
             </div>
+
             {!addPet && (
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>
-                <i className="fas fa-info-circle" style={{ marginRight: '0.35rem' }}></i>
-                You can add pets to this customer later from the customer profile.
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '0.35rem', color: '#3b82f6' }}></i>
+                You can also register pets later at any time from the customer profile page.
               </p>
             )}
+
             {addPet && (
-              <>
-                <div style={styles.row}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      Pet Name <span style={styles.required}>*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="pet_name"
-                      value={petData.pet_name}
-                      onChange={handlePetChange}
-                      placeholder="Enter pet name"
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      Species <span style={styles.required}>*</span>
-                    </label>
-                    <select
-                      name="species"
-                      value={petData.species}
-                      onChange={handlePetChange}
-                      style={styles.input}
-                    >
-                      <option value="">Select species</option>
-                      {SPECIES_LIST.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="form-grid-2col" style={{ marginTop: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">
+                    <span>Pet Name <span className="form-card-required">*</span></span>
+                  </label>
+                  <input
+                    type="text"
+                    name="pet_name"
+                    value={petData.pet_name}
+                    onChange={handlePetChange}
+                    placeholder="e.g., Milo"
+                    className="form-input"
+                  />
                 </div>
 
-                <div style={styles.row}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Breed</label>
-                    <input
-                      type="text"
-                      name="breed"
-                      value={petData.breed}
-                      onChange={handlePetChange}
-                      placeholder="Enter breed"
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      Gender <span style={styles.required}>*</span>
-                    </label>
-                    <select
-                      name="gender"
-                      value={petData.gender}
-                      onChange={handlePetChange}
-                      style={styles.input}
-                    >
-                      <option value="">Select gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="unknown">Unknown</option>
-                    </select>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <span>Species <span className="form-card-required">*</span></span>
+                  </label>
+                  <select
+                    name="species"
+                    value={petData.species}
+                    onChange={handlePetChange}
+                    className="form-select"
+                  >
+                    <option value="">-- Select Species --</option>
+                    {SPECIES_LIST.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div style={styles.row}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>
-                      Date of Birth <span style={styles.required}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="date_of_birth"
-                      value={petData.date_of_birth}
-                      onChange={handlePetChange}
-                      max={new Date().toISOString().split('T')[0]}
-                      style={styles.input}
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Color</label>
-                    <input
-                      type="text"
-                      name="color"
-                      value={petData.color}
-                      onChange={handlePetChange}
-                      placeholder="e.g. Brown, Black & White"
-                      style={styles.input}
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label"><span>Breed</span></label>
+                  <input
+                    type="text"
+                    name="breed"
+                    value={petData.breed}
+                    onChange={handlePetChange}
+                    placeholder="e.g., Persian / Golden Retriever"
+                    className="form-input"
+                  />
                 </div>
 
-                <div style={{ maxWidth: '50%' }}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Weight (kg)</label>
-                    <input
-                      type="number"
-                      name="weight_current"
-                      value={petData.weight_current}
-                      onChange={handlePetChange}
-                      placeholder="e.g. 4.5"
-                      min="0"
-                      step="0.1"
-                      style={styles.input}
-                    />
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">
+                    <span>Gender <span className="form-card-required">*</span></span>
+                  </label>
+                  <select
+                    name="gender"
+                    value={petData.gender}
+                    onChange={handlePetChange}
+                    className="form-select"
+                  >
+                    <option value="">-- Select Gender --</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
                 </div>
-              </>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    <span>Date of Birth <span className="form-card-required">*</span></span>
+                  </label>
+                  <input
+                    type="date"
+                    name="date_of_birth"
+                    value={petData.date_of_birth}
+                    onChange={handlePetChange}
+                    max={new Date().toISOString().split('T')[0]}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label"><span>Color</span></label>
+                  <input
+                    type="text"
+                    name="color"
+                    value={petData.color}
+                    onChange={handlePetChange}
+                    placeholder="e.g. Brown & White"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group form-group-full">
+                  <label className="form-label"><span>Weight (kg)</span></label>
+                  <input
+                    type="number"
+                    name="weight_current"
+                    value={petData.weight_current}
+                    onChange={handlePetChange}
+                    placeholder="e.g. 4.5"
+                    min="0"
+                    step="0.1"
+                    className="form-input"
+                  />
+                </div>
+              </div>
             )}
           </div>
         )}
 
         {/* Form Actions */}
-        <div style={styles.actions}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={styles.cancelButton}
-            disabled={loading}
-          >
-            Cancel
-          </button>
+        <div className="form-action-footer">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="form-btn-secondary"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
-            style={styles.submitButton}
+            className="form-btn-primary form-btn-purple"
             disabled={loading}
           >
-            {loading ? 'Saving...' : (isEditMode ? 'Update Customer' : 'Add Customer')}
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i>
+                Saving...
+              </>
+            ) : (
+              <>
+                <i className={isEditMode ? 'fas fa-save' : 'fas fa-user-check'}></i>
+                {isEditMode ? 'Update Customer Profile' : 'Save New Customer'}
+              </>
+            )}
           </button>
         </div>
       </form>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    maxWidth: '800px',
-    width: '100%',
-    margin: '0 auto',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 'clamp(1rem, 3vw, 1.5rem)',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  title: {
-    margin: 0,
-    fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  closeButton: {
-    background: 'none',
-    border: 'none',
-    fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-    color: '#6b7280',
-    cursor: 'pointer',
-    padding: '0',
-    width: 'clamp(24px, 5vw, 32px)',
-    height: 'clamp(24px, 5vw, 32px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '3rem',
-    minHeight: '300px',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    animation: 'spin 1s linear infinite',
-  },
-  form: {
-    padding: 'clamp(1rem, 3vw, 1.5rem)',
-    maxHeight: 'calc(100vh - 200px)',
-    overflowY: 'auto',
-  },
-  errorBox: {
-    padding: 'clamp(0.75rem, 2vw, 1rem)',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '6px',
-    marginBottom: '1.5rem',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    border: '1px solid #fecaca',
-  },
-  section: {
-    marginBottom: 'clamp(1.5rem, 3vw, 2rem)',
-  },
-  sectionTitle: {
-    margin: '0 0 1rem 0',
-    fontSize: 'clamp(1rem, 3vw, 1.125rem)',
-    fontWeight: '600',
-    color: '#374151',
-    paddingBottom: '0.5rem',
-    borderBottom: '2px solid #e5e7eb',
-  },
-  row: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))',
-    gap: '1rem',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    marginBottom: '1rem',
-  },
-  label: {
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '0.5rem',
-  },
-  required: {
-    color: '#dc2626',
-  },
-  input: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem)',
-    fontSize: 'clamp(0.875rem, 2vw, 1rem)',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    width: '100%',
-  },
-  textarea: {
-    resize: 'vertical',
-    fontFamily: 'inherit',
-  },
-  hint: {
-    fontSize: 'clamp(0.6875rem, 2vw, 0.75rem)',
-    color: '#6b7280',
-    marginTop: '0.25rem',
-  },
-  actions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: 'clamp(0.5rem, 2vw, 1rem)',
-    paddingTop: '1.5rem',
-    borderTop: '1px solid #e5e7eb',
-    flexWrap: 'wrap',
-  },
-  cancelButton: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    fontWeight: '600',
-    color: '#374151',
-    backgroundColor: '#ffffff',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-  },
-  submitButton: {
-    padding: 'clamp(0.625rem, 2vw, 0.75rem) clamp(1rem, 3vw, 1.5rem)',
-    fontSize: 'clamp(0.8125rem, 2vw, 0.875rem)',
-    fontWeight: '600',
-    color: '#ffffff',
-    backgroundColor: '#2563eb',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    whiteSpace: 'nowrap',
-  },
 };
 
 export default CustomerForm;
