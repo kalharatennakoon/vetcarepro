@@ -26,7 +26,8 @@ const GuestAIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const bottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const stickToBottomRef = useRef(true);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -36,10 +37,17 @@ const GuestAIAssistant = () => {
   }, []);
 
   useEffect(() => {
-    if (messages.length > 1 || loading) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (stickToBottomRef.current && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  const handleChatScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 120;
+  };
 
   // Grows the input with its content instead of scrolling text horizontally
   // inside a fixed-height box - re-measured on every keystroke since a
@@ -55,6 +63,7 @@ const GuestAIAssistant = () => {
   const sendQuestion = async (question) => {
     if (!question.trim() || loading) return;
 
+    stickToBottomRef.current = true;
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
     setInput('');
     setLoading(true);
@@ -90,7 +99,7 @@ const GuestAIAssistant = () => {
           </div>
         </div>
 
-        <div className="ai-assistant-chat">
+        <div className="ai-assistant-chat" ref={chatContainerRef} onScroll={handleChatScroll}>
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
@@ -127,7 +136,7 @@ const GuestAIAssistant = () => {
               </div>
             </div>
           )}
-          <div ref={bottomRef} />
+          <div className="ai-modern-chat-spacer"></div>
         </div>
 
         {error && <div className="ai-assistant-error">{error}</div>}

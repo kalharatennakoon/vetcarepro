@@ -7,6 +7,9 @@
   background: transparent;
   display: flex;
   flex-direction: column;
+  height: calc(100vh - 130px);
+  min-height: 500px;
+  box-sizing: border-box;
 }
 
 /* Header Banner */
@@ -16,12 +19,13 @@
   justify-content: flex-start;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  padding: 1.15rem 1.5rem;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(168, 85, 247, 0.06) 100%);
   border: 1px solid rgba(99, 102, 241, 0.12);
   border-radius: 20px;
   box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.04);
+  flex-shrink: 0;
 }
 
 .ai-modern-header-icon {
@@ -90,25 +94,35 @@
 /* Chat container */
 
 .ai-modern-chat {
+  flex: 1;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 22px;
   box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02), 0 16px 40px -20px rgba(15, 23, 42, 0.08);
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem 0.5rem;
   gap: 1.25rem;
-  min-height: 460px;
-  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
 }
 
+.ai-modern-chat-spacer {
+  height: 24px;
+  min-height: 24px;
+  flex-shrink: 0;
+}
+
 .ai-modern-chat::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 .ai-modern-chat::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
-  border-radius: 5px;
+  border-radius: 6px;
 }
 
 /* Messages + avatars */
@@ -117,6 +131,7 @@
   display: flex;
   align-items: flex-end;
   gap: 0.65rem;
+  flex-shrink: 0;
 }
 
 .ai-message-user.ai-modern-message .ai-modern-avatar {
@@ -167,9 +182,11 @@
   font-size: 0.95rem;
   line-height: 1.6;
   box-shadow: none;
+  white-space: pre-wrap;
   overflow-wrap: break-word;
   word-break: break-word;
   padding: 0.95rem 1.25rem;
+  flex-shrink: 0;
 }
 
 .ai-message-assistant .ai-modern-bubble {
@@ -395,14 +412,16 @@
   border-radius: 14px;
   font-size: 0.85rem;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 /* Suggested Prompt Cards Modern Container */
 .ai-modern-prompts-container {
-  margin-top: 1.25rem;
+  margin-top: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  flex-shrink: 0;
 }
 
 .ai-modern-prompts-header {
@@ -497,10 +516,11 @@
 /* Input row - unified pill */
 
 .ai-modern-input-row {
-  margin-top: 1rem;
+  margin-top: 0.75rem;
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  flex-shrink: 0;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 999px;

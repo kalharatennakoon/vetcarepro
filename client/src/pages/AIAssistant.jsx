@@ -131,30 +131,15 @@ const AIAssistant = () => {
   };
 
   useEffect(() => {
-    // Scrolls chatContainerRef itself directly, NOT via a sentinel child's
-    // scrollIntoView() - scrollIntoView walks up through every scrollable
-    // ancestor needed to bring the target into view, which on this page
-    // includes Layout.jsx's #main-content (the page's own scrollbar, wrapped
-    // around this whole chat). During an admin reasoning stream this effect
-    // re-runs on every token, so scrollIntoView kept re-asserting itself on
-    // #main-content too - even after the admin manually scrolled the PAGE
-    // (not just the chat box) up to read something above it, the very next
-    // token yanked it back down, making the page scrollbar feel unusable
-    // until streaming finished. Scrolling only this container leaves
-    // #main-content (and every other ancestor) alone entirely.
     if (stickToBottomRef.current) {
       const el = chatContainerRef.current;
-      el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   }, [messages, loading]);
 
-  // A streamed reasoning trace can append dozens of tokens a second, each
-  // one re-running the effect above - if it always scrolled unconditionally,
-  // manually scrolling up mid-stream (e.g. to re-read an earlier answer)
-  // would get fought every few hundred milliseconds. Track how close to the
-  // bottom the user actually is instead, and only keep auto-scrolling while
-  // they're already there.
-  const NEAR_BOTTOM_PX = 80;
+  const NEAR_BOTTOM_PX = 120;
   const handleChatScroll = () => {
     const el = chatContainerRef.current;
     if (!el) return;
@@ -396,7 +381,14 @@ const AIAssistant = () => {
                   // viewing the reasoning is opt-in, not forced open. The
                   // text keeps accumulating in state regardless, so opening
                   // it mid-stream still shows it catching up live.
-                  <details className="ai-reasoning ai-modern-reasoning">
+                  <details
+                    className="ai-reasoning ai-modern-reasoning"
+                    onToggle={() => {
+                      if (stickToBottomRef.current && chatContainerRef.current) {
+                        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                      }
+                    }}
+                  >
                     <summary className="ai-reasoning-summary ai-modern-reasoning-summary">
                       {m.streaming ? (
                         <>
@@ -492,6 +484,7 @@ const AIAssistant = () => {
               </div>
             </div>
           )}
+          <div className="ai-modern-chat-spacer"></div>
         </div>
 
         {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}
