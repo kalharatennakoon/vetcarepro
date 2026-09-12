@@ -322,15 +322,25 @@
   border-top: 1px solid #f1f5f9;
   font-size: 0.73rem;
   color: #64748b;
+  line-height: 1.45;
 }
 
 .po-widget-sources-label {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: block;
   font-weight: 600;
   margin-bottom: 0.35rem;
   color: #64748b;
+}
+
+.po-widget-sources-label i {
+  margin-right: 0.3rem;
+}
+
+.po-widget-sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .po-widget-sources-general {
@@ -339,15 +349,16 @@
 }
 
 .po-widget-source-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   background: #f1f5f9;
-  color: #64748b;
+  color: #475569;
   border: 1px solid #e2e8f0;
   font-weight: 500;
-  border-radius: 6px;
-  padding: 0.15rem 0.5rem;
-  margin: 0.2rem 0.4rem 0 0;
-  font-size: 0.73rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.72rem;
+  line-height: 1.3;
 }
 
 .po-widget-error {

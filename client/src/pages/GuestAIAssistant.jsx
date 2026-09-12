@@ -122,15 +122,17 @@ const GuestAIAssistant = () => {
                 {m.role === 'assistant' && !m.intro && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources">
-                      <span className="ai-message-sources-label">
+                      <div className="ai-message-sources-label">
                         <i className="fas fa-book"></i>
                         {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
-                      </span>
-                      {m.sources.map((s, j) => (
-                        <span key={j} className="ai-source-tag">
-                          {getSourceLabel(s)}
-                        </span>
-                      ))}
+                      </div>
+                      <div className="ai-message-sources-list">
+                        {m.sources.map((s, j) => (
+                          <span key={j} className="ai-source-tag">
+                            {getSourceLabel(s)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="ai-message-sources ai-message-sources-general">

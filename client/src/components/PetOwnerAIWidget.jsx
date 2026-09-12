@@ -253,15 +253,17 @@ const PetOwnerAIWidget = () => {
                   {m.role === 'assistant' && !m.intro && (
                     m.sources && m.sources.length > 0 ? (
                       <div className="po-widget-sources">
-                        <span className="po-widget-sources-label">
+                        <div className="po-widget-sources-label">
                           <i className="fas fa-book"></i>
                           {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
-                        </span>
-                        {m.sources.map((s, j) => (
-                          <span key={j} className="po-widget-source-tag">
-                            {getSourceLabel(s)}
-                          </span>
-                        ))}
+                        </div>
+                        <div className="po-widget-sources-list">
+                          {m.sources.map((s, j) => (
+                            <span key={j} className="po-widget-source-tag">
+                              {getSourceLabel(s)}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ) : !m.structured ? (
                       <div className="po-widget-sources po-widget-sources-general">
