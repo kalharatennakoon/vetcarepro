@@ -115,6 +115,21 @@ const AIAssistant = () => {
       ? VETERINARIAN_SUGGESTED_PROMPTS
       : CLINICAL_SUGGESTED_PROMPTS;
 
+  const getPromptIcon = (promptText) => {
+    if (promptText.includes('revenue') || promptText.includes('cost')) return 'fas fa-chart-line';
+    if (promptText.includes('forecast')) return 'fas fa-chart-pie';
+    if (promptText.includes('veterinarian') || promptText.includes('staff')) return 'fas fa-user-md';
+    if (promptText.includes('reorder') || promptText.includes('inventory')) return 'fas fa-boxes';
+    if (promptText.includes('outbreak') || promptText.includes('risk')) return 'fas fa-shield-virus';
+    if (promptText.includes('history') || promptText.includes('medical')) return 'fas fa-file-medical';
+    if (promptText.includes('consultation') || promptText.includes('note')) return 'fas fa-notes-medical';
+    if (promptText.includes('aftercare')) return 'fas fa-heart-pulse';
+    if (promptText.includes('patient') || promptText.includes('seeing')) return 'fas fa-clipboard-check';
+    if (promptText.includes('Book') || promptText.includes('appointment')) return 'fas fa-calendar-plus';
+    if (promptText.includes('customer') || promptText.includes('Register')) return 'fas fa-user-plus';
+    return 'fas fa-wand-magic-sparkles';
+  };
+
   useEffect(() => {
     // Scrolls chatContainerRef itself directly, NOT via a sentinel child's
     // scrollIntoView() - scrollIntoView walks up through every scrollable
@@ -345,8 +360,13 @@ const AIAssistant = () => {
           <div className="ai-modern-header-icon">
             <i className="fas fa-wand-magic-sparkles"></i>
           </div>
-          <div>
-            <h1 className="ai-modern-title">AI Assistant</h1>
+          <div className="ai-modern-header-text">
+            <div className="ai-modern-title-row">
+              <h1 className="ai-modern-title">AI Assistant</h1>
+              <span className={`ai-modern-role-badge role-${user?.role || 'staff'}`}>
+                {isVeterinarian ? 'Clinical AI' : isReceptionist ? 'Front Desk AI' : 'Clinic Intelligence'}
+              </span>
+            </div>
             <p className="ai-assistant-subtitle ai-modern-subtitle">
               {isVeterinarian
                 ? 'Decision-support only — you always make the final call on diagnosis and treatment.'
@@ -477,12 +497,22 @@ const AIAssistant = () => {
         {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}
 
         {messages.length <= 1 && (
-          <div className={`ai-suggested-prompts ai-modern-prompts${isVeterinarian ? ' ai-modern-prompts-grid' : ''}`}>
-            {suggestedPrompts.map((p) => (
-              <button key={p} className="ai-modern-prompt-btn" onClick={() => sendQuestion(p)}>
-                <i className="fas fa-lightbulb"></i> {p}
-              </button>
-            ))}
+          <div className="ai-modern-prompts-container">
+            <div className="ai-modern-prompts-header">
+              <i className="fas fa-compass"></i>
+              <span>Suggested Quick Actions & Queries</span>
+            </div>
+            <div className="ai-modern-prompts-grid">
+              {suggestedPrompts.map((p) => (
+                <button key={p} className="ai-modern-prompt-card" onClick={() => sendQuestion(p)}>
+                  <div className="ai-prompt-card-icon">
+                    <i className={getPromptIcon(p)}></i>
+                  </div>
+                  <span className="ai-prompt-card-text">{p}</span>
+                  <i className="fas fa-arrow-right ai-prompt-card-arrow"></i>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
