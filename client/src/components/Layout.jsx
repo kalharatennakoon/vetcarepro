@@ -148,38 +148,50 @@ const Layout = ({ children }) => {
         <div style={styles.headerRight}>
           {/* AI Assistant Shortcut */}
           <div
-            style={styles.aiAssistantWrapper}
+            className="staff-ai-header-wrapper"
             ref={aiQuickAskRef}
             onMouseEnter={() => !showAiQuickAsk && setShowAiTooltip(true)}
             onMouseLeave={() => setShowAiTooltip(false)}
           >
             <button
-              style={styles.aiAssistantButton}
+              type="button"
+              className={`staff-ai-header-btn ${showAiQuickAsk ? 'active' : ''}`}
               onClick={() => { setShowAiTooltip(false); setShowAiQuickAsk((open) => !open); }}
               aria-label="Ask the AI Assistant"
               aria-expanded={showAiQuickAsk}
             >
               <i className="fas fa-wand-magic-sparkles"></i>
             </button>
+
             {showAiTooltip && !showAiQuickAsk && (
-              <span style={styles.aiAssistantTooltip}>AI Assistant</span>
+              <span className="staff-ai-header-tooltip">Ask AI Assistant</span>
             )}
+
             {showAiQuickAsk && (
-              <form style={styles.aiQuickAskPopup} onSubmit={handleAiQuickAskSubmit}>
-                <label style={styles.aiQuickAskLabel}>Ask the AI Assistant</label>
-                <div style={styles.aiQuickAskInputRow}>
+              <form className="staff-ai-quickask-popup" onSubmit={handleAiQuickAskSubmit}>
+                <div className="staff-ai-popup-header">
+                  <div className="staff-ai-popup-badge">
+                    <i className="fas fa-wand-magic-sparkles"></i>
+                  </div>
+                  <div className="staff-ai-popup-titles">
+                    <span className="staff-ai-popup-title">VetCare AI Assistant</span>
+                    <span className="staff-ai-popup-subtitle">Ask clinical questions or clinic ops</span>
+                  </div>
+                </div>
+
+                <div className="staff-ai-popup-input-row">
                   <input
                     ref={aiQuickAskInputRef}
                     type="text"
                     value={aiQuickQuestion}
                     onChange={(e) => setAiQuickQuestion(e.target.value)}
                     placeholder="Type your question..."
-                    style={styles.aiQuickAskInput}
+                    className="staff-ai-popup-input"
                     onKeyDown={(e) => { if (e.key === 'Escape') setShowAiQuickAsk(false); }}
                   />
                   <button
                     type="submit"
-                    style={{ ...styles.aiQuickAskSendBtn, opacity: aiQuickQuestion.trim() ? 1 : 0.5, cursor: aiQuickQuestion.trim() ? 'pointer' : 'default' }}
+                    className={`staff-ai-popup-send-btn ${aiQuickQuestion.trim() ? 'ready' : ''}`}
                     disabled={!aiQuickQuestion.trim()}
                     aria-label="Send question"
                   >
