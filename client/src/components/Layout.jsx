@@ -2,6 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
 import { useState, useEffect, useRef } from 'react';
+import './Layout.css';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -266,129 +267,167 @@ const Layout = ({ children }) => {
           onMouseLeave={() => !isMobile && setIsSidebarExpanded(false)}
         >
           <div style={styles.sidebarContent}>
-            <nav style={styles.nav}>
-              <a 
-                href="/dashboard" 
-                style={getNavItemStyle('/dashboard')}
-                {...getNavItemHoverHandlers('/dashboard')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
-              >
-                <i className="fas fa-chart-line"></i> Dashboard
-              </a>
-              <a 
-                href="/pets" 
-                style={getNavItemStyle('/pets')}
-                {...getNavItemHoverHandlers('/pets')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
-              >
-                <i className="fas fa-paw"></i> Pets
-              </a>
-              <a 
-                href="/customers" 
-                style={getNavItemStyle('/customers')}
-                {...getNavItemHoverHandlers('/customers')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
-              >
-                <i className="fas fa-users"></i> Customers
-              </a>
-              <a 
-                href="/appointments" 
-                style={getNavItemStyle('/appointments')}
-                {...getNavItemHoverHandlers('/appointments')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
-              >
-                <i className="fas fa-calendar-alt"></i> Appointments
-              </a>
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a
-                  href="/medical-records"
-                  style={getNavItemStyle('/medical-records')}
-                  {...getNavItemHoverHandlers('/medical-records')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+            <nav className="staff-sidebar-nav">
+              {/* Section 1: Overview & Care */}
+              <div className="staff-nav-section">
+                <div className="staff-nav-section-title">Overview & Care</div>
+                <a 
+                  href="/dashboard" 
+                  className={`staff-nav-item ${isActive('/dashboard') ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/dashboard'); }}
                 >
-                  <i className="fas fa-file-medical"></i> Medical Records
+                  <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-line"></i></div>
+                  <span className="staff-nav-label">Dashboard</span>
                 </a>
+                <a 
+                  href="/pets" 
+                  className={`staff-nav-item ${isActive('/pets') ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/pets'); }}
+                >
+                  <div className="staff-nav-icon-wrapper"><i className="fas fa-paw"></i></div>
+                  <span className="staff-nav-label">Pets</span>
+                </a>
+                <a 
+                  href="/customers" 
+                  className={`staff-nav-item ${isActive('/customers') ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/customers'); }}
+                >
+                  <div className="staff-nav-icon-wrapper"><i className="fas fa-users"></i></div>
+                  <span className="staff-nav-label">Customers</span>
+                </a>
+                <a 
+                  href="/appointments" 
+                  className={`staff-nav-item ${isActive('/appointments') ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/appointments'); }}
+                >
+                  <div className="staff-nav-icon-wrapper"><i className="fas fa-calendar-alt"></i></div>
+                  <span className="staff-nav-label">Appointments</span>
+                </a>
+              </div>
+
+              {/* Section 2: Clinical & AI */}
+              <div className="staff-nav-section">
+                <div className="staff-nav-section-title">Clinical & AI</div>
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <a
+                    href="/medical-records"
+                    className={`staff-nav-item ${isActive('/medical-records') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/medical-records'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-file-medical"></i></div>
+                    <span className="staff-nav-label">Medical Records</span>
+                  </a>
+                )}
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <a
+                    href="/breeding-registry"
+                    className={`staff-nav-item ${isActive('/breeding-registry') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-heart"></i></div>
+                    <span className="staff-nav-label">Breeding Registry</span>
+                  </a>
+                )}
+                <a
+                  href="/ai-assistant"
+                  className={`staff-nav-item staff-nav-item-ai ${isActive('/ai-assistant') ? 'active' : ''}`}
+                  onClick={(e) => { e.preventDefault(); handleNavigation('/ai-assistant'); }}
+                >
+                  <div className="staff-nav-icon-wrapper staff-ai-icon-wrapper">
+                    <i className="fas fa-wand-magic-sparkles"></i>
+                  </div>
+                  <span className="staff-nav-label staff-ai-label">AI Assistant</span>
+                </a>
+              </div>
+
+              {/* Section 3: Operations (Visible to non-veterinarians) */}
+              {user?.role !== 'veterinarian' && (
+                <div className="staff-nav-section">
+                  <div className="staff-nav-section-title">Operations</div>
+                  <a
+                    href="/billing"
+                    className={`staff-nav-item ${isActive('/billing') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-file-invoice-dollar"></i></div>
+                    <span className="staff-nav-label">Billing</span>
+                  </a>
+                  <a
+                    href="/inventory"
+                    className={`staff-nav-item ${isActive('/inventory') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-boxes"></i></div>
+                    <span className="staff-nav-label">Inventory</span>
+                  </a>
+                </div>
               )}
 
-              {user?.role !== 'veterinarian' && (
-                <a
-                  href="/billing"
-                  style={getNavItemStyle('/billing')}
-                  {...getNavItemHoverHandlers('/billing')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/billing'); }}
-                >
-                  <i className="fas fa-dollar-sign"></i> Billing
-                </a>
-              )}
-              {user?.role !== 'veterinarian' && (
-                <a
-                  href="/inventory"
-                  style={getNavItemStyle('/inventory')}
-                  {...getNavItemHoverHandlers('/inventory')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/inventory'); }}
-                >
-                  <i className="fas fa-boxes"></i> Inventory
-                </a>
-              )}
-              {user?.role === 'admin' && (
-                <a
-                  href="/reports"
-                  style={getNavItemStyle('/reports')}
-                  {...getNavItemHoverHandlers('/reports')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
-                >
-                  <i className="fas fa-chart-bar"></i> Reports
-                </a>
-              )}
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a
-                  href="/breeding-registry"
-                  style={getNavItemStyle('/breeding-registry')}
-                  {...getNavItemHoverHandlers('/breeding-registry')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/breeding-registry'); }}
-                >
-                  <i className="fas fa-heart"></i> Breeding Registry
-                </a>
-              )}
-              <a
-                href="/ai-assistant"
-                style={getNavItemStyle('/ai-assistant')}
-                {...getNavItemHoverHandlers('/ai-assistant')}
-                onClick={(e) => { e.preventDefault(); handleNavigation('/ai-assistant'); }}
-              >
-                <i className="fas fa-robot"></i> AI Assistant
-              </a>
-              {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                <a
-                  href="/analytics"
-                  style={getNavItemStyle('/analytics')}
-                  {...getNavItemHoverHandlers('/analytics')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
-                >
-                  <i className="fas fa-chart-line"></i> Analytics & Insights
-                </a>
-              )}
-              {user?.role === 'admin' && (
-                <a
-                  href="/users"
-                  style={getNavItemStyle('/users')}
-                  {...getNavItemHoverHandlers('/users')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
-                >
-                  <i className="fas fa-user-md"></i> Staff
-                </a>
-              )}
-              {user?.role === 'admin' && (
-                <a
-                  href="/system-logs"
-                  style={getNavItemStyle('/system-logs')}
-                  {...getNavItemHoverHandlers('/system-logs')}
-                  onClick={(e) => { e.preventDefault(); handleNavigation('/system-logs'); }}
-                >
-                  <i className="fas fa-clipboard-list"></i> System Logs
-                </a>
-              )}
+              {/* Section 4: Administration */}
+              <div className="staff-nav-section">
+                <div className="staff-nav-section-title">Management</div>
+                {user?.role === 'admin' && (
+                  <a
+                    href="/reports"
+                    className={`staff-nav-item ${isActive('/reports') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/reports'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-pie"></i></div>
+                    <span className="staff-nav-label">Reports</span>
+                  </a>
+                )}
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <a
+                    href="/analytics"
+                    className={`staff-nav-item ${isActive('/analytics') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-line"></i></div>
+                    <span className="staff-nav-label">Analytics & Insights</span>
+                  </a>
+                )}
+                {user?.role === 'admin' && (
+                  <a
+                    href="/users"
+                    className={`staff-nav-item ${isActive('/users') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/users'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-user-md"></i></div>
+                    <span className="staff-nav-label">Staff</span>
+                  </a>
+                )}
+                {user?.role === 'admin' && (
+                  <a
+                    href="/system-logs"
+                    className={`staff-nav-item ${isActive('/system-logs') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/system-logs'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-clipboard-list"></i></div>
+                    <span className="staff-nav-label">System Logs</span>
+                  </a>
+                )}
+              </div>
             </nav>
+
+            {/* Bottom Staff Profile Summary Card */}
+            <div className="staff-sidebar-footer-card">
+              <div className="staff-sidebar-footer-avatar">
+                {user?.profile_image ? (
+                  <img src={`http://localhost:3000/uploads/${user.profile_image}`} alt="Profile" />
+                ) : (
+                  `${user?.first_name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`
+                )}
+              </div>
+              <div className="staff-sidebar-footer-info">
+                <span className="staff-sidebar-footer-name">
+                  {user?.first_name} {user?.last_name}
+                </span>
+                <span className="staff-sidebar-footer-role">
+                  <span className="staff-role-dot"></span>
+                  {user?.role}
+                </span>
+              </div>
+            </div>
           </div>
         </aside>
 
