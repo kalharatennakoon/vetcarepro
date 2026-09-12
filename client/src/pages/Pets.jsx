@@ -12,6 +12,7 @@ const SPECIES_LIST = [
 ];
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import '../styles/ManagementPages.css';
 
 const Pets = () => {
   const [pets, setPets] = useState([]);
@@ -129,249 +130,245 @@ const Pets = () => {
 
   return (
     <Layout>
-      {/* Page Header */}
-      <div style={styles.pageHeader}>
-        <div style={styles.headerInfo}>
-          <div style={styles.headerIconWrapper}>
-            <i className="fas fa-paw" style={styles.headerIcon}></i>
-          </div>
-          <div>
-            <h2 style={styles.title}>Pet Management</h2>
-            <p style={styles.subtitle}>Manage all pets in the clinic</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => navigate('/pets/new')}
-          style={styles.addButton}
-          onMouseOver={(e) => e.target.style.backgroundColor = styles.addButtonHover.backgroundColor}
-          onMouseOut={(e) => e.target.style.backgroundColor = styles.addButton.backgroundColor}
-        >
-          <span style={styles.buttonIcon}>+</span>
-          <span>Add Pet</span>
-        </button>
-      </div>
-
-      {/* Search and Filter Bar */}
-      <div style={styles.searchContainer}>
-        <div style={styles.searchRow}>
-          <div style={styles.searchWrapper}>
-            <i className="fas fa-search" style={styles.searchIconSpan}></i>
-            <input
-              type="text"
-              placeholder="Search by pet name or owner..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={styles.searchInput}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                style={styles.clearButton}
-              >
-                <i className="fas fa-times"></i>
-              </button>
-            )}
-          </div>
-          <select
-            value={speciesFilter}
-            onChange={(e) => setSpeciesFilter(e.target.value)}
-            style={styles.selectInput}
-          >
-            <option value="">All Species</option>
-            {SPECIES_LIST.map((species) => (
-              <option key={species} value={species}>
-                {species}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={styles.statsBar}>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Total Pets</span>
-            <span style={styles.statValue}>{pets.length}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Active</span>
-            <span style={{ ...styles.statValue, color: '#059669' }}>{activeCount}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Inactive</span>
-            <span style={{ ...styles.statValue, color: '#dc2626' }}>{inactiveCount}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Showing</span>
-            <span style={styles.statValue}>
-              {filteredPets.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredPets.length)}` : '0'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          {error}
-        </div>
-      )}
-
-      {/* Status Filter Tabs */}
-      <div style={styles.statusTabs}>
-        {statusTabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
-            style={{ ...styles.statusTab, ...(statusFilter === tab.key ? styles.statusTabActive : {}) }}
-          >
-            {tab.label}
-            <span style={{ ...styles.tabCount, ...(statusFilter === tab.key ? styles.tabCountActive : {}) }}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Loading State */}
-      {loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading pets...</p>
-        </div>
-      ) : (
-        <>
-          {/* Pets Table */}
-          <div style={styles.tableContainer}>
-            {currentPets.length === 0 ? (
-              <div style={styles.emptyState}>
-                <p style={styles.emptyText}>
-                  {search || speciesFilter ? 'No pets found matching your criteria' : 'No pets registered yet'}
-                </p>
-                {!search && !speciesFilter && (
-                  <button 
-                    onClick={() => navigate('/pets/new')}
-                    style={styles.emptyButton}
-                  >
-                    Register Your First Pet
-                  </button>
-                )}
-              </div>
-            ) : (
-              <table style={styles.table}>
-                <thead>
-                  <tr style={styles.tableHeader}>
-                    <th style={{...styles.th, width: '22%'}}>Pet</th>
-                    <th style={{...styles.th, width: '13%'}}>Species</th>
-                    <th style={{...styles.th, width: '13%'}}>Age</th>
-                    <th style={{...styles.th, width: '22%'}}>Owner</th>
-                    <th style={{...styles.th, width: '12%', textAlign: 'center'}}>Gender</th>
-                    <th style={{...styles.th, width: '18%', textAlign: 'right'}}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentPets.map((pet) => (
-                    <tr 
-                      key={pet.pet_id} 
-                      style={styles.tableRow}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <td style={styles.td}>
-                        <div style={styles.petCell}>
-                          {pet.photo_url ? (
-                            <img 
-                              src={`http://localhost:3000/uploads/${pet.photo_url}`} 
-                              alt={pet.pet_name}
-                              style={styles.avatarImage}
-                            />
-                          ) : (
-                            <div style={styles.avatar}>
-                              <i className="fas fa-paw" style={styles.avatarIcon}></i>
-                            </div>
-                          )}
-                          <div style={styles.petInfo}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={styles.petName}>{pet.pet_name}</span>
-                              {pet.is_active === false && <span style={styles.inactiveBadge}>Inactive</span>}
-                            </div>
-                            <div style={styles.petBreed}>{pet.breed || 'Mixed Breed'}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={styles.speciesText}>{pet.species || '-'}</span>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={styles.ageText}>{calculateAge(pet.date_of_birth)}</span>
-                      </td>
-                      <td style={styles.td}>
-                        <div 
-                          style={styles.ownerLink}
-                          onClick={() => navigate(`/customers/${pet.customer_id}`)}
-                        >
-                          {pet.owner_first_name && pet.owner_last_name 
-                            ? `${pet.owner_first_name} ${pet.owner_last_name}` 
-                            : 'Unknown'}
-                        </div>
-                      </td>
-                      <td style={{...styles.td, textAlign: 'center'}}>
-                        {pet.gender ? (
-                          <span style={styles.genderBadge}>
-                            {pet.gender}
-                          </span>
-                        ) : '-'}
-                      </td>
-                      <td style={{...styles.td, textAlign: 'right'}}>
-                        <button
-                          onClick={() => navigate(`/pets/${pet.pet_id}`)}
-                          style={styles.viewButton}
-                          onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
-                          onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Pagination */}
-          {filteredPets.length > itemsPerPage && (
-            <div style={styles.paginationContainer}>
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-
-              {getPageNumbers().map((page, index) => (
-                page === '...' ? (
-                  <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
-                ) : (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    style={currentPage === page ? styles.paginationButtonActive : styles.paginationButton}
-                  >
-                    {page}
-                  </button>
-                )
-              ))}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
+      <div className="mgmt-page-container">
+        {/* Page Header */}
+        <div className="mgmt-header-card">
+          <div className="mgmt-header-left">
+            <div className="mgmt-header-icon-box mgmt-header-icon-pets">
+              <i className="fas fa-paw"></i>
             </div>
-          )}
-        </>
-      )}
+            <div className="mgmt-header-text">
+              <h2 className="mgmt-title">Pet Management</h2>
+              <p className="mgmt-subtitle">Manage all pets in the clinic</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/pets/new')}
+            className="mgmt-add-btn"
+          >
+            <span>+</span>
+            <span>Add Pet</span>
+          </button>
+        </div>
+
+        {/* Search and Filter Control Card */}
+        <div className="mgmt-control-card">
+          <div className="mgmt-search-row">
+            <div className="mgmt-search-wrapper">
+              <i className="fas fa-search mgmt-search-icon"></i>
+              <input
+                type="text"
+                placeholder="Search by pet name or owner..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="mgmt-search-input"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="mgmt-search-clear-btn"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+            <select
+              value={speciesFilter}
+              onChange={(e) => setSpeciesFilter(e.target.value)}
+              className="mgmt-select-input"
+            >
+              <option value="">All Species</option>
+              {SPECIES_LIST.map((species) => (
+                <option key={species} value={species}>
+                  {species}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="mgmt-stats-grid">
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Total Pets</span>
+              <span className="mgmt-stat-value">{pets.length}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Active</span>
+              <span className="mgmt-stat-value active-color">{activeCount}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Inactive</span>
+              <span className="mgmt-stat-value inactive-color">{inactiveCount}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Showing</span>
+              <span className="mgmt-stat-value">
+                {filteredPets.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredPets.length)}` : '0'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div ref={errorRef} style={styles.errorBox}>
+            {error}
+          </div>
+        )}
+
+        {/* Status Filter Tabs */}
+        <div className="mgmt-status-tabs">
+          {statusTabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
+              className={`mgmt-status-tab ${statusFilter === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+              <span className="mgmt-tab-count">{tab.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div style={styles.loadingContainer}>
+            <div style={styles.spinner}></div>
+            <p>Loading pets...</p>
+          </div>
+        ) : (
+          <>
+            {/* Pets Table Card */}
+            <div className="mgmt-table-card">
+              {currentPets.length === 0 ? (
+                <div className="mgmt-empty-card">
+                  <i className="fas fa-paw mgmt-empty-icon"></i>
+                  <p className="mgmt-empty-text">
+                    {search || speciesFilter ? 'No pets found matching your criteria' : 'No pets registered yet'}
+                  </p>
+                  {!search && !speciesFilter && (
+                    <button 
+                      onClick={() => navigate('/pets/new')}
+                      className="mgmt-add-btn"
+                    >
+                      Register Your First Pet
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <table className="mgmt-table">
+                  <thead>
+                    <tr>
+                      <th className="mgmt-th" style={{ width: '25%' }}>Pet</th>
+                      <th className="mgmt-th" style={{ width: '15%' }}>Species</th>
+                      <th className="mgmt-th" style={{ width: '13%' }}>Age</th>
+                      <th className="mgmt-th" style={{ width: '23%' }}>Owner</th>
+                      <th className="mgmt-th" style={{ width: '12%', textAlign: 'center' }}>Gender</th>
+                      <th className="mgmt-th" style={{ width: '12%', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentPets.map((pet) => (
+                      <tr key={pet.pet_id} className="mgmt-tr">
+                        <td className="mgmt-td">
+                          <div className="mgmt-item-cell">
+                            {pet.photo_url ? (
+                              <img 
+                                src={`http://localhost:3000/uploads/${pet.photo_url}`} 
+                                alt={pet.pet_name}
+                                className="mgmt-avatar-circle"
+                              />
+                            ) : (
+                              <div className="mgmt-avatar-icon">
+                                <i className="fas fa-paw"></i>
+                              </div>
+                            )}
+                            <div className="mgmt-item-info">
+                              <div className="mgmt-item-name">
+                                <span>{pet.pet_name}</span>
+                                {pet.is_active === false && <span className="mgmt-badge-inactive">Inactive</span>}
+                              </div>
+                              <span className="mgmt-item-subtext">{pet.breed || 'Mixed Breed'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="mgmt-td">
+                          <span>{pet.species || '-'}</span>
+                        </td>
+                        <td className="mgmt-td">
+                          <span>{calculateAge(pet.date_of_birth)}</span>
+                        </td>
+                        <td className="mgmt-td">
+                          <span 
+                            className="mgmt-owner-link"
+                            onClick={() => navigate(`/customers/${pet.customer_id}`)}
+                          >
+                            {pet.owner_first_name && pet.owner_last_name 
+                              ? `${pet.owner_first_name} ${pet.owner_last_name}` 
+                              : 'Unknown'}
+                          </span>
+                        </td>
+                        <td className="mgmt-td" style={{ textAlign: 'center' }}>
+                          {pet.gender ? (
+                            <span className="mgmt-gender-badge">{pet.gender}</span>
+                          ) : '-'}
+                        </td>
+                        <td className="mgmt-td" style={{ textAlign: 'right' }}>
+                          <button
+                            onClick={() => navigate(`/pets/${pet.pet_id}`)}
+                            className="mgmt-view-btn"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination */}
+            {filteredPets.length > itemsPerPage && (
+              <div className="mgmt-pagination-container">
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredPets.length)} of {filteredPets.length} entries
+                </span>
+                <div className="mgmt-pagination-btns">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="mgmt-page-btn"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+
+                  {getPageNumbers().map((page, index) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} style={{ padding: '0 0.25rem', color: '#94a3b8' }}>...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`mgmt-page-btn ${currentPage === page ? 'active' : ''}`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ))}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="mgmt-page-btn"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </Layout>
   );
 };
