@@ -225,6 +225,8 @@
   color: #0f172a;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Filters Card */

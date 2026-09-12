@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../services/userService';
+import '../styles/UsersModern.css';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
@@ -12,18 +13,27 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
+  const formRef = useRef(null);
 
   useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
+
   const [success, setSuccess] = useState('');
   useEffect(() => {
     if (!success) return;
     const t = setTimeout(() => setSuccess(''), 3000);
     return () => clearTimeout(t);
   }, [success]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+
+  useEffect(() => {
+    if (showForm && formRef.current) {
+      formRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showForm, editingUser]);
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,15 +211,6 @@ const Users = () => {
     return matchesRole && matchesStatus && matchesSearch;
   });
 
-  const getRoleBadgeColor = (role) => {
-    switch (role) {
-      case 'admin': return '#dc2626';
-      case 'veterinarian': return '#3b82f6';
-      case 'receptionist': return '#10b981';
-      default: return '#6b7280';
-    }
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -221,1063 +222,602 @@ const Users = () => {
     });
   };
 
+  const totalUsersCount = users.length;
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const vetCount = users.filter(u => u.role === 'veterinarian').length;
+  const receptionistCount = users.filter(u => u.role === 'receptionist').length;
+
   return (
     <Layout>
-      {/* Page Header */}
-      <div style={styles.pageHeader}>
-        <div>
-          <h2 style={styles.title}>User Management</h2>
-          <p style={styles.subtitle}>Manage staff users and permissions</p>
+      <div className="users-container">
+        {/* Page Header Hero */}
+        <div className="users-header-card">
+          <div className="users-header-left">
+            <div className="users-header-icon">
+              <i className="fas fa-users-cog"></i>
+            </div>
+            <div>
+              <h2 className="users-title">User Management</h2>
+              <p className="users-subtitle">Manage staff accounts, roles, and system access permissions</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => { if (showForm) { resetForm(); } else { setShowForm(true); } }}
+            className={showForm ? "users-btn-cancel" : "users-btn-add"}
+          >
+            <i className={`fas fa-${showForm ? 'times' : 'plus'}`}></i>
+            {showForm ? 'Cancel' : 'Add User'}
+          </button>
         </div>
-        <button 
-          onClick={() => { if (showForm) { resetForm(); } else { setShowForm(true); } }}
-          style={styles.addButton}
-        >
-          <i className={`fas fa-${showForm ? 'times' : 'plus'}`} style={{ marginRight: '0.5rem' }}></i>
-          {showForm ? 'Cancel' : 'Add User'}
-        </button>
-      </div>
 
-      {/* Messages */}
-      {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
-          {error}
+        {/* Quick Role Stats Grid */}
+        <div className="users-stats-grid">
+          <div className="users-stat-card">
+            <div className="users-stat-icon all">
+              <i className="fas fa-users"></i>
+            </div>
+            <div className="users-stat-info">
+              <div className="users-stat-val">{totalUsersCount}</div>
+              <div className="users-stat-lbl">Total Staff</div>
+            </div>
+          </div>
+          <div className="users-stat-card">
+            <div className="users-stat-icon admin">
+              <i className="fas fa-user-shield"></i>
+            </div>
+            <div className="users-stat-info">
+              <div className="users-stat-val">{adminCount}</div>
+              <div className="users-stat-lbl">Administrators</div>
+            </div>
+          </div>
+          <div className="users-stat-card">
+            <div className="users-stat-icon vet">
+              <i className="fas fa-user-md"></i>
+            </div>
+            <div className="users-stat-info">
+              <div className="users-stat-val">{vetCount}</div>
+              <div className="users-stat-lbl">Veterinarians</div>
+            </div>
+          </div>
+          <div className="users-stat-card">
+            <div className="users-stat-icon reception">
+              <i className="fas fa-concierge-bell"></i>
+            </div>
+            <div className="users-stat-info">
+              <div className="users-stat-val">{receptionistCount}</div>
+              <div className="users-stat-lbl">Receptionists</div>
+            </div>
+          </div>
         </div>
-      )}
-      {success && (
-        <div style={styles.successBox}>
-          <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
-          {success}
-        </div>
-      )}
 
-      {/* User Form */}
-      {showForm && (
-        <div style={styles.formContainer}>
-          <h3 style={styles.formTitle}>
-            {editingUser ? 'Edit User' : 'Create New User'}
-          </h3>
-          <form onSubmit={handleSubmit} style={styles.form}>
-            <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
-            <div style={styles.formGrid}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>First Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <input
-                  type="text"
-                  name="first_name"
-                  value={formData.first_name}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Last Name<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <input
-                  type="text"
-                  name="last_name"
-                  value={formData.last_name}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  required
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Email<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                  required
-                  disabled={editingUser !== null}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Phone</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  style={styles.input}
-                />
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Gender</label>
-                <select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Role<span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span></label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  style={styles.select}
-                  required
-                >
-                  <option value="receptionist">Receptionist</option>
-                  <option value="veterinarian">Veterinarian</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              {formData.role === 'veterinarian' && (
-                <>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>
-                      Specialization{!editingUser && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
-                    </label>
-                    <input
-                      type="text"
-                      name="specialization"
-                      value={formData.specialization}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="e.g., Small Animals, Surgery"
-                      required={!editingUser}
-                    />
-                  </div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>
-                      License Number{!editingUser && <span style={{ color: '#ef4444', marginLeft: '0.25rem' }}>*</span>}
-                    </label>
-                    <input
-                      type="text"
-                      name="license_number"
-                      value={formData.license_number}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      placeholder="Veterinary license number"
-                      required={!editingUser}
-                    />
-                  </div>
-                </>
-              )}
-              {!editingUser && (
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Default Password</label>
+        {/* Alert Messages */}
+        {error && (
+          <div ref={errorRef} className="users-alert-error">
+            <i className="fas fa-exclamation-circle"></i>
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="users-alert-success">
+            <i className="fas fa-check-circle"></i>
+            <span>{success}</span>
+          </div>
+        )}
+
+        {/* User Form Card */}
+        {showForm && (
+          <div ref={formRef} className="users-form-card">
+            <div className="users-form-header">
+              <h3 className="users-form-title">
+                <i className={`fas fa-${editingUser ? 'user-edit' : 'user-plus'}`} style={{ color: '#3b82f6' }}></i>
+                {editingUser ? 'Edit User' : 'Create New User'}
+              </h3>
+            </div>
+            <form onSubmit={handleSubmit}>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem 0' }}>
+                Fields marked with <span className="users-required-star">*</span> are required.
+              </p>
+              <div className="users-form-grid">
+                <div className="users-form-group">
+                  <label className="users-form-label">
+                    First Name <span className="users-required-star">*</span>
+                  </label>
                   <input
                     type="text"
-                    name="password"
-                    value={formData.password}
+                    name="first_name"
+                    value={formData.first_name}
                     onChange={handleInputChange}
-                    style={styles.input}
-                    placeholder="Leave blank for 'VetCare123'"
+                    className="users-input"
+                    required
                   />
-                  <small style={styles.hint}>
-                    User will be prompted to change password on first login
-                  </small>
                 </div>
-              )}
-            </div>
-            <div style={styles.formActions}>
-              <button type="submit" style={styles.submitButton}>
-                <i className="fas fa-save" style={{ marginRight: '0.5rem' }}></i>
-                {editingUser ? 'Update User' : 'Create User'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Role Tabs */}
-      <div style={styles.roleTabs}>
-        {[
-          { label: 'All', value: '', color: '#6b7280' },
-          { label: 'Admin', value: 'admin', color: '#dc2626' },
-          { label: 'Veterinarian', value: 'veterinarian', color: '#3b82f6' },
-          { label: 'Receptionist', value: 'receptionist', color: '#10b981' },
-        ].map(tab => {
-          const count = tab.value === '' ? users.length : users.filter(u => u.role === tab.value).length;
-          const isActive = filterRole === tab.value;
-          return (
-            <button
-              key={tab.value}
-              onClick={() => setFilterRole(tab.value)}
-              style={{
-                ...styles.roleTab,
-                borderBottom: isActive ? `3px solid ${tab.color}` : '3px solid transparent',
-                color: isActive ? tab.color : '#6b7280',
-                fontWeight: isActive ? '700' : '500',
-              }}
-            >
-              {tab.label}
-              <span style={{
-                ...styles.roleTabBadge,
-                backgroundColor: isActive ? tab.color : '#e5e7eb',
-                color: isActive ? '#ffffff' : '#6b7280',
-              }}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Filters */}
-      <div style={styles.toolbar}>
-        <div style={styles.searchContainer}>
-          <i className="fas fa-search" style={styles.searchIcon}></i>
-          <input
-            type="text"
-            placeholder="Search users..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-        </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={styles.filterSelect}
-        >
-          <option value="">All Status</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
-        </select>
-      </div>
-
-      {/* Users List */}
-      {loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading users...</p>
-        </div>
-      ) : (
-        <div style={styles.usersContainer}>
-          <div style={styles.countInfo}>
-            <i className="fas fa-users" style={{ marginRight: '0.5rem' }}></i>
-            Total Users: <strong>{filteredUsers.length}</strong>
-          </div>
-          
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Name</th>
-                  <th style={styles.th}>Email</th>
-                  <th style={styles.th}>Phone</th>
-                  <th style={styles.th}>Role</th>
-                  <th style={styles.th}>Status</th>
-                  <th style={styles.th}>Last Login</th>
-                  <th style={styles.th}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map(user => (
-                  <tr key={user.user_id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <div style={styles.userCell}>
-                        <div style={styles.avatar}>
-                          {user.profile_image ? (
-                            <img 
-                              src={`http://localhost:3000/uploads/${user.profile_image}`} 
-                              alt={user.first_name}
-                              style={styles.avatarImage}
-                            />
-                          ) : (
-                            <i className="fas fa-user"></i>
-                          )}
-                        </div>
-                        <div>
-                          <div style={styles.userName}>
-                            {user.first_name} {user.last_name}
-                          </div>
-                          {user.password_must_change && (
-                            <div style={styles.passwordWarning}>
-                              <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.25rem' }}></i>
-                              Must change password
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td style={styles.td}>{user.email}</td>
-                    <td style={styles.td}>{user.phone || '-'}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.roleBadge,
-                        backgroundColor: getRoleBadgeColor(user.role)
-                      }}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.statusBadge,
-                        backgroundColor: user.is_active ? '#10b981' : '#6b7280'
-                      }}>
-                        {user.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td style={styles.td}>{formatDate(user.last_login)}</td>
-                    <td style={styles.td}>
-                      <button
-                        onClick={() => setViewingUser(user)}
-                        style={styles.viewButton}
-                      >
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* User Detail Modal */}
-      {viewingUser && (
-        <div style={styles.modalOverlay} onClick={() => setViewingUser(null)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>User Details</h3>
-              <button onClick={() => setViewingUser(null)} style={styles.closeButton}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-
-            <div style={styles.modalBody}>
-              {/* User Profile Section */}
-              <div style={styles.profileSection}>
-                <div style={styles.profileImageLarge}>
-                  {viewingUser.profile_image ? (
-                    <img 
-                      src={`http://localhost:3000/uploads/${viewingUser.profile_image}`} 
-                      alt={viewingUser.first_name}
-                      style={styles.profileImageLargeImg}
-                    />
-                  ) : (
-                    <i className="fas fa-user" style={{ fontSize: '3rem', color: '#9ca3af' }}></i>
-                  )}
+                <div className="users-form-group">
+                  <label className="users-form-label">
+                    Last Name <span className="users-required-star">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleInputChange}
+                    className="users-input"
+                    required
+                  />
                 </div>
-                <div style={styles.profileInfo}>
-                  <h4 style={styles.profileName}>
-                    {viewingUser.first_name} {viewingUser.last_name}
-                  </h4>
-                  <span style={{
-                    ...styles.roleBadge,
-                    backgroundColor: getRoleBadgeColor(viewingUser.role)
-                  }}>
-                    {viewingUser.role}
-                  </span>
-                  <span style={{
-                    ...styles.statusBadge,
-                    backgroundColor: viewingUser.is_active ? '#10b981' : '#6b7280',
-                    marginLeft: '0.5rem'
-                  }}>
-                    {viewingUser.is_active ? 'Active' : 'Inactive'}
-                  </span>
+                <div className="users-form-group">
+                  <label className="users-form-label">
+                    Email <span className="users-required-star">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="users-input"
+                    required
+                    disabled={editingUser !== null}
+                  />
                 </div>
-              </div>
-
-              {/* User Details Grid */}
-              <div style={styles.detailsGrid}>
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>User ID</span>
-                  <span style={styles.detailValue}>
-                    {`USR-${String(viewingUser.user_id).padStart(4, '0')}`}
-                  </span>
+                <div className="users-form-group">
+                  <label className="users-form-label">Phone</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="users-input"
+                  />
                 </div>
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>Email</span>
-                  <span style={styles.detailValue}>{viewingUser.email}</span>
+                <div className="users-form-group">
+                  <label className="users-form-label">Gender</label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className="users-select"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>Phone</span>
-                  <span style={styles.detailValue}>{viewingUser.phone || 'Not provided'}</span>
+                <div className="users-form-group">
+                  <label className="users-form-label">
+                    Role <span className="users-required-star">*</span>
+                  </label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    className="users-select"
+                    required
+                  >
+                    <option value="receptionist">Receptionist</option>
+                    <option value="veterinarian">Veterinarian</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>Gender</span>
-                  <span style={styles.detailValue}>
-                    {viewingUser.gender ? viewingUser.gender.charAt(0).toUpperCase() + viewingUser.gender.slice(1) : 'Not specified'}
-                  </span>
-                </div>
-                {viewingUser.role === 'veterinarian' && (
+                {formData.role === 'veterinarian' && (
                   <>
-                    <div style={styles.detailItem}>
-                      <span style={styles.detailLabel}>Specialization</span>
-                      <span style={styles.detailValue}>{viewingUser.specialization || 'Not specified'}</span>
+                    <div className="users-form-group">
+                      <label className="users-form-label">
+                        Specialization {!editingUser && <span className="users-required-star">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        name="specialization"
+                        value={formData.specialization}
+                        onChange={handleInputChange}
+                        className="users-input"
+                        placeholder="e.g., Small Animals, Surgery"
+                        required={!editingUser}
+                      />
                     </div>
-                    <div style={styles.detailItem}>
-                      <span style={styles.detailLabel}>License Number</span>
-                      <span style={styles.detailValue}>{viewingUser.license_number || 'Not provided'}</span>
+                    <div className="users-form-group">
+                      <label className="users-form-label">
+                        License Number {!editingUser && <span className="users-required-star">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        name="license_number"
+                        value={formData.license_number}
+                        onChange={handleInputChange}
+                        className="users-input"
+                        placeholder="Veterinary license number"
+                        required={!editingUser}
+                      />
                     </div>
                   </>
                 )}
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>Last Login</span>
-                  <span style={styles.detailValue}>{formatDate(viewingUser.last_login)}</span>
-                </div>
-                <div style={styles.detailItem}>
-                  <span style={styles.detailLabel}>Account Created</span>
-                  <span style={styles.detailValue}>{formatDate(viewingUser.created_at)}</span>
-                </div>
-                {viewingUser.password_must_change && (
-                  <div style={styles.detailItem}>
-                    <span style={styles.detailLabel}>Password Status</span>
-                    <span style={styles.passwordWarning}>
-                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
-                      Must change password on next login
+                {!editingUser && (
+                  <div className="users-form-group">
+                    <label className="users-form-label">Default Password</label>
+                    <input
+                      type="text"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="users-input"
+                      placeholder="Leave blank for 'VetCare123'"
+                    />
+                    <span className="users-form-hint">
+                      User will be prompted to change password on first login
                     </span>
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div style={styles.modalActions}>
-              <button
-                onClick={() => {
-                  handleEdit(viewingUser);
-                  setViewingUser(null);
-                }}
-                style={styles.modalEditButton}
-              >
-                <i className="fas fa-edit" style={{ marginRight: '0.5rem' }}></i>
-                Edit User
-              </button>
-              {viewingUser.role !== 'admin' && (
-                <button
-                  onClick={() => setShowResetModal(true)}
-                  style={styles.resetPasswordButton}
-                >
-                  <i className="fas fa-key" style={{ marginRight: '0.5rem' }}></i>
-                  Reset Password
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  handleToggleActive(viewingUser);
-                  setViewingUser(null);
-                }}
-                style={{
-                  ...styles.modalToggleButton,
-                  backgroundColor: viewingUser.is_active ? '#f59e0b' : '#10b981'
-                }}
-                disabled={viewingUser.user_id === currentUser?.user_id}
-              >
-                <i
-                  className={`fas fa-${viewingUser.is_active ? 'ban' : 'check'}`}
-                  style={{ marginRight: '0.5rem' }}
-                ></i>
-                {viewingUser.is_active ? 'Deactivate User' : 'Reactivate User'}
-              </button>
-            </div>
-
-            {/* Reset Password Sub-modal */}
-            {showResetModal && (
-              <div style={styles.resetModalOverlay}>
-                <div style={styles.resetModalBox}>
-                  <h4 style={styles.resetModalTitle}>
-                    <i className="fas fa-key" style={{ marginRight: '0.5rem', color: '#f59e0b' }}></i>
-                    Reset Password
-                  </h4>
-                  <p style={styles.resetModalDesc}>
-                    Reset password for <strong>{viewingUser.first_name} {viewingUser.last_name}</strong>. They will be required to change it on next login.
-                  </p>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>New Password</label>
-                    <input
-                      type="text"
-                      value={resetPasswordValue}
-                      onChange={(e) => setResetPasswordValue(e.target.value)}
-                      style={styles.input}
-                      placeholder="Leave blank to use default 'VetCare123'"
-                    />
-                    <small style={styles.hint}>Minimum 6 characters</small>
-                  </div>
-                  <div style={styles.resetModalActions}>
-                    <button
-                      onClick={() => { setShowResetModal(false); setResetPasswordValue(''); }}
-                      style={styles.cancelResetButton}
-                      disabled={resetting}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleResetPassword}
-                      style={styles.confirmResetButton}
-                      disabled={resetting || (resetPasswordValue && resetPasswordValue.length < 6)}
-                    >
-                      {resetting ? 'Resetting...' : 'Confirm Reset'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {deactivateModal.open && (
-        <div style={styles.modalOverlay} onClick={() => setDeactivateModal({ open: false, userId: null })}>
-          <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>
-                <i className="fas fa-user-slash" style={{ marginRight: '0.5rem', color: '#d97706' }}></i>
-                Deactivate User
-              </h3>
-              <button onClick={() => setDeactivateModal({ open: false, userId: null })} style={styles.closeButton}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
-                Are you sure you want to deactivate this user? They will no longer be able to log in.
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => setDeactivateModal({ open: false, userId: null })}
-                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                >
+              <div className="users-form-actions">
+                <button type="button" onClick={resetForm} className="users-btn-cancel">
                   Cancel
                 </button>
-                <button
-                  onClick={confirmDeactivate}
-                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#d97706', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                >
-                  <i className="fas fa-user-slash" style={{ marginRight: '0.4rem' }}></i>
-                  Deactivate
+                <button type="submit" className="users-btn-submit">
+                  <i className="fas fa-save"></i>
+                  {editingUser ? 'Update User' : 'Create User'}
                 </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Filters & Search Card */}
+        <div className="users-toolbar-card">
+          <div className="users-role-tabs">
+            {[
+              { label: 'All Users', value: '', roleClass: 'all' },
+              { label: 'Admin', value: 'admin', roleClass: 'admin' },
+              { label: 'Veterinarian', value: 'veterinarian', roleClass: 'veterinarian' },
+              { label: 'Receptionist', value: 'receptionist', roleClass: 'receptionist' },
+            ].map(tab => {
+              const count = tab.value === '' ? users.length : users.filter(u => u.role === tab.value).length;
+              const isActive = filterRole === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  onClick={() => setFilterRole(tab.value)}
+                  className={`users-role-pill-btn ${isActive ? `active ${tab.roleClass}` : ''}`}
+                >
+                  {tab.label}
+                  <span className="users-role-count-badge">
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="users-controls-row">
+            <div className="users-search-box">
+              <i className="fas fa-search users-search-icon"></i>
+              <input
+                type="text"
+                placeholder="Search staff by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="users-search-input"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="users-status-select"
+            >
+              <option value="">All Statuses</option>
+              <option value="true">Active Only</option>
+              <option value="false">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Users Table Card */}
+        {loading ? (
+          <div className="users-table-card">
+            <div className="users-loading-state">
+              <div className="users-spinner"></div>
+              <p>Loading staff accounts...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="users-table-card">
+            <div className="users-count-bar">
+              <i className="fas fa-users" style={{ color: '#6366f1' }}></i>
+              Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> staff users
+            </div>
+            
+            <div className="users-table-wrapper">
+              <table className="users-table">
+                <thead>
+                  <tr>
+                    <th className="users-th">Name</th>
+                    <th className="users-th">Email</th>
+                    <th className="users-th">Phone</th>
+                    <th className="users-th">Role</th>
+                    <th className="users-th">Status</th>
+                    <th className="users-th">Last Login</th>
+                    <th className="users-th">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="7">
+                        <div className="users-empty-state">
+                          <i className="fas fa-user-slash users-empty-icon"></i>
+                          <p style={{ margin: 0, fontWeight: 600 }}>No users found matching your filters</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map(user => (
+                      <tr key={user.user_id} className="users-tr">
+                        <td className="users-td">
+                          <div className="users-cell-user">
+                            <div className="users-avatar">
+                              {user.profile_image ? (
+                                <img 
+                                  src={`http://localhost:3000/uploads/${user.profile_image}`} 
+                                  alt={user.first_name}
+                                  className="users-avatar-img"
+                                />
+                              ) : (
+                                <i className="fas fa-user"></i>
+                              )}
+                            </div>
+                            <div>
+                              <div className="users-user-name">
+                                {user.first_name} {user.last_name}
+                              </div>
+                              {user.password_must_change && (
+                                <div className="users-password-warning">
+                                  <i className="fas fa-exclamation-triangle"></i>
+                                  Must change password
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="users-td">{user.email}</td>
+                        <td className="users-td">{user.phone || '-'}</td>
+                        <td className="users-td">
+                          <span className={`users-role-badge ${user.role}`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="users-td">
+                          <span className={`users-status-badge ${user.is_active ? 'active' : 'inactive'}`}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="users-td">{formatDate(user.last_login)}</td>
+                        <td className="users-td">
+                          <button
+                            onClick={() => setViewingUser(user)}
+                            className="users-btn-view"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* User Detail Modal */}
+        {viewingUser && (
+          <div className="users-modal-overlay" onClick={() => setViewingUser(null)}>
+            <div className="users-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="users-modal-header">
+                <h3 className="users-modal-title">User Profile & Access Details</h3>
+                <button onClick={() => setViewingUser(null)} className="users-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="users-modal-body">
+                {/* Profile Banner */}
+                <div className="users-profile-banner">
+                  <div className="users-profile-avatar-lg">
+                    {viewingUser.profile_image ? (
+                      <img 
+                        src={`http://localhost:3000/uploads/${viewingUser.profile_image}`} 
+                        alt={viewingUser.first_name}
+                        className="users-profile-avatar-lg-img"
+                      />
+                    ) : (
+                      <i className="fas fa-user" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+                    )}
+                  </div>
+                  <div className="users-profile-meta">
+                    <h4 className="users-profile-name">
+                      {viewingUser.first_name} {viewingUser.last_name}
+                    </h4>
+                    <div className="users-profile-badges">
+                      <span className={`users-role-badge ${viewingUser.role}`}>
+                        {viewingUser.role}
+                      </span>
+                      <span className={`users-status-badge ${viewingUser.is_active ? 'active' : 'inactive'}`}>
+                        {viewingUser.is_active ? 'Active Account' : 'Inactive Account'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Details Grid */}
+                <div className="users-details-grid">
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">User ID</span>
+                    <span className="users-detail-val">
+                      {`USR-${String(viewingUser.user_id).padStart(4, '0')}`}
+                    </span>
+                  </div>
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">Email Address</span>
+                    <span className="users-detail-val">{viewingUser.email}</span>
+                  </div>
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">Phone Number</span>
+                    <span className="users-detail-val">{viewingUser.phone || 'Not provided'}</span>
+                  </div>
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">Gender</span>
+                    <span className="users-detail-val">
+                      {viewingUser.gender ? viewingUser.gender.charAt(0).toUpperCase() + viewingUser.gender.slice(1) : 'Not specified'}
+                    </span>
+                  </div>
+                  {viewingUser.role === 'veterinarian' && (
+                    <>
+                      <div className="users-detail-box">
+                        <span className="users-detail-lbl">Specialization</span>
+                        <span className="users-detail-val">{viewingUser.specialization || 'Not specified'}</span>
+                      </div>
+                      <div className="users-detail-box">
+                        <span className="users-detail-lbl">License Number</span>
+                        <span className="users-detail-val">{viewingUser.license_number || 'Not provided'}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">Last Login</span>
+                    <span className="users-detail-val">{formatDate(viewingUser.last_login)}</span>
+                  </div>
+                  <div className="users-detail-box">
+                    <span className="users-detail-lbl">Account Created</span>
+                    <span className="users-detail-val">{formatDate(viewingUser.created_at)}</span>
+                  </div>
+                  {viewingUser.password_must_change && (
+                    <div className="users-detail-box" style={{ gridColumn: '1 / -1', background: 'rgba(254, 243, 199, 0.5)', borderColor: '#fde68a' }}>
+                      <span className="users-detail-lbl" style={{ color: '#b45309' }}>Password Status</span>
+                      <span className="users-password-warning" style={{ fontSize: '0.85rem' }}>
+                        <i className="fas fa-exclamation-triangle"></i>
+                        Must change password on next login
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="users-modal-actions">
+                <button
+                  onClick={() => {
+                    handleEdit(viewingUser);
+                    setViewingUser(null);
+                  }}
+                  className="users-btn-modal-edit"
+                >
+                  <i className="fas fa-edit"></i>
+                  Edit User
+                </button>
+                {viewingUser.role !== 'admin' && (
+                  <button
+                    onClick={() => setShowResetModal(true)}
+                    className="users-btn-modal-reset"
+                  >
+                    <i className="fas fa-key"></i>
+                    Reset Password
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    handleToggleActive(viewingUser);
+                    setViewingUser(null);
+                  }}
+                  className={`users-btn-modal-toggle ${viewingUser.is_active ? 'deactivate' : 'activate'}`}
+                  disabled={viewingUser.user_id === currentUser?.user_id}
+                >
+                  <i className={`fas fa-${viewingUser.is_active ? 'ban' : 'check'}`}></i>
+                  {viewingUser.is_active ? 'Deactivate User' : 'Reactivate User'}
+                </button>
+              </div>
+
+              {/* Reset Password Sub-modal */}
+              {showResetModal && (
+                <div className="users-reset-modal-overlay">
+                  <div className="users-reset-modal-box">
+                    <h4 className="users-reset-modal-title">
+                      <i className="fas fa-key" style={{ color: '#f59e0b' }}></i>
+                      Reset Password
+                    </h4>
+                    <p className="users-reset-modal-desc">
+                      Reset password for <strong>{viewingUser.first_name} {viewingUser.last_name}</strong>. They will be required to change it on next login.
+                    </p>
+                    <div className="users-form-group">
+                      <label className="users-form-label">New Password</label>
+                      <input
+                        type="text"
+                        value={resetPasswordValue}
+                        onChange={(e) => setResetPasswordValue(e.target.value)}
+                        className="users-input"
+                        placeholder="Leave blank to use default 'VetCare123'"
+                      />
+                      <span className="users-form-hint">Minimum 6 characters</span>
+                    </div>
+                    <div className="users-reset-modal-actions">
+                      <button
+                        onClick={() => { setShowResetModal(false); setResetPasswordValue(''); }}
+                        className="users-btn-reset-cancel"
+                        disabled={resetting}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleResetPassword}
+                        className="users-btn-reset-confirm"
+                        disabled={resetting || (resetPasswordValue && resetPasswordValue.length < 6)}
+                      >
+                        {resetting ? 'Resetting...' : 'Confirm Reset'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Deactivate User Modal */}
+        {deactivateModal.open && (
+          <div className="users-modal-overlay" onClick={() => setDeactivateModal({ open: false, userId: null })}>
+            <div className="users-deactivate-modal-box" onClick={e => e.stopPropagation()}>
+              <div className="users-deactivate-header">
+                <h3 className="users-deactivate-title">
+                  <i className="fas fa-user-slash" style={{ color: '#d97706' }}></i>
+                  Deactivate User
+                </h3>
+                <button onClick={() => setDeactivateModal({ open: false, userId: null })} className="users-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="users-deactivate-body">
+                <p className="users-deactivate-text">
+                  Are you sure you want to deactivate this user? They will no longer be able to log in.
+                </p>
+                <div className="users-deactivate-actions">
+                  <button
+                    onClick={() => setDeactivateModal({ open: false, userId: null })}
+                    className="users-btn-deactivate-cancel"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeactivate}
+                    className="users-btn-deactivate-confirm"
+                  >
+                    <i className="fas fa-user-slash" style={{ marginRight: '0.4rem' }}></i>
+                    Deactivate
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </Layout>
   );
-};
-
-const styles = {
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  addButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  errorBox: {
-    padding: '1rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    border: '1px solid #fecaca',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  successBox: {
-    padding: '1rem',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    border: '1px solid #a7f3d0',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  formContainer: {
-    backgroundColor: '#ffffff',
-    padding: '2rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    marginBottom: '2rem',
-  },
-  formTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1.5rem',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#374151',
-  },
-  input: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  select: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-  },
-  hint: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-  formActions: {
-    display: 'flex',
-    gap: '1rem',
-    justifyContent: 'flex-end',
-  },
-  submitButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  cancelButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  toolbar: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-  },
-  searchContainer: {
-    position: 'relative',
-    flex: 1,
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: '0.75rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: '#9ca3af',
-    pointerEvents: 'none',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '0.5rem 0.75rem 0.5rem 2.5rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  filterSelect: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-  },
-  roleTabs: {
-    display: 'flex',
-    gap: '0',
-    marginBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  roleTab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.65rem 1.25rem',
-    background: 'none',
-    border: 'none',
-    borderBottom: '3px solid transparent',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    marginBottom: '-1px',
-  },
-  roleTabBadge: {
-    fontSize: '0.72rem',
-    fontWeight: '600',
-    padding: '0.15rem 0.5rem',
-    borderRadius: '10px',
-    minWidth: '20px',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '3rem',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #3b82f6',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-  },
-  usersContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'hidden',
-  },
-  countInfo: {
-    padding: '1rem 1.5rem',
-    backgroundColor: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb',
-    fontSize: '0.875rem',
-    color: '#374151',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  tableContainer: {
-    overflowX: 'auto',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    padding: '1rem',
-    textAlign: 'left',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    backgroundColor: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  tr: {
-    borderBottom: '1px solid #e5e7eb',
-  },
-  td: {
-    padding: '1rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-  },
-  userCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  avatar: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
-    backgroundColor: '#e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#6b7280',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  userName: {
-    fontWeight: '600',
-    color: '#111827',
-  },
-  passwordWarning: {
-    fontSize: '0.75rem',
-    color: '#f59e0b',
-    display: 'flex',
-    alignItems: 'center',
-    marginTop: '0.25rem',
-  },
-  roleBadge: {
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: 'white',
-    textTransform: 'capitalize',
-    display: 'inline-block',
-  },
-  statusBadge: {
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: 'white',
-    display: 'inline-block',
-  },
-  viewButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    whiteSpace: 'nowrap',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '1rem',
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    maxWidth: '800px',
-    width: '100%',
-    maxHeight: '90vh',
-    overflow: 'auto',
-  },
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1.5rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  modalTitle: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  closeButton: {
-    padding: '0.5rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#6b7280',
-    cursor: 'pointer',
-    borderRadius: '6px',
-    fontSize: '1.25rem',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'background-color 0.2s',
-  },
-  modalBody: {
-    padding: '1.5rem',
-  },
-  profileSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.5rem',
-    marginBottom: '2rem',
-    paddingBottom: '2rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  profileImageLarge: {
-    width: '100px',
-    height: '100px',
-    borderRadius: '50%',
-    backgroundColor: '#e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#6b7280',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  profileImageLargeImg: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.75rem 0',
-  },
-  detailsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1.5rem',
-  },
-  detailItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  detailLabel: {
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  detailValue: {
-    fontSize: '0.875rem',
-    color: '#111827',
-    fontWeight: '500',
-  },
-  modalActions: {
-    display: 'flex',
-    gap: '1rem',
-    padding: '1.5rem',
-    borderTop: '1px solid #e5e7eb',
-    justifyContent: 'flex-end',
-  },
-  modalEditButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'background-color 0.2s',
-  },
-  modalToggleButton: {
-    padding: '0.75rem 1.5rem',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'background-color 0.2s',
-  },
-  resetPasswordButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#f59e0b',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'background-color 0.2s',
-  },
-  resetModalOverlay: {
-    position: 'absolute',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: '12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  resetModalBox: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    padding: '1.5rem',
-    width: '100%',
-    maxWidth: '420px',
-    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  resetModalTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-    display: 'flex',
-    alignItems: 'center',
-  },
-  resetModalDesc: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  resetModalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '0.75rem',
-  },
-  cancelResetButton: {
-    padding: '0.6rem 1.25rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  confirmResetButton: {
-    padding: '0.6rem 1.25rem',
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
 };
 
 export default Users;

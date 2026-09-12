@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import reportService from '../services/reportService';
 import Layout from '../components/Layout';
+import '../styles/ReportsModern.css';
 import {
   LineChart,
   Line,
@@ -180,64 +181,59 @@ function Reports() {
     if (!dashboardSummary) return null;
 
     return (
-      <div style={{ ...styles.dashboardSummary, position: 'relative', opacity: summaryLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-        {summaryLoading && (
-          <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#6b7280' }}>
-            <i className="fas fa-spinner fa-spin"></i> Updating...
-          </div>
-        )}
-        <div style={styles.summaryHeader}>
-          <h3 style={styles.summaryTitle}>Quick Summary</h3>
-          <div style={styles.dateRangeBadge}>
-            <i className="fas fa-calendar-alt" style={{marginRight: '0.5rem', fontSize: '0.875rem'}}></i>
+      <div className="rep-summary-card" style={{ opacity: summaryLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+        <div className="rep-summary-header">
+          <h3 className="rep-summary-title">
+            <i className="fas fa-bolt" style={{ color: '#f59e0b' }}></i> Quick Summary
+          </h3>
+          <div className="rep-date-badge">
+            <i className="fas fa-calendar-alt"></i>
             <span>{formatDate(startDate)} – {formatDate(endDate)}</span>
           </div>
         </div>
-        <div style={styles.summaryGrid}>
+        <div className="rep-summary-grid">
           {/* Financial Card */}
-          <div style={{...styles.summaryCard, borderTop: '4px solid #667eea'}}>
-            <h4 style={styles.summaryCardTitle}>
-              <i className="fas fa-dollar-sign" style={{marginRight: '8px', color: '#667eea'}} />
-              Financial
+          <div className="rep-summary-subcard" style={{ borderTop: '4px solid #6366f1' }}>
+            <h4 className="rep-subcard-title" style={{ color: '#6366f1' }}>
+              <i className="fas fa-dollar-sign"></i> Financial Performance
             </h4>
-            <div style={styles.summaryMetricGrid}>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Total Revenue</span>
-                <strong style={styles.summaryValue}>{formatCurrency(dashboardSummary.total_revenue)}</strong>
+            <div className="rep-metric-grid">
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Total Revenue</span>
+                <strong className="rep-metric-value">{formatCurrency(dashboardSummary.total_revenue)}</strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Collected</span>
-                <strong style={{...styles.summaryValue, color: '#059669'}}>{formatCurrency(dashboardSummary.total_collected)}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Collected</span>
+                <strong className="rep-metric-value" style={{ color: '#059669' }}>{formatCurrency(dashboardSummary.total_collected)}</strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Outstanding</span>
-                <strong style={{...styles.summaryValue, color: '#DC2626'}}>{formatCurrency(dashboardSummary.total_outstanding)}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Outstanding</span>
+                <strong className="rep-metric-value" style={{ color: '#dc2626' }}>{formatCurrency(dashboardSummary.total_outstanding)}</strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Total Invoices</span>
-                <strong style={styles.summaryValue}>{dashboardSummary.total_invoices}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Total Invoices</span>
+                <strong className="rep-metric-value">{dashboardSummary.total_invoices}</strong>
               </div>
             </div>
           </div>
 
           {/* Appointments Card */}
-          <div style={{...styles.summaryCard, borderTop: '4px solid #3b82f6'}}>
-            <h4 style={styles.summaryCardTitle}>
-              <i className="fas fa-calendar-check" style={{marginRight: '8px', color: '#3b82f6'}} />
-              Appointments
+          <div className="rep-summary-subcard" style={{ borderTop: '4px solid #3b82f6' }}>
+            <h4 className="rep-subcard-title" style={{ color: '#3b82f6' }}>
+              <i className="fas fa-calendar-check"></i> Appointments
             </h4>
-            <div style={styles.summaryMetricGrid}>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Total</span>
-                <strong style={styles.summaryValue}>{dashboardSummary.total_appointments}</strong>
+            <div className="rep-metric-grid">
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Total</span>
+                <strong className="rep-metric-value">{dashboardSummary.total_appointments}</strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Completed</span>
-                <strong style={{...styles.summaryValue, color: '#059669'}}>{dashboardSummary.completed_appointments}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Completed</span>
+                <strong className="rep-metric-value" style={{ color: '#059669' }}>{dashboardSummary.completed_appointments}</strong>
               </div>
-              <div style={{...styles.summaryMetric, gridColumn: '1 / -1'}}>
-                <span style={styles.summaryLabel}>Completion Rate</span>
-                <strong style={styles.summaryValue}>
+              <div className="rep-metric-item" style={{ gridColumn: '1 / -1' }}>
+                <span className="rep-metric-label">Completion Rate</span>
+                <strong className="rep-metric-value" style={{ color: '#2563eb' }}>
                   {dashboardSummary.total_appointments > 0
                     ? ((dashboardSummary.completed_appointments / dashboardSummary.total_appointments) * 100).toFixed(1)
                     : 0}%
@@ -247,39 +243,37 @@ function Reports() {
           </div>
 
           {/* Patients & Customers Card */}
-          <div style={{...styles.summaryCard, borderTop: '4px solid #8b5cf6'}}>
-            <h4 style={styles.summaryCardTitle}>
-              <i className="fas fa-users" style={{marginRight: '8px', color: '#8b5cf6'}} />
-              Patients & Customers
+          <div className="rep-summary-subcard" style={{ borderTop: '4px solid #8b5cf6' }}>
+            <h4 className="rep-subcard-title" style={{ color: '#8b5cf6' }}>
+              <i className="fas fa-users"></i> Patients & Customers
             </h4>
-            <div style={styles.summaryMetricGrid}>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Unique Patients</span>
-                <strong style={styles.summaryValue}>{dashboardSummary.unique_patients}</strong>
+            <div className="rep-metric-grid">
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Unique Patients</span>
+                <strong className="rep-metric-value">{dashboardSummary.unique_patients}</strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Unique Customers</span>
-                <strong style={styles.summaryValue}>{dashboardSummary.unique_customers}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Unique Customers</span>
+                <strong className="rep-metric-value">{dashboardSummary.unique_customers}</strong>
               </div>
             </div>
           </div>
 
           {/* Inventory Card */}
-          <div style={{...styles.summaryCard, borderTop: '4px solid #f59e0b'}}>
-            <h4 style={styles.summaryCardTitle}>
-              <i className="fas fa-box" style={{marginRight: '8px', color: '#f59e0b'}} />
-              Inventory
+          <div className="rep-summary-subcard" style={{ borderTop: '4px solid #f59e0b' }}>
+            <h4 className="rep-subcard-title" style={{ color: '#f59e0b' }}>
+              <i className="fas fa-boxes-stacked"></i> Inventory Overview
             </h4>
-            <div style={styles.summaryMetricGrid}>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Low Stock Items</span>
-                <strong style={{...styles.summaryValue, color: dashboardSummary.low_stock_items > 0 ? '#DC2626' : '#059669'}}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Low Stock Items</span>
+                <strong className="rep-metric-value" style={{ color: dashboardSummary.low_stock_items > 0 ? '#dc2626' : '#059669' }}>
                   {dashboardSummary.low_stock_items}
                 </strong>
               </div>
-              <div style={styles.summaryMetric}>
-                <span style={styles.summaryLabel}>Total Inventory Value</span>
-                <strong style={styles.summaryValue}>{formatCurrency(dashboardSummary.total_inventory_value)}</strong>
+              <div className="rep-metric-item">
+                <span className="rep-metric-label">Inventory Holding Value</span>
+                <strong className="rep-metric-value" style={{ fontSize: '1.05rem', color: '#0f172a' }}>{formatCurrency(dashboardSummary.total_inventory_value)}</strong>
               </div>
             </div>
           </div>
@@ -295,7 +289,7 @@ function Reports() {
 
     if (data.length === 0) return null;
 
-    const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0', '#f7971e', '#0ba360', '#3cba92', '#ee0979', '#ff6a00', '#a18cd1', '#fad0c4', '#ffecd2', '#a1c4fd', '#c2e9fb', '#d4fc79', '#96e6a1', '#84fab0', '#8fd3f4'];
+    const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#84cc16', '#a855f7'];
 
     // Revenue Summary Chart
     if (reportType === 'revenue-summary') {
@@ -307,8 +301,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Revenue Trend</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-area" style={{ color: '#6366f1' }}></i> Revenue Trend Overview
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -316,9 +312,9 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Area type="monotone" dataKey="revenue" stackId="1" stroke="#667eea" fill="#667eea" name="Total Revenue" />
-              <Area type="monotone" dataKey="paid" stackId="2" stroke="#43e97b" fill="#43e97b" name="Paid Amount" />
-              <Area type="monotone" dataKey="outstanding" stackId="3" stroke="#fa709a" fill="#fa709a" name="Outstanding" />
+              <Area type="monotone" dataKey="revenue" stackId="1" stroke="#6366f1" fill="#6366f1" name="Total Revenue" />
+              <Area type="monotone" dataKey="paid" stackId="2" stroke="#10b981" fill="#10b981" name="Paid Amount" />
+              <Area type="monotone" dataKey="outstanding" stackId="3" stroke="#ef4444" fill="#ef4444" name="Outstanding" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -341,8 +337,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Payment Methods Distribution</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-pie" style={{ color: '#8b5cf6' }}></i> Payment Methods Distribution
+          </h4>
           <ResponsiveContainer width="100%" height={360}>
             <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
@@ -386,8 +384,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Revenue by Service Type</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-bar" style={{ color: '#3b82f6' }}></i> Revenue by Service Type
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -395,7 +395,7 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#667eea" name="Total Revenue" />
+              <Bar dataKey="revenue" fill="#3b82f6" name="Total Revenue" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -412,8 +412,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Revenue Trend — {formatDate(startDate)} to {formatDate(endDate)}</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-line" style={{ color: '#10b981' }}></i> Monthly Revenue Trend
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -421,8 +423,8 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip formatter={(value, name) => name === 'invoices' ? value : formatCurrency(value)} />
               <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#667eea" strokeWidth={2} name="Revenue" />
-              <Line type="monotone" dataKey="collected" stroke="#43e97b" strokeWidth={2} name="Collected" />
+              <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={2} name="Revenue" />
+              <Line type="monotone" dataKey="collected" stroke="#10b981" strokeWidth={2} name="Collected" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -439,8 +441,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Annual Income Overview</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-column" style={{ color: '#6366f1' }}></i> Annual Income Overview
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -448,9 +452,9 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#667eea" name="Total Revenue" />
-              <Bar dataKey="collected" fill="#43e97b" name="Collected" />
-              <Bar dataKey="outstanding" fill="#fa709a" name="Outstanding" />
+              <Bar dataKey="revenue" fill="#6366f1" name="Total Revenue" />
+              <Bar dataKey="collected" fill="#10b981" name="Collected" />
+              <Bar dataKey="outstanding" fill="#ef4444" name="Outstanding" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -467,8 +471,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Monthly Income Overview</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-chart-column" style={{ color: '#059669' }}></i> Monthly Income Breakdown
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -476,9 +482,9 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip formatter={(value) => formatCurrency(value)} />
               <Legend />
-              <Bar dataKey="revenue" fill="#667eea" name="Total Revenue" />
-              <Bar dataKey="collected" fill="#43e97b" name="Collected" />
-              <Bar dataKey="due" fill="#fa709a" name="Due" />
+              <Bar dataKey="revenue" fill="#6366f1" name="Total Revenue" />
+              <Bar dataKey="collected" fill="#10b981" name="Collected" />
+              <Bar dataKey="due" fill="#ef4444" name="Due" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -494,8 +500,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Customer Growth</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-user-plus" style={{ color: '#8b5cf6' }}></i> Customer Growth Trend
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -503,8 +511,8 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="new" stroke="#667eea" strokeWidth={2} name="New Customers" />
-              <Line type="monotone" dataKey="total" stroke="#43e97b" strokeWidth={2} name="Total Customers" />
+              <Line type="monotone" dataKey="new" stroke="#6366f1" strokeWidth={2} name="New Customers" />
+              <Line type="monotone" dataKey="total" stroke="#10b981" strokeWidth={2} name="Total Customers" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -523,8 +531,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Appointment Statistics</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-calendar-days" style={{ color: '#3b82f6' }}></i> Appointment Activity Breakdown
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -532,10 +542,10 @@ function Reports() {
               <YAxis style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="confirmed" stackId="a" fill="#667eea" name="Confirmed" />
+              <Bar dataKey="confirmed" stackId="a" fill="#6366f1" name="Confirmed" />
               <Bar dataKey="in_progress" stackId="a" fill="#f59e0b" name="In Progress" />
-              <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
-              <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
+              <Bar dataKey="completed" stackId="a" fill="#10b981" name="Completed" />
+              <Bar dataKey="cancelled" stackId="a" fill="#ef4444" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -559,8 +569,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Appointments by Type</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-pie-chart" style={{ color: '#ec4899' }}></i> Appointments Distribution by Type
+          </h4>
           <ResponsiveContainer width="100%" height={360}>
             <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
@@ -594,7 +606,7 @@ function Reports() {
       );
     }
 
-    // Patient Visit Statistics Chart — species distribution pie + top patients bar
+    // Patient Visit Statistics Chart
     if (reportType === 'patient-visits') {
       const speciesMap = {};
       data.forEach(item => {
@@ -611,8 +623,10 @@ function Reports() {
 
       return (
         <>
-          <div style={styles.chartContainer}>
-            <h4 style={styles.chartTitle}>Visits by Species</h4>
+          <div className="rep-chart-card">
+            <h4 className="rep-chart-title">
+              <i className="fas fa-paw" style={{ color: '#06b6d4' }}></i> Patient Visits by Species
+            </h4>
             <ResponsiveContainer width="100%" height={360}>
               <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                 <Pie
@@ -643,8 +657,10 @@ function Reports() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={styles.chartContainer}>
-            <h4 style={styles.chartTitle}>Top 10 Patients by Visit Count</h4>
+          <div className="rep-chart-card">
+            <h4 className="rep-chart-title">
+              <i className="fas fa-ranking-star" style={{ color: '#f59e0b' }}></i> Top 10 Patients by Visit Count
+            </h4>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={topPatients}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -652,8 +668,8 @@ function Reports() {
                 <YAxis allowDecimals={false} style={{fontSize: '0.75rem'}} />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="completed" stackId="a" fill="#43e97b" name="Completed" />
-                <Bar dataKey="cancelled" stackId="a" fill="#fa709a" name="Cancelled" />
+                <Bar dataKey="completed" stackId="a" fill="#10b981" name="Completed" />
+                <Bar dataKey="cancelled" stackId="a" fill="#ef4444" name="Cancelled" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -672,8 +688,10 @@ function Reports() {
       }));
 
       return (
-        <div style={styles.chartContainer}>
-          <h4 style={styles.chartTitle}>Top Veterinarian Performance</h4>
+        <div className="rep-chart-card">
+          <h4 className="rep-chart-title">
+            <i className="fas fa-user-doctor" style={{ color: '#059669' }}></i> Top Veterinarian Performance
+          </h4>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -681,17 +699,17 @@ function Reports() {
               <YAxis allowDecimals={false} style={{fontSize: '0.75rem'}} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="total" fill="#667eea" name="Total Appointments" />
+              <Bar dataKey="total" fill="#6366f1" name="Total Appointments" />
               <Bar dataKey="in_progress" fill="#f59e0b" name="In Progress" />
-              <Bar dataKey="completed" fill="#43e97b" name="Completed" />
-              <Bar dataKey="cancelled" fill="#fa709a" name="Cancelled" />
+              <Bar dataKey="completed" fill="#10b981" name="Completed" />
+              <Bar dataKey="cancelled" fill="#ef4444" name="Cancelled" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       );
     }
 
-    // Inventory Usage Chart — by category
+    // Inventory Usage Chart
     if (reportType === 'inventory-usage') {
       const shortCategoryLabels = {
         pharmaceuticals:       'Pharma',
@@ -720,8 +738,10 @@ function Reports() {
 
       return (
         <>
-          <div style={styles.chartContainer}>
-            <h4 style={styles.chartTitle}>Usage Value vs Current Stock Value by Category</h4>
+          <div className="rep-chart-card">
+            <h4 className="rep-chart-title">
+              <i className="fas fa-boxes-packing" style={{ color: '#f59e0b' }}></i> Usage Value vs Current Stock Value
+            </h4>
             <ResponsiveContainer width="100%" height={340}>
               <ComposedChart data={usageChartData} margin={{ bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -730,14 +750,16 @@ function Reports() {
                 <YAxis yAxisId="count" orientation="right" style={{fontSize: '0.75rem'}} allowDecimals={false} label={{ value: 'Total Items', angle: 90, position: 'insideRight', offset: 10, style: { fontSize: '0.7rem' } }} />
                 <Tooltip formatter={(value, name) => name === 'Total Items in Category' ? value : formatCurrency(value)} />
                 <Legend />
-                <Bar yAxisId="value" dataKey="value_used" fill="#667eea" name="Consumed Value" />
-                <Bar yAxisId="value" dataKey="stock_value" fill="#43e97b" name="Stock Value" />
+                <Bar yAxisId="value" dataKey="value_used" fill="#6366f1" name="Consumed Value" />
+                <Bar yAxisId="value" dataKey="stock_value" fill="#10b981" name="Stock Value" />
                 <Line yAxisId="count" type="monotone" dataKey="item_count" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} name="Total Items in Category" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-          <div style={styles.chartContainer}>
-            <h4 style={styles.chartTitle}>Item Count by Category</h4>
+          <div className="rep-chart-card">
+            <h4 className="rep-chart-title">
+              <i className="fas fa-chart-pie" style={{ color: '#a855f7' }}></i> Item Count by Category
+            </h4>
             <ResponsiveContainer width="100%" height={360}>
               <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                 <Pie
@@ -781,7 +803,12 @@ function Reports() {
     const data = Array.isArray(reportData.data) ? reportData.data : [reportData.data];
 
     if (data.length === 0) {
-      return <div className="no-data">No data available for the selected criteria.</div>;
+      return (
+        <div className="rep-chart-card" style={{ textAlign: 'center', padding: '3rem 1.5rem', color: '#64748b' }}>
+          <i className="fas fa-folder-open" style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '1rem', display: 'block' }}></i>
+          No report data available for the selected date range and criteria.
+        </div>
+      );
     }
 
     // Pagination calculations
@@ -796,574 +823,231 @@ function Reports() {
     return (
       <>
         {renderCharts()}
-        <div style={styles.reportTableContainer}>
-          <div style={styles.reportHeader}>
-            <h3 style={styles.reportTitle}>
+        <div className="rep-table-card">
+          <div className="rep-table-header">
+            <h3 className="rep-table-title">
+              <i className="fas fa-table-list" style={{ color: '#2563eb' }}></i>
               {financialReports.concat(operationalReports).find(r => r.value === reportType)?.label}
-              <span style={{ fontSize: '0.875rem', fontWeight: '400', color: '#6b7280', marginLeft: '0.75rem' }}>
-                {formatDate(startDate)} – {formatDate(endDate)}
+              <span style={{ fontSize: '0.825rem', fontWeight: '500', color: '#64748b', marginLeft: '0.5rem' }}>
+                ({formatDate(startDate)} – {formatDate(endDate)})
               </span>
             </h3>
-            <div style={{display: 'flex', gap: '0.5rem'}}>
-              <button onClick={handleExportReport} style={styles.exportButton}>
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button onClick={handleExportReport} className="rep-btn-export-csv">
                 <i className="fas fa-file-csv"></i> Export CSV
               </button>
-              <button onClick={handleExportReportPDF} style={{...styles.exportButton, backgroundColor: '#e74c3c'}}>
+              <button onClick={handleExportReportPDF} className="rep-btn-export-pdf">
                 <i className="fas fa-file-pdf"></i> Export PDF
               </button>
             </div>
           </div>
-        <div style={styles.tableWrapper}>
-          <table style={styles.reportTable}>
-            <thead>
-              <tr>
-                {columns.map(col => (
-                  <th key={col} style={styles.reportTh}>
-                    {col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {currentData.map((row, index) => (
-                <tr key={index} style={index % 2 === 0 ? styles.reportTrEven : styles.reportTrOdd}>
+          <div className="rep-table-wrapper">
+            <table className="rep-table">
+              <thead>
+                <tr>
                   {columns.map(col => (
-                    <td key={col} style={styles.reportTd}>
-                      {(col.includes('date') || (col.includes('visit') && !col.includes('_visits'))) && row[col]
-                        ? formatDate(row[col])
-                        : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding') || col.includes('invoiced'))
-                        ? formatCurrency(row[col])
-                        : col.includes('rate') || col.includes('percentage')
-                        ? `${row[col]}%`
-                        : col === 'payment_method' && row[col]
-                        ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
-                        : col === 'appointment_type' && row[col]
-                        ? ({ checkup: 'Check-up', vaccination: 'Vaccination', surgery: 'Surgery', emergency: 'Emergency', follow_up: 'Follow-up', consultation: 'Consultation' })[row[col]] || row[col]
-                        : col === 'service_type' && row[col]
-                        ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
-                        : col === 'category' && row[col]
-                        ? ({ pharmaceuticals: 'Pharmaceuticals', consumables: 'Consumables', surgical_clinical: 'Surgical & Clinical Supplies', laboratory_diagnostic: 'Laboratory / Diagnostic Supplies', pet_food_nutrition: 'Pet Food & Nutrition', retail_otc: 'Retail / OTC Products', equipment: 'Equipment', accessories: 'Accessories', supplements: 'Supplements', cleaning_maintenance: 'Cleaning & Maintenance Supplies' })[row[col]] || row[col]
-                        : col.includes('status') && row[col]
-                        ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-                        : row[col] !== null && row[col] !== undefined
-                        ? row[col]
-                        : '-'}
-                    </td>
+                    <th key={col}>
+                      {col.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div style={styles.paginationContainer}>
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
-            >
-              <i className="fas fa-chevron-left"></i>
-            </button>
-
-            {getPageNumbers().map((pageNum, index) => (
-              <span key={index}>
-                {pageNum === '...' ? (
-                  <span style={styles.paginationEllipsis}>...</span>
-                ) : (
-                  <button
-                    onClick={() => handlePageChange(pageNum)}
-                    style={currentPage === pageNum ? styles.paginationButtonActive : styles.paginationButton}
-                  >
-                    {pageNum}
-                  </button>
-                )}
-              </span>
-            ))}
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
-            >
-              <i className="fas fa-chevron-right"></i>
-            </button>
+              </thead>
+              <tbody>
+                {currentData.map((row, index) => (
+                  <tr key={index}>
+                    {columns.map(col => (
+                      <td key={col}>
+                        {(col.includes('date') || (col.includes('visit') && !col.includes('_visits'))) && row[col]
+                          ? formatDate(row[col])
+                          : !col.includes('invoices') && (col.includes('amount') || col.includes('revenue') || col.includes('paid') || col.includes('price') || col.includes('value') || col.includes('collected') || col.includes('due') || col.includes('spent') || col.includes('outstanding') || col.includes('invoiced'))
+                          ? formatCurrency(row[col])
+                          : col.includes('rate') || col.includes('percentage')
+                          ? `${row[col]}%`
+                          : col === 'payment_method' && row[col]
+                          ? ({ cash: 'Cash', card: 'Debit/Credit Card', bank_transfer: 'Bank Transfer', mobile_payment: 'Mobile Payment/QR', insurance: 'Insurance' })[row[col]] || row[col]
+                          : col === 'appointment_type' && row[col]
+                          ? ({ checkup: 'Check-up', vaccination: 'Vaccination', surgery: 'Surgery', emergency: 'Emergency', follow_up: 'Follow-up', consultation: 'Consultation' })[row[col]] || row[col]
+                          : col === 'service_type' && row[col]
+                          ? ({ inventory_item: 'Inventory Item', service: 'Other / Service', consultation: 'Consultation' })[row[col]] || row[col]
+                          : col === 'category' && row[col]
+                          ? ({ pharmaceuticals: 'Pharmaceuticals', consumables: 'Consumables', surgical_clinical: 'Surgical & Clinical Supplies', laboratory_diagnostic: 'Laboratory / Diagnostic Supplies', pet_food_nutrition: 'Pet Food & Nutrition', retail_otc: 'Retail / OTC Products', equipment: 'Equipment', accessories: 'Accessories', supplements: 'Supplements', cleaning_maintenance: 'Cleaning & Maintenance Supplies' })[row[col]] || row[col]
+                          : col.includes('status') && row[col]
+                          ? row[col].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                          : row[col] !== null && row[col] !== undefined
+                          ? row[col]
+                          : '-'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div className="rep-pagination-bar">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="rep-page-pill"
+              >
+                ←
+              </button>
+
+              {getPageNumbers().map((pageNum, index) => (
+                <span key={index}>
+                  {pageNum === '...' ? (
+                    <span style={{ color: '#94a3b8', padding: '0 0.4rem' }}>...</span>
+                  ) : (
+                    <button
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`rep-page-pill ${currentPage === pageNum ? 'active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )}
+                </span>
+              ))}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="rep-page-pill"
+              >
+                →
+              </button>
+            </div>
+          )}
+        </div>
       </>
     );
   };
 
   return (
     <Layout>
-      <div style={styles.container}>
-        <div style={styles.header}>
-          <div style={styles.pageHeaderContent}>
-            <i className="fas fa-chart-bar" style={styles.headerIcon}></i>
+      <div className="rep-container">
+        {/* Page Header Hero */}
+        <div className="rep-header-card">
+          <div className="rep-header-left">
+            <div className="rep-header-icon">
+              <i className="fas fa-chart-line"></i>
+            </div>
             <div>
-              <h1 style={styles.title}>Reports</h1>
-              <p style={styles.subtitle}>Generate and export clinic performance reports</p>
+              <h1 className="rep-title">Reports & Clinic Analytics</h1>
+              <p className="rep-subtitle">Generate and export financial and operational performance reports</p>
             </div>
           </div>
         </div>
 
+        {/* Error Alert Box */}
         {error && (
-          <div ref={errorRef} style={styles.errorAlert}>
-            {error}
+          <div ref={errorRef} className="inv-alert-card low-stock" style={{ marginBottom: '1.5rem' }}>
+            <div>
+              <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
+              {error}
+            </div>
           </div>
         )}
 
+        {/* Dashboard Quick Summary */}
         {renderDashboardSummary()}
 
-        <div style={styles.reportsSection}>
-          <div style={styles.reportControls}>
-            <div style={styles.tabs}>
-              <button
-                style={activeTab === 'financial' ? {...styles.tab, ...styles.tabActive} : styles.tab}
-                onClick={() => {
-                  setActiveTab('financial');
-                  setReportType('revenue-summary');
-                  setReportData(null);
-                  setCurrentPage(1);
-                }}
-              >
-                Financial Reports
-              </button>
-              <button
-                style={activeTab === 'operational' ? {...styles.tab, ...styles.tabActive} : styles.tab}
-                onClick={() => {
-                  setActiveTab('operational');
-                  setReportType('appointment-stats');
-                  setReportData(null);
-                  setCurrentPage(1);
-                }}
-              >
-                Operational Reports
-              </button>
-            </div>
-
-            <div style={styles.filters}>
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Report Type</label>
-                <select
-                  value={reportType}
-                  onChange={(e) => {
-                    setReportType(e.target.value);
-                    setReportData(null);
-                    setCurrentPage(1);
-                  }}
-                  style={styles.formControl}
-                >
-                  {(activeTab === 'financial' ? financialReports : operationalReports).map(report => (
-                    <option key={report.value} value={report.value}>
-                      {report.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={styles.formControl}
-                  max={endDate}
-                />
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={styles.formControl}
-                  min={startDate}
-                  max={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-
-              <button
-                onClick={handleGenerateReport}
-                disabled={loading}
-                style={loading ? {...styles.btnPrimary, opacity: 0.6} : styles.btnPrimary}
-              >
-                {loading ? 'Generating...' : 'Generate Report'}
-              </button>
-            </div>
+        {/* Reports Controls Section */}
+        <div className="rep-section-card">
+          <div className="rep-tabs-bar">
+            <button
+              className={`rep-tab-pill ${activeTab === 'financial' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('financial');
+                setReportType('revenue-summary');
+                setReportData(null);
+                setCurrentPage(1);
+              }}
+            >
+              <i className="fas fa-sack-dollar"></i> Financial Reports
+            </button>
+            <button
+              className={`rep-tab-pill ${activeTab === 'operational' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveTab('operational');
+                setReportType('list-check');
+                setReportType('appointment-stats');
+                setReportData(null);
+                setCurrentPage(1);
+              }}
+            >
+              <i className="fas fa-chart-pie"></i> Operational Reports
+            </button>
           </div>
 
-          {loading && (
-            <div style={styles.loadingContainer}>
-              <div style={styles.spinner}></div>
-              <p>Generating report...</p>
+          <div className="rep-filters-row">
+            <div className="rep-form-group">
+              <label className="rep-form-label">Report Type</label>
+              <select
+                value={reportType}
+                onChange={(e) => {
+                  setReportType(e.target.value);
+                  setReportData(null);
+                  setCurrentPage(1);
+                }}
+                className="rep-select-input"
+              >
+                {(activeTab === 'financial' ? financialReports : operationalReports).map(report => (
+                  <option key={report.value} value={report.value}>
+                    {report.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
 
-          {renderReportData()}
+            <div className="rep-form-group">
+              <label className="rep-form-label">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rep-date-input"
+                max={endDate}
+              />
+            </div>
+
+            <div className="rep-form-group">
+              <label className="rep-form-label">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rep-date-input"
+                min={startDate}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <button
+              onClick={handleGenerateReport}
+              disabled={loading}
+              className="rep-btn-generate"
+            >
+              <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-play'}`}></i>
+              {loading ? 'Generating...' : 'Generate Report'}
+            </button>
+          </div>
         </div>
+
+        {/* Loading Spinner for Report Generation */}
+        {loading && (
+          <div className="rep-chart-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
+            <div className="appts-spinner" style={{ margin: '0 auto 1rem auto', borderTopColor: '#6366f1' }}></div>
+            <p style={{ color: '#64748b', fontWeight: 600 }}>Generating performance report data...</p>
+          </div>
+        )}
+
+        {/* Report Visualization & Table */}
+        {renderReportData()}
       </div>
     </Layout>
   );
 }
-
-const styles = {
-  container: {
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    maxWidth: '1400px',
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '2rem',
-    gap: '1rem',
-  },
-  pageHeaderContent: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  headerIcon: {
-    fontSize: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '600',
-    color: '#1F2937',
-    margin: 0,
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6B7280',
-    margin: '0.5rem 0 0 0',
-  },
-  dashboardSummary: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '2rem',
-    border: '1px solid #e5e7eb',
-  },
-  summaryHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1.25rem',
-    flexWrap: 'wrap',
-    gap: '0.75rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  summaryTitle: {
-    color: '#1f2937',
-    fontSize: '1.25rem',
-    fontWeight: '700',
-    margin: 0,
-  },
-  dateRangeBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    padding: '0.4rem 0.9rem',
-    borderRadius: '20px',
-    fontSize: '0.8125rem',
-    fontWeight: '500',
-    boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)',
-  },
-  summaryGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1.25rem',
-  },
-  summaryCard: {
-    background: '#ffffff',
-    padding: '1.25rem 1.5rem',
-    borderRadius: '10px',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-  },
-  summaryCardTitle: {
-    color: '#374151',
-    fontSize: '0.9375rem',
-    fontWeight: '700',
-    margin: '0 0 1rem 0',
-    paddingBottom: '0.6rem',
-    borderBottom: '1px solid #f3f4f6',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  summaryMetricGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '0.75rem 1rem',
-  },
-  summaryMetric: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.2rem',
-    minWidth: 0,
-  },
-  summaryLabel: {
-    color: '#6b7280',
-    fontSize: '0.72rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
-  },
-  summaryValue: {
-    color: '#111827',
-    fontWeight: '700',
-    fontSize: '0.9375rem',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  },
-  errorAlert: {
-    backgroundColor: '#FEE2E2',
-    border: '1px solid #FCA5A5',
-    color: '#991B1B',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '2rem',
-    fontSize: '0.875rem',
-  },
-  reportsSection: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  reportControls: {
-    marginBottom: '1rem',
-  },
-  tabs: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-    borderBottom: '2px solid #e5e7eb',
-  },
-  tab: {
-    padding: '0.75rem 1.5rem',
-    background: 'none',
-    border: 'none',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    borderBottom: '3px solid transparent',
-    transition: 'all 0.3s',
-    marginBottom: '-2px',
-  },
-  tabActive: {
-    color: '#667eea',
-    borderBottomColor: '#667eea',
-  },
-  filters: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr auto',
-    gap: '1rem',
-    alignItems: 'flex-end',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  label: {
-    marginBottom: '0.5rem',
-    color: '#6b7280',
-    fontWeight: '500',
-    fontSize: '0.75rem',
-  },
-  formControl: {
-    padding: '0.5rem 0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    outline: 'none',
-  },
-  btnPrimary: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '2rem 1rem',
-    color: '#6b7280',
-  },
-  spinner: {
-    border: '4px solid #e5e7eb',
-    borderTop: '4px solid #667eea',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-    marginBottom: '1rem',
-  },
-  reportTableContainer: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-    overflow: 'hidden',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  reportHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1.25rem 1.5rem',
-    borderBottom: '1px solid #e5e7eb',
-    backgroundColor: '#f9fafb',
-    flexShrink: 0,
-  },
-  reportTitle: {
-    color: '#1f2937',
-    margin: 0,
-    fontSize: '1.125rem',
-    fontWeight: '600',
-  },
-  exportButton: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  tableWrapper: {
-    overflowX: 'scroll',
-    overflowY: 'scroll',
-    maxHeight: '580px',
-    border: '1px solid #e5e7eb',
-    borderRadius: '0 0 12px 12px',
-  },
-  reportTable: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    tableLayout: 'auto',
-    minWidth: '650px',
-  },
-  reportTh: {
-    backgroundColor: '#1e40af',
-    color: '#ffffff',
-    padding: '0.9rem 1.25rem',
-    textAlign: 'left',
-    fontSize: '0.8125rem',
-    fontWeight: '700',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    whiteSpace: 'nowrap',
-    letterSpacing: '0.04em',
-    borderRight: '1px solid #2563eb',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-  },
-  reportTrEven: {
-    backgroundColor: '#ffffff',
-  },
-  reportTrOdd: {
-    backgroundColor: '#eff6ff',
-  },
-  reportTd: {
-    padding: '0.7rem 1.25rem',
-    fontSize: '0.875rem',
-    color: '#111827',
-    borderBottom: '1px solid #e5e7eb',
-    borderRight: '1px solid #e5e7eb',
-    whiteSpace: 'nowrap',
-    verticalAlign: 'middle',
-  },
-  paginationContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '1rem',
-    borderTop: '1px solid #E5E7EB',
-  },
-  paginationButton: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  paginationButtonActive: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: '1px solid #3B82F6',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  paginationButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#D1D5DB',
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'not-allowed',
-  },
-  paginationEllipsis: {
-    color: '#9ca3af',
-    padding: '0.5rem',
-    fontSize: '0.875rem',
-  },
-  chartContainer: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '1.5rem',
-    border: '1px solid #e5e7eb',
-  },
-  chartTitle: {
-    color: '#1f2937',
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    marginBottom: '1rem',
-    paddingBottom: '0.75rem',
-    borderBottom: '2px solid #e5e7eb',
-  },
-};
 
 export default Reports;

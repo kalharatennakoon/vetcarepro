@@ -153,6 +153,8 @@
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.02em;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .billing-stat-value.val-revenue { color: #059669; }

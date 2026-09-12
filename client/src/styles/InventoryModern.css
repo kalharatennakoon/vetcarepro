@@ -146,6 +146,8 @@
   font-weight: 800;
   color: #0f172a;
   line-height: 1.2;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Alert Summary Banners */

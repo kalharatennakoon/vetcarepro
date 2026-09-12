@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import Layout from '../components/Layout';
 import auditLogService from '../services/auditLogService';
+import '../styles/SystemLogsModern.css';
 
 const PAGE_LIMIT = 50;
 
@@ -34,15 +35,16 @@ function ActionBadge({ action }) {
     <span style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: '0.3rem',
-      padding: '0.22rem 0.6rem',
-      borderRadius: '4px',
-      fontSize: '0.72rem',
+      gap: '0.35rem',
+      padding: '0.25rem 0.65rem',
+      borderRadius: '6px',
+      fontSize: '0.725rem',
       fontWeight: '700',
       backgroundColor: m.bg,
       color: m.color,
       letterSpacing: '0.02em',
-      whiteSpace: 'nowrap'
+      whiteSpace: 'nowrap',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)'
     }}>
       <i className={`fas ${m.icon}`} style={{ fontSize: '0.65rem' }}></i>
       {action}
@@ -53,37 +55,37 @@ function ActionBadge({ action }) {
 function InfoPanel() {
   const [open, setOpen] = useState(false);
   return (
-    <div style={styles.infoPanel}>
-      <div style={styles.infoPanelHeader} onClick={() => setOpen(o => !o)}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+    <div className="syslog-info-card">
+      <div className="syslog-info-header" onClick={() => setOpen(o => !o)}>
+        <span className="syslog-info-title">
           <i className="fas fa-info-circle" style={{ color: '#2563eb' }}></i>
-          <strong style={{ fontSize: '0.875rem', color: '#1e40af' }}>About System Logs</strong>
+          <strong>About System Logs & Audit Policy</strong>
         </span>
-        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ color: '#6b7280', fontSize: '0.75rem' }}></i>
+        <i className={`fas fa-chevron-${open ? 'up' : 'down'}`} style={{ color: '#64748b', fontSize: '0.8rem' }}></i>
       </div>
       {open && (
-        <div style={styles.infoPanelBody}>
-          <p style={styles.infoText}>
-            System logs capture significant actions performed by staff members. Each entry records <strong>who</strong> performed the action, <strong>what</strong> was affected, and <strong>when</strong> it happened.
+        <div className="syslog-info-body">
+          <p className="syslog-info-text">
+            System audit logs capture significant actions performed by staff members. Each entry records <strong>who</strong> performed the action, <strong>what</strong> was affected, and <strong>when</strong> it happened.
           </p>
-          <div style={styles.actionGrid}>
+          <div className="syslog-action-grid">
             {Object.entries(ACTION_META).map(([key, m]) => (
-              <div key={key} style={styles.actionInfoItem}>
+              <div key={key} className="syslog-action-item">
                 <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                  padding: '0.2rem 0.55rem', borderRadius: '4px', fontSize: '0.72rem',
-                  fontWeight: '700', backgroundColor: m.bg, color: m.color, marginBottom: '0.3rem'
+                  display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+                  padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.725rem',
+                  fontWeight: '700', backgroundColor: m.bg, color: m.color, marginBottom: '0.35rem'
                 }}>
                   <i className={`fas ${m.icon}`} style={{ fontSize: '0.65rem' }}></i> {m.label}
                 </span>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#6b7280' }}>{m.desc}</p>
+                <p className="syslog-action-desc">{m.desc}</p>
               </div>
             ))}
           </div>
-          <div style={styles.infoNote}>
-            <i className="fas fa-lightbulb" style={{ color: '#d97706', marginRight: '0.4rem' }}></i>
-            <span style={{ fontSize: '0.8rem', color: '#78350f' }}>
-              <strong>Tip:</strong> Click any row to expand and see the before/after values of the change. Use filters to narrow down to specific date ranges, staff members, or record types.
+          <div className="syslog-info-tip">
+            <i className="fas fa-lightbulb" style={{ color: '#d97706' }}></i>
+            <span>
+              <strong>Tip:</strong> Click any log row to expand and view full before/after state comparisons. Use filters to scope by date ranges, staff members, or record types.
             </span>
           </div>
         </div>
@@ -102,6 +104,7 @@ function SystemLogs() {
   useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
+
   const [filters, setFilters] = useState({
     search: '',
     action: '',
@@ -111,7 +114,6 @@ function SystemLogs() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedRow, setExpandedRow] = useState(null);
-
 
   const doFetch = async (f, page) => {
     setLoading(true);
@@ -211,38 +213,59 @@ function SystemLogs() {
     if (end < pagination.pages) pages.push(end < pagination.pages - 1 ? '...' : null, pagination.pages);
 
     return (
-      <div style={styles.pagination}>
-        <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1} style={currentPage <= 1 ? styles.pageBtnDisabled : styles.pageBtnEnabled}>
+      <div className="syslog-pagination">
+        <button 
+          onClick={() => handlePageChange(currentPage - 1)} 
+          disabled={currentPage <= 1} 
+          className="syslog-page-btn"
+        >
           <i className="fas fa-chevron-left"></i>
         </button>
         {pages.filter(Boolean).map((p, i) =>
           p === '...'
-            ? <span key={`ellipsis-${i}`} style={{ padding: '0 0.3rem', color: '#9ca3af' }}>…</span>
-            : <button key={p} onClick={() => handlePageChange(p)} style={p === currentPage ? styles.pageBtnCurrent : styles.pageBtnEnabled}>{p}</button>
+            ? <span key={`ellipsis-${i}`} style={{ padding: '0 0.35rem', color: '#94a3b8' }}>…</span>
+            : <button 
+                key={p} 
+                onClick={() => handlePageChange(p)} 
+                className={`syslog-page-btn ${p === currentPage ? 'active' : ''}`}
+              >
+                {p}
+              </button>
         )}
-        <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage >= pagination.pages} style={currentPage >= pagination.pages ? styles.pageBtnDisabled : styles.pageBtnEnabled}>
+        <button 
+          onClick={() => handlePageChange(currentPage + 1)} 
+          disabled={currentPage >= pagination.pages} 
+          className="syslog-page-btn"
+        >
           <i className="fas fa-chevron-right"></i>
         </button>
-        <span style={styles.pageInfo}>Page {currentPage} of {pagination.pages} &nbsp;·&nbsp; {pagination.total} total</span>
+        <span className="syslog-page-info">
+          Page {currentPage} of {pagination.pages} &nbsp;·&nbsp; {pagination.total} total logs
+        </span>
       </div>
     );
   };
 
   return (
     <Layout>
-      <div style={styles.container}>
+      <div className="syslog-container">
 
-        {/* Header */}
-        <div style={styles.header}>
-          <div>
-            <h1 style={styles.title}><i className="fas fa-clipboard-list" style={{ marginRight: '0.5rem', color: '#2563eb' }}></i>System Audit Logs</h1>
-            <p style={styles.subtitle}>View, search, and filter all significant system actions recorded for auditing purposes</p>
+        {/* Page Header Hero */}
+        <div className="syslog-header-card">
+          <div className="syslog-header-left">
+            <div className="syslog-header-icon">
+              <i className="fas fa-clipboard-list"></i>
+            </div>
+            <div>
+              <h1 className="syslog-title">System Audit Logs</h1>
+              <p className="syslog-subtitle">View, search, and filter all significant system actions recorded for auditing purposes</p>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={handleExport} style={styles.exportBtn} title="Export to CSV">
+          <div className="syslog-header-actions">
+            <button onClick={handleExport} className="syslog-btn-export" title="Export to CSV">
               <i className="fas fa-download"></i> Export CSV
             </button>
-            <button onClick={handleRefresh} style={styles.refreshBtn} title="Refresh logs">
+            <button onClick={handleRefresh} className="syslog-btn-refresh" title="Refresh logs">
               <i className={`fas fa-sync-alt${loading ? ' fa-spin' : ''}`}></i> Refresh
             </button>
           </div>
@@ -250,39 +273,44 @@ function SystemLogs() {
 
         <InfoPanel />
 
-        {/* Filters */}
-        <div style={styles.filterCard}>
-          <div style={styles.filterCardHeader}>
-            <i className="fas fa-filter" style={{ color: '#6b7280', fontSize: '0.8rem' }}></i>
-            <span style={styles.filterCardTitle}>Filter Logs</span>
+        {/* Filters Card */}
+        <div className="syslog-filter-card">
+          <div className="syslog-filter-header">
+            <div className="syslog-filter-title">
+              <i className="fas fa-filter" style={{ color: '#3b82f6' }}></i>
+              Filter Audit Logs
+            </div>
             {hasActiveFilters && (
-              <span style={styles.activeFiltersBadge}>Filters active</span>
+              <span className="syslog-active-badge">
+                <i className="fas fa-check-circle" style={{ marginRight: '0.3rem' }}></i>
+                Filters Active
+              </span>
             )}
           </div>
           <form onSubmit={handleApply}>
-            {/* Row 1: Search, Action Type, Record Type */}
-            <div style={styles.filterGrid}>
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
-                  Search
-                  <span style={styles.filterHint}>by action, table, or staff name</span>
+            {/* Filter Grid */}
+            <div className="syslog-filter-grid">
+              <div className="syslog-filter-group">
+                <label className="syslog-filter-label">
+                  Search Term
+                  <span className="syslog-filter-hint">Action, table, or staff name</span>
                 </label>
-                <div style={styles.inputWithIcon}>
-                  <i className="fas fa-search" style={styles.inputIcon}></i>
+                <div className="syslog-search-box">
+                  <i className="fas fa-search syslog-search-icon"></i>
                   <input
                     name="search"
                     value={filters.search}
                     onChange={e => setFilters(p => ({ ...p, search: e.target.value }))}
                     placeholder="e.g. DELETE, customers, Dr. Silva..."
-                    style={{ ...styles.filterInput, paddingLeft: '2.25rem' }}
+                    className="syslog-input syslog-search-input"
                   />
                 </div>
               </div>
 
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
+              <div className="syslog-filter-group">
+                <label className="syslog-filter-label">
                   Action Type
-                  <span style={styles.filterHint}>what was done</span>
+                  <span className="syslog-filter-hint">Operation performed</span>
                 </label>
                 <select
                   value={filters.action}
@@ -293,19 +321,19 @@ function SystemLogs() {
                     setExpandedRow(null);
                     doFetch(updated, 1);
                   }}
-                  style={styles.filterInput}
+                  className="syslog-select"
                 >
-                  <option value="">All action types</option>
+                  <option value="">All Action Types</option>
                   {Object.entries(ACTION_META).map(([key, m]) => (
                     <option key={key} value={key}>{m.label} — {m.desc}</option>
                   ))}
                 </select>
               </div>
 
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
+              <div className="syslog-filter-group">
+                <label className="syslog-filter-label">
                   Record Type
-                  <span style={styles.filterHint}>which table was affected</span>
+                  <span className="syslog-filter-hint">Target table</span>
                 </label>
                 <select
                   value={filters.table_name}
@@ -316,119 +344,117 @@ function SystemLogs() {
                     setExpandedRow(null);
                     doFetch(updated, 1);
                   }}
-                  style={styles.filterInput}
+                  className="syslog-select"
                 >
-                  <option value="">All record types</option>
+                  <option value="">All Record Types</option>
                   {Object.entries(TABLE_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
                   ))}
                 </select>
               </div>
-            </div>
 
-            {/* Row 2: Date Range */}
-            <div style={styles.filterRow2}>
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
+              <div className="syslog-filter-group">
+                <label className="syslog-filter-label">
                   From Date
-                  <span style={styles.filterHint}>start of date range</span>
+                  <span className="syslog-filter-hint">Start date</span>
                 </label>
                 <input
                   type="date"
                   value={filters.date_from}
                   onChange={e => setFilters(p => ({ ...p, date_from: e.target.value }))}
-                  style={styles.filterInput}
+                  className="syslog-input"
                   max={filters.date_to || undefined}
                 />
               </div>
 
-              <div style={styles.filterGroup}>
-                <label style={styles.filterLabel}>
+              <div className="syslog-filter-group">
+                <label className="syslog-filter-label">
                   To Date
-                  <span style={styles.filterHint}>end of date range</span>
+                  <span className="syslog-filter-hint">End date</span>
                 </label>
                 <input
                   type="date"
                   value={filters.date_to}
                   onChange={e => setFilters(p => ({ ...p, date_to: e.target.value }))}
-                  style={styles.filterInput}
+                  className="syslog-input"
                   min={filters.date_from || undefined}
                 />
               </div>
             </div>
 
-            <div style={styles.filterFooter}>
-              <div style={styles.filterActions}>
-                <button type="submit" style={styles.applyBtn}>
+            <div className="syslog-filter-footer">
+              <div className="syslog-filter-actions">
+                <button type="submit" className="syslog-btn-apply">
                   <i className="fas fa-search"></i> Apply Filters
                 </button>
                 {hasActiveFilters && (
-                  <button type="button" onClick={handleClear} style={styles.clearBtn}>
+                  <button type="button" onClick={handleClear} className="syslog-btn-clear">
                     <i className="fas fa-times"></i> Clear All
                   </button>
                 )}
               </div>
-              <p style={styles.filterNote}>
-                <i className="fas fa-keyboard" style={{ marginRight: '0.3rem', color: '#9ca3af' }}></i>
-                Fill any filter above then click <strong>Apply Filters</strong>, or press <kbd style={styles.kbd}>Enter</kbd>
+              <p className="syslog-filter-note">
+                <i className="fas fa-keyboard"></i>
+                Fill any filter above then click <strong>Apply Filters</strong>, or press <kbd className="syslog-kbd">Enter</kbd>
               </p>
             </div>
           </form>
         </div>
 
         {error && (
-          <div ref={errorRef} style={styles.errorBox}>
-            <i className="fas fa-exclamation-triangle"></i>
+          <div ref={errorRef} className="syslog-alert-error">
+            <i className="fas fa-exclamation-triangle" style={{ fontSize: '1.1rem' }}></i>
             <div>
-              <strong>Error loading logs</strong>
-              <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem' }}>{error}</p>
+              <strong style={{ fontSize: '0.95rem' }}>Error Loading Audit Logs</strong>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#b91c1c' }}>{error}</p>
             </div>
           </div>
         )}
 
-        {/* Results */}
-        <div style={styles.tableCard}>
-          <div style={styles.tableHeader}>
-            <span style={styles.tableTitle}>
-              {loading ? 'Loading...' : pagination.total > 0
+        {/* Results Table Card */}
+        <div className="syslog-table-card">
+          <div className="syslog-table-header">
+            <span className="syslog-table-title">
+              <i className="fas fa-history" style={{ color: '#3b82f6' }}></i>
+              {loading ? 'Loading Logs...' : pagination.total > 0
                 ? `${pagination.total} log entr${pagination.total !== 1 ? 'ies' : 'y'}${hasActiveFilters ? ' matching filters' : ''}`
                 : 'Audit Log Entries'
               }
             </span>
-            <span style={styles.tableHint}>
-              <i className="fas fa-hand-point-down" style={{ marginRight: '0.3rem' }}></i>
-              Click a row to expand and view full details
+            <span className="syslog-table-hint">
+              <i className="fas fa-hand-point-down"></i>
+              Click any row to expand details
             </span>
           </div>
 
           {loading ? (
-            <div style={styles.centeredState}>
-              <div style={styles.spinner}></div>
-              <p style={{ color: '#6b7280', marginTop: '0.75rem' }}>Loading audit logs...</p>
+            <div className="syslog-loading-state">
+              <div className="syslog-spinner"></div>
+              <p>Loading audit logs...</p>
             </div>
           ) : logs.length === 0 ? (
-            <div style={styles.emptyState}>
-              <i className="fas fa-clipboard-list" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#374151', fontSize: '1rem' }}>
+            <div className="syslog-empty-state">
+              <i className="fas fa-clipboard-list syslog-empty-icon"></i>
+              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a', fontSize: '1.1rem', fontWeight: 700 }}>
                 {hasActiveFilters ? 'No logs match your filters' : 'No audit logs recorded yet'}
               </h3>
-              <p style={{ margin: '0 0 1rem', color: '#9ca3af', fontSize: '0.875rem', maxWidth: '380px', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.875rem', maxWidth: '420px', lineHeight: 1.5 }}>
                 {hasActiveFilters
                   ? 'Try adjusting or clearing your filters to see more results.'
-                  : 'Audit entries are created when staff perform significant actions like deleting or inactivating records. Perform such an action and it will appear here.'
+                  : 'Audit entries are automatically generated when staff perform actions like deleting, updating, or inactivating records.'
                 }
               </p>
               {hasActiveFilters && (
-                <button onClick={handleClear} style={styles.applyBtn}>
+                <button onClick={handleClear} className="syslog-btn-apply">
                   <i className="fas fa-times"></i> Clear Filters
                 </button>
               )}
               {!hasActiveFilters && (
-                <div style={styles.whatGetsLoggedBox}>
-                  <p style={{ margin: '0 0 0.6rem', fontWeight: '600', fontSize: '0.8rem', color: '#374151' }}>
+                <div className="syslog-logged-box">
+                  <p style={{ margin: '0 0 0.5rem', fontWeight: '700', fontSize: '0.825rem', color: '#0f172a' }}>
                     What gets logged:
                   </p>
-                  <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8rem', color: '#6b7280', lineHeight: '1.7' }}>
+                  <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.825rem', color: '#475569', lineHeight: '1.7' }}>
                     <li>Permanently deleting a customer or pet record</li>
                     <li>Inactivating a customer or pet (with reason)</li>
                     <li>Deactivating a staff account</li>
@@ -439,17 +465,17 @@ function SystemLogs() {
               )}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
-              <table style={styles.table}>
+            <div className="syslog-table-wrapper">
+              <table className="syslog-table">
                 <thead>
-                  <tr style={styles.thead}>
-                    <th style={styles.th}>Date &amp; Time</th>
-                    <th style={styles.th}>Action</th>
-                    <th style={styles.th}>Record Type</th>
-                    <th style={{ ...styles.th, textAlign: 'center' }}>ID</th>
-                    <th style={styles.th}>Performed By</th>
-                    <th style={styles.th}>IP Address</th>
-                    <th style={{ ...styles.th, textAlign: 'center', width: '48px' }}></th>
+                  <tr>
+                    <th className="syslog-th" style={{ width: '150px' }}>Date &amp; Time</th>
+                    <th className="syslog-th" style={{ width: '130px' }}>Action</th>
+                    <th className="syslog-th" style={{ width: '160px' }}>Record Type</th>
+                    <th className="syslog-th" style={{ textAlign: 'center', width: '110px' }}>Record ID</th>
+                    <th className="syslog-th">Performed By</th>
+                    <th className="syslog-th" style={{ width: '150px' }}>IP Address</th>
+                    <th className="syslog-th" style={{ textAlign: 'center', width: '48px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -457,78 +483,81 @@ function SystemLogs() {
                     const ts = formatTimestamp(log.timestamp);
                     const isExpanded = expandedRow === log.log_id;
                     return (
-                      <>
+                      <Fragment key={log.log_id}>
                         <tr
-                          key={log.log_id}
                           onClick={() => toggleRow(log.log_id)}
-                          style={isExpanded ? { ...styles.tr, backgroundColor: '#f0f7ff', borderBottom: 'none' } : styles.tr}
+                          className={`syslog-tr ${isExpanded ? 'expanded' : ''}`}
                         >
-                          <td style={styles.td}>
-                            <div style={{ lineHeight: '1.4' }}>
-                              <div style={{ fontSize: '0.82rem', fontWeight: '500', color: '#111827' }}>{ts.date}</div>
-                              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{ts.time}</div>
+                          <td className="syslog-td" style={{ width: '150px' }}>
+                            <div>
+                              <div className="syslog-timestamp-date">{ts.date}</div>
+                              <div className="syslog-timestamp-time">{ts.time}</div>
                             </div>
                           </td>
-                          <td style={styles.td}><ActionBadge action={log.action} /></td>
-                          <td style={styles.td}>
-                            <span style={{ fontSize: '0.85rem', color: '#374151' }}>{fmtTable(log.table_name)}</span>
+                          <td className="syslog-td" style={{ width: '130px' }}><ActionBadge action={log.action} /></td>
+                          <td className="syslog-td" style={{ width: '160px' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#334155' }}>
+                              {fmtTable(log.table_name)}
+                            </span>
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontFamily: 'monospace' }}>#{log.record_id ?? '—'}</span>
+                          <td className="syslog-td" style={{ textAlign: 'center', width: '110px' }}>
+                            <span className="syslog-record-id">#{log.record_id ?? '—'}</span>
                           </td>
-                          <td style={styles.td}>
-                            <div style={{ lineHeight: '1.4' }}>
-                              <div style={{ fontSize: '0.85rem', fontWeight: '500', color: '#111827' }}>{log.performed_by || 'Unknown'}</div>
+                          <td className="syslog-td">
+                            <div>
+                              <div className="syslog-user-name">{log.performed_by || 'Unknown'}</div>
                               {log.performed_by_role && (
-                                <div style={{ fontSize: '0.72rem', color: '#9ca3af', textTransform: 'capitalize' }}>{log.performed_by_role}</div>
+                                <div className="syslog-user-role">{log.performed_by_role}</div>
                               )}
                             </div>
                           </td>
-                          <td style={styles.td}>
-                            <span style={{ fontSize: '0.78rem', color: '#6b7280', fontFamily: 'monospace' }}>{log.ip_address || '—'}</span>
+                          <td className="syslog-td" style={{ width: '150px' }}>
+                            <span className="syslog-ip-badge">{log.ip_address || '—'}</span>
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>
-                            <div style={{
-                              width: '24px', height: '24px', borderRadius: '50%',
-                              backgroundColor: isExpanded ? '#dbeafe' : '#f3f4f6',
-                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                              <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`} style={{ fontSize: '0.65rem', color: isExpanded ? '#2563eb' : '#9ca3af' }}></i>
+                          <td className="syslog-td" style={{ textAlign: 'center', width: '48px' }}>
+                            <div className="syslog-expand-pill">
+                              <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'}`}></i>
                             </div>
                           </td>
                         </tr>
 
                         {isExpanded && (
-                          <tr key={`${log.log_id}-detail`}>
-                            <td colSpan={7} style={styles.detailCell}>
-                              <div style={styles.detailInner}>
-                                <div style={styles.detailGrid}>
-                                  <div style={styles.detailBlock}>
-                                    <p style={styles.detailLabel}><i className="fas fa-history" style={{ marginRight: '0.3rem', color: '#dc2626' }}></i>Before (Old Values)</p>
+                          <tr>
+                            <td colSpan={7} className="syslog-detail-cell">
+                              <div className="syslog-detail-inner">
+                                <div className="syslog-detail-grid">
+                                  <div className="syslog-detail-block">
+                                    <p className="syslog-detail-label before">
+                                      <i className="fas fa-history"></i> Before (Old Values)
+                                    </p>
                                     {log.old_values
-                                      ? <pre style={{ ...styles.jsonPre, borderLeft: '3px solid #fca5a5' }}>{JSON.stringify(log.old_values, null, 2)}</pre>
-                                      : <p style={styles.noData}>No previous data recorded</p>
+                                      ? <pre className="syslog-json-pre before">{JSON.stringify(log.old_values, null, 2)}</pre>
+                                      : <p className="syslog-no-data">No previous state recorded</p>
                                     }
                                   </div>
-                                  <div style={styles.detailBlock}>
-                                    <p style={styles.detailLabel}><i className="fas fa-arrow-right" style={{ marginRight: '0.3rem', color: '#16a34a' }}></i>After (New Values / Reason)</p>
+                                  <div className="syslog-detail-block">
+                                    <p className="syslog-detail-label after">
+                                      <i className="fas fa-arrow-right"></i> After (New Values / Reason)
+                                    </p>
                                     {log.new_values
-                                      ? <pre style={{ ...styles.jsonPre, borderLeft: '3px solid #86efac' }}>{JSON.stringify(log.new_values, null, 2)}</pre>
-                                      : <p style={styles.noData}>No new data recorded</p>
+                                      ? <pre className="syslog-json-pre after">{JSON.stringify(log.new_values, null, 2)}</pre>
+                                      : <p className="syslog-no-data">No new state recorded</p>
                                     }
                                   </div>
                                 </div>
                                 {log.user_agent && (
-                                  <div style={styles.userAgentRow}>
-                                    <span style={styles.userAgentLabel}><i className="fas fa-desktop" style={{ marginRight: '0.3rem' }}></i>Browser / Client:</span>
-                                    <span style={styles.userAgentText}>{log.user_agent}</span>
+                                  <div className="syslog-agent-row">
+                                    <span className="syslog-agent-label">
+                                      <i className="fas fa-desktop" style={{ marginRight: '0.3rem' }}></i>Client / User Agent:
+                                    </span>
+                                    <span className="syslog-agent-text">{log.user_agent}</span>
                                   </div>
                                 )}
                               </div>
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -543,467 +572,5 @@ function SystemLogs() {
     </Layout>
   );
 }
-
-const styles = {
-  container: {
-    padding: '1.5rem',
-    maxWidth: '1400px',
-    margin: '0 auto',
-    fontFamily: 'system-ui, -apple-system, sans-serif'
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: '1rem',
-    gap: '1rem'
-  },
-  title: {
-    fontSize: '1.4rem',
-    fontWeight: '700',
-    color: '#111827',
-    margin: '0 0 0.25rem'
-  },
-  subtitle: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0
-  },
-  exportBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    padding: '0.45rem 0.9rem',
-    backgroundColor: '#16a34a',
-    border: '1px solid #15803d',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    color: '#fff',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0
-  },
-  refreshBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.4rem',
-    padding: '0.45rem 0.9rem',
-    backgroundColor: '#fff',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    color: '#374151',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0
-  },
-
-  // Info panel
-  infoPanel: {
-    backgroundColor: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    borderRadius: '8px',
-    marginBottom: '1rem',
-    overflow: 'hidden'
-  },
-  infoPanelHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.75rem 1rem',
-    cursor: 'pointer',
-    userSelect: 'none'
-  },
-  infoPanelBody: {
-    padding: '0 1rem 1rem'
-  },
-  infoText: {
-    margin: '0 0 0.75rem',
-    fontSize: '0.875rem',
-    color: '#1e40af',
-    lineHeight: '1.5'
-  },
-  actionGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: '0.75rem',
-    marginBottom: '0.75rem'
-  },
-  actionInfoItem: {
-    backgroundColor: '#fff',
-    border: '1px solid #dbeafe',
-    borderRadius: '6px',
-    padding: '0.6rem 0.75rem',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  infoNote: {
-    backgroundColor: '#fffbeb',
-    border: '1px solid #fde68a',
-    borderRadius: '6px',
-    padding: '0.6rem 0.75rem',
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.3rem'
-  },
-
-  // Filter card
-  filterCard: {
-    backgroundColor: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1.25rem 1.5rem 1rem',
-    marginBottom: '1rem'
-  },
-  filterCardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    marginBottom: '1rem',
-    paddingBottom: '0.75rem',
-    borderBottom: '1px solid #f3f4f6'
-  },
-  filterCardTitle: {
-    fontSize: '0.9rem',
-    fontWeight: '700',
-    color: '#111827'
-  },
-  activeFiltersBadge: {
-    backgroundColor: '#dbeafe',
-    color: '#2563eb',
-    padding: '0.15rem 0.55rem',
-    borderRadius: '20px',
-    fontSize: '0.72rem',
-    fontWeight: '600',
-    marginLeft: 'auto'
-  },
-  filterGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '1rem 1.25rem',
-    marginBottom: '1rem'
-  },
-  filterRow2: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1rem 1.25rem',
-    marginBottom: '1rem'
-  },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.35rem'
-  },
-  filterLabel: {
-    fontSize: '0.78rem',
-    fontWeight: '600',
-    color: '#374151',
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '0.3rem',
-    minHeight: '1.1rem'
-  },
-  filterHint: {
-    fontSize: '0.71rem',
-    fontWeight: '400',
-    color: '#9ca3af'
-  },
-  inputWithIcon: {
-    position: 'relative'
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: '0.65rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: '#9ca3af',
-    fontSize: '0.75rem',
-    pointerEvents: 'none'
-  },
-  filterInput: {
-    width: '100%',
-    height: '2.25rem',
-    padding: '0 0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    color: '#111827',
-    backgroundColor: '#fff',
-    outline: 'none',
-    boxSizing: 'border-box',
-    appearance: 'auto'
-  },
-  filterFooter: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: '0.5rem',
-    borderTop: '1px solid #f3f4f6',
-    paddingTop: '0.85rem'
-  },
-  filterActions: {
-    display: 'flex',
-    gap: '0.5rem',
-    alignItems: 'center'
-  },
-  filterNote: {
-    margin: 0,
-    fontSize: '0.78rem',
-    color: '#9ca3af'
-  },
-  applyBtn: {
-    padding: '0.45rem 1rem',
-    backgroundColor: '#2563eb',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.4rem'
-  },
-  clearBtn: {
-    padding: '0.45rem 0.85rem',
-    backgroundColor: '#f9fafb',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.4rem'
-  },
-  kbd: {
-    display: 'inline-block',
-    padding: '0.1rem 0.35rem',
-    backgroundColor: '#f3f4f6',
-    border: '1px solid #d1d5db',
-    borderRadius: '3px',
-    fontSize: '0.72rem',
-    fontFamily: 'monospace',
-    color: '#374151'
-  },
-
-  errorBox: {
-    backgroundColor: '#fee2e2',
-    border: '1px solid #fca5a5',
-    color: '#dc2626',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    marginBottom: '1rem',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.75rem'
-  },
-
-  // Table card
-  tableCard: {
-    backgroundColor: '#fff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    marginBottom: '1rem'
-  },
-  tableHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.75rem 1rem',
-    borderBottom: '1px solid #e5e7eb',
-    backgroundColor: '#f9fafb'
-  },
-  tableTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#374151'
-  },
-  tableHint: {
-    fontSize: '0.75rem',
-    color: '#9ca3af',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.25rem'
-  },
-  centeredState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '3rem'
-  },
-  spinner: {
-    width: '32px',
-    height: '32px',
-    border: '3px solid #e5e7eb',
-    borderTop: '3px solid #2563eb',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite'
-  },
-  emptyState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '3rem 2rem',
-    textAlign: 'center'
-  },
-  whatGetsLoggedBox: {
-    backgroundColor: '#f9fafb',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem 1.25rem',
-    textAlign: 'left',
-    marginTop: '0.5rem'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '0.875rem'
-  },
-  thead: {
-    backgroundColor: '#f9fafb',
-    position: 'sticky',
-    top: 0,
-    zIndex: 1,
-  },
-  th: {
-    padding: '0.65rem 1rem',
-    textAlign: 'left',
-    fontWeight: '600',
-    fontSize: '0.72rem',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    borderBottom: '1px solid #e5e7eb',
-    whiteSpace: 'nowrap'
-  },
-  tr: {
-    borderBottom: '1px solid #f3f4f6',
-    cursor: 'pointer',
-    transition: 'background-color 0.1s'
-  },
-  td: {
-    padding: '0.75rem 1rem',
-    verticalAlign: 'middle'
-  },
-
-  // Expanded row detail
-  detailCell: {
-    backgroundColor: '#f0f7ff',
-    borderBottom: '2px solid #bfdbfe',
-    padding: 0
-  },
-  detailInner: {
-    padding: '1rem 1.25rem'
-  },
-  detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '1rem',
-    marginBottom: '0.75rem'
-  },
-  detailBlock: {},
-  detailLabel: {
-    margin: '0 0 0.4rem',
-    fontSize: '0.75rem',
-    fontWeight: '700',
-    color: '#374151',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-    display: 'flex',
-    alignItems: 'center'
-  },
-  jsonPre: {
-    margin: 0,
-    padding: '0.6rem 0.75rem',
-    backgroundColor: '#fff',
-    borderRadius: '6px',
-    fontSize: '0.78rem',
-    color: '#374151',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    maxHeight: '200px',
-    overflow: 'auto',
-    fontFamily: 'monospace'
-  },
-  noData: {
-    margin: 0,
-    fontSize: '0.8rem',
-    color: '#9ca3af',
-    fontStyle: 'italic',
-    padding: '0.5rem 0'
-  },
-  userAgentRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '0.5rem',
-    paddingTop: '0.5rem',
-    borderTop: '1px solid #dbeafe'
-  },
-  userAgentLabel: {
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    whiteSpace: 'nowrap',
-    flexShrink: 0
-  },
-  userAgentText: {
-    fontSize: '0.78rem',
-    color: '#6b7280',
-    wordBreak: 'break-all'
-  },
-
-  // Pagination
-  pagination: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.35rem',
-    flexWrap: 'wrap'
-  },
-  pageBtnEnabled: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  pageBtnCurrent: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: '1px solid #3B82F6',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  pageBtnDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#D1D5DB',
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'not-allowed',
-  },
-  pageInfo: {
-    marginLeft: '0.5rem',
-    fontSize: '0.8rem',
-    color: '#9ca3af'
-  }
-};
 
 export default SystemLogs;
