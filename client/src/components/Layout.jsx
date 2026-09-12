@@ -191,49 +191,59 @@ const Layout = ({ children }) => {
           </div>
 
           {/* User Profile Section */}
-          <div style={styles.userSection} ref={profileMenuRef}>
-            {!isMobile && (
-              <div style={styles.userInfo}>
-                <span style={styles.userName}>
-                  {getNameWithPrefix()}
-                </span>
-                <span style={styles.userRole}>{getRoleDisplay()}</span>
-              </div>
-            )}
+          <div className="staff-profile-wrapper" ref={profileMenuRef}>
             <button
-              style={styles.userAvatarButton}
+              className={`staff-profile-chip ${isProfileMenuOpen ? 'open' : ''}`}
               onClick={() => setIsProfileMenuOpen((open) => !open)}
               aria-label="Open profile menu"
               aria-expanded={isProfileMenuOpen}
             >
-              {user?.profile_image ? (
-                <img
-                  src={`http://localhost:3000/uploads/${user.profile_image}`}
-                  alt="Profile"
-                  style={styles.userAvatarImage}
-                />
-              ) : (
-                <div style={styles.userAvatar}>
-                  {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+              <div className="staff-profile-avatar-wrapper">
+                {user?.profile_image ? (
+                  <img
+                    src={`http://localhost:3000/uploads/${user.profile_image}`}
+                    alt="Profile"
+                    className="staff-profile-avatar-img"
+                  />
+                ) : (
+                  <div className="staff-profile-avatar-initials">
+                    {user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}
+                  </div>
+                )}
+                <span className="staff-avatar-status-dot"></span>
+              </div>
+
+              {!isMobile && (
+                <div className="staff-profile-details">
+                  <span className="staff-profile-name">{getNameWithPrefix()}</span>
+                  <span className={`staff-profile-role-pill role-${user?.role || 'staff'}`}>
+                    {getRoleDisplay()}
+                  </span>
                 </div>
               )}
+
+              <i className={`fas fa-chevron-down staff-profile-chevron ${isProfileMenuOpen ? 'rotated' : ''}`}></i>
             </button>
+
             {isProfileMenuOpen && (
-              <div style={styles.profileDropdown}>
+              <div className="staff-profile-dropdown-menu">
                 <a
                   href="/profile"
-                  style={styles.profileDropdownItem}
+                  className="staff-dropdown-item"
                   onClick={(e) => { e.preventDefault(); setIsProfileMenuOpen(false); handleNavigation('/profile'); }}
                 >
-                  <i className="fas fa-user-circle"></i> Profile
+                  <div className="staff-dropdown-icon-box"><i className="fas fa-user-circle"></i></div>
+                  <span>My Profile</span>
                 </a>
-                <a
-                  href="#"
-                  style={styles.profileDropdownItemLogout}
+                <div className="staff-dropdown-divider"></div>
+                <button
+                  type="button"
+                  className="staff-dropdown-item staff-dropdown-item-logout"
                   onClick={(e) => { e.preventDefault(); setIsProfileMenuOpen(false); handleLogout(); }}
                 >
-                  <i className="fas fa-sign-out-alt"></i> Sign Out
-                </a>
+                  <div className="staff-dropdown-icon-box logout-icon"><i className="fas fa-sign-out-alt"></i></div>
+                  <span>Sign Out</span>
+                </button>
               </div>
             )}
           </div>
@@ -338,6 +348,16 @@ const Layout = ({ children }) => {
                   </div>
                   <span className="staff-nav-label staff-ai-label">AI Assistant</span>
                 </a>
+                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
+                  <a
+                    href="/analytics"
+                    className={`staff-nav-item ${isActive('/analytics') ? 'active' : ''}`}
+                    onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
+                  >
+                    <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-line"></i></div>
+                    <span className="staff-nav-label">Analytics & Insights</span>
+                  </a>
+                )}
               </div>
 
               {/* Section 3: Operations (Visible to non-veterinarians) */}
@@ -363,10 +383,10 @@ const Layout = ({ children }) => {
                 </div>
               )}
 
-              {/* Section 4: Administration */}
-              <div className="staff-nav-section">
-                <div className="staff-nav-section-title">Management</div>
-                {user?.role === 'admin' && (
+              {/* Section 4: Management (Visible to Admin only) */}
+              {user?.role === 'admin' && (
+                <div className="staff-nav-section">
+                  <div className="staff-nav-section-title">Management</div>
                   <a
                     href="/reports"
                     className={`staff-nav-item ${isActive('/reports') ? 'active' : ''}`}
@@ -375,18 +395,6 @@ const Layout = ({ children }) => {
                     <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-pie"></i></div>
                     <span className="staff-nav-label">Reports</span>
                   </a>
-                )}
-                {(user?.role === 'admin' || user?.role === 'veterinarian') && (
-                  <a
-                    href="/analytics"
-                    className={`staff-nav-item ${isActive('/analytics') ? 'active' : ''}`}
-                    onClick={(e) => { e.preventDefault(); handleNavigation('/analytics'); }}
-                  >
-                    <div className="staff-nav-icon-wrapper"><i className="fas fa-chart-line"></i></div>
-                    <span className="staff-nav-label">Analytics & Insights</span>
-                  </a>
-                )}
-                {user?.role === 'admin' && (
                   <a
                     href="/users"
                     className={`staff-nav-item ${isActive('/users') ? 'active' : ''}`}
@@ -395,8 +403,6 @@ const Layout = ({ children }) => {
                     <div className="staff-nav-icon-wrapper"><i className="fas fa-user-md"></i></div>
                     <span className="staff-nav-label">Staff</span>
                   </a>
-                )}
-                {user?.role === 'admin' && (
                   <a
                     href="/system-logs"
                     className={`staff-nav-item ${isActive('/system-logs') ? 'active' : ''}`}
@@ -405,26 +411,20 @@ const Layout = ({ children }) => {
                     <div className="staff-nav-icon-wrapper"><i className="fas fa-clipboard-list"></i></div>
                     <span className="staff-nav-label">System Logs</span>
                   </a>
-                )}
-              </div>
+                </div>
+              )}
             </nav>
 
-            {/* Bottom Staff Profile Summary Card */}
+            {/* Pro Pet Animal Hospital Footer Card */}
             <div className="staff-sidebar-footer-card">
-              <div className="staff-sidebar-footer-avatar">
-                {user?.profile_image ? (
-                  <img src={`http://localhost:3000/uploads/${user.profile_image}`} alt="Profile" />
-                ) : (
-                  `${user?.first_name?.charAt(0) || ''}${user?.last_name?.charAt(0) || ''}`
-                )}
+              <div className="staff-sidebar-footer-hospital-icon">
+                <i className="fas fa-hospital"></i>
               </div>
               <div className="staff-sidebar-footer-info">
-                <span className="staff-sidebar-footer-name">
-                  {user?.first_name} {user?.last_name}
-                </span>
-                <span className="staff-sidebar-footer-role">
+                <span className="staff-sidebar-footer-name">Pro Pet Animal Hospital</span>
+                <span className="staff-sidebar-footer-sub">
                   <span className="staff-role-dot"></span>
-                  {user?.role}
+                  Kurunegala
                 </span>
               </div>
             </div>

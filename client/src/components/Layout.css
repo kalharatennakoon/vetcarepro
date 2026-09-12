@@ -142,25 +142,18 @@
   gap: 0.65rem;
 }
 
-.staff-sidebar-footer-avatar {
+.staff-sidebar-footer-hospital-icon {
   width: 36px;
   height: 36px;
-  border-radius: 50%;
-  background-color: #2563eb;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.25);
   flex-shrink: 0;
-}
-
-.staff-sidebar-footer-avatar img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
 }
 
 .staff-sidebar-footer-info {
@@ -171,21 +164,21 @@
 }
 
 .staff-sidebar-footer-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #1e293b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.staff-sidebar-footer-role {
-  font-size: 0.7rem;
+.staff-sidebar-footer-sub {
+  font-size: 0.68rem;
   color: #64748b;
-  text-transform: capitalize;
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  white-space: nowrap;
 }
 
 .staff-role-dot {
@@ -194,4 +187,210 @@
   border-radius: 50%;
   background-color: #10b981;
 }
+
+/* Header Top-Right User Profile Chip & Dropdown */
+.staff-profile-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.staff-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.3rem 0.65rem 0.3rem 0.35rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.staff-profile-chip:hover {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.staff-profile-chip.open {
+  background-color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.staff-profile-avatar-wrapper {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.staff-profile-avatar-img,
+.staff-profile-avatar-initials {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.staff-profile-avatar-initials {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.staff-avatar-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  background-color: #10b981;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+}
+
+.staff-profile-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.staff-profile-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.staff-profile-role-pill {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.05rem 0.45rem;
+  border-radius: 4px;
+  background-color: #f1f5f9;
+  color: #475569;
+  letter-spacing: 0.02em;
+}
+
+.staff-profile-role-pill.role-admin {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+}
+
+.staff-profile-role-pill.role-veterinarian {
+  background-color: #ccfbf1;
+  color: #0f766e;
+}
+
+.staff-profile-role-pill.role-receptionist {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.staff-profile-chevron {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-left: 0.15rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.staff-profile-chevron.rotated {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* Modern Dropdown Menu */
+.staff-profile-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 175px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15);
+  padding: 0.35rem;
+  z-index: 1005;
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.staff-dropdown-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 0.25rem 0;
+}
+
+.staff-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  background: transparent;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.staff-dropdown-item:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.staff-dropdown-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.staff-dropdown-item:hover .staff-dropdown-icon-box {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.staff-dropdown-item-logout {
+  color: #dc2626;
+}
+
+.staff-dropdown-item-logout:hover {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.staff-dropdown-icon-box.logout-icon {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.staff-dropdown-item-logout:hover .staff-dropdown-icon-box.logout-icon {
+  background-color: #fecaca;
+  color: #b91c1c;
+}
+
 
