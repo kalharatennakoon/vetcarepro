@@ -46,15 +46,48 @@ final class PetOwnerChatViewModel {
     /// True when only the intro message is present (no conversation yet).
     var isEmpty: Bool { messages.count <= 1 }
 
-    /// - Parameters:
-    ///   - prompt: the question actually sent to the server. Defaults to the
-    ///     typed input.
-    ///   - displayText: what's shown in the user's chat bubble, if different
-    ///     from `prompt` - used when a disambiguation option's `value` (e.g.
-    ///     "pet Max") isn't what should appear on screen (its `display`, e.g.
-    ///     "Max"). Defaults to `prompt` for a normal typed/tapped message.
+    /// Sends the typed input as a fresh question. Any stale disambiguation
+    /// intent from a prior turn is cleared — this is a new topic, not a
+    /// follow-up answer.
     func send(_ prompt: String? = nil, displayText: String? = nil) async {
         let question = (prompt ?? input).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !question.isEmpty, !isThinking else { return }
+        // Fresh question — discard any stale disambiguation intent so the
+        // server doesn't mistake this for a disambiguation follow-up answer.
+        let intent: PendingIntent? = nil
+        pendingIntent = nil
+        await fireRequest(question: question, displayText: displayText, intent: intent)
+    }
+
+    /// Handles a tap on one of a message's disambiguation `options` -
+    /// resubmits the option's value as the next question (showing its
+    /// display text in the bubble instead) and hides that message's buttons,
+    /// mirroring the web widget's handleOptionClick.
+    func selectOption(_ option: ChatOption, from message: ChatMessage) async {
+        // Capture before fireRequest clears it — the server needs this to
+        // know which original question the option is resolving.
+        let intent = pendingIntent
+        pendingIntent = nil
+        if let index = messages.firstIndex(where: { $0.id == message.id }) {
+            messages[index].optionsResolved = true
+        }
+        await fireRequest(question: option.value, displayText: option.display, intent: intent)
+    }
+
+    // MARK: - Private
+
+    /// Core request: builds history, appends the user bubble, calls the
+    /// service, and appends the response (or error) bubble.
+    ///
+    /// - Parameters:
+    ///   - question: the question actually sent to the server.
+    ///   - displayText: what's shown in the user's bubble. Differs from
+    ///     `question` only for disambiguation follow-ups where the option's
+    ///     `value` (e.g. "pet Max") differs from its `display` ("Max").
+    ///   - intent: pending disambiguation intent to forward to the server.
+    ///     `nil` for fresh questions; the captured value from the prior
+    ///     response for disambiguation follow-ups.
+    private func fireRequest(question: String, displayText: String?, intent: PendingIntent?) async {
         guard !question.isEmpty, !isThinking else { return }
 
         // Last few turns give the assistant enough context to keep filling
@@ -73,7 +106,7 @@ final class PetOwnerChatViewModel {
 
         do {
             let response = try await service.askPetOwner(
-                question, token: token, history: Array(history), pendingIntent: pendingIntent
+                question, token: token, history: Array(history), pendingIntent: intent
             )
             pendingIntent = response.pendingIntent
             messages.append(
@@ -88,16 +121,5 @@ final class PetOwnerChatViewModel {
                 ChatMessage(role: .assistant, text: "Sorry — I couldn't answer that right now.\n\n\(reason)")
             )
         }
-    }
-
-    /// Handles a tap on one of a message's disambiguation `options` -
-    /// resubmits the option's value as the next question (showing its
-    /// display text in the bubble instead) and hides that message's buttons,
-    /// mirroring the web widget's handleOptionClick.
-    func selectOption(_ option: ChatOption, from message: ChatMessage) async {
-        if let index = messages.firstIndex(where: { $0.id == message.id }) {
-            messages[index].optionsResolved = true
-        }
-        await send(option.value, displayText: option.display)
     }
 }
