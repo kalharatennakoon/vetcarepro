@@ -130,6 +130,23 @@ const Appointments = () => {
     return dateString.split('T')[0];
   };
 
+  const fetchAppointments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const filters = {};
+      if (filterStatus) filters.status = filterStatus;
+      
+      const response = await getAppointments(filters);
+      setAppointments(response.data.appointments || []);
+      setError('');
+    } catch (err) {
+      setError('Failed to load appointments');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterStatus]);
+
   useEffect(() => {
     fetchAppointments();
   }, [fetchAppointments]);
@@ -206,22 +223,7 @@ const Appointments = () => {
     return () => { clearTimeout(timer); clearTimeout(clearTimer); };
   }, [highlightedApptId, viewMode, appointments]);
 
-  const fetchAppointments = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filters = {};
-      if (filterStatus) filters.status = filterStatus;
-      
-      const response = await getAppointments(filters);
-      setAppointments(response.data.appointments || []);
-      setError('');
-    } catch (err) {
-      setError('Failed to load appointments');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterStatus]);
+
 
   const handleDelete = (id) => {
     setPendingDeleteApptId(id);
