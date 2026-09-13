@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  const [hoveredNavItem, setHoveredNavItem] = useState(null);
+
   const [showAiTooltip, setShowAiTooltip] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [showAiQuickAsk, setShowAiQuickAsk] = useState(false);
@@ -88,20 +88,7 @@ const Layout = ({ children }) => {
     return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
-  const getNavItemStyle = (path, baseStyle = styles.navItem) => {
-    if (isActive(path)) {
-      return { ...baseStyle, ...styles.navItemActive };
-    }
-    if (hoveredNavItem === path) {
-      return { ...baseStyle, ...styles.navItemHover };
-    }
-    return baseStyle;
-  };
 
-  const getNavItemHoverHandlers = (path) => ({
-    onMouseEnter: () => setHoveredNavItem(path),
-    onMouseLeave: () => setHoveredNavItem((current) => (current === path ? null : current)),
-  });
 
   const getNameWithPrefix = () => {
     if (!user) return '';

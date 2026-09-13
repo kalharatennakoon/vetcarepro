@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+
 import Layout from '../components/Layout';
 import { getUsers, createUser, updateUser, deleteUser, resetUserPassword } from '../services/userService';
 import '../styles/UsersModern.css';
 
 const Users = () => {
   const { user: currentUser } = useAuth();
-  const navigate = useNavigate();
   
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -140,9 +139,7 @@ const Users = () => {
     setSuccess('');
   };
 
-  const handleDelete = (userId) => {
-    setDeactivateModal({ open: true, userId });
-  };
+
 
   const confirmDeactivate = async () => {
     try {

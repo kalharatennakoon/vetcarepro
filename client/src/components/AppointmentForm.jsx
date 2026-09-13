@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCustomers } from '../services/customerService';
 import { createAppointment, updateAppointment, getAppointmentById } from '../services/appointmentService';
 import { getVeterinarians } from '../services/userService';
@@ -32,33 +32,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
 
-  useEffect(() => {
-    fetchCustomers();
-    fetchVeterinarians();
-    if (appointmentId) {
-      loadAppointment();
-    }
-  }, [appointmentId]);
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await getCustomers({});
-      setCustomers(response.data.customers || []);
-    } catch (err) {
-      console.error('Failed to fetch customers:', err);
-    }
-  };
-
-  const fetchVeterinarians = async () => {
-    try {
-      const response = await getVeterinarians();
-      setVeterinarians(response.data.veterinarians || []);
-    } catch (err) {
-      console.error('Failed to fetch veterinarians:', err);
-    }
-  };
-
-  const loadAppointment = async () => {
+  const loadAppointment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAppointmentById(appointmentId);
@@ -79,13 +53,39 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       });
       // Load pets for the customer
       if (appointment.customer_id) {
-        await fetchPetsForCustomer(appointment.customer_id);
+        fetchPetsForCustomer(appointment.customer_id);
       }
     } catch (err) {
-      setError('Failed to load appointment');
+      setError(err.response?.data?.message || 'Failed to load appointment details');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }, [appointmentId]);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchVeterinarians();
+    if (appointmentId) {
+      loadAppointment();
+    }
+  }, [appointmentId, loadAppointment]);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await getCustomers({});
+      setCustomers(response.data.customers || []);
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+    }
+  };
+
+  const fetchVeterinarians = async () => {
+    try {
+      const response = await getVeterinarians();
+      setVeterinarians(response.data.veterinarians || []);
+    } catch (err) {
+      console.error('Failed to fetch veterinarians:', err);
     }
   };
 

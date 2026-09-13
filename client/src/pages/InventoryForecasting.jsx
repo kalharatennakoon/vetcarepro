@@ -112,7 +112,7 @@ function InventoryForecasting() {
       else setItemForecast({ error: forecastRes.reason?.response?.data?.message || 'Forecast failed.' });
       if (restockRes.status === 'fulfilled') setRestockPred(restockRes.value.data);
       else setRestockPred({ error: restockRes.reason?.response?.data?.message || 'Restock prediction failed.' });
-    } catch (err) {
+    } catch {
       setItemForecast({ error: 'Lookup failed.' });
     } finally {
       setItemLookupLoading(false);

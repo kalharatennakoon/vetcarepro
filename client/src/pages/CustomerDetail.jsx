@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -36,11 +36,7 @@ const CustomerDetail = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-  useEffect(() => {
-    fetchCustomer();
-  }, [id]);
-
-  const fetchCustomer = async () => {
+  const fetchCustomer = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -54,7 +50,11 @@ const CustomerDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, API_URL]);
+
+  useEffect(() => {
+    fetchCustomer();
+  }, [fetchCustomer]);
 
   const getInitials = (firstName, lastName) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase();
@@ -67,7 +67,7 @@ const CustomerDetail = () => {
       setDeactivateReason('');
       setDeactivateNote('');
       setShowDeleteModal(true);
-    } catch (err) {
+    } catch {
       showError('Failed to check customer status');
     }
   };

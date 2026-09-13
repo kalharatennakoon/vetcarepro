@@ -288,7 +288,7 @@ const AIAssistant = () => {
     initialQuestionHandledRef.current = true;
     sendQuestion(initialQuestion);
     navigate(location.pathname, { replace: true, state: {} });
-  }, []);
+  }, [location.pathname, location.state?.initialQuestion, navigate, sendQuestion]);
 
   const handleConfirmAction = async (messageIndex) => {
     const target = messages[messageIndex];

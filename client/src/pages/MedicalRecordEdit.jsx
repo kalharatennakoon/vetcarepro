@@ -1,20 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+
 import { useParams, useNavigate } from 'react-router-dom';
 import MedicalRecordForm from '../components/MedicalRecordForm';
 import Layout from '../components/Layout';
 import '../styles/MedicalRecordCreateModern.css';
 
 const MedicalRecordEdit = () => {
-  const [error, setError] = useState('');
-  const errorRef = useRef(null);
-
-  useEffect(() => {
-    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [error]);
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const handleSuccess = (updatedRecord) => {
+  const handleSuccess = () => {
     navigate(`/medical-records/${id}`);
   };
 
@@ -41,12 +35,6 @@ const MedicalRecordEdit = () => {
           </button>
         </div>
 
-        {error && (
-          <div ref={errorRef} className="medrec-form-error">
-            <i className="fas fa-exclamation-circle medrec-form-error-icon"></i>
-            <span>{error}</span>
-          </div>
-        )}
 
         <div className="medrec-create-card">
           <MedicalRecordForm

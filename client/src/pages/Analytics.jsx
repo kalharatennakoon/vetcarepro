@@ -219,7 +219,7 @@ const Analytics = () => {
       } else {
         setDiseaseForecastError(res.error || 'Forecast unavailable');
       }
-    } catch (err) {
+    } catch {
       setDiseaseForecastError('Failed to load disease forecast');
     } finally {
       setDiseaseForecastLoading(false);
@@ -1464,7 +1464,7 @@ const Analytics = () => {
               const recs = inventoryData.reorderSuggestions?.recommendations || {};
               const urgent = recs.urgent_reorder || [];
               const soon = recs.reorder_soon || [];
-              const renderTable = (items, color, icon, label, hint) => items.length === 0 ? null : (
+              const renderTable = (items, color, icon, label) => items.length === 0 ? null : (
                 <div className="analytics-glass-card" key={label}>
                   <div className="analytics-card-header">
                     <h3 className="analytics-card-title" style={{ color }}>

@@ -1,16 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import MedicalRecordForm from '../components/MedicalRecordForm';
 import Layout from '../components/Layout';
 import '../styles/MedicalRecordCreateModern.css';
 
 const MedicalRecordCreate = () => {
-  const [error, setError] = useState('');
-  const errorRef = useRef(null);
-
-  useEffect(() => {
-    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [error]);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -44,12 +38,6 @@ const MedicalRecordCreate = () => {
           </button>
         </div>
 
-        {error && (
-          <div ref={errorRef} className="medrec-form-error">
-            <i className="fas fa-exclamation-circle medrec-form-error-icon"></i>
-            <span>{error}</span>
-          </div>
-        )}
 
         <div className="medrec-create-card">
           <MedicalRecordForm

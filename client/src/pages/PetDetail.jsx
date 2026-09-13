@@ -114,7 +114,7 @@ const PetDetail = () => {
       setDeceasedDate('');
       setDeactivateNote('');
       setShowDeleteModal(true);
-    } catch (err) {
+    } catch {
       showError('Failed to check pet status');
     }
   };
@@ -353,7 +353,7 @@ const PetDetail = () => {
       await updatePet(id, { breeding_available: breedingAvailable, breeding_notes: breedingNotes || null });
       showSuccess(breedingAvailable ? 'Pet listed in breeding registry' : 'Pet removed from breeding registry');
       fetchPetDetails();
-    } catch (err) {
+    } catch {
       showError('Failed to update breeding status');
     } finally {
       setSavingBreeding(false);
@@ -396,7 +396,7 @@ const PetDetail = () => {
   const handleOpenReport = async (reportId, fileType) => {
     try {
       await openLabReport(reportId, fileType);
-    } catch (err) {
+    } catch {
       showError('Failed to open report file');
     }
   };

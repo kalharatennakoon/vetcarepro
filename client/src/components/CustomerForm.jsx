@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useNotification } from '../context/NotificationContext';
 import { createPet } from '../services/petService';
@@ -47,19 +47,7 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
   const isEditMode = !!customerId;
   const { showSuccess } = useNotification();
 
-  useEffect(() => {
-    if (customerId) {
-      loadCustomer();
-    }
-  }, [customerId]);
-
-  useEffect(() => {
-    if (error) {
-      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [error]);
-
-  const loadCustomer = async () => {
+  const loadCustomer = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -83,12 +71,26 @@ const CustomerForm = ({ customerId, onSuccess, onCancel }) => {
         preferred_contact_method: customer.preferred_contact_method || 'phone',
         notes: customer.notes || ''
       });
+      setError('');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load customer data');
+      setError(err.response?.data?.message || 'Failed to load customer details');
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId, API_URL]);
+
+  useEffect(() => {
+    if (customerId) {
+      loadCustomer();
+    }
+  }, [customerId, loadCustomer]);
+
+  useEffect(() => {
+    if (error) {
+      errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

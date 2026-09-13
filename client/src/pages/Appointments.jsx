@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { sendAppointmentConfirmationEmail } from '../services/emailService';
@@ -132,7 +132,7 @@ const Appointments = () => {
 
   useEffect(() => {
     fetchAppointments();
-  }, [filterStatus]);
+  }, [fetchAppointments]);
 
   useEffect(() => {
     if (viewMode === 'calendar' && filterDate) {
@@ -182,7 +182,7 @@ const Appointments = () => {
     }
     setPendingViewDate(null);
     setPendingViewApptId(null);
-  }, [appointments, pendingViewDate]);
+  }, [appointments, pendingViewDate, pendingViewApptId]);
 
   useEffect(() => {
     if (!pendingOpenDayModal || appointments.length === 0) return;
@@ -206,7 +206,7 @@ const Appointments = () => {
     return () => { clearTimeout(timer); clearTimeout(clearTimer); };
   }, [highlightedApptId, viewMode, appointments]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       setLoading(true);
       const filters = {};
@@ -221,7 +221,7 @@ const Appointments = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterStatus]);
 
   const handleDelete = (id) => {
     setPendingDeleteApptId(id);
@@ -383,7 +383,7 @@ const Appointments = () => {
         }
       }
     }
-  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments]);
+  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments, lastFilterStatus, lastSearchQuery, lastSelectedVet]);
 
   const getCalendarDays = () => {
     try {

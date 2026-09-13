@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
@@ -24,7 +24,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'];
 
 function SalesForecasting() {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   // Data state

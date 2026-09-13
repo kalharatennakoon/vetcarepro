@@ -10,8 +10,6 @@ const AiDailyBriefing = () => {
   const loadBriefing = (isManualRefresh = false) => {
     if (isManualRefresh) {
       setState((prev) => ({ ...prev, refreshing: true }));
-    } else {
-      setState((prev) => ({ ...prev, loading: !prev.briefing }));
     }
 
     getBriefing({ forceRefresh: isManualRefresh })
@@ -32,7 +30,23 @@ const AiDailyBriefing = () => {
   };
 
   useEffect(() => {
-    loadBriefing(false);
+    let active = true;
+    getBriefing({ forceRefresh: false })
+      .then((res) => {
+        if (!active) return;
+        if (!res || !res.success || res.unavailable) {
+          setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
+        } else {
+          setState({ loading: false, briefing: res, unavailable: false, refreshing: false });
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (

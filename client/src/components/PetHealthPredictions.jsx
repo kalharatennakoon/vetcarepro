@@ -48,7 +48,9 @@ const PetHealthPredictions = ({ pet }) => {
           disease_name: c.disease_name,
           disease_category: c.disease_category,
         }));
-      } catch (_) {}
+      } catch {
+        // Disease case lookup optional, continue if unavailable
+      }
 
       if (pastDiseases.length === 0) {
         setDiseaseRisk(null);

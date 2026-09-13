@@ -23,7 +23,6 @@ function Profile() {
   const [showCropModal, setShowCropModal] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
-  const [croppedImageBlob, setCroppedImageBlob] = useState(null);
   const [activityStats, setActivityStats] = useState(null);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
@@ -205,7 +204,6 @@ function Profile() {
     // Create preview from cropped blob
     const croppedUrl = URL.createObjectURL(croppedBlob);
     setImagePreview(croppedUrl);
-    setCroppedImageBlob(croppedBlob);
     
     // Create a File object from the blob
     const fileName = `profile-${Date.now()}.jpg`;
@@ -231,12 +229,11 @@ function Profile() {
       setUploadingImage(true);
       setError(null);
       const userId = currentUser.user_id || currentUser.id;
-      const response = await uploadProfileImage(userId, selectedImage);
+      await uploadProfileImage(userId, selectedImage);
       
       setSuccess('Profile image uploaded successfully');
       setSelectedImage(null);
       setImagePreview(null);
-      setCroppedImageBlob(null);
       
       // Reload profile to get updated image
       await loadProfile();
@@ -261,7 +258,6 @@ function Profile() {
       setSuccess('Profile image deleted successfully');
       setSelectedImage(null);
       setImagePreview(null);
-      setCroppedImageBlob(null);
       
       // Reload profile to refresh
       await loadProfile();
@@ -279,7 +275,6 @@ function Profile() {
   const cancelImageSelection = () => {
     setSelectedImage(null);
     setImagePreview(null);
-    setCroppedImageBlob(null);
     setError(null);
   };
 
