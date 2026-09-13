@@ -158,6 +158,11 @@ struct PetOwnerAIView: View {
                     .lineLimit(1...4)
                     .focused($isInputFocused)
                     .submitLabel(.send)
+                    .onSubmit {
+                        guard viewModel.canSend else { return }
+                        isInputFocused = false
+                        Task { await viewModel.send() }
+                    }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .glassEffect(.regular, in: .rect(cornerRadius: 12))
