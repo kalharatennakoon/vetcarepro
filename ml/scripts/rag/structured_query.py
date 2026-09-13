@@ -67,11 +67,22 @@ CLINICAL_STAFF_ROLES = {'admin', 'veterinarian'}
 BILLING_STAFF_ROLES = {'admin', 'receptionist'}
 
 # Shared timeframe vocabulary used by appointments/disease-case/billing queries.
-TIMEFRAME_WORDS = r'(today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
+# "day after tomorrow"/"day before yesterday" were previously missing here,
+# so a question like "appointments for day-after-tomorrow" fell through to
+# the bare "tomorrow" alternative instead (it appears as its own whole word
+# inside the phrase, satisfying \b on both sides even with hyphens, since a
+# hyphen is a non-word character) - silently answering one day early.
+# Hyphenated ("day-after-tomorrow") is also accepted since that's a natural
+# way to type it; _normalize_timeframe below folds hyphens to spaces before
+# _resolve_timeframe compares the captured text.
+TIMEFRAME_WORDS = (
+    r'(day[\s-]+after[\s-]+tomorrow|day[\s-]+before[\s-]+yesterday|'
+    r'today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
+)
 
 
 def _normalize_timeframe(raw: str) -> str:
-    return re.sub(r'\s+', ' ', raw.strip().lower())
+    return re.sub(r'[\s-]+', ' ', raw.strip().lower())
 
 
 def _resolve_timeframe(raw: str):
@@ -92,6 +103,12 @@ def _resolve_timeframe(raw: str):
         return d, d
     if tf == 'tomorrow':
         d = today + timedelta(days=1)
+        return d, d
+    if tf == 'day after tomorrow':
+        d = today + timedelta(days=2)
+        return d, d
+    if tf == 'day before yesterday':
+        d = today - timedelta(days=2)
         return d, d
     if tf == 'this week':
         start = today - timedelta(days=today.weekday())  # Monday
