@@ -109,6 +109,7 @@ struct VerifyIdentityView: View {
         }
         .disabled(!isValid || isSubmitting)
         .opacity(isValid ? 1 : 0.5)
+        .accessibilityIdentifier("verifyAndContinueButton")
     }
 
     // MARK: - Footer
