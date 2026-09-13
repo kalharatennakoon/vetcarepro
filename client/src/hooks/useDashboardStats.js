@@ -202,13 +202,33 @@ const fetchDashboardData = async () => {
       .reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
 
     // Admin financial computations
-    const weekStart = (() => { const d = new Date(today); d.setDate(d.getDate() - d.getDay()); return d.toISOString().split('T')[0]; })();
+    const { weekStart, weekEnd } = (() => {
+      const dayOfWeek = today.getDay();
+      const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const distanceToSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + distanceToMonday);
+
+      const sunday = new Date(today);
+      sunday.setDate(today.getDate() + distanceToSunday);
+
+      const formatYMD = (d) =>
+        d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+
+      return {
+        weekStart: formatYMD(monday),
+        weekEnd: formatYMD(sunday)
+      };
+    })();
     const monthStart = `${todayString.slice(0, 7)}-01`;
     const adminTotalRevenue = bills.reduce((s, b) => s + (parseFloat(b.paid_amount) || 0), 0);
     const adminTodayRevenue = bills.filter(b => b.bill_date?.split('T')[0] === todayString).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
     const adminOutstanding = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status)).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
     const adminOutstandingMonth = bills.filter(b => ['unpaid', 'partially_paid'].includes(b.payment_status) && b.bill_date?.split('T')[0] >= monthStart).reduce((s, b) => s + Math.max(0, parseFloat(b.total_amount || 0) - parseFloat(b.paid_amount || 0)), 0);
-    const adminWeekRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= weekStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
+    const adminWeekRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= weekStart && d <= weekEnd; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
     const adminMonthRevenue = bills.filter(b => { const d = b.bill_date?.split('T')[0]; return d >= monthStart && d <= todayString; }).reduce((s, b) => s + parseFloat(b.paid_amount || 0), 0);
     const adminStaffWorkload = (() => {
       const map = {};
