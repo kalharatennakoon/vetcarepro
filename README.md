@@ -41,6 +41,8 @@ ollama pull qwen3:8b
 ollama pull qwen3.5:9b
 ```
 
+Every chat call runs on one shared context window, `OLLAMA_NUM_CTX` (8192, set in `ml/.env`). Ollama's own default of 4096 is smaller than several of this app's prompts, and it handles an overrun by silently dropping the start of the context rather than reporting an error — which surfaces as an answer that stops mid-sentence. The ML service logs `[ollama] ... hit the N-token context window` whenever a call runs out of room; if that shows up regularly, raise `OLLAMA_NUM_CTX` gradually and watch `ollama ps` and system memory, since a wider window means a larger KV cache.
+
 **What it does:**
 - Answers questions grounded in pet records, FAQs, and care instructions, citing its sources
 - For veterinarians and admins: drafts full patient history summaries, consultation notes, owner-friendly aftercare instructions, and pre-appointment briefings from a pet's complete record set — always a draft, nothing saved without human review
@@ -158,6 +160,7 @@ Every other pet owner account — whether seeded or created later by staff — s
 
 - The ML service is optional - the core app works without it, but analytics features will be unavailable.
 - The AI assistant requires Ollama running locally with all three models pulled (see [AI Assistant (RAG)](#ai-assistant-rag) above) - without it, chat requests will return a "currently unavailable" message instead of failing the app.
+- An assistant answer that stops mid-sentence is almost always the model's context window rather than the app - check the ML service log for a `[ollama] ... hit the N-token context window` line and see `OLLAMA_NUM_CTX` above.
 - Email features require a valid SMTP configuration (e.g. a Gmail app password).
 - Uploaded files (pet images, lab reports) are stored in `server/uploads/` and are not included in this repository.
 
