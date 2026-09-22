@@ -42,6 +42,11 @@ struct PhotoGuidanceView: View {
         !selectedPetId.isEmpty && photoData != nil && !submitting
     }
 
+    private var historyExcludingCurrent: [PhotoGuidanceJob] {
+        guard let current = currentJob else { return history }
+        return history.filter { $0.id != current.id }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -61,7 +66,7 @@ struct PhotoGuidanceView: View {
                     if let job = currentJob {
                         jobCard(job)
                     }
-                    if !history.isEmpty {
+                    if !historyExcludingCurrent.isEmpty {
                         historyCard
                     }
                 }
@@ -294,7 +299,7 @@ struct PhotoGuidanceView: View {
             Text("Past Guidance")
                 .font(.headline)
 
-            ForEach(Array(history.enumerated()), id: \.element.id) { index, job in
+            ForEach(Array(historyExcludingCurrent.enumerated()), id: \.element.id) { index, job in
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 8) {
                         statusIcon(for: job.status)
@@ -326,7 +331,7 @@ struct PhotoGuidanceView: View {
                     }
                 }
 
-                if index < history.count - 1 {
+                if index < historyExcludingCurrent.count - 1 {
                     Divider()
                 }
             }
@@ -414,6 +419,15 @@ struct PhotoGuidanceView: View {
         guard !selectedPetId.isEmpty else { return }
         if let jobs = try? await CustomerAuthService().listPhotoGuidanceHistory(petId: selectedPetId, token: token) {
             history = jobs
+            // When navigating back, currentJob is nil because @State resets on view
+            // recreation. Restore from the most recent job so the result surfaces
+            // immediately without needing a manual refresh.
+            if currentJob == nil, let recent = jobs.first {
+                currentJob = recent
+                if !recent.isFinished {
+                    startPolling(jobId: recent.jobId)
+                }
+            }
         }
     }
 

@@ -30,6 +30,7 @@ const Welcome = () => {
         </div>
         <div style={styles.headerRight}>
           <a style={styles.supportLink} className="welcome-support-link" href="mailto:support@vetcarepro.lk">
+            <i className="fas fa-headset" style={{ color: '#2563eb', fontSize: '0.9rem' }}></i>
             <span>IT Support</span>
           </a>
         </div>
@@ -46,14 +47,13 @@ const Welcome = () => {
 
               <div style={styles.heroSection}>
                 <h1 style={styles.heroTitle} className="welcome-hero-title">
-                  Welcome to <br/>
-                  <span style={styles.heroHighlight}>VetCare Pro</span>
+                  Welcome to <span style={styles.heroHighlight}>VetCare Pro</span>
                 </h1>
                 <p style={styles.heroDescription} className="welcome-hero-description">
-                  Your online portal for <span style={styles.hospitalName}><br />Pro Pet Animal Hospital</span>
+                  Your online portal for <span style={styles.hospitalName}>Pro Pet Animal Hospital</span>
                 </p>
                 <p style={styles.heroSubtext} className="welcome-hero-subtext">
-                  View your pet&rsquo;s records, book appointments, and chat with our AI assistant about pet care &mdash; all in one place.
+                  View records and book appointments &mdash; all in one place.
                 </p>
               </div>
 
@@ -86,7 +86,7 @@ const Welcome = () => {
                 <div style={styles.aiHighlight}>
                   <i className="fas fa-wand-magic-sparkles" style={styles.aiHighlightIcon}></i>
                   <span style={styles.aiHighlightText} className="welcome-ai-highlight-text">
-                    Ask our <strong style={styles.aiHighlightStrong}>AI Assistant</strong> general pet care questions &mdash; no account needed.
+                    Ask our AI Assistant general pet care questions (no account needed)
                   </span>
                 </div>
               </div>
@@ -101,6 +101,7 @@ const Welcome = () => {
                   style={styles.staffLoginLink}
                   className="welcome-staff-login-link"
                 >
+                  <i className="fas fa-user-shield" style={{ color: '#2563eb', fontSize: '0.85rem' }}></i>
                   Clinic Staff Login
                 </button>
               </div>
@@ -112,7 +113,7 @@ const Welcome = () => {
       <footer style={styles.footer} className="welcome-footer">
         <div style={styles.footerContent} className="welcome-footer-content">
           <p style={styles.footerCopyright}>
-            © 2026 VetCare Systems
+            © 2026 VetCare Pro Systems
           </p>
         </div>
       </footer>
@@ -125,7 +126,8 @@ const styles = {
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: '#f6f7f8',
+    backgroundColor: '#f8fafc',
+    backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.06) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 40%)',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
   header: {
@@ -135,11 +137,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    borderBottom: '1px solid #e2e8f0',
-    padding: '1rem 1.5rem',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
+    padding: '0.85rem 1.5rem',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
   },
   headerLeft: {
     display: 'flex',
@@ -147,20 +150,21 @@ const styles = {
     gap: '0.75rem',
   },
   logoIcon: {
-    width: '40px',
-    height: '40px',
+    width: '38px',
+    height: '38px',
     borderRadius: '0.5rem',
-    backgroundColor: '#137fec',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 14px rgba(19, 127, 236, 0.3)',
+    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
   iconText: {
-    fontSize: '1.5rem',
+    fontSize: '1.35rem',
+    color: '#ffffff',
   },
   logoTitle: {
-    fontSize: '1.125rem',
+    fontSize: '1.1rem',
     fontWeight: '700',
     color: '#1e293b',
     margin: 0,
@@ -181,117 +185,113 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    color: '#64748b',
-    fontSize: '0.875rem',
+    color: '#475569',
+    fontSize: '0.85rem',
     fontWeight: '600',
     textDecoration: 'none',
     transition: 'color 0.2s',
     cursor: 'pointer',
-  },
-  supportIcon: {
-    fontSize: '1.25rem',
   },
   main: {
     flex: 1,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '1.5rem 1rem',
+    padding: '1rem',
   },
   contentWrapper: {
     width: '100%',
-    maxWidth: '560px',
-    backgroundColor: '#ffffff',
-    borderRadius: '1.5rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    maxWidth: '530px',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    borderRadius: '1.25rem',
+    boxShadow: '0 20px 40px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -5px rgba(0, 0, 0, 0.02)',
     overflow: 'hidden',
     display: 'flex',
-    border: '1px solid #f1f5f9',
+    border: '1px solid rgba(255, 255, 255, 0.95)',
   },
   centerPanel: {
     flex: 1,
-    padding: '2.5rem 2rem',
+    padding: '2.35rem 2.25rem',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'transparent',
   },
   leftContent: {
     width: '100%',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '1.5rem',
+    gap: '1.3rem',
   },
   badge: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 0.75rem',
+    gap: '0.45rem',
+    padding: '0.4rem 0.75rem',
     borderRadius: '9999px',
     backgroundColor: '#eff6ff',
     border: '1px solid #dbeafe',
     width: 'fit-content',
   },
   badgeIcon: {
-    fontSize: '0.875rem',
-    color: '#137fec',
+    fontSize: '0.8rem',
+    color: '#2563eb',
   },
   badgeText: {
-    color: '#137fec',
-    fontSize: '0.75rem',
+    color: '#2563eb',
+    fontSize: '0.73rem',
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: '0.05em',
+    letterSpacing: '0.04em',
   },
   heroSection: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '1rem',
+    gap: '0.65rem',
     textAlign: 'center',
     width: '100%',
   },
   heroTitle: {
-    fontSize: '2.5rem',
+    fontSize: '2.15rem',
     fontWeight: '900',
-    lineHeight: '1.1',
+    lineHeight: '1.15',
     letterSpacing: '-0.02em',
     color: '#1e293b',
     margin: 0,
     textAlign: 'center',
   },
   heroHighlight: {
-    color: '#137fec',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
   },
   heroDescription: {
-    fontSize: '1rem',
-    lineHeight: '1.5',
+    fontSize: '0.95rem',
+    lineHeight: '1.45',
     fontWeight: '500',
     color: '#475569',
+    margin: 0,
   },
   hospitalName: {
     color: '#1e293b',
     fontWeight: '700',
   },
   heroSubtext: {
-    fontSize: '0.9rem',
-    lineHeight: '1.5',
+    fontSize: '0.85rem',
+    lineHeight: '1.45',
     color: '#64748b',
+    margin: 0,
   },
   actionSection: {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.75rem',
-    paddingTop: '0.75rem',
+    paddingTop: '0.35rem',
     width: '100%',
-  },
-  forgotLink: {
-    fontSize: '0.875rem',
-    color: '#64748b',
-    textDecoration: 'none',
-    fontWeight: '500',
-    transition: 'color 0.2s',
   },
   petOwnerButton: {
     width: '100%',
@@ -299,23 +299,23 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '0.5rem',
-    padding: '0.875rem 2rem',
-    backgroundColor: '#137fec',
+    padding: '0.75rem 1.75rem',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
     color: '#ffffff',
-    fontSize: '1.05rem',
+    fontSize: '1rem',
     fontWeight: '700',
     letterSpacing: '0.01em',
     border: 'none',
-    borderRadius: '0.75rem',
+    borderRadius: '0.7rem',
     cursor: 'pointer',
-    boxShadow: '0 10px 15px -3px rgba(19, 127, 236, 0.25)',
+    boxShadow: '0 6px 14px -2px rgba(37, 99, 235, 0.25)',
     transition: 'all 0.2s',
   },
   dividerRow: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
-    margin: '0.25rem 0',
+    margin: '0.15rem 0',
   },
   dividerLine: {
     flex: 1,
@@ -323,7 +323,7 @@ const styles = {
     backgroundColor: '#e2e8f0',
   },
   dividerText: {
-    fontSize: '0.75rem',
+    fontSize: '0.72rem',
     fontWeight: '600',
     color: '#94a3b8',
     textTransform: 'uppercase',
@@ -335,75 +335,76 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '0.5rem',
-    padding: '0.875rem 2rem',
+    padding: '0.75rem 1.75rem',
     backgroundColor: '#ffffff',
-    color: '#137fec',
-    fontSize: '1.05rem',
+    color: '#2563eb',
+    fontSize: '1rem',
     fontWeight: '700',
     letterSpacing: '0.01em',
-    border: '1.5px solid #137fec',
-    borderRadius: '0.75rem',
+    border: '1.5px solid #3b82f6',
+    borderRadius: '0.7rem',
     cursor: 'pointer',
     transition: 'all 0.2s',
   },
   guestButtonIcon: {
-    fontSize: '1rem',
+    fontSize: '0.95rem',
   },
   aiHighlight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.55rem',
-    padding: '0.65rem 0.9rem',
-    borderRadius: '0.75rem',
-    background: 'linear-gradient(135deg, #eef2ff 0%, #eff6ff 100%)',
-    border: '1px solid #c7d2fe',
-    marginTop: '0.4rem',
+    justifyContent: 'center',
+    gap: '0.4rem',
+    marginTop: '0.35rem',
+    textAlign: 'center',
   },
   aiHighlightIcon: {
-    fontSize: '1.1rem',
+    fontSize: '0.75rem',
     color: '#6366f1',
     flexShrink: 0,
   },
   aiHighlightText: {
-    fontSize: '0.8rem',
-    fontWeight: '500',
-    color: '#4338ca',
-    textAlign: 'left',
-    lineHeight: '1.4',
-    whiteSpace: 'nowrap',
-  },
-  aiHighlightStrong: {
-    color: '#4f46e5',
-    fontWeight: '800',
+    fontSize: '0.75rem',
+    fontWeight: '400',
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: '1.3',
   },
   disclaimer: {
     borderTop: '1px solid #f1f5f9',
-    paddingTop: '1.5rem',
-    marginTop: '1rem',
+    paddingTop: '1rem',
+    marginTop: '0.5rem',
     width: '100%',
     textAlign: 'center',
   },
   disclaimerText: {
     fontSize: '0.75rem',
-    lineHeight: '1.5',
+    lineHeight: '1.4',
     color: '#94a3b8',
     margin: 0,
   },
   staffLoginLink: {
-    marginTop: '0.75rem',
-    background: 'none',
-    border: 'none',
-    color: '#94a3b8',
-    fontSize: '0.75rem',
+    marginTop: '0.55rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.4rem',
+    padding: '0.45rem 0.9rem',
+    backgroundColor: '#eff6ff',
+    border: '1px solid #dbeafe',
+    borderRadius: '0.5rem',
+    color: '#2563eb',
+    fontSize: '0.78rem',
     fontWeight: '600',
-    textDecoration: 'underline',
+    textDecoration: 'none',
     cursor: 'pointer',
-    padding: 0,
+    transition: 'all 0.2s',
   },
   footer: {
-    borderTop: '1px solid #e2e8f0',
-    backgroundColor: '#ffffff',
-    padding: '1.5rem 0',
+    borderTop: '1px solid rgba(226, 232, 240, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    padding: '0.85rem 0',
     marginTop: 'auto',
   },
   footerContent: {
@@ -412,26 +413,15 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    textAlign: 'center',
     padding: '0 1.5rem',
   },
   footerCopyright: {
-    fontSize: '0.875rem',
+    fontSize: '0.82rem',
     fontWeight: '500',
     color: '#64748b',
     margin: 0,
-  },
-  securityBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    color: '#94a3b8',
-    fontSize: '0.75rem',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '0.25rem',
-    backgroundColor: '#f8fafc',
-  },
-  securityIcon: {
-    fontSize: '1rem',
+    textAlign: 'center',
   },
 };
 

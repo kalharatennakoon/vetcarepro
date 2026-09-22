@@ -112,8 +112,23 @@ const PetOwnerAppointments = () => {
     return () => { cancelled = true; };
   }, [form.appointment_date, form.veterinarian_id]);
 
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTo(0, 0);
+      if (document.body) document.body.scrollTop = 0;
+      document.getElementById('main-content')?.scrollTo(0, 0);
+      const page = document.querySelector('.po-profile-page');
+      if (page) page.scrollTop = 0;
+    };
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 50);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   const handleSignOut = async () => {
     await logout();
+    showSuccess('You have been signed out successfully', 2000);
     navigate('/');
   };
 
@@ -121,7 +136,16 @@ const PetOwnerAppointments = () => {
     <a
       href={path}
       className={`po-profile-nav-item ${location.pathname === path ? 'active' : ''}`}
-      onClick={(e) => { e.preventDefault(); navigate(path); }}
+      onClick={(e) => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTo(0, 0);
+        if (document.body) document.body.scrollTop = 0;
+        document.getElementById('main-content')?.scrollTo(0, 0);
+        const page = document.querySelector('.po-profile-page');
+        if (page) page.scrollTop = 0;
+        navigate(path);
+      }}
     >
       <i className={`fas ${icon}`}></i> {label}
     </a>
@@ -301,9 +325,11 @@ const PetOwnerAppointments = () => {
         </aside>
 
         <main className="po-profile-main">
-          <div className="po-profile-welcome">
-            <h1>Appointments</h1>
-            <p>Book, reschedule, or cancel appointments for your pets. Changes need at least {MIN_LEAD_HOURS} hours' notice.</p>
+          <div className="po-profile-hero">
+            <div className="po-profile-welcome">
+              <h1>Appointments</h1>
+              <p>Book, reschedule, or cancel appointments for your pets. Changes need at least {MIN_LEAD_HOURS} hours' notice.</p>
+            </div>
           </div>
 
           <section id="po-appt-form-card" className="po-profile-card">

@@ -34,7 +34,7 @@ const StaffLogin = () => {
     const result = await login(email, password);
 
     if (result.success) {
-      showSuccess(`Welcome back, ${result.user.first_name}!`);
+      showSuccess(`Welcome back, ${result.user.first_name}!`, 2000);
       navigate('/dashboard');
     } else {
       setError(result.message || 'Login failed. Please check your credentials.');
@@ -160,7 +160,7 @@ const StaffLogin = () => {
       <footer style={styles.footer}>
         <div style={styles.footerContent}>
           <p style={styles.footerCopyright}>
-            © 2026 VetCare Systems
+            © 2026 VetCare Pro Systems
           </p>
         </div>
       </footer>
@@ -173,7 +173,8 @@ const styles = {
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: '#f6f7f8',
+    backgroundColor: '#f8fafc',
+    backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.06) 0%, transparent 40%), radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 40%)',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
   header: {
@@ -183,11 +184,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(10px)',
-    borderBottom: '1px solid #e2e8f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
     padding: '1rem 1.5rem',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
   },
   headerLeft: {
     display: 'flex',
@@ -198,14 +200,15 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '0.5rem',
-    backgroundColor: '#137fec',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 14px rgba(19, 127, 236, 0.3)',
+    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
   },
   iconText: {
     fontSize: '1.5rem',
+    color: '#ffffff',
   },
   logoTitle: {
     fontSize: '1.125rem',
@@ -222,10 +225,10 @@ const styles = {
   },
   backButton: {
     padding: '0.5rem 1.25rem',
-    backgroundColor: '#f1f5f9',
-    border: 'none',
+    backgroundColor: 'rgba(241, 245, 249, 0.9)',
+    border: '1px solid #cbd5e1',
     borderRadius: '0.5rem',
-    color: '#475569',
+    color: '#334155',
     fontSize: '0.875rem',
     fontWeight: '600',
     cursor: 'pointer',
@@ -243,11 +246,13 @@ const styles = {
   loginCard: {
     width: '100%',
     maxWidth: '420px',
-    backgroundColor: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
     borderRadius: '1.25rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+    boxShadow: '0 20px 40px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -5px rgba(0, 0, 0, 0.02)',
     padding: '1.75rem 1.75rem',
-    border: '1px solid #f1f5f9',
+    border: '1px solid rgba(255, 255, 255, 0.95)',
   },
   loginHeader: {
     display: 'flex',
@@ -267,10 +272,10 @@ const styles = {
   },
   badgeIcon: {
     fontSize: '0.875rem',
-    color: '#137fec',
+    color: '#2563eb',
   },
   badgeText: {
-    color: '#137fec',
+    color: '#2563eb',
     fontSize: '0.75rem',
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -321,8 +326,8 @@ const styles = {
   inputWrapper: {
     display: 'flex',
     alignItems: 'center',
-    backgroundColor: '#f6f7f8',
-    border: '1px solid #e2e8f0',
+    backgroundColor: '#ffffff',
+    border: '1px solid #cbd5e1',
     borderRadius: '0.5rem',
     overflow: 'hidden',
     transition: 'all 0.2s',
@@ -364,7 +369,7 @@ const styles = {
   submitButton: {
     width: '100%',
     padding: '0.625rem 2rem',
-    backgroundColor: '#137fec',
+    background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
     color: '#ffffff',
     fontSize: '0.875rem',
     fontWeight: '700',
@@ -372,7 +377,7 @@ const styles = {
     border: 'none',
     borderRadius: '0.5rem',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(19, 127, 236, 0.25)',
+    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
     transition: 'all 0.2s',
     marginTop: '0.375rem',
   },
@@ -399,7 +404,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    color: '#64748b',
+    color: '#2563eb',
     fontSize: '0.875rem',
     fontWeight: '600',
     textDecoration: 'none',
@@ -417,8 +422,10 @@ const styles = {
     marginTop: '0.5rem',
   },
   footer: {
-    borderTop: '1px solid #e2e8f0',
-    backgroundColor: '#ffffff',
+    borderTop: '1px solid rgba(226, 232, 240, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
     padding: '1.5rem 0',
     marginTop: 'auto',
   },
@@ -428,6 +435,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    textAlign: 'center',
     padding: '0 1.5rem',
   },
   footerCopyright: {
@@ -435,6 +443,7 @@ const styles = {
     fontWeight: '500',
     color: '#64748b',
     margin: 0,
+    textAlign: 'center',
   },
 };
 

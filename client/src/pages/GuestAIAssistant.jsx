@@ -26,12 +26,28 @@ const GuestAIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const bottomRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const stickToBottomRef = useRef(true);
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    document.getElementById('main-content')?.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    if (stickToBottomRef.current && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
   }, [messages, loading]);
+
+  const handleChatScroll = () => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom < 120;
+  };
 
   // Grows the input with its content instead of scrolling text horizontally
   // inside a fixed-height box - re-measured on every keystroke since a
@@ -47,6 +63,7 @@ const GuestAIAssistant = () => {
   const sendQuestion = async (question) => {
     if (!question.trim() || loading) return;
 
+    stickToBottomRef.current = true;
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
     setInput('');
     setLoading(true);
@@ -75,30 +92,32 @@ const GuestAIAssistant = () => {
       <main className="ai-assistant-page guest-ai-main">
         <div className="ai-assistant-header">
           <div>
-            <h1><i className="fas fa-robot"></i> AI Assistant</h1>
+            <h1><i className="fas fa-wand-magic-sparkles"></i> VetCare Pro AI Assistant</h1>
             <p className="ai-assistant-subtitle">
               General pet care info only &mdash; sign in to ask about your own pet&rsquo;s records.
             </p>
           </div>
         </div>
 
-        <div className="ai-assistant-chat">
+        <div className="ai-assistant-chat" ref={chatContainerRef} onScroll={handleChatScroll}>
           {messages.map((m, i) => (
             <div key={i} className={`ai-message ai-message-${m.role}`}>
               <div className="ai-message-bubble">
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
-                {m.role === 'assistant' && !m.intro && (
+                {m.role === 'assistant' && !m.intro && m.content && m.content.trim() !== '' && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources">
-                      <span className="ai-message-sources-label">
+                      <div className="ai-message-sources-label">
                         <i className="fas fa-book"></i>
                         {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
-                      </span>
-                      {m.sources.map((s, j) => (
-                        <span key={j} className="ai-source-tag">
-                          {getSourceLabel(s)}
-                        </span>
-                      ))}
+                      </div>
+                      <div className="ai-message-sources-list">
+                        {m.sources.map((s, j) => (
+                          <span key={j} className="ai-source-tag">
+                            {getSourceLabel(s)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <div className="ai-message-sources ai-message-sources-general">
@@ -110,8 +129,11 @@ const GuestAIAssistant = () => {
             </div>
           ))}
           {loading && (
-            <div className="ai-message ai-message-assistant">
-              <div className="ai-message-bubble ai-message-loading">
+            <div className="ai-message ai-message-assistant ai-modern-message">
+              <div className="ai-modern-avatar ai-modern-avatar-assistant">
+                <i className="fas fa-robot"></i>
+              </div>
+              <div className="ai-modern-thinking-status">
                 <span>Thinking</span>
                 <span className="ai-thinking-dots">
                   <span></span><span></span><span></span>
@@ -119,7 +141,7 @@ const GuestAIAssistant = () => {
               </div>
             </div>
           )}
-          <div ref={bottomRef} />
+          <div className="ai-modern-chat-spacer"></div>
         </div>
 
         {error && <div className="ai-assistant-error">{error}</div>}
@@ -157,7 +179,7 @@ const GuestAIAssistant = () => {
       </main>
 
       <footer className="guest-ai-footer">
-        <p>&copy; 2026 VetCare Systems</p>
+        <p>&copy; 2026 VetCare Pro Systems</p>
       </footer>
     </div>
   );

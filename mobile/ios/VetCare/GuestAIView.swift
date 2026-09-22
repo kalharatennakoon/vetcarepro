@@ -190,6 +190,11 @@ struct GuestAIView: View {
                     .lineLimit(1...4)
                     .focused($isInputFocused)
                     .submitLabel(.send)
+                    .onSubmit {
+                        guard viewModel.canSend else { return }
+                        isInputFocused = false
+                        Task { await viewModel.send() }
+                    }
                     .accessibilityIdentifier("guestMessageField")
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)

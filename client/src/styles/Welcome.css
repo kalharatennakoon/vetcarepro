@@ -3,9 +3,9 @@
 
 /* Hover effects */
 .welcome-login-button:hover {
-  background-color: #0c6fd9;
+  background-color: #2563eb;
   transform: translateY(-2px);
-  box-shadow: 0 15px 20px -5px rgba(19, 127, 236, 0.4);
+  box-shadow: 0 15px 20px -5px rgba(37, 99, 235, 0.4);
 }
 
 .welcome-back-button:hover {
@@ -15,23 +15,27 @@
 .welcome-guest-button:hover {
   background-color: #eff6ff;
   transform: translateY(-2px);
+  border-color: #2563eb;
 }
 
 .welcome-petowner-button:hover {
-  background-color: #0c6fd9;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
   transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.35);
 }
 
 .welcome-support-link:hover {
-  color: #137fec;
+  color: #2563eb;
 }
 
 .welcome-staff-login-link:hover {
-  color: #137fec;
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
 }
 
 .welcome-forgot-link:hover {
-  color: #137fec;
+  color: #2563eb;
 }
 
 .welcome-image-container:hover {
@@ -39,19 +43,19 @@
 }
 
 .welcome-input:focus {
-  border-color: #137fec;
-  box-shadow: 0 0 0 3px rgba(19, 127, 236, 0.1);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* Input wrapper focus effect */
 .welcome-input:focus-within {
-  border-color: #137fec !important;
-  box-shadow: 0 0 0 1px #137fec;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 1px #2563eb;
 }
 
 /* Toggle password button hover */
 .welcome-toggle-password:hover {
-  color: #137fec;
+  color: #2563eb;
 }
 
 .welcome-toggle-password:disabled {
@@ -102,9 +106,6 @@
     font-size: 0.875rem;
   }
 
-  /* Too narrow here to keep the AI callout on one line without either
-     overflowing or shrinking the text to the point of illegibility - let it
-     wrap only at this breakpoint, single line everywhere else. */
   .welcome-ai-highlight-text {
     white-space: normal;
   }
@@ -112,13 +113,9 @@
   .welcome-footer-content {
     flex-direction: column;
     gap: 0.5rem;
+    justify-content: center;
+    text-align: center;
   }
-}
-
-/* Loading animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 
 /* Smooth transitions */

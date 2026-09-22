@@ -119,14 +119,30 @@ const buildAdminData = async () => {
 
 const buildVetData = async (user) => {
   const date = todayLocal();
-  const appointments = await getAllAppointments({
-    date,
-    veterinarian_id: user.user_id,
-    limit: MAX_VET_APPOINTMENTS
-  });
+  const [myApptsRaw, allClinicApptsRaw] = await Promise.all([
+    getAllAppointments({
+      date,
+      veterinarian_id: user.user_id,
+      limit: MAX_VET_APPOINTMENTS
+    }),
+    getAllAppointments({
+      date
+    })
+  ]);
+
+  const myAppointments = myApptsRaw.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
+
+  const allClinicAppointments = allClinicApptsRaw.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
+
+  // If vet has personal assigned appointments today, evaluate those; if none assigned, evaluate clinic-wide scheduled pets today
+  const targetAppointments = myAppointments.length > 0 ? myAppointments : allClinicAppointments.slice(0, MAX_VET_APPOINTMENTS);
 
   const flaggedPetRisks = [];
-  for (const appt of appointments) {
+  for (const appt of targetAppointments) {
     try {
       const pet = await getPetById(appt.pet_id);
       if (!pet) continue;
@@ -168,7 +184,9 @@ const buildVetData = async (user) => {
     .catch(() => null);
 
   const data = {
-    todays_appointment_count: appointments.length,
+    todays_appointment_count: allClinicAppointments.length,
+    todays_personal_appointments: myAppointments.length,
+    todays_total_clinic_appointments: allClinicAppointments.length,
     flagged_pet_risks: flaggedPetRisks
   };
 
@@ -184,11 +202,15 @@ const buildVetData = async (user) => {
 
 const buildReceptionistData = async () => {
   const date = todayLocal();
-  const [appointments, reorderRes, revenueStats] = await Promise.all([
+  const [allAppointments, reorderRes, revenueStats] = await Promise.all([
     getAllAppointments({ date }),
     mlService.getReorderSuggestions().catch(() => null),
     getRevenueStats().catch(() => null)
   ]);
+
+  const appointments = allAppointments.filter(
+    (a) => a.status !== 'cancelled' && a.status !== 'no_show'
+  );
 
   const reorderSummary = reorderRes?.recommendations?.summary;
 
@@ -231,11 +253,6 @@ export const getBriefing = async (user) => {
   const data = await builder(user);
   const dataHash = hashData(data);
 
-  const cached = await getCachedBriefing(user.user_id, date);
-  if (cached && cached.data_hash === dataHash) {
-    return { ...cached.content, cached: true };
-  }
-
   if (!hasContent(data)) {
     const empty = { summary: 'Nothing notable to report today.', bullets: [] };
     await cacheBriefing(user.user_id, user.role, date, empty, dataHash);
@@ -244,8 +261,11 @@ export const getBriefing = async (user) => {
 
   const summarizeRes = await mlService.summarizeBriefing({ role: user.role, data });
   if (!summarizeRes.success || !summarizeRes.data?.success) {
-    // Ollama unreachable or summarization failed - degrade gracefully, don't cache a failure
-    // so the next request retries rather than being stuck with "unavailable" for the rest of the day.
+    // If Ollama is unreachable or summarization fails, fall back to cached content if available
+    const cached = await getCachedBriefing(user.user_id, date);
+    if (cached) {
+      return { ...cached.content, cached: true };
+    }
     return { summary: null, bullets: [], unavailable: true, cached: false };
   }
 

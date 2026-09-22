@@ -20,6 +20,15 @@ import {
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import ExplainWithAI from '../components/ExplainWithAI';
+import '../styles/AnalyticsModern.css';
+
+const formatCategory = (cat) => {
+  if (!cat) return '—';
+  return cat
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 const Analytics = () => {
   const [activeTab, setActiveTab] = useState('cases');
@@ -94,7 +103,6 @@ const Analytics = () => {
   const { user } = useAuth();
   const isVetOrAdmin = user?.role === 'admin' || user?.role === 'veterinarian';
   const isAdmin = user?.role === 'admin';
-
 
   useEffect(() => {
     fetchCases();
@@ -211,7 +219,7 @@ const Analytics = () => {
       } else {
         setDiseaseForecastError(res.error || 'Forecast unavailable');
       }
-    } catch (err) {
+    } catch {
       setDiseaseForecastError('Failed to load disease forecast');
     } finally {
       setDiseaseForecastLoading(false);
@@ -373,7 +381,6 @@ const Analytics = () => {
     return colors[level] || { backgroundColor: '#f3f4f6', color: '#1f2937', borderColor: '#d1d5db' };
   };
 
-
   const filteredCases = cases.filter(diseaseCase => {
     if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
@@ -412,41 +419,41 @@ const Analytics = () => {
 
   return (
     <Layout>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.pageHeader}>
-            <i className="fas fa-chart-line" style={styles.headerIcon}></i>
+      <div className="analytics-container">
+        {/* Page Header */}
+        <div className="analytics-header-card">
+          <div className="analytics-header-content">
+            <div className="analytics-header-icon">
+              <i className="fas fa-chart-line"></i>
+            </div>
             <div>
-              <h1 style={styles.title}>Analytics & Insights</h1>
-              <p style={styles.subtitle}>Disease tracking, activity forecasting, sales forecasting, and inventory demand analysis</p>
+              <h1 className="analytics-header-title">Analytics & Insights</h1>
+              <p className="analytics-header-subtitle">
+                Disease tracking, activity forecasting, sales forecasting, and inventory demand analysis
+              </p>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             {isAdmin && activeTab === 'analytics' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
                 <button
                   onClick={handleTrainModel}
                   disabled={training}
-                  style={{
-                    ...styles.primaryButton,
-                    backgroundColor: training ? '#9ca3af' : '#9333ea',
-                    cursor: training ? 'not-allowed' : 'pointer'
-                  }}
+                  className="analytics-btn-action analytics-btn-purple"
                 >
                   {training ? (
                     <>
-                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>
+                      <i className="fas fa-spinner fa-spin"></i>
                       Training...
                     </>
                   ) : (
                     <>
-                      <i className="fas fa-sync-alt" style={{ marginRight: '0.5rem' }}></i>
+                      <i className="fas fa-sync-alt"></i>
                       Retrain Model
                     </>
                   )}
                 </button>
-                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
                   {modelStatus?.models?.disease_prediction?.last_trained_at
                     ? `Last trained: ${new Date(modelStatus.models.disease_prediction.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                     : 'Never trained'}
@@ -458,16 +465,12 @@ const Analytics = () => {
                 <button
                   onClick={handleTrainSalesModel}
                   disabled={salesTraining}
-                  style={{
-                    ...styles.primaryButton,
-                    backgroundColor: salesTraining ? '#9ca3af' : '#3b82f6',
-                    cursor: salesTraining ? 'not-allowed' : 'pointer'
-                  }}
+                  className="analytics-btn-action"
                 >
-                  <i className={`fas ${salesTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                  <i className={`fas ${salesTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`}></i>
                   {salesTraining ? 'Training...' : 'Retrain Sales Model'}
                 </button>
-                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
                   {modelStatus?.models?.sales_forecasting?.last_trained_at
                     ? `Last trained: ${new Date(modelStatus.models.sales_forecasting.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                     : 'Never trained'}
@@ -479,16 +482,12 @@ const Analytics = () => {
                 <button
                   onClick={handleTrainInventoryModel}
                   disabled={inventoryTraining}
-                  style={{
-                    ...styles.primaryButton,
-                    backgroundColor: inventoryTraining ? '#9ca3af' : '#10b981',
-                    cursor: inventoryTraining ? 'not-allowed' : 'pointer'
-                  }}
+                  className="analytics-btn-action analytics-btn-emerald"
                 >
-                  <i className={`fas ${inventoryTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`} style={{ marginRight: '0.5rem' }}></i>
+                  <i className={`fas ${inventoryTraining ? 'fa-spinner fa-spin' : 'fa-rotate'}`}></i>
                   {inventoryTraining ? 'Training...' : 'Retrain Inventory Model'}
                 </button>
-                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
                   {modelStatus?.models?.inventory_forecasting?.last_trained_at
                     ? `Last trained: ${new Date(modelStatus.models.inventory_forecasting.last_trained_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
                     : 'Never trained'}
@@ -498,386 +497,369 @@ const Analytics = () => {
             {isVetOrAdmin && activeTab === 'cases' && (
               <button
                 onClick={() => navigate('/disease-cases/create')}
-                style={styles.primaryButton}
+                className="analytics-btn-action"
               >
-                <i className="fas fa-plus" style={{ marginRight: '0.5rem' }}></i>
+                <i className="fas fa-plus"></i>
                 Add Disease Case
               </button>
             )}
           </div>
         </div>
 
+        {/* Notifications & Alerts */}
         {error && (
-          <div ref={errorRef} style={styles.error}>{error}</div>
+          <div ref={errorRef} className="analytics-alert-error">
+            <i className="fas fa-exclamation-circle"></i>
+            {error}
+          </div>
         )}
         {trainSuccess && (
-          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+          <div className="analytics-alert-success">
             <i className="fas fa-check-circle"></i>
             Disease prediction model trained successfully!
           </div>
         )}
         {salesTrainSuccess && (
-          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+          <div className="analytics-alert-success">
             <i className="fas fa-check-circle"></i>
             Sales forecasting model trained successfully! Forecasts have been updated.
           </div>
         )}
         {inventoryTrainSuccess && (
-          <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
+          <div className="analytics-alert-success">
             <i className="fas fa-check-circle"></i>
             Inventory forecasting model trained successfully! Recommendations have been updated.
           </div>
         )}
 
-        {/* Tabs */}
-        <div style={styles.tabsContainer}>
-          <div style={styles.tabsHeader}>
+        {/* Tabs Bar */}
+        <div className="analytics-nav-tabs">
+          <button
+            onClick={() => setActiveTab('cases')}
+            className={`analytics-tab-btn ${activeTab === 'cases' ? 'is-active' : ''}`}
+          >
+            <i className="fas fa-virus"></i>
+            Disease Cases
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`analytics-tab-btn ${activeTab === 'analytics' ? 'is-active' : ''}`}
+          >
+            <i className="fas fa-chart-pie"></i>
+            Disease Analytics
+          </button>
+          {isAdmin && (
             <button
-              onClick={() => setActiveTab('cases')}
-              style={activeTab === 'cases' ? styles.tabActive : styles.tab}
+              onClick={() => setActiveTab('sales')}
+              className={`analytics-tab-btn ${activeTab === 'sales' ? 'is-active' : ''}`}
             >
-              <i className="fas fa-virus" style={{ marginRight: '0.5rem' }}></i>
-              Disease Cases
+              <i className="fas fa-dollar-sign"></i>
+              Sales Forecasting
             </button>
+          )}
+          {isAdmin && (
             <button
-              onClick={() => setActiveTab('analytics')}
-              style={activeTab === 'analytics' ? styles.tabActive : styles.tab}
+              onClick={() => setActiveTab('inventory')}
+              className={`analytics-tab-btn ${activeTab === 'inventory' ? 'is-active' : ''}`}
             >
-              <i className="fas fa-chart-pie" style={{ marginRight: '0.5rem' }}></i>
-              Disease Analytics
+              <i className="fas fa-boxes"></i>
+              Inventory Demand
             </button>
-            {isAdmin && (
-              <button
-                onClick={() => setActiveTab('sales')}
-                style={activeTab === 'sales' ? styles.tabActive : styles.tab}
-              >
-                <i className="fas fa-dollar-sign" style={{ marginRight: '0.5rem' }}></i>
-                Sales Forecasting
-              </button>
-            )}
-            {isAdmin && (
-              <button
-                onClick={() => setActiveTab('inventory')}
-                style={activeTab === 'inventory' ? styles.tabActive : styles.tab}
-              >
-                <i className="fas fa-boxes" style={{ marginRight: '0.5rem' }}></i>
-                Inventory Demand
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         {/* Cases Tab */}
         {activeTab === 'cases' && (
           <>
             {/* Filters */}
-            <div style={styles.filtersContainer}>
-              <div style={styles.filtersHeader}>
-                <h2 style={styles.filtersTitle}>Filters</h2>
+            <div className="analytics-filters-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Filters</h2>
                 <button
                   onClick={clearFilters}
-                  style={styles.clearButton}
+                  style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
                 >
                   Clear All
                 </button>
               </div>
 
-          <div style={styles.filterGrid}>
-            <div>
-              <label style={styles.filterLabel}>Species</label>
-              <select
-                name="species"
-                value={filters.species}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              >
-                <option value="">All Species</option>
-                {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+              <div className="analytics-filter-grid">
+                <div>
+                  <label className="analytics-filter-label">Species</label>
+                  <select
+                    name="species"
+                    value={filters.species}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  >
+                    <option value="">All Species</option>
+                    {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Category</label>
-              <select
-                name="disease_category"
-                value={filters.disease_category}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              >
-                <option value="">All Categories</option>
-                <option value="infectious">Infectious</option>
-                <option value="parasitic">Parasitic</option>
-                <option value="metabolic">Metabolic</option>
-                <option value="genetic">Genetic</option>
-                <option value="immune_mediated">Immune-Mediated</option>
-                <option value="neoplastic">Neoplastic</option>
-                <option value="traumatic">Traumatic</option>
-                <option value="nutritional">Nutritional</option>
-              </select>
-            </div>
+                <div>
+                  <label className="analytics-filter-label">Category</label>
+                  <select
+                    name="disease_category"
+                    value={filters.disease_category}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  >
+                    <option value="">All Categories</option>
+                    <option value="infectious">Infectious</option>
+                    <option value="parasitic">Parasitic</option>
+                    <option value="metabolic">Metabolic</option>
+                    <option value="genetic">Genetic</option>
+                    <option value="immune_mediated">Immune-Mediated</option>
+                    <option value="neoplastic">Neoplastic</option>
+                    <option value="traumatic">Traumatic</option>
+                    <option value="nutritional">Nutritional</option>
+                  </select>
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Severity</label>
-              <select
-                name="severity"
-                value={filters.severity}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              >
-                <option value="">All Severities</option>
-                <option value="mild">Mild</option>
-                <option value="moderate">Moderate</option>
-                <option value="severe">Severe</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
+                <div>
+                  <label className="analytics-filter-label">Severity</label>
+                  <select
+                    name="severity"
+                    value={filters.severity}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  >
+                    <option value="">All Severities</option>
+                    <option value="mild">Mild</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="severe">Severe</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Outcome</label>
-              <select
-                name="outcome"
-                value={filters.outcome}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              >
-                <option value="">All Outcomes</option>
-                <option value="recovered">Recovered</option>
-                <option value="ongoing_treatment">Ongoing Treatment</option>
-                <option value="chronic">Chronic</option>
-                <option value="deceased">Deceased</option>
-                <option value="transferred">Transferred</option>
-              </select>
-            </div>
+                <div>
+                  <label className="analytics-filter-label">Outcome</label>
+                  <select
+                    name="outcome"
+                    value={filters.outcome}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  >
+                    <option value="">All Outcomes</option>
+                    <option value="recovered">Recovered</option>
+                    <option value="ongoing_treatment">Ongoing Treatment</option>
+                    <option value="chronic">Chronic</option>
+                    <option value="deceased">Deceased</option>
+                    <option value="transferred">Transferred</option>
+                  </select>
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Contagious</label>
-              <select
-                name="is_contagious"
-                value={filters.is_contagious}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              >
-                <option value="">All Cases</option>
-                <option value="true">Contagious Only</option>
-                <option value="false">Non-Contagious</option>
-              </select>
-            </div>
+                <div>
+                  <label className="analytics-filter-label">Contagious</label>
+                  <select
+                    name="is_contagious"
+                    value={filters.is_contagious}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  >
+                    <option value="">All Cases</option>
+                    <option value="true">Contagious Only</option>
+                    <option value="false">Non-Contagious</option>
+                  </select>
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Date From</label>
-              <input
-                type="date"
-                name="diagnosis_date_from"
-                value={filters.diagnosis_date_from}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              />
-            </div>
+                <div>
+                  <label className="analytics-filter-label">Date From</label>
+                  <input
+                    type="date"
+                    name="diagnosis_date_from"
+                    value={filters.diagnosis_date_from}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  />
+                </div>
 
-            <div>
-              <label style={styles.filterLabel}>Date To</label>
-              <input
-                type="date"
-                name="diagnosis_date_to"
-                value={filters.diagnosis_date_to}
-                onChange={handleFilterChange}
-                style={styles.filterInput}
-              />
-            </div>
-          </div>
+                <div>
+                  <label className="analytics-filter-label">Date To</label>
+                  <input
+                    type="date"
+                    name="diagnosis_date_to"
+                    value={filters.diagnosis_date_to}
+                    onChange={handleFilterChange}
+                    className="analytics-select-input"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label style={styles.filterLabel}>Search</label>
-            <input
-              type="text"
-              placeholder="Search by pet name, disease, symptoms, or owner..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={styles.searchInput}
-            />
-          </div>
-        </div>
-
-        {/* Results Summary */}
-        <div style={styles.infoBox}>
-          <p style={styles.infoText}>
-            Showing <strong>{startIndex + 1}–{Math.min(endIndex, filteredCases.length)}</strong> of{' '}
-            <strong>{filteredCases.length}</strong> disease cases
-            {totalCases > filteredCases.length && ` (${totalCases} total in database)`}
-          </p>
-        </div>
-
-        {/* Cases Table */}
-        {loading ? (
-          <div style={styles.loadingContainer}>
-            <div style={styles.loadingSpinner}></div>
-          </div>
-        ) : currentCases.length === 0 ? (
-          <div style={styles.emptyState}>
-            <svg style={styles.emptyStateIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 style={styles.emptyStateTitle}>No disease cases found</h3>
-            <p style={styles.emptyStateText}>Try adjusting your filters or search terms</p>
-            {isVetOrAdmin && (
-              <button
-                onClick={() => navigate('/disease-cases/create')}
-                style={styles.primaryButton}
-              >
-                Add First Disease Case
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <div style={styles.tableContainer}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={styles.table}>
-                  <thead>
-                    <tr>
-                      <th style={styles.th}>
-                        Pet & Owner
-                      </th>
-                      <th style={styles.th}>
-                        Disease
-                      </th>
-                      <th style={styles.th}>
-                        Diagnosis Date
-                      </th>
-                      <th style={styles.th}>
-                        Severity
-                      </th>
-                      <th style={styles.th}>
-                        Outcome
-                      </th>
-                      <th style={styles.th}>
-                        Status
-                      </th>
-                      <th style={styles.thRight}>
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentCases.map((diseaseCase) => (
-                      <tr key={diseaseCase.case_id} style={styles.tr}>
-                        <td style={styles.td}>
-                          <div>
-                            <div style={styles.petName}>
-                              {diseaseCase.pet_name}
-                            </div>
-                            <div style={styles.petDetails}>
-                              {diseaseCase.species} • {diseaseCase.breed}
-                            </div>
-                            <div style={styles.petOwner}>
-                              Owner: {diseaseCase.owner_first_name} {diseaseCase.owner_last_name}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          <div>
-                            <div style={styles.diseaseName}>
-                              {diseaseCase.disease_name}
-                            </div>
-                            <div style={styles.diseaseCategory}>
-                              {diseaseCase.disease_category?.replace('_', ' ')}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={styles.td}>
-                          {formatDate(diseaseCase.diagnosis_date)}
-                        </td>
-                        <td style={styles.td}>
-                          <span style={{ ...styles.badge, ...getSeverityBadge(diseaseCase.severity) }}>
-                            {diseaseCase.severity || 'Unknown'}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          <span style={{ ...styles.badge, ...getOutcomeBadge(diseaseCase.outcome) }}>
-                            {diseaseCase.outcome || 'Unknown'}
-                          </span>
-                        </td>
-                        <td style={styles.td}>
-                          {diseaseCase.is_contagious ? (
-                            <span style={{ ...styles.badge, backgroundColor: '#fee2e2', color: '#991b1b' }}>
-                              Contagious
-                            </span>
-                          ) : (
-                            <span style={{ ...styles.badge, backgroundColor: '#dcfce7', color: '#166534' }}>
-                              Non-Contagious
-                            </span>
-                          )}
-                        </td>
-                        <td style={styles.tdRight}>
-                          <button
-                            onClick={() => navigate(`/disease-cases/${diseaseCase.case_id}`)}
-                            style={{ ...styles.actionButton, color: '#3B82F6', marginRight: 0 }}
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div>
+                <label className="analytics-filter-label">Search</label>
+                <input
+                  type="text"
+                  placeholder="Search by pet name, disease, symptoms, or owner..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="analytics-select-input"
+                />
               </div>
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div style={styles.paginationContainer}>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
-                >
-                  Previous
-                </button>
-                
-                {getPageNumbers().map((page, index) => (
-                  page === '...' ? (
-                    <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
-                  ) : (
+            {/* Results Summary */}
+            <div style={{ padding: '0.85rem 1.25rem', backgroundColor: 'rgba(248, 250, 252, 0.8)', border: '1px solid #e2e8f0', borderRadius: '14px', marginBottom: '1.5rem', fontSize: '0.875rem', color: '#475569' }}>
+              Showing <strong>{startIndex + 1}–{Math.min(endIndex, filteredCases.length)}</strong> of{' '}
+              <strong>{filteredCases.length}</strong> disease cases
+              {totalCases > filteredCases.length && ` (${totalCases} total in database)`}
+            </div>
+
+            {/* Cases Table */}
+            {loading ? (
+              <div className="med-records-empty-card">
+                <div className="appts-spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                <p style={{ color: '#64748b', margin: 0 }}>Loading disease cases...</p>
+              </div>
+            ) : currentCases.length === 0 ? (
+              <div className="med-records-empty-card">
+                <i className="fas fa-virus" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.5rem 0' }}>No disease cases found</h3>
+                <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>Try adjusting your filters or search terms</p>
+                {isVetOrAdmin && (
+                  <button
+                    onClick={() => navigate('/disease-cases/create')}
+                    className="analytics-btn-action"
+                  >
+                    <i className="fas fa-plus"></i> Add First Disease Case
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="analytics-table-card">
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="analytics-table">
+                      <thead>
+                        <tr>
+                          <th>Pet & Owner</th>
+                          <th>Disease</th>
+                          <th>Diagnosis Date</th>
+                          <th>Severity</th>
+                          <th>Outcome</th>
+                          <th>Status</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentCases.map((diseaseCase) => (
+                          <tr key={diseaseCase.case_id}>
+                            <td>
+                              <div>
+                                <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                                  {diseaseCase.pet_name}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  {diseaseCase.species} • {diseaseCase.breed}
+                                </div>
+                                <div style={{ fontSize: '0.725rem', color: '#94a3b8' }}>
+                                  Owner: {diseaseCase.owner_first_name} {diseaseCase.owner_last_name}
+                                </div>
+                              </div>
+                            </td>
+                            <td>
+                              <div>
+                                <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                                  {diseaseCase.disease_name}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  {formatCategory(diseaseCase.disease_category)}
+                                </div>
+                              </div>
+                            </td>
+                            <td>{formatDate(diseaseCase.diagnosis_date)}</td>
+                            <td>
+                              <span className="analytics-badge" style={getSeverityBadge(diseaseCase.severity)}>
+                                {diseaseCase.severity || 'Unknown'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="analytics-badge" style={getOutcomeBadge(diseaseCase.outcome)}>
+                                {diseaseCase.outcome || 'Unknown'}
+                              </span>
+                            </td>
+                            <td>
+                              {diseaseCase.is_contagious ? (
+                                <span className="analytics-badge" style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+                                  Contagious
+                                </span>
+                              ) : (
+                                <span className="analytics-badge" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
+                                  Non-Contagious
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <button
+                                onClick={() => navigate(`/disease-cases/${diseaseCase.case_id}`)}
+                                className="med-records-btn-view"
+                              >
+                                <i className="fas fa-eye"></i> View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="med-records-pagination-bar">
                     <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      style={currentPage === page ? styles.paginationButtonActive : styles.paginationButton}
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="med-records-pag-btn"
                     >
-                      {page}
+                      <i className="fas fa-chevron-left"></i>
                     </button>
-                  )
-                ))}
-                
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
-                >
-                  Next
-                </button>
-              </div>
+                    
+                    {getPageNumbers().map((page, index) => (
+                      page === '...' ? (
+                        <span key={`ellipsis-${index}`} style={{ color: '#94a3b8', padding: '0.4rem', fontSize: '0.85rem' }}>...</span>
+                      ) : (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`med-records-pag-btn ${currentPage === page ? 'is-active' : ''}`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    ))}
+                    
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="med-records-pag-btn"
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
-      </>
-    )}
 
         {/* ML Analytics Tab */}
         {activeTab === 'analytics' && (
           <>
-            {/* ── Disease Activity Forecast ── */}
+            {/* Disease Activity Forecast */}
             {isVetOrAdmin && (
-              <div style={styles.analyticsCard}>
-                <div style={styles.analyticsCardHeader}>
+              <div className="analytics-glass-card">
+                <div className="analytics-card-header">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h3 style={styles.analyticsCardTitle}>
-                      <i className="fas fa-chart-line" style={{ marginRight: '0.4rem', color: '#7c3aed' }}></i>
+                    <h3 className="analytics-card-title">
+                      <i className="fas fa-chart-line" style={{ color: '#7c3aed' }}></i>
                       Disease Activity Forecast
                     </h3>
-                    <div style={styles.filterBar}>
-                      <div style={styles.filterBarGroup}>
-                        <label style={styles.filterBarLabel}>Forecast Period</label>
-                        <select value={forecastPeriod} onChange={(e) => setForecastPeriod(parseInt(e.target.value))} style={styles.compactSelect}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                        <label style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Forecast Period</label>
+                        <select value={forecastPeriod} onChange={(e) => setForecastPeriod(parseInt(e.target.value))} className="analytics-select-input" style={{ padding: '0.35rem 0.6rem', fontSize: '0.82rem' }}>
                           <option value={6}>6 months</option>
                           <option value={12}>1 year</option>
                           <option value={24}>2 years</option>
@@ -888,45 +870,49 @@ const Analytics = () => {
                       <button
                         onClick={() => fetchDiseaseForecast(forecastPeriod)}
                         disabled={diseaseForecastLoading}
-                        style={{ padding: '0.38rem 0.8rem', backgroundColor: diseaseForecastLoading ? '#9ca3af' : '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: diseaseForecastLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                        className="analytics-btn-action analytics-btn-purple"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
                       >
                         <i className={`fas ${diseaseForecastLoading ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'}`}></i>
                         {diseaseForecastLoading ? 'Forecasting...' : 'Generate Forecast'}
                       </button>
                     </div>
                   </div>
-                  <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
+                  <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    <i className="fas fa-circle-info" style={{ color: '#60a5fa', marginRight: '0.35rem' }}></i>
                     Trained on disease cases, appointments, and medical records across all species.
                   </p>
                 </div>
-                <div style={styles.analyticsCardContent}>
+                <div className="analytics-card-body">
                   {diseaseForecastLoading ? (
-                    <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
+                    <div className="med-records-empty-card" style={{ padding: '2rem' }}>
+                      <div className="appts-spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                      <p style={{ color: '#64748b', margin: 0 }}>Forecasting disease activity...</p>
+                    </div>
                   ) : diseaseForecastError ? (
                     <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>{diseaseForecastError}</p>
                   ) : !diseaseForecast ? (
                     <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                      <i className="fas fa-chart-line" style={{ fontSize: '2rem', color: '#d8b4fe', marginBottom: '0.75rem', display: 'block' }}></i>
-                      <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Select a forecast period and click <strong>Generate Forecast</strong> to see predicted disease activity, pandemic risk, and monthly case volumes.</p>
+                      <i className="fas fa-chart-line" style={{ fontSize: '2.5rem', color: '#c084fc', marginBottom: '0.75rem', display: 'block' }}></i>
+                      <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Select a forecast period and click <strong>Generate Forecast</strong> to see predicted disease activity, pandemic risk, and monthly case volumes.</p>
                     </div>
                   ) : (() => {
                     const pr = diseaseForecast.pandemic_risk || {};
                     const prColor = pr.level === 'high' ? '#dc2626' : pr.level === 'medium' ? '#d97706' : '#16a34a';
-                    const prBg = pr.level === 'high' ? '#fee2e2' : pr.level === 'medium' ? '#fef3c7' : '#dcfce7';
+                    const prBg = pr.level === 'high' ? '#fee2e2' : pr.level === 'medium' ? '#fef3c7' : '#ecfdf5';
                     const conf = diseaseForecast.confidence;
                     const confProps = conf === 'high'
-                      ? { color: '#15803d', bg: '#dcfce7', label: 'High Confidence', detail: '85–95% accuracy' }
+                      ? { color: '#15803d', bg: '#ecfdf5', label: 'High Confidence', detail: '85–95% accuracy' }
                       : conf === 'medium'
-                      ? { color: '#1d4ed8', bg: '#dbeafe', label: 'Medium Confidence', detail: '75–85% accuracy' }
+                      ? { color: '#1d4ed8', bg: '#eff6ff', label: 'Medium Confidence', detail: '75–85% accuracy' }
                       : conf === 'low'
-                      ? { color: '#b45309', bg: '#fef3c7', label: 'Low Confidence', detail: '60–75% accuracy' }
-                      : { color: '#dc2626', bg: '#fee2e2', label: 'Very Low Confidence', detail: 'More data needed' };
+                      ? { color: '#b45309', bg: '#fffbeb', label: 'Low Confidence', detail: '60–75% accuracy' }
+                      : { color: '#dc2626', bg: '#fef2f2', label: 'Very Low Confidence', detail: 'More data needed' };
                     return (
                       <>
                         {/* Confidence badge */}
                         <div style={{ marginBottom: '0.75rem' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.65rem', backgroundColor: confProps.bg, borderRadius: '20px', border: `1px solid ${confProps.color}30` }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.75rem', backgroundColor: confProps.bg, borderRadius: '9999px', border: `1px solid ${confProps.color}30` }}>
                             <i className="fas fa-circle-info" style={{ color: confProps.color, fontSize: '0.75rem' }}></i>
                             <span style={{ fontSize: '0.75rem', fontWeight: '700', color: confProps.color }}>{confProps.label}</span>
                             <span style={{ fontSize: '0.72rem', color: confProps.color, opacity: 0.8 }}>· {confProps.detail}</span>
@@ -934,52 +920,51 @@ const Analytics = () => {
                         </div>
 
                         {/* Pandemic risk banner */}
-                        <div style={{ marginBottom: '1rem', backgroundColor: prBg, border: `1px solid ${prColor}25`, borderRadius: '10px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                          <i className={`fas ${pr.level === 'high' ? 'fa-biohazard' : pr.level === 'medium' ? 'fa-triangle-exclamation' : 'fa-shield-virus'}`} style={{ color: prColor, fontSize: '1.2rem', marginTop: '0.1rem' }}></i>
+                        <div style={{ marginBottom: '1.25rem', backgroundColor: prBg, border: `1px solid ${prColor}30`, borderRadius: '14px', padding: '0.85rem 1.1rem', display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                          <i className={`fas ${pr.level === 'high' ? 'fa-biohazard' : pr.level === 'medium' ? 'fa-triangle-exclamation' : 'fa-shield-virus'}`} style={{ color: prColor, fontSize: '1.3rem', marginTop: '0.1rem' }}></i>
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                              <span style={{ fontSize: '0.88rem', fontWeight: '700', color: prColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pr.level} Pandemic Risk</span>
-                              <span style={{ fontSize: '0.72rem', backgroundColor: `${prColor}20`, color: prColor, padding: '0.1rem 0.45rem', borderRadius: '20px', fontWeight: '600' }}>Index: {pr.current_index}/10</span>
+                              <span style={{ fontSize: '0.9rem', fontWeight: '800', color: prColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{pr.level} Pandemic Risk</span>
+                              <span style={{ fontSize: '0.72rem', backgroundColor: `${prColor}20`, color: prColor, padding: '0.15rem 0.5rem', borderRadius: '9999px', fontWeight: '700' }}>Index: {pr.current_index}/10</span>
                             </div>
-                            <p style={{ fontSize: '0.82rem', color: '#374151', margin: '0 0 0.4rem' }}>{pr.description}</p>
-                            <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0 }}>
+                            <p style={{ fontSize: '0.85rem', color: '#334155', margin: '0 0 0.4rem 0' }}>{pr.description}</p>
+                            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
                               Index scored from contagious rate, multi-species spread &amp; case severity (0–10).&nbsp;
-                              <span style={{ color: '#16a34a', fontWeight: '600' }}>Low: 0–2.9</span> ·&nbsp;
-                              <span style={{ color: '#d97706', fontWeight: '600' }}>Medium: 3–5.9</span> ·&nbsp;
-                              <span style={{ color: '#dc2626', fontWeight: '600' }}>High: 6–10</span>
+                              <span style={{ color: '#16a34a', fontWeight: '700' }}>Low: 0–2.9</span> ·&nbsp;
+                              <span style={{ color: '#d97706', fontWeight: '700' }}>Medium: 3–5.9</span> ·&nbsp;
+                              <span style={{ color: '#dc2626', fontWeight: '700' }}>High: 6–10</span>
                             </p>
                           </div>
                         </div>
 
                         {/* Summary cards */}
-                        <div style={styles.statsGrid}>
+                        <div className="analytics-stats-grid">
                           {[
                             {
                               label: 'Disease Trend',
                               value: diseaseForecast.trend_direction?.charAt(0).toUpperCase() + diseaseForecast.trend_direction?.slice(1),
-                              color: diseaseForecast.trend_direction === 'increasing' ? '#dc2626' : diseaseForecast.trend_direction === 'decreasing' ? '#16a34a' : '#2563eb',
-                              bg: diseaseForecast.trend_direction === 'increasing' ? '#fee2e2' : diseaseForecast.trend_direction === 'decreasing' ? '#dcfce7' : '#dbeafe',
+                              color: diseaseForecast.trend_direction === 'increasing' ? '#e11d48' : diseaseForecast.trend_direction === 'decreasing' ? '#059669' : '#2563eb',
+                              bg: diseaseForecast.trend_direction === 'increasing' ? '#fff1f2' : diseaseForecast.trend_direction === 'decreasing' ? '#ecfdf5' : '#eff6ff',
                               icon: diseaseForecast.trend_direction === 'increasing' ? 'fa-arrow-trend-up' : diseaseForecast.trend_direction === 'decreasing' ? 'fa-arrow-trend-down' : 'fa-minus',
                             },
                             { label: 'Total Projected Cases', value: diseaseForecast.total_forecast_cases, color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-file-medical' },
-                            { label: 'Predicted Cases / Month', value: diseaseForecast.forecast_monthly_avg?.toFixed(1), color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-day' },
+                            { label: 'Predicted Cases / Month', value: diseaseForecast.forecast_monthly_avg?.toFixed(1), color: '#d97706', bg: '#fffbeb', icon: 'fa-calendar-day' },
                             (() => {
                               const peak = diseaseForecast.activity_forecast?.reduce((max, m) => m.activity_score > (max?.activity_score || 0) ? m : max, null);
-                              const peakColor = peak?.activity_level === 'high' ? '#dc2626' : peak?.activity_level === 'moderate' ? '#d97706' : '#16a34a';
-                              const peakBg = peak?.activity_level === 'high' ? '#fee2e2' : peak?.activity_level === 'moderate' ? '#fef3c7' : '#dcfce7';
+                              const peakColor = peak?.activity_level === 'high' ? '#e11d48' : peak?.activity_level === 'moderate' ? '#d97706' : '#059669';
+                              const peakBg = peak?.activity_level === 'high' ? '#fff1f2' : peak?.activity_level === 'moderate' ? '#fffbeb' : '#ecfdf5';
                               const peakFormatted = peak ? new Date(peak.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : '—';
                               return { label: 'Peak Clinical Month', value: peakFormatted, color: peakColor, bg: peakBg, icon: 'fa-calendar-exclamation', hint: 'Expect higher contagious & severe cases.' };
                             })(),
                           ].map((s, i) => (
-                            <div key={i} style={styles.statCard}>
-                              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                            <div key={i} className="analytics-stat-card">
+                              <div className="analytics-stat-icon" style={{ backgroundColor: s.bg, color: s.color }}>
+                                <i className={`fas ${s.icon}`}></i>
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <p style={styles.statLabel}>{s.label}</p>
-                                <p style={{ ...styles.statValue, color: s.color, fontSize: '1rem' }}>{s.value}</p>
-                                {s.badge && <span style={{ fontSize: '0.68rem', fontWeight: '700', padding: '0.1rem 0.45rem', borderRadius: '20px', backgroundColor: s.badge.bg, color: s.badge.color, display: 'inline-block', marginTop: '0.2rem' }}>{s.badge.text}</span>}
-                                {s.hint && <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: '0.25rem 0 0', lineHeight: 1.3 }}>{s.hint}</p>}
+                              <div>
+                                <div className="analytics-stat-label">{s.label}</div>
+                                <div className="analytics-stat-value" style={{ color: s.color }}>{s.value}</div>
+                                {s.hint && <p style={{ fontSize: '0.725rem', color: '#64748b', margin: '0.2rem 0 0 0', lineHeight: 1.3 }}>{s.hint}</p>}
                               </div>
                             </div>
                           ))}
@@ -987,27 +972,29 @@ const Analytics = () => {
 
                         {/* Monthly predictions table */}
                         <div style={{ overflowX: 'auto', margin: '1rem 0' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                          <table className="analytics-table">
                             <thead>
-                              <tr style={{ backgroundColor: '#f5f3ff' }}>
-                                {['Month', 'Predicted Cases', 'Lower Bound', 'Upper Bound', 'Disease Activity'].map((h, i) => (
-                                  <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b21a8', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #e9d5ff' }}>{h}</th>
-                                ))}
+                              <tr>
+                                <th>Month</th>
+                                <th style={{ textAlign: 'right' }}>Predicted Cases</th>
+                                <th style={{ textAlign: 'right' }}>Lower Bound</th>
+                                <th style={{ textAlign: 'right' }}>Upper Bound</th>
+                                <th style={{ textAlign: 'right' }}>Disease Activity</th>
                               </tr>
                             </thead>
                             <tbody>
                               {diseaseForecast.predictions?.map((row, idx) => {
                                 const ob = diseaseForecast.activity_forecast?.[idx];
-                                const obColor = ob?.activity_level === 'high' ? '#dc2626' : ob?.activity_level === 'moderate' ? '#d97706' : '#16a34a';
+                                const obColor = ob?.activity_level === 'high' ? '#e11d48' : ob?.activity_level === 'moderate' ? '#d97706' : '#059669';
                                 const obLabel = ob?.activity_level === 'high' ? 'High' : ob?.activity_level === 'moderate' ? 'Moderate' : 'Normal';
                                 return (
-                                  <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                    <td style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#1f2937' }}>{row.month}</td>
-                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#7c3aed', fontSize: '0.9rem' }}>{row.predicted_cases}</td>
-                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.lower_bound}</td>
-                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#9ca3af', fontSize: '0.8rem' }}>{row.upper_bound}</td>
-                                    <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right' }}>
-                                      {ob && <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '20px', backgroundColor: `${obColor}15`, color: obColor }}>{obLabel} ({ob.activity_score}%)</span>}
+                                  <tr key={idx}>
+                                    <td style={{ fontWeight: 700, color: '#0f172a' }}>{row.month}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 800, color: '#7c3aed', fontSize: '0.95rem' }}>{row.predicted_cases}</td>
+                                    <td style={{ textAlign: 'right', color: '#64748b' }}>{row.lower_bound}</td>
+                                    <td style={{ textAlign: 'right', color: '#64748b' }}>{row.upper_bound}</td>
+                                    <td style={{ textAlign: 'right' }}>
+                                      {ob && <span className="analytics-badge" style={{ backgroundColor: `${obColor}18`, color: obColor, border: `1px solid ${obColor}30` }}>{obLabel} ({ob.activity_score}%)</span>}
                                     </td>
                                   </tr>
                                 );
@@ -1020,23 +1007,23 @@ const Analytics = () => {
                         {diseaseForecast.category_trend && Object.keys(diseaseForecast.category_trend).length > 0 && (() => {
                           const allMonths = [...new Set(Object.values(diseaseForecast.category_trend).flatMap(m => m.map(x => x.month)))].sort();
                           return (
-                            <div style={{ border: '1px solid #e9d5ff', borderRadius: '8px', padding: '0.75rem' }}>
-                              <h4 style={{ fontSize: '0.78rem', fontWeight: '700', color: '#6b21a8', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected Cases by Disease Category</h4>
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '1rem', background: 'rgba(248, 250, 252, 0.6)' }}>
+                              <h4 style={{ fontSize: '0.825rem', fontWeight: 800, color: '#7c3aed', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Projected Cases by Disease Category</h4>
                               <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                <table className="analytics-table">
                                   <thead>
-                                    <tr style={{ backgroundColor: '#faf5ff' }}>
-                                      <th style={{ padding: '0.4rem 0.75rem', textAlign: 'left', fontWeight: '600', fontSize: '0.7rem', color: '#7c3aed', textTransform: 'uppercase', borderBottom: '1px solid #e9d5ff' }}>Category</th>
-                                      {allMonths.map(m => <th key={m} style={{ padding: '0.4rem 0.75rem', textAlign: 'right', fontWeight: '600', fontSize: '0.7rem', color: '#7c3aed', textTransform: 'uppercase', borderBottom: '1px solid #e9d5ff', whiteSpace: 'nowrap' }}>{m}</th>)}
+                                    <tr>
+                                      <th>Category</th>
+                                      {allMonths.map(m => <th key={m} style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>{m}</th>)}
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {Object.entries(diseaseForecast.category_trend).map(([cat, months]) => {
                                       const byMonth = Object.fromEntries(months.map(m => [m.month, m.predicted]));
                                       return (
-                                        <tr key={cat} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                          <td style={{ padding: '0.4rem 0.75rem', color: '#374151', fontWeight: '500', textTransform: 'capitalize' }}>{cat.replace(/_/g, ' ')}</td>
-                                          {allMonths.map(m => <td key={m} style={{ padding: '0.4rem 0.75rem', textAlign: 'right', color: '#6b7280' }}>{byMonth[m] ?? '—'}</td>)}
+                                        <tr key={cat}>
+                                          <td style={{ fontWeight: 600, color: '#0f172a', textTransform: 'capitalize' }}>{cat.replace(/_/g, ' ')}</td>
+                                          {allMonths.map(m => <td key={m} style={{ textAlign: 'right', color: '#475569' }}>{byMonth[m] ?? '—'}</td>)}
                                         </tr>
                                       );
                                     })}
@@ -1046,11 +1033,6 @@ const Analytics = () => {
                             </div>
                           );
                         })()}
-
-                        <p style={{ ...styles.cardHint, marginTop: '0.75rem' }}>
-                          <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                          Trained on {diseaseForecast.data_sources?.disease_case_months} months of disease cases, {diseaseForecast.data_sources?.appointment_months} months of appointments, and {diseaseForecast.data_sources?.medical_record_months} months of medical records across {diseaseForecast.data_sources?.active_pets} active pets. Confidence: <strong>{diseaseForecast.confidence}</strong>.
-                        </p>
                       </>
                     );
                   })()}
@@ -1061,324 +1043,287 @@ const Analytics = () => {
             {/* More Details toggle */}
             <button
               onClick={() => setShowDiseaseDetails(v => !v)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.25rem 0 0.75rem', padding: '0.5rem 1.1rem', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', color: '#4b5563', cursor: 'pointer' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1.25rem 0', padding: '0.6rem 1.2rem', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 600, color: '#334155', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}
             >
-              <i className={`fas ${showDiseaseDetails ? 'fa-chevron-up' : 'fa-chevron-down'}`} style={{ fontSize: '0.72rem' }}></i>
+              <i className={`fas ${showDiseaseDetails ? 'fa-chevron-up' : 'fa-chevron-down'}`}></i>
               {showDiseaseDetails ? 'Hide Detailed Insights' : 'Show Detailed Insights'}
             </button>
 
-            {showDiseaseDetails && (<>
-            {/* Historical period filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', padding: '0.65rem 1rem', backgroundColor: '#f9fafb', borderRadius: '10px', border: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
-              <div>
-                <p style={{ fontSize: '0.78rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>Historical Period</p>
-                <p style={{ fontSize: '0.7rem', color: '#6b7280', margin: 0 }}>Filters case counts, categories &amp; activity assessment below</p>
-              </div>
-              <select
-                value={analyticsPeriod}
-                onChange={(e) => setAnalyticsPeriod(e.target.value)}
-                style={{ ...styles.compactSelect, marginLeft: 'auto' }}
-              >
-                <option value="30">Last 30 days</option>
-                <option value="90">Last 90 days</option>
-                <option value="180">Last 6 months</option>
-                <option value="365">Last 1 year</option>
-                <option value="730">Last 2 years</option>
-                <option value="all">All time</option>
-              </select>
-            </div>
-
-            {/* Statistics Overview */}
-            {statistics && (
-              <div style={styles.statsGrid}>
-                {[
-                  { label: 'Total Cases',   value: statistics.total_cases, color: '#2563eb', bg: '#dbeafe', icon: 'fa-file-medical', clickable: true },
-                  { label: 'Affected Pets', value: statistics.affected_pets, color: '#16a34a', bg: '#dcfce7', icon: 'fa-paw' },
-                  { label: 'Contagious',    value: statistics.contagious_cases, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
-                  { label: 'Recovery Rate', value: statistics.total_cases > 0 ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%` : '0%', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-heart-pulse' },
-                ].map((s, i) => (
-                  <div
-                    key={i}
-                    style={{ ...styles.statCard, ...(s.clickable ? { cursor: 'pointer' } : {}) }}
-                    onClick={s.clickable ? () => setActiveTab('cases') : undefined}
-                    title={s.clickable ? 'View all disease cases' : undefined}
-                  >
-                    <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
-                    </div>
-                    <div>
-                      <p style={styles.statLabel}>{s.label}</p>
-                      <p style={{ ...styles.statValue, color: s.color }}>{s.value}</p>
-                    </div>
+            {showDiseaseDetails && (
+              <>
+                {/* Historical period filter */}
+                <div className="analytics-glass-card" style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>Historical Period</div>
+                    <div style={{ fontSize: '0.775rem', color: '#64748b' }}>Filters case counts, categories &amp; activity assessment below</div>
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Outbreak Risk Assessment */}
-            {outbreakRisk && (
-              <div style={styles.riskCard}>
-                <div style={styles.riskCardHeader}>
-                  <h3 style={styles.riskTitle}>
-                    <i className="fas fa-triangle-exclamation" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
-                    Disease Activity Assessment
-                  </h3>
+                  <select
+                    value={analyticsPeriod}
+                    onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                    className="analytics-select-input"
+                    style={{ width: 'auto', minWidth: '160px' }}
+                  >
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="180">Last 6 months</option>
+                    <option value="365">Last 1 year</option>
+                    <option value="730">Last 2 years</option>
+                    <option value="all">All time</option>
+                  </select>
                 </div>
 
-                {(() => {
-                  const actLevel = outbreakRisk.risk_level === 'critical' ? 'Critical Activity'
-                    : outbreakRisk.risk_level === 'high' ? 'High Activity'
-                    : outbreakRisk.risk_level === 'medium' ? 'Moderate Activity'
-                    : 'Normal Activity';
-                  const riskConf = outbreakRisk.confidence;
-                  const riskConfProps = riskConf === 'high'
-                    ? { color: '#15803d', bg: '#dcfce7', label: 'High Confidence', detail: '85–95% accuracy' }
-                    : riskConf === 'medium'
-                    ? { color: '#1d4ed8', bg: '#dbeafe', label: 'Medium Confidence', detail: '75–85% accuracy' }
-                    : riskConf === 'low'
-                    ? { color: '#b45309', bg: '#fef3c7', label: 'Low Confidence', detail: '60–75% accuracy' }
-                    : { color: '#dc2626', bg: '#fee2e2', label: 'Very Low Confidence', detail: 'More data needed' };
-                  return (
-                    <>
-                      <div style={{ marginBottom: '0.6rem' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.65rem', backgroundColor: riskConfProps.bg, borderRadius: '20px', border: `1px solid ${riskConfProps.color}30` }}>
-                          <i className="fas fa-circle-info" style={{ color: riskConfProps.color, fontSize: '0.75rem' }}></i>
-                          <span style={{ fontSize: '0.75rem', fontWeight: '700', color: riskConfProps.color }}>{riskConfProps.label}</span>
-                          <span style={{ fontSize: '0.72rem', color: riskConfProps.color, opacity: 0.8 }}>· {riskConfProps.detail}</span>
-                        </span>
-                      </div>
-                      <div style={{ ...styles.riskResultCard, ...getRiskColor(outbreakRisk.risk_level) }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.6rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                            <span style={{ fontSize: '1.4rem' }}>
-                              {outbreakRisk.risk_level === 'critical' ? <i className="fas fa-radiation"></i>
-                                : outbreakRisk.risk_level === 'high' ? <i className="fas fa-exclamation-triangle"></i>
-                                : outbreakRisk.risk_level === 'medium' ? <i className="fas fa-bolt"></i>
-                                : <i className="fas fa-check-circle"></i>}
-                            </span>
-                            <div>
-                              <h4 style={{ fontSize: '1rem', fontWeight: '700', textTransform: 'uppercase', margin: 0 }}>{actLevel}</h4>
-                              <p style={{ fontSize: '0.75rem', margin: 0, opacity: 0.8 }}>Score: {outbreakRisk.risk_score}/10 · {analyticsPeriod === 'all' ? 'All time' : `${outbreakRisk.days_analyzed} days`}</p>
-                            </div>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.4rem' }}>
-                            {[
-                              { label: 'Cases', val: outbreakRisk.case_count },
-                              { label: 'Contagious', val: outbreakRisk.contagious_cases },
-                            ].map((m, i) => (
-                              <div key={i} style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.35rem 0.75rem', textAlign: 'center' }}>
-                                <p style={{ fontSize: '0.65rem', opacity: 0.7, margin: '0 0 0.1rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{m.label}</p>
-                                <p style={{ fontSize: '0.95rem', fontWeight: '700', margin: 0 }}>{m.val}</p>
-                              </div>
-                            ))}
-                          </div>
+                {/* Statistics Overview */}
+                {statistics && (
+                  <div className="analytics-stats-grid">
+                    {[
+                      { label: 'Total Cases',   value: statistics.total_cases, color: '#2563eb', bg: '#eff6ff', icon: 'fa-file-medical', clickable: true },
+                      { label: 'Affected Pets', value: statistics.affected_pets, color: '#059669', bg: '#ecfdf5', icon: 'fa-paw' },
+                      { label: 'Contagious',    value: statistics.contagious_cases, color: '#e11d48', bg: '#fff1f2', icon: 'fa-triangle-exclamation' },
+                      { label: 'Recovery Rate', value: statistics.total_cases > 0 ? `${Math.round((statistics.recovered_cases / statistics.total_cases) * 100)}%` : '0%', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-heart-pulse' },
+                    ].map((s, i) => (
+                      <div
+                        key={i}
+                        className="analytics-stat-card"
+                        style={{ cursor: s.clickable ? 'pointer' : 'default' }}
+                        onClick={s.clickable ? () => setActiveTab('cases') : undefined}
+                      >
+                        <div className="analytics-stat-icon" style={{ backgroundColor: s.bg, color: s.color }}>
+                          <i className={`fas ${s.icon}`}></i>
                         </div>
+                        <div>
+                          <div className="analytics-stat-label">{s.label}</div>
+                          <div className="analytics-stat-value" style={{ color: s.color }}>{s.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                        {outbreakRisk.reasons && outbreakRisk.reasons.length > 0 && (
-                          <div style={{ backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '6px', padding: '0.4rem 0.65rem', marginBottom: '0.4rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>Contributing factors: </span>
-                            {outbreakRisk.reasons.map((reason, index) => (
-                              <span key={index} style={{ fontSize: '0.75rem' }}>{reason}{index < outbreakRisk.reasons.length - 1 ? ' · ' : ''}</span>
+                {/* Outbreak Risk Assessment */}
+                {outbreakRisk && (
+                  <div className="analytics-glass-card">
+                    <div className="analytics-card-header">
+                      <h3 className="analytics-card-title">
+                        <i className="fas fa-triangle-exclamation" style={{ color: '#d97706' }}></i>
+                        Disease Activity Assessment
+                      </h3>
+                    </div>
+                    <div className="analytics-card-body">
+                      {(() => {
+                        const actLevel = outbreakRisk.risk_level === 'critical' ? 'Critical Activity'
+                          : outbreakRisk.risk_level === 'high' ? 'High Activity'
+                          : outbreakRisk.risk_level === 'medium' ? 'Moderate Activity'
+                          : 'Normal Activity';
+                        return (
+                          <div style={{ ...getRiskColor(outbreakRisk.risk_level), borderRadius: '16px', padding: '1.25rem', border: '1px solid' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.85rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                                <span style={{ fontSize: '1.5rem' }}>
+                                  {outbreakRisk.risk_level === 'critical' ? <i className="fas fa-radiation"></i>
+                                    : outbreakRisk.risk_level === 'high' ? <i className="fas fa-exclamation-triangle"></i>
+                                    : outbreakRisk.risk_level === 'medium' ? <i className="fas fa-bolt"></i>
+                                    : <i className="fas fa-check-circle"></i>}
+                                </span>
+                                <div>
+                                  <h4 style={{ fontSize: '1.1rem', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>{actLevel}</h4>
+                                  <p style={{ fontSize: '0.8rem', margin: 0, opacity: 0.85 }}>Score: {outbreakRisk.risk_score}/10 · {analyticsPeriod === 'all' ? 'All time' : `${outbreakRisk.days_analyzed} days`}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {outbreakRisk.reasons && outbreakRisk.reasons.length > 0 && (
+                              <div style={{ backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: '10px', padding: '0.6rem 0.85rem', marginBottom: '0.6rem', fontSize: '0.825rem' }}>
+                                <span style={{ fontWeight: 700 }}>Contributing factors: </span>
+                                {outbreakRisk.reasons.join(' · ')}
+                              </div>
+                            )}
+
+                            <div style={{ backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: '10px', padding: '0.65rem 0.85rem', fontSize: '0.85rem' }}>
+                              <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7 }}></i>
+                              <span>{outbreakRisk.recommendation}</span>
+                            </div>
+
+                            <ExplainWithAI outputType="outbreak_risk" data={outbreakRisk} />
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Disease Categories */}
+                <div className="analytics-glass-card">
+                  <div className="analytics-card-header">
+                    <h3 className="analytics-card-title">
+                      <i className="fas fa-layer-group" style={{ color: '#4f46e5' }}></i>
+                      Cases by Disease Category
+                    </h3>
+                  </div>
+                  <div className="analytics-card-body" style={{ padding: 0 }}>
+                    {categories && (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="analytics-table">
+                          <thead>
+                            <tr>
+                              <th>Category</th>
+                              <th style={{ textAlign: 'center' }}>Cases</th>
+                              <th style={{ textAlign: 'center' }}>Share</th>
+                              <th style={{ textAlign: 'center' }}>Contagious</th>
+                              <th style={{ textAlign: 'center' }}>Species</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {categories.map((category, index) => (
+                              <tr key={index}>
+                                <td
+                                  style={{ fontWeight: 700, color: '#2563eb', cursor: 'pointer' }}
+                                  onClick={() => { setFilters(prev => ({ ...prev, disease_category: category.disease_category })); setActiveTab('cases'); }}
+                                >
+                                  {formatCategory(category.disease_category)}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <span className="analytics-badge" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>{category.case_count}</span>
+                                </td>
+                                <td style={{ textAlign: 'center', color: '#64748b' }}>
+                                  {statistics ? `${Math.round((category.case_count / statistics.total_cases) * 100)}%` : '—'}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  {category.contagious_count > 0
+                                    ? <span className="analytics-badge" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>{category.contagious_count}</span>
+                                    : <span style={{ color: '#cbd5e1' }}>—</span>}
+                                </td>
+                                <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>
+                                  {category.affected_species}
+                                </td>
+                              </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Disease Trends by Species */}
+                {trends && (
+                  <div className="analytics-glass-card">
+                    <div className="analytics-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <h3 className="analytics-card-title">
+                        <i className="fas fa-paw" style={{ color: '#2563eb' }}></i>
+                        Disease Trends by Species
+                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Species</label>
+                        <select value={selectedSpecies} onChange={(e) => setSelectedSpecies(e.target.value)} className="analytics-select-input" style={{ width: 'auto', minWidth: '140px' }}>
+                          {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="analytics-card-body">
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+                        {trends.most_common_diseases && (
+                          <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '1rem', background: '#f8fafc' }}>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Top Diseases</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                              {Object.entries(trends.most_common_diseases).slice(0, 5).map(([disease, count], index) => (
+                                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: index < 4 ? '1px solid #e2e8f0' : 'none' }}>
+                                  <span style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: 600 }}>{disease}</span>
+                                  <span className="analytics-badge" style={{ backgroundColor: '#dbeafe', color: '#1d4ed8' }}>{count}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
 
-                        <div style={{ backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: '6px', padding: '0.4rem 0.65rem' }}>
-                          <i className="fas fa-circle-info" style={{ marginRight: '0.35rem', opacity: 0.7, fontSize: '0.8rem' }}></i>
-                          <span style={{ fontSize: '0.8rem' }}>{outbreakRisk.recommendation}</span>
-                        </div>
-
-                        <ExplainWithAI outputType="outbreak_risk" data={outbreakRisk} />
-                        <p style={{ fontSize: '0.72rem', color: 'rgba(0,0,0,0.45)', margin: '0.5rem 0 0' }}>
-                          Score based on case volume, contagious rate, severity &amp; disease clustering (0–10).&nbsp;
-                          <span style={{ fontWeight: '600' }}>Low: 0–2</span> ·&nbsp;
-                          <span style={{ fontWeight: '600' }}>Medium: 3–4</span> ·&nbsp;
-                          <span style={{ fontWeight: '600' }}>High: 5–7</span> ·&nbsp;
-                          <span style={{ fontWeight: '600' }}>Critical: 8–10</span>
-                        </p>
+                        {trends.severity_distribution && (
+                          <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '1rem', background: '#f8fafc' }}>
+                            <h4 style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155', margin: '0 0 0.75rem 0', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severity Breakdown</h4>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              {Object.entries(trends.severity_distribution).map(([severity, count]) => {
+                                const sevColor = severity === 'critical' ? '#dc2626' : severity === 'severe' ? '#ea580c' : severity === 'moderate' ? '#d97706' : '#059669';
+                                const sevBg = severity === 'critical' ? '#fee2e2' : severity === 'severe' ? '#ffedd5' : severity === 'moderate' ? '#fffbeb' : '#ecfdf5';
+                                return (
+                                  <div key={severity} style={{ backgroundColor: sevBg, border: `1px solid ${sevColor}30`, borderRadius: '12px', padding: '0.6rem 0.85rem', textAlign: 'center', minWidth: '75px', flex: 1 }}>
+                                    <p style={{ fontSize: '1.25rem', fontWeight: 800, color: sevColor, margin: 0 }}>{count}</p>
+                                    <p style={{ fontSize: '0.725rem', color: sevColor, textTransform: 'capitalize', margin: '0.1rem 0 0 0', fontWeight: 700 }}>{severity}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div style={{ marginTop: '0.85rem', display: 'flex', gap: '1.25rem', fontSize: '0.825rem', color: '#475569' }}>
+                              <span>Total: <strong>{trends.total_cases}</strong></span>
+                              <span>Contagious: <strong style={{ color: '#e11d48' }}>{trends.contagious_percentage?.toFixed(0)}%</strong></span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Disease Categories */}
-            <div style={styles.analyticsCard}>
-              <div style={styles.analyticsCardHeader}>
-                <h3 style={styles.analyticsCardTitle}>
-                  <i className="fas fa-layer-group" style={{ marginRight: '0.4rem', color: '#6366f1' }}></i>
-                  Cases by Disease Category
-                </h3>
-              </div>
-              <div style={styles.analyticsCardContent}>
-                {categories && (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f9fafb' }}>
-                          {['Category', 'Cases', 'Share', 'Contagious', 'Species'].map((h, i) => (
-                            <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'center', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {categories.map((category, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td
-                              style={{ padding: '0.5rem 0.85rem', fontWeight: '600', color: '#2563eb', textTransform: 'capitalize', cursor: 'pointer' }}
-                              onClick={() => { setFilters(prev => ({ ...prev, disease_category: category.disease_category })); setActiveTab('cases'); }}
-                            >
-                              {category.disease_category.replace(/_/g, ' ')}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center' }}>
-                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontWeight: '700', fontSize: '0.8rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{category.case_count}</span>
-                            </td>
-                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#6b7280' }}>
-                              {statistics ? `${Math.round((category.case_count / statistics.total_cases) * 100)}%` : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center' }}>
-                              {category.contagious_count > 0
-                                ? <span style={{ backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: '700', fontSize: '0.8rem', padding: '0.15rem 0.55rem', borderRadius: '20px' }}>{category.contagious_count}</span>
-                                : <span style={{ color: '#d1d5db' }}>—</span>}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.85rem', textAlign: 'center', color: '#6b7280', fontSize: '0.78rem' }}>
-                              {category.affected_species}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Disease Trends by Species */}
-            {trends && (
-              <div style={styles.analyticsCard}>
-                <div style={styles.analyticsCardHeader}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h3 style={styles.analyticsCardTitle}>
-                      <i className="fas fa-paw" style={{ marginRight: '0.4rem', color: '#3b82f6' }}></i>
-                      Disease Trends by Species
-                    </h3>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Species</label>
-                      <select value={selectedSpecies} onChange={(e) => setSelectedSpecies(e.target.value)} style={styles.compactSelect}>
-                        {speciesList.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
                     </div>
                   </div>
-                </div>
-                <div style={styles.analyticsCardContent}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
-                    {trends.most_common_diseases && (
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Top Diseases</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          {Object.entries(trends.most_common_diseases).slice(0, 5).map(([disease, count], index) => (
-                            <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.4rem 0', borderBottom: index < 4 ? '1px solid #f3f4f6' : 'none' }}>
-                              <span style={{ fontSize: '0.82rem', color: '#374151' }}>{disease}</span>
-                              <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.72rem', fontWeight: '600', padding: '0.1rem 0.45rem', borderRadius: '20px' }}>{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {trends.severity_distribution && (
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '0.75rem' }}>
-                        <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: '#374151', margin: '0 0 0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Severity Breakdown</h4>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          {Object.entries(trends.severity_distribution).map(([severity, count]) => {
-                            const sevColor = severity === 'critical' ? '#dc2626' : severity === 'severe' ? '#ea580c' : severity === 'moderate' ? '#d97706' : '#16a34a';
-                            const sevBg = severity === 'critical' ? '#fee2e2' : severity === 'severe' ? '#ffedd5' : severity === 'moderate' ? '#fef3c7' : '#dcfce7';
-                            return (
-                              <div key={severity} style={{ backgroundColor: sevBg, border: `1px solid ${sevColor}30`, borderRadius: '8px', padding: '0.5rem 0.85rem', textAlign: 'center', minWidth: '75px', flex: 1 }}>
-                                <p style={{ fontSize: '1.2rem', fontWeight: '700', color: sevColor, margin: 0 }}>{count}</p>
-                                <p style={{ fontSize: '0.7rem', color: sevColor, textTransform: 'capitalize', margin: '0.1rem 0 0', fontWeight: '600' }}>{severity}</p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#4b5563' }}>
-                          <span>Total: <strong>{trends.total_cases}</strong></span>
-                          <span>Contagious: <strong style={{ color: '#dc2626' }}>{trends.contagious_percentage?.toFixed(0)}%</strong></span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                )}
+              </>
             )}
-          {/* close showDiseaseDetails */}
-          </>)}
           </>
         )}
-
 
         {/* Sales Forecasting Tab */}
         {isAdmin && activeTab === 'sales' && (
           <>
-            {/* Monthly Revenue Forecast */}
-            <div style={styles.analyticsCard}>
-              <div style={styles.analyticsCardHeader}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={styles.analyticsCardTitle}>
-                    <i className="fas fa-chart-bar" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
-                    Monthly Revenue Forecast
-                  </h3>
-                  <div style={styles.filterBar}>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Forecast Period</label>
-                      <select value={salesPeriod} onChange={(e) => setSalesPeriod(parseInt(e.target.value))} style={styles.compactSelect}>
-                        <option value={7}>7 days</option>
-                        <option value={14}>14 days</option>
-                        <option value={30}>30 days</option>
-                        <option value={60}>60 days</option>
-                        <option value={90}>90 days</option>
-                        <option value={365}>1 year</option>
-                      </select>
-                    </div>
-                    <button onClick={fetchSalesData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <i className="fas fa-sync-alt"></i> Generate
-                    </button>
+            <div className="analytics-glass-card">
+              <div className="analytics-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 className="analytics-card-title">
+                  <i className="fas fa-chart-bar" style={{ color: '#10b981' }}></i>
+                  Monthly Revenue Forecast
+                </h3>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Forecast Period</label>
+                    <select value={salesPeriod} onChange={(e) => setSalesPeriod(parseInt(e.target.value))} className="analytics-select-input" style={{ width: 'auto', minWidth: '130px', padding: '0.35rem 0.6rem', fontSize: '0.82rem' }}>
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                      <option value={90}>90 days</option>
+                      <option value={365}>1 year</option>
+                    </select>
                   </div>
+                  <button onClick={fetchSalesData} className="analytics-btn-action analytics-btn-emerald" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}>
+                    <i className="fas fa-sync-alt"></i> Generate
+                  </button>
                 </div>
-                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Predicted revenue for each upcoming month based on past billing data. <strong>Lower/Upper Bound</strong> shows the expected range actual revenue will likely fall within.
-                </p>
               </div>
-              <div style={styles.analyticsCardContent}>
+              <div className="analytics-card-body">
                 {loading ? (
-                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
+                  <div className="med-records-empty-card" style={{ padding: '2rem' }}>
+                    <div className="appts-spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                    <p style={{ color: '#64748b', margin: 0 }}>Generating sales forecast...</p>
+                  </div>
                 ) : !salesData.forecast ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load the sales forecast.</p>
+                  <p style={{ color: '#64748b', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load the sales forecast.</p>
                 ) : salesData.forecast?.success === false ? (
                   <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Sales forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
                   const monthlyForecast = salesData.forecast?.forecast?.monthly_forecast || [];
                   return monthlyForecast.length > 0 ? (
                     <div style={{ overflowX: 'auto' }}>
-                      <p style={{ fontSize: '0.72rem', color: '#9ca3af', margin: '0 0 0.5rem' }}>Model: {salesData.forecast?.forecast?.model_used || 'ML Model'}</p>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0 0 0.5rem 0', fontWeight: 600 }}>Model: {salesData.forecast?.forecast?.model_used || 'ML Model'}</p>
+                      <table className="analytics-table">
                         <thead>
-                          <tr style={{ backgroundColor: '#f9fafb' }}>
-                            {['Month', 'Forecast Revenue', 'Avg Daily', 'Lower Bound', 'Upper Bound'].map((h, i) => (
-                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
-                            ))}
+                          <tr>
+                            <th>Month</th>
+                            <th style={{ textAlign: 'right' }}>Forecast Revenue</th>
+                            <th style={{ textAlign: 'right' }}>Avg Daily</th>
+                            <th style={{ textAlign: 'right' }}>Lower Bound</th>
+                            <th style={{ textAlign: 'right' }}>Upper Bound</th>
                           </tr>
                         </thead>
                         <tbody>
                           {monthlyForecast.map((row, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{row.month}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#6b7280' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 700, color: '#0f172a' }}>{row.month}</td>
+                              <td style={{ textAlign: 'right', color: '#059669', fontWeight: 800, fontSize: '0.95rem' }}>LKR {Number(row.monthly_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ textAlign: 'right', color: '#334155', fontWeight: 600 }}>LKR {Number(row.avg_daily_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ textAlign: 'right', color: '#64748b' }}>LKR {Number(row.lower_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td style={{ textAlign: 'right', color: '#64748b' }}>LKR {Number(row.upper_bound || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1403,47 +1348,39 @@ const Analytics = () => {
               const yoy = trendsData.yoy_growth_percentage;
               return (
                 <>
-                  <div style={styles.statsGrid}>
+                  <div className="analytics-stats-grid">
                     {[
-                      { label: 'Total Forecast Revenue', value: `LKR ${totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#10b981', bg: '#dcfce7', icon: 'fa-sack-dollar' },
-                      { label: 'YoY Growth', value: yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A', color: yoy >= 0 ? '#2563eb' : '#dc2626', bg: yoy >= 0 ? '#dbeafe' : '#fee2e2', icon: yoy >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down' },
+                      { label: 'Total Forecast Revenue', value: `LKR ${totalForecastRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#059669', bg: '#ecfdf5', icon: 'fa-sack-dollar' },
+                      { label: 'YoY Growth', value: yoy != null ? `${yoy > 0 ? '+' : ''}${Number(yoy).toFixed(1)}%` : 'N/A', color: yoy >= 0 ? '#2563eb' : '#dc2626', bg: yoy >= 0 ? '#eff6ff' : '#fff1f2', icon: yoy >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down' },
                       { label: 'Best Day', value: bestDay ? bestDay.day_of_week : 'N/A', color: '#7c3aed', bg: '#f3e8ff', icon: 'fa-calendar-star' },
-                      { label: 'Avg Monthly Revenue', value: trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A', color: '#d97706', bg: '#fef3c7', icon: 'fa-calendar-check' },
+                      { label: 'Avg Monthly Revenue', value: trendsData.avg_monthly_revenue != null ? `LKR ${Number(trendsData.avg_monthly_revenue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A', color: '#d97706', bg: '#fffbeb', icon: 'fa-calendar-check' },
                     ].map((s, i) => (
-                      <div key={i} style={styles.statCard}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                      <div key={i} className="analytics-stat-card">
+                        <div className="analytics-stat-icon" style={{ backgroundColor: s.bg, color: s.color }}>
+                          <i className={`fas ${s.icon}`}></i>
                         </div>
                         <div>
-                          <p style={styles.statLabel}>{s.label}</p>
-                          <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                          <div className="analytics-stat-label">{s.label}</div>
+                          <div className="analytics-stat-value" style={{ color: s.color }}>{s.value}</div>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p style={{ ...styles.cardHint, borderTop: 'none', marginBottom: '1rem' }}>
-                    <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                    <strong>YoY Growth</strong> compares this year's revenue to last year's. <strong>Best Day</strong> shows which day historically earns the most — useful for scheduling.
-                  </p>
 
                   {dayPatterns.length > 0 && (
-                    <div style={styles.analyticsCard}>
-                      <div style={styles.analyticsCardHeader}>
-                        <h3 style={styles.analyticsCardTitle}>
-                          <i className="fas fa-calendar-week" style={{ marginRight: '0.4rem', color: '#10b981' }}></i>
+                    <div className="analytics-glass-card">
+                      <div className="analytics-card-header">
+                        <h3 className="analytics-card-title">
+                          <i className="fas fa-calendar-week" style={{ color: '#10b981' }}></i>
                           Revenue by Day of Week
                         </h3>
-                        <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                          <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                          Average revenue per day of the week based on past billing. Useful for planning appointments and staffing levels.
-                        </p>
                       </div>
-                      <div style={styles.analyticsCardContent}>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div className="analytics-card-body">
+                        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
                           {dayPatterns.map((d, idx) => (
-                            <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '80px', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '0.6rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
-                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>{d.day_of_week}</div>
-                              <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                            <div key={idx} style={{ flex: '1 1 calc(14% - 0.5rem)', minWidth: '100px', backgroundColor: '#f0fdf4', borderRadius: '14px', padding: '0.75rem 0.5rem', textAlign: 'center', border: '1px solid #bbf7d0' }}>
+                              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, marginBottom: '0.25rem' }}>{d.day_of_week}</div>
+                              <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#059669' }}>LKR {Number(d.avg_revenue || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                             </div>
                           ))}
                         </div>
@@ -1459,60 +1396,56 @@ const Analytics = () => {
         {/* Inventory Demand Tab */}
         {isAdmin && activeTab === 'inventory' && (
           <>
-            {/* Summary + controls */}
-            <div style={styles.analyticsCard}>
-              <div style={styles.analyticsCardHeader}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h3 style={styles.analyticsCardTitle}>
-                    <i className="fas fa-warehouse" style={{ marginRight: '0.4rem', color: '#f59e0b' }}></i>
-                    Inventory Reorder Summary
-                  </h3>
-                  <div style={styles.filterBar}>
-                    <div style={styles.filterBarGroup}>
-                      <label style={styles.filterBarLabel}>Forecast Period</label>
-                      <select value={inventoryDays} onChange={(e) => setInventoryDays(parseInt(e.target.value))} style={styles.compactSelect}>
-                        <option value={7}>7 days</option>
-                        <option value={14}>14 days</option>
-                        <option value={30}>30 days</option>
-                        <option value={60}>60 days</option>
-                        <option value={90}>90 days</option>
-                        <option value={365}>1 year</option>
-                      </select>
-                    </div>
-                    <button onClick={fetchInventoryData} style={{ padding: '0.38rem 0.8rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <i className="fas fa-sync-alt"></i> Generate
-                    </button>
+            <div className="analytics-glass-card">
+              <div className="analytics-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 className="analytics-card-title">
+                  <i className="fas fa-warehouse" style={{ color: '#f59e0b' }}></i>
+                  Inventory Reorder Summary
+                </h3>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Forecast Period</label>
+                    <select value={inventoryDays} onChange={(e) => setInventoryDays(parseInt(e.target.value))} className="analytics-select-input" style={{ width: 'auto', minWidth: '130px', padding: '0.35rem 0.6rem', fontSize: '0.82rem' }}>
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                      <option value={30}>30 days</option>
+                      <option value={60}>60 days</option>
+                      <option value={90}>90 days</option>
+                      <option value={365}>1 year</option>
+                    </select>
                   </div>
+                  <button onClick={fetchInventoryData} className="analytics-btn-action" style={{ backgroundColor: '#f59e0b', padding: '0.5rem 1rem', fontSize: '0.82rem' }}>
+                    <i className="fas fa-sync-alt"></i> Generate
+                  </button>
                 </div>
-                <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                  <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                  Reorder recommendations based on current stock and expected demand. <strong>Urgent</strong> items are critically low — order these right away.
-                </p>
               </div>
-              <div style={styles.analyticsCardContent}>
+              <div className="analytics-card-body">
                 {loading ? (
-                  <div style={styles.loadingContainer}><div style={styles.loadingSpinner}></div></div>
+                  <div className="med-records-empty-card" style={{ padding: '2rem' }}>
+                    <div className="appts-spinner" style={{ margin: '0 auto 1rem auto', borderTopColor: '#f59e0b' }}></div>
+                    <p style={{ color: '#64748b', margin: 0 }}>Generating inventory forecast...</p>
+                  </div>
                 ) : !inventoryData.reorderSuggestions ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load inventory reorder suggestions.</p>
+                  <p style={{ color: '#64748b', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Click "Generate" to load inventory reorder suggestions.</p>
                 ) : inventoryData.reorderSuggestions?.success === false ? (
                   <p style={{ color: '#dc2626', fontSize: '0.875rem', textAlign: 'center', padding: '1.5rem 0', margin: 0 }}>Inventory forecasting model is not loaded. Please train the model first.</p>
                 ) : (() => {
                   const summary = (inventoryData.reorderSuggestions?.recommendations || {}).summary || {};
                   return (
-                    <div style={styles.statsGrid}>
+                    <div className="analytics-stats-grid">
                       {[
                         { label: 'Urgent Reorder', value: summary.urgent_count ?? 0, color: '#dc2626', bg: '#fee2e2', icon: 'fa-triangle-exclamation' },
-                        { label: 'Reorder Soon', value: summary.upcoming_count ?? 0, color: '#d97706', bg: '#fef3c7', icon: 'fa-clock' },
-                        { label: 'Sufficient Stock', value: summary.sufficient_count ?? 0, color: '#16a34a', bg: '#dcfce7', icon: 'fa-circle-check' },
-                        { label: 'Est. Reorder Cost', value: `LKR ${Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#1d4ed8', bg: '#dbeafe', icon: 'fa-receipt' },
+                        { label: 'Reorder Soon', value: summary.upcoming_count ?? 0, color: '#d97706', bg: '#fffbeb', icon: 'fa-clock' },
+                        { label: 'Sufficient Stock', value: summary.sufficient_count ?? 0, color: '#059669', bg: '#ecfdf5', icon: 'fa-circle-check' },
+                        { label: 'Est. Reorder Cost', value: `LKR ${Number(summary.estimated_reorder_cost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: '#2563eb', bg: '#eff6ff', icon: 'fa-receipt' },
                       ].map((s, i) => (
-                        <div key={i} style={styles.statCard}>
-                          <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <i className={`fas ${s.icon}`} style={{ color: s.color, fontSize: '0.9rem' }}></i>
+                        <div key={i} className="analytics-stat-card">
+                          <div className="analytics-stat-icon" style={{ backgroundColor: s.bg, color: s.color }}>
+                            <i className={`fas ${s.icon}`}></i>
                           </div>
                           <div>
-                            <p style={styles.statLabel}>{s.label}</p>
-                            <p style={{ ...styles.statValue, color: s.color, fontSize: '1.1rem' }}>{s.value}</p>
+                            <div className="analytics-stat-label">{s.label}</div>
+                            <div className="analytics-stat-value" style={{ color: s.color }}>{s.value}</div>
                           </div>
                         </div>
                       ))}
@@ -1531,37 +1464,39 @@ const Analytics = () => {
               const recs = inventoryData.reorderSuggestions?.recommendations || {};
               const urgent = recs.urgent_reorder || [];
               const soon = recs.reorder_soon || [];
-              const renderTable = (items, color, icon, label, hint) => items.length === 0 ? null : (
-                <div style={styles.analyticsCard} key={label}>
-                  <div style={styles.analyticsCardHeader}>
-                    <h3 style={{ ...styles.analyticsCardTitle, color }}>
-                      <i className={`fas ${icon}`} style={{ marginRight: '0.4rem' }}></i>
+              const renderTable = (items, color, icon, label) => items.length === 0 ? null : (
+                <div className="analytics-glass-card" key={label}>
+                  <div className="analytics-card-header">
+                    <h3 className="analytics-card-title" style={{ color }}>
+                      <i className={`fas ${icon}`}></i>
                       {label}
-                      <span style={{ fontSize: '0.72rem', fontWeight: '600', padding: '0.15rem 0.55rem', borderRadius: '20px', backgroundColor: color === '#dc2626' ? '#fee2e2' : '#fef3c7', color, marginLeft: '0.5rem' }}>{items.length} items</span>
+                      <span className="analytics-badge" style={{ backgroundColor: color === '#dc2626' ? '#fee2e2' : '#fffbeb', color, marginLeft: '0.5rem' }}>{items.length} items</span>
                     </h3>
-                    <p style={{ ...styles.cardHint, borderTop: 'none', margin: '0.35rem 0 0' }}>
-                      <i className="fas fa-circle-info" style={styles.cardHintIcon}></i>
-                      {hint}
-                    </p>
                   </div>
-                  <div style={styles.analyticsCardContent}>
+                  <div className="analytics-card-body" style={{ padding: 0 }}>
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <table className="analytics-table">
                         <thead>
-                          <tr style={{ backgroundColor: '#f9fafb' }}>
-                            {['Item', 'Current Stock', 'Reorder Qty', 'Est. Cost', 'Category'].map((h, i) => (
-                              <th key={i} style={{ padding: '0.5rem 0.85rem', textAlign: i === 0 || i === 4 ? 'left' : 'right', fontWeight: '600', fontSize: '0.72rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>{h}</th>
-                            ))}
+                          <tr>
+                            <th>Item</th>
+                            <th style={{ textAlign: 'right' }}>Current Stock</th>
+                            <th style={{ textAlign: 'right' }}>Reorder Qty</th>
+                            <th style={{ textAlign: 'right' }}>Est. Cost</th>
+                            <th>Category</th>
                           </tr>
                         </thead>
                         <tbody>
                           {items.map((item, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              <td style={{ padding: '0.5rem 0.85rem', color: '#1f2937', fontWeight: '500' }}>{item.item_name}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.current_stock ?? 'N/A'}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color, fontWeight: '600' }}>{item.suggested_order_quantity ?? 'N/A'}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', textAlign: 'right', color: '#374151' }}>{item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</td>
-                              <td style={{ padding: '0.5rem 0.85rem', color: '#6b7280' }}>{item.category || '—'}</td>
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 700, color: '#0f172a' }}>{item.item_name}</td>
+                              <td style={{ textAlign: 'right', color: '#475569' }}>{item.current_stock ?? 'N/A'}</td>
+                              <td style={{ textAlign: 'right', color, fontWeight: 800 }}>{item.suggested_order_quantity ?? 'N/A'}</td>
+                              <td style={{ textAlign: 'right', color: '#0f172a', fontWeight: 600 }}>{item.estimated_cost != null ? `LKR ${Number(item.estimated_cost).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : 'N/A'}</td>
+                              <td style={{ color: '#64748b' }}>
+                                <span className="analytics-badge" style={{ backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+                                  {formatCategory(item.category)}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1579,732 +1514,9 @@ const Analytics = () => {
             })()}
           </>
         )}
-
       </div>
     </Layout>
   );
-};
-
-const styles = {
-  container: {
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    maxWidth: '1400px',
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '2rem',
-    gap: '1rem',
-  },
-  pageHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  headerIcon: {
-    fontSize: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    margin: '0 0 0.5rem 0',
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  primaryButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    whiteSpace: 'nowrap',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '600',
-    fontSize: '0.875rem',
-  },
-  error: {
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1rem',
-    border: '1px solid #fecaca',
-  },
-  tabsContainer: {
-    marginBottom: '2rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  tabsHeader: {
-    display: 'flex',
-    gap: '2rem',
-  },
-  tab: {
-    padding: '1rem 0.25rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid transparent',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#6b7280',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  tabActive: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderBottom: '2px solid #3B82F6',
-    padding: '1rem 0.25rem',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#3B82F6',
-    cursor: 'pointer',
-  },
-  filtersContainer: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '1.5rem',
-    border: '1px solid #e5e7eb',
-  },
-  filtersHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  filtersTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    margin: 0,
-  },
-  clearButton: {
-    backgroundColor: 'transparent',
-    color: '#3B82F6',
-    border: 'none',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    padding: '0.25rem 0.5rem',
-  },
-  filterGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
-    marginBottom: '1rem',
-  },
-  filterLabel: {
-    display: 'block',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: '0.5rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  filterInput: {
-    width: '100%',
-    padding: '0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    boxSizing: 'border-box',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '0.75rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    boxSizing: 'border-box',
-  },
-  infoBox: {
-    backgroundColor: '#f9fafb',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    border: '1px solid #e5e7eb',
-  },
-  infoText: {
-    margin: 0,
-    fontSize: '0.875rem',
-    color: '#4b5563',
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '3rem',
-  },
-  loadingSpinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #3b82f6',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '3rem',
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    border: '1px solid #e5e7eb',
-  },
-  emptyStateIcon: {
-    width: '48px',
-    height: '48px',
-    color: '#d1d5db',
-    marginBottom: '1rem',
-  },
-  emptyStateTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '500',
-    color: '#111827',
-    marginBottom: '0.5rem',
-  },
-  emptyStateText: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    marginBottom: '1rem',
-  },
-  tableContainer: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    overflow: 'auto',
-    maxHeight: 'calc(100vh - 340px)',
-    border: '1px solid #e5e7eb',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-  },
-  th: {
-    backgroundColor: '#f9fafb',
-    padding: '1rem 1.5rem',
-    textAlign: 'left',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    borderBottom: '1px solid #e5e7eb',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  thRight: {
-    backgroundColor: '#f9fafb',
-    padding: '1rem 1.5rem',
-    textAlign: 'right',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    borderBottom: '1px solid #e5e7eb',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  tr: {
-    borderBottom: '1px solid #f3f4f6',
-    transition: 'background-color 0.2s',
-  },
-  td: {
-    padding: '1rem 1.5rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-  },
-  tdRight: {
-    padding: '1rem 1.5rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-    textAlign: 'right',
-  },
-  petName: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#111827',
-  },
-  petDetails: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  petOwner: {
-    fontSize: '0.75rem',
-    color: '#9ca3af',
-  },
-  diseaseName: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#111827',
-  },
-  diseaseCategory: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  badge: {
-    padding: '0.25rem 0.5rem',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    borderRadius: '9999px',
-    display: 'inline-block',
-  },
-  actionButton: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    marginRight: '0.75rem',
-    padding: '0.25rem 0.5rem',
-  },
-  paginationContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '1rem',
-    borderTop: '1px solid #E5E7EB',
-  },
-  paginationButton: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  paginationButtonActive: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: '1px solid #3B82F6',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  paginationButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#D1D5DB',
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'not-allowed',
-  },
-  paginationEllipsis: {
-    color: '#9ca3af',
-    padding: '0.5rem',
-    fontSize: '0.875rem',
-  },
-  // Analytics Tab Styles
-  modelStatusCard: {
-    background: 'linear-gradient(to right, #eff6ff, #f3e8ff)',
-    border: '1px solid #bfdbfe',
-    borderRadius: '12px',
-    padding: '0.85rem 1.25rem',
-    marginBottom: '1rem',
-  },
-  modelStatusHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  modelStatusTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: '0.5rem',
-  },
-  modelStatusText: {
-    fontSize: '0.875rem',
-    color: '#4b5563',
-    marginBottom: '0.25rem',
-  },
-  modelStatusHighlight: {
-    fontWeight: '600',
-  },
-  modelStatusCount: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    color: '#2563eb',
-    textAlign: 'right',
-  },
-  modelStatusLabel: {
-    fontSize: '0.875rem',
-    color: '#4b5563',
-    textAlign: 'right',
-  },
-  modelNote: {
-    marginTop: '1rem',
-    padding: '0.75rem',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    fontSize: '0.75rem',
-    color: '#4b5563',
-  },
-  statsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-    gap: '0.75rem',
-    marginBottom: '1rem',
-  },
-  statCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    padding: '0.85rem 1rem',
-    border: '1px solid #e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  statCardContent: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    margin: 0,
-    marginBottom: '0.1rem',
-  },
-  statValue: {
-    fontSize: '1.4rem',
-    fontWeight: '700',
-    color: '#1f2937',
-    margin: 0,
-    lineHeight: 1.1,
-  },
-  statIcon: {
-    padding: '0.75rem',
-    borderRadius: '50%',
-  },
-  riskCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    padding: '1rem 1.25rem',
-    marginBottom: '1rem',
-    border: '1px solid #e5e7eb',
-  },
-  riskCardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    flexWrap: 'wrap',
-    gap: '0.75rem',
-    marginBottom: '1.25rem',
-  },
-  riskTitle: {
-    fontSize: '0.9rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    margin: 0,
-    display: 'flex',
-    alignItems: 'center',
-  },
-  filterBar: {
-    display: 'flex',
-    gap: '0.75rem',
-    flexWrap: 'wrap',
-    alignItems: 'flex-end',
-  },
-  filterBarGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-  },
-  filterBarLabel: {
-    fontSize: '0.68rem',
-    fontWeight: '700',
-    color: '#9ca3af',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  compactSelect: {
-    padding: '0.38rem 0.6rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    fontSize: '0.82rem',
-    backgroundColor: 'white',
-    color: '#374151',
-    cursor: 'pointer',
-    outline: 'none',
-    minWidth: '130px',
-  },
-  riskInputGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
-    marginBottom: '1rem',
-  },
-  riskResultCard: {
-    border: '2px solid',
-    borderRadius: '12px',
-    padding: '1.5rem',
-  },
-  riskResultHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '1rem',
-  },
-  riskLevel: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  riskScore: {
-    fontSize: '0.875rem',
-    marginTop: '0.25rem',
-  },
-  riskIcon: {
-    fontSize: '2rem',
-  },
-  riskMetricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: '1rem',
-    marginBottom: '1rem',
-  },
-  riskMetric: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: '8px',
-    padding: '0.75rem',
-  },
-  riskMetricLabel: {
-    fontSize: '0.75rem',
-    opacity: 0.75,
-    marginBottom: '0.25rem',
-  },
-  riskMetricValue: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-  },
-  riskFactors: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    borderRadius: '8px',
-    padding: '0.75rem',
-    marginBottom: '0.75rem',
-  },
-  riskFactorsTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    marginBottom: '0.5rem',
-  },
-  riskFactorsList: {
-    listStyle: 'disc',
-    paddingLeft: '1.5rem',
-    fontSize: '0.875rem',
-    margin: 0,
-  },
-  riskRecommendation: {
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
-    borderRadius: '8px',
-    padding: '0.75rem',
-  },
-  riskRecommendationTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    marginBottom: '0.25rem',
-  },
-  riskRecommendationText: {
-    fontSize: '0.875rem',
-  },
-  analyticsCard: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '1rem',
-    border: '1px solid #e5e7eb',
-  },
-  analyticsCardHeader: {
-    borderBottom: '1px solid #e5e7eb',
-    padding: '0.7rem 1.1rem',
-  },
-  analyticsCardTitle: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    margin: 0,
-    display: 'flex',
-    alignItems: 'center',
-  },
-  analyticsCardContent: {
-    padding: '0.9rem 1.1rem',
-  },
-  cardHint: {
-    margin: '0.6rem 0 0',
-    fontSize: '0.73rem',
-    color: '#6b7280',
-    lineHeight: '1.5',
-    borderTop: '1px solid rgba(0,0,0,0.06)',
-    paddingTop: '0.5rem',
-  },
-  cardHintIcon: {
-    color: '#93c5fd',
-    marginRight: '0.35rem',
-    fontSize: '0.7rem',
-  },
-  categoryCard: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    marginBottom: '1rem',
-  },
-  categoryHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '0.5rem',
-  },
-  categoryName: {
-    fontSize: '1rem',
-    fontWeight: '600',
-    color: '#1f2937',
-    textTransform: 'capitalize',
-  },
-  categoryDescription: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  categoryCount: {
-    fontSize: '1.5rem',
-    fontWeight: '700',
-    color: '#2563eb',
-    textAlign: 'right',
-  },
-  categoryCountLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textAlign: 'right',
-  },
-  categoryMetricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '1rem',
-    marginTop: '0.75rem',
-  },
-  categoryMetric: {
-    padding: '0.5rem',
-  },
-  categoryMetricLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-  categoryMetricValue: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-  },
-  patternCard: {
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    padding: '1rem',
-    marginBottom: '1rem',
-    backgroundColor: '#f9fafb',
-  },
-  trendCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    borderRadius: '8px',
-    padding: '1rem',
-  },
-  trendLabel: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    marginBottom: '0.25rem',
-  },
-  trendValue: {
-    fontSize: '2rem',
-    fontWeight: '700',
-    color: '#2563eb',
-  },
-  speciesBadge: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    fontSize: '0.75rem',
-    borderRadius: '4px',
-    display: 'inline-block',
-  },
-  comingSoonContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f9fafb',
-    border: '1px dashed #d1d5db',
-    borderRadius: '12px',
-    padding: '2.5rem 1.5rem',
-    margin: '2rem 0',
-    minHeight: '220px',
-    textAlign: 'center',
-  },
-  metricsGridContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '1.5rem',
-    margin: '2rem 0',
-  },
-  metricCard: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    padding: '1.25rem 1rem',
-    gap: '1rem',
-    minHeight: '90px',
-  },
-  metricIconBox: {
-    width: '44px',
-    height: '44px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f3f4f6',
-    borderRadius: '50%',
-    fontSize: '1.5rem',
-    marginRight: '0.75rem',
-  },
-  metricLabel: {
-    fontSize: '0.85rem',
-    color: '#6b7280',
-    marginBottom: '0.15rem',
-    fontWeight: 500,
-  },
-  metricValue: {
-    fontSize: '1.25rem',
-    fontWeight: 700,
-    color: '#1f2937',
-  },
 };
 
 export default Analytics;

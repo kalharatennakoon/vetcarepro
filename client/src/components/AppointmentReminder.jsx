@@ -90,7 +90,7 @@ const AppointmentReminder = () => {
       clearPendingTimeouts();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [user]);
+  }, [user, showWarning]);
 
   return null;
 };

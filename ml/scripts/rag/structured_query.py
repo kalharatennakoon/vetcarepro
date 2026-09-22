@@ -67,11 +67,22 @@ CLINICAL_STAFF_ROLES = {'admin', 'veterinarian'}
 BILLING_STAFF_ROLES = {'admin', 'receptionist'}
 
 # Shared timeframe vocabulary used by appointments/disease-case/billing queries.
-TIMEFRAME_WORDS = r'(today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
+# "day after tomorrow"/"day before yesterday" were previously missing here,
+# so a question like "appointments for day-after-tomorrow" fell through to
+# the bare "tomorrow" alternative instead (it appears as its own whole word
+# inside the phrase, satisfying \b on both sides even with hyphens, since a
+# hyphen is a non-word character) - silently answering one day early.
+# Hyphenated ("day-after-tomorrow") is also accepted since that's a natural
+# way to type it; _normalize_timeframe below folds hyphens to spaces before
+# _resolve_timeframe compares the captured text.
+TIMEFRAME_WORDS = (
+    r'(day[\s-]+after[\s-]+tomorrow|day[\s-]+before[\s-]+yesterday|'
+    r'today|yesterday|tomorrow|last\s+week|this\s+week|last\s+month|this\s+month|this\s+year)'
+)
 
 
 def _normalize_timeframe(raw: str) -> str:
-    return re.sub(r'\s+', ' ', raw.strip().lower())
+    return re.sub(r'[\s-]+', ' ', raw.strip().lower())
 
 
 def _resolve_timeframe(raw: str):
@@ -92,6 +103,12 @@ def _resolve_timeframe(raw: str):
         return d, d
     if tf == 'tomorrow':
         d = today + timedelta(days=1)
+        return d, d
+    if tf == 'day after tomorrow':
+        d = today + timedelta(days=2)
+        return d, d
+    if tf == 'day before yesterday':
+        d = today - timedelta(days=2)
         return d, d
     if tf == 'this week':
         start = today - timedelta(days=today.weekday())  # Monday
@@ -373,6 +390,12 @@ FUTURE_VACCINATION = re.compile(
     re.IGNORECASE
 )
 
+# Matches: "aftercare for last visit", "what aftercare after last visit", "most recent visit", "latest visit details"
+LAST_VISIT_AFTERCARE = re.compile(
+    r'\b(?:after\s*care|after\s*care\s+instructions?|care\s+instructions?)\b|\b(?:last|latest|most\s+recent|recent)\s+(?:visit|checkup|consultation|appointment|exam)\b',
+    re.IGNORECASE
+)
+
 # Matches: "list medical records for pet Max", "show me the history of pet Fido"
 LIST_RECORDS_BY_PET = re.compile(
     r'\b(?:list|show|get|find)\b.*\b(?:medical\s+records?|history)\b.*\b(?:for|of)\s+pet\b',
@@ -387,16 +410,12 @@ LIST_RECORDS_BY_CUSTOMER = re.compile(
 )
 
 
-# A pet_owner referring to their own pet without naming it - "my pet", "my
-# dog", "my cat", etc. Only meaningful for role='pet_owner' - staff have no
-# "my pet" of their own to resolve. Without this, a question like "what
-# vaccines has my pet had?" mentions no name at all, so find_pet_candidates()
-# treats it exactly like a genuinely pet-less question (e.g. "what vaccines
-# does a puppy need?") and falls through to slow, unscoped RAG retrieval -
-# wasteful for a single-pet owner (there's only one possible answer) and
-# outright wrong for a multi-pet owner (nothing tells retrieval which pet is
-# meant, so it mixes both pets' records into one ungrounded answer).
-SELF_PET_MENTION = re.compile(r'\bmy\s+(?:pet|dog|cat|puppy|kitten|companion)s?\b', re.IGNORECASE)
+# A pet_owner referring to their own pet or recent visit without naming it - "my pet",
+# "the last visit", "aftercare", etc. Only meaningful for role='pet_owner'.
+SELF_PET_MENTION = re.compile(
+    r'\bmy\s+(?:pet|dog|cat|puppy|kitten|companion)s?\b|\b(?:the|my)\s+(?:last|latest|recent)?\s*(?:visit|checkup|appointment|aftercare)\b|\baftercare\b',
+    re.IGNORECASE
+)
 
 # Matches "pet Max" specifically - tried first since it's unambiguous.
 PET_MENTION = re.compile(r'\bpet\s+[\'"]?([A-Za-z]+)[\'"]?', re.IGNORECASE)
@@ -592,8 +611,8 @@ def _bare_staff_pet_mention(question: str):
 _CLINIC_ANCHOR = r'(?:your|the\s+clinic\'?s?|clinic\'?s?|vetcare\'?s?)'
 
 CLINIC_HOURS = re.compile(
-    rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+)?hours\b|'
-    r'\b(?:business|opening|working)\s+hours\b|'  # unanchored: these compound forms are unambiguous on their own
+    rf'\b{_CLINIC_ANCHOR}\s+(?:business\s+|opening\s+|working\s+|operating\s+)?hours\b|'
+    r'\b(?:business|opening|working|operating)\s+hours\b|'  # unanchored: these compound forms are unambiguous on their own
     r'\bwhat\s+time\b.*\b(?:do\s+you|does\s+the\s+clinic|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bwhen\s+(?:are\s+you|do\s+you|is\s+the\s+clinic)\b.*\b(?:open|close|closing)\b|'
     r'\bare\s+you\s+open\b|'
@@ -1190,9 +1209,8 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
             return _count_staff_by_role('veterinarian')
 
     # For any query that might be about a specific pet (records, vaccinations,
-    # next appointment, etc.), try to resolve the pet_id first. This is the
-    # most specific action and should be prioritized over broader matches
-    # like searching by customer name.
+    # last visit aftercare, next appointment, etc.), try to resolve the pet_id first.
+    is_last_visit_query = LAST_VISIT_AFTERCARE.search(question)
     is_pet_record_query = LIST_RECORDS_BY_PET.search(question)
     is_vaccine_query = _looks_like_vaccine_question(question)
     # Staff-only here: pet_owner's "next appointment" is handled by the
@@ -1200,16 +1218,19 @@ def try_structured_answer(question: str, role: str, customer_id: str = None, kno
     # to customer_id - no name resolution needed the way staff's is).
     is_next_appointment_query = role in STAFF_ROLES and NEXT_APPOINTMENT_MENTION.search(question)
 
-    if is_pet_record_query or is_vaccine_query or is_next_appointment_query:
+    if is_last_visit_query or is_pet_record_query or is_vaccine_query or is_next_appointment_query:
         # Receptionist doesn't get medical-record detail (matches the
         # backend/UI block elsewhere) - vaccinations and appointments are
         # still fine, those fall through to the branches below unaffected.
-        if is_pet_record_query and role == 'receptionist':
+        if (is_last_visit_query or is_pet_record_query) and role == 'receptionist':
             return _clinical_detail_redirect()
 
         pet_id = known_pet_id or resolve_pet_id(question, role=role, customer_id=customer_id)
         if pet_id:
             # Now, check which type of query it was.
+            if is_last_visit_query:
+                return _last_visit_aftercare_for_pet(pet_id, role, customer_id)
+
             if is_pet_record_query:
                 return _list_records_by_pet(pet_id, role, customer_id)
 
@@ -1424,9 +1445,7 @@ def _clinic_hours() -> dict:
     # that actually enforces bookable slots) has no lunch-break concept at
     # all, so stating "closed for lunch" here would be the exact bug this
     # function exists to avoid: telling a customer something the booking
-    # flow doesn't actually honor. Also see the business_hours_start/end
-    # comments in database/seed.sql for the more direct version of that bug
-    # (08:00-18:00 seeded vs. the real 09:00-18:30 enforced).
+    # flow doesn't actually honor.
     settings = _get_clinic_settings()
     if not settings.get('business_hours_start') or not settings.get('business_hours_end'):
         return {
@@ -1434,12 +1453,28 @@ def _clinic_hours() -> dict:
             'sources': [], 'chunks_used': 0, 'structured': True
         }
 
-    clinic_name = settings.get('clinic_name', 'The clinic')
-    days = settings.get('working_days', '').replace(',', ', ')
-    answer = f"{clinic_name} is open"
-    if days:
-        answer += f" {days}"
-    answer += f", {settings['business_hours_start']} to {settings['business_hours_end']}."
+    clinic_name = settings.get('clinic_name', 'VetCare Pro')
+    raw_days = settings.get('working_days', '')
+    if raw_days == 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday':
+        days_str = "Monday through Saturday"
+        closed_str = " We are closed on Sundays."
+    elif raw_days:
+        days_str = raw_days.replace(',', ', ')
+        closed_str = ""
+    else:
+        days_str = ""
+        closed_str = ""
+
+    start_time = settings['business_hours_start']
+    end_time = settings['business_hours_end']
+
+    if start_time == '09:00' and end_time == '18:30':
+        time_str = "from 09:00 to 18:30 (9:00 AM to 6:30 PM)"
+    else:
+        time_str = f"from {start_time} to {end_time}"
+
+    days_part = f" {days_str}" if days_str else ""
+    answer = f"{clinic_name} is open{days_part} {time_str}.{closed_str}"
 
     return {
         'answer': answer,
@@ -2824,6 +2859,147 @@ def _list_records_by_pet(pet_id: str, role: str, customer_id: str = None) -> dic
             'source_id': r[0],
             'metadata': {'pet_name': pet_name, 'visit_date': str(r[1])}
         } for r in record_rows],
+        'chunks_used': 0,
+        'structured': True
+    }
+
+
+def _last_visit_aftercare_for_pet(pet_id: str, role: str, customer_id: str = None) -> dict:
+    """Fetches visit details, medical notes, prescriptions, and recommended aftercare for a pet's last visit."""
+    conn = get_raw_db_connection()
+    try:
+        with conn.cursor() as cur:
+            if role == 'pet_owner' and customer_id:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, p.species, p.breed, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON p.customer_id = c.customer_id
+                    WHERE p.pet_id = %s AND p.customer_id = %s
+                    """,
+                    (pet_id, customer_id)
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT p.pet_name, p.species, p.breed, c.first_name, c.last_name
+                    FROM pets p
+                    JOIN customers c ON p.customer_id = c.customer_id
+                    WHERE p.pet_id = %s
+                    """,
+                    (pet_id,)
+                )
+            pet_row = cur.fetchone()
+            if not pet_row:
+                return {'answer': 'Could not find the specified pet.', 'sources': [], 'chunks_used': 0, 'structured': True}
+
+            pet_name, species, breed, owner_first, owner_last = pet_row
+            owner_name = f'{owner_first} {owner_last}'
+
+            # Fetch the MOST RECENT medical record by visit_date DESC
+            cur.execute(
+                """
+                SELECT record_id, visit_date, chief_complaint, symptoms, diagnosis, treatment, prescription, notes
+                FROM medical_records
+                WHERE pet_id = %s
+                ORDER BY visit_date DESC
+                LIMIT 1
+                """,
+                (pet_id,)
+            )
+            record_row = cur.fetchone()
+
+            # Also check if there is a completed appointment
+            cur.execute(
+                """
+                SELECT appointment_id, appointment_date, appointment_time, appointment_type, reason, notes
+                FROM appointments
+                WHERE pet_id = %s AND status = 'completed'
+                ORDER BY appointment_date DESC, appointment_time DESC
+                LIMIT 1
+                """,
+                (pet_id,)
+            )
+            appt_row = cur.fetchone()
+
+    finally:
+        conn.close()
+
+    if not record_row and not appt_row:
+        return {
+            'answer': f'No medical visit or appointment records found for pet {pet_name}{_owner_suffix(role, owner_name)}.',
+            'sources': [{'source_type': 'pet', 'source_id': pet_id, 'metadata': {}}],
+            'chunks_used': 0,
+            'structured': True
+        }
+
+    pet_desc = f"{breed or species or 'pet'} {pet_name}".strip()
+    sources = []
+    lines = []
+
+    rec_date = record_row[1] if record_row else None
+    appt_date = appt_row[1] if appt_row else None
+
+    # 1. Last Visit Summary Header
+    lines.append(f"**Last Visit Summary for {pet_desc}:**")
+    if appt_row and (not rec_date or str(appt_date) >= str(rec_date)):
+        appt_id, a_date, a_time, a_type, a_reason, a_notes = appt_row
+        lines.append(f"• **Date:** {_fmt_date(a_date)}")
+        lines.append(f"• **Type / Reason:** {(a_type or 'checkup').capitalize()} — {a_reason or 'Routine visit'}")
+        if a_notes:
+            lines.append(f"• **Visit Notes:** {a_notes}")
+        sources.append({
+            'source_type': 'appointment',
+            'source_id': str(appt_id),
+            'metadata': {'pet_id': pet_id, 'pet_name': pet_name, 'appointment_date': str(a_date)}
+        })
+    elif record_row:
+        r_id, r_date, complaint, symptoms, diagnosis, treatment, prescription, notes = record_row
+        lines.append(f"• **Date:** {_fmt_date(r_date)}")
+        if complaint:
+            lines.append(f"• **Reason / Complaint:** {complaint}")
+        if diagnosis:
+            lines.append(f"• **Diagnosis:** {diagnosis}")
+        if treatment:
+            lines.append(f"• **Treatment:** {treatment}")
+        sources.append({
+            'source_type': 'medical_record',
+            'source_id': str(r_id),
+            'metadata': {'pet_id': pet_id, 'pet_name': pet_name, 'visit_date': str(r_date)}
+        })
+
+    # 2. Medical Record / Prescription & Treatment Details
+    if record_row:
+        r_id, r_date, complaint, symptoms, diagnosis, treatment, prescription, notes = record_row
+        if not any(s.get('source_id') == str(r_id) and s.get('source_type') == 'medical_record' for s in sources):
+            sources.append({
+                'source_type': 'medical_record',
+                'source_id': str(r_id),
+                'metadata': {'pet_id': pet_id, 'pet_name': pet_name, 'visit_date': str(r_date)}
+            })
+
+        lines.append("\n**Medical Record & Prescription Details:**")
+        if diagnosis:
+            lines.append(f"• **Diagnosis ({_fmt_date(r_date)}):** {diagnosis}")
+        if treatment:
+            lines.append(f"• **Treatment:** {treatment}")
+        if prescription:
+            lines.append(f"• **Prescription / Medication:**\n{prescription}")
+        if notes:
+            lines.append(f"• **Vet Notes:** {notes}")
+
+    # 3. Recommended Aftercare Guidelines
+    lines.append("\n**Recommended Aftercare Guidelines:**")
+    lines.append("• **Monitoring:** Observe your pet's energy levels, appetite, and posture closely over the next 24–48 hours.")
+    lines.append("• **Hydration & Rest:** Provide fresh, clean drinking water at all times and a quiet, comfortable space to rest.")
+    lines.append("• **Medication Adherence:** Administer all ongoing or prescribed medications/supplements strictly as directed.")
+    lines.append("• **When to Contact the Clinic:** Contact your veterinarian if you observe persistent vomiting, lethargy, loss of appetite, or unexpected symptoms.")
+
+    answer = "\n".join(lines)
+
+    return {
+        'answer': answer,
+        'sources': sources,
         'chunks_used': 0,
         'structured': True
     }

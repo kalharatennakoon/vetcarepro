@@ -48,7 +48,7 @@ const statusIcon = {
 
 const PetOwnerAIPhotoGuidance = () => {
   const { customer, logout } = useCustomerAuth();
-  const { showError } = useNotification();
+  const { showSuccess, showError } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -195,8 +195,23 @@ const PetOwnerAIPhotoGuidance = () => {
     }
   };
 
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTo(0, 0);
+      if (document.body) document.body.scrollTop = 0;
+      document.getElementById('main-content')?.scrollTo(0, 0);
+      const page = document.querySelector('.po-profile-page');
+      if (page) page.scrollTop = 0;
+    };
+    scrollToTop();
+    const timer = setTimeout(scrollToTop, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   const handleSignOut = async () => {
     await logout();
+    showSuccess('You have been signed out successfully', 2000);
     navigate('/');
   };
 
@@ -204,7 +219,16 @@ const PetOwnerAIPhotoGuidance = () => {
     <a
       href={path}
       className={`po-profile-nav-item ${location.pathname === path ? 'active' : ''}`}
-      onClick={(e) => { e.preventDefault(); navigate(path); }}
+      onClick={(e) => {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTo(0, 0);
+        if (document.body) document.body.scrollTop = 0;
+        document.getElementById('main-content')?.scrollTo(0, 0);
+        const page = document.querySelector('.po-profile-page');
+        if (page) page.scrollTop = 0;
+        navigate(path);
+      }}
     >
       <i className={`fas ${icon}`}></i> {label}
     </a>
@@ -249,9 +273,11 @@ const PetOwnerAIPhotoGuidance = () => {
         </aside>
 
         <main className="po-profile-main">
-          <div className="po-profile-welcome">
-            <h1>AI Visual Care</h1>
-            <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
+          <div className="po-profile-hero">
+            <div className="po-profile-welcome">
+              <h1>AI Visual Care</h1>
+              <p>Upload a photo of your pet for general AI guidance on what to do next.</p>
+            </div>
           </div>
 
           <div className="po-photo-disclaimer">

@@ -1,0 +1,490 @@
+/* Create / Edit Medical Record Page Modern Styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+.medrec-create-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem 3rem 1.5rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #0f172a;
+}
+
+/* Glass Header Hero Banner */
+.medrec-create-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+}
+
+.medrec-create-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.medrec-create-icon-tile {
+  width: 52px;
+  height: 52px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.5rem;
+  box-shadow: 0 8px 18px -4px rgba(79, 70, 229, 0.35);
+  flex-shrink: 0;
+}
+
+.medrec-create-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.medrec-create-subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Glass Pill Back Button */
+.medrec-create-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.medrec-create-back-btn:hover {
+  background: #f8fafc;
+  color: #1e293b;
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+/* Glass Form Card Container */
+.medrec-create-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1.25rem;
+  padding: 2rem;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Form Inner Header */
+.medrec-form-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.medrec-form-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.medrec-form-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.medrec-form-subtitle {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.medrec-form-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  border: none;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.medrec-form-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Error Alert Box */
+.medrec-form-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.15rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  color: #991b1b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+}
+
+.medrec-form-error-icon {
+  font-size: 1.1rem;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+/* Notice */
+.medrec-form-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+  background: #f8fafc;
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  border: 1px solid #f1f5f9;
+  width: fit-content;
+}
+
+.medrec-form-required {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+/* Section Box */
+.medrec-form-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s;
+}
+
+.medrec-form-section:focus-within {
+  border-color: #cbd5e1;
+}
+
+.medrec-form-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.medrec-form-section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.5rem;
+  background: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.medrec-form-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* Grids */
+.medrec-form-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.medrec-form-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.medrec-form-grid-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .medrec-form-grid-4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .medrec-form-grid-2col,
+  .medrec-form-grid-3col,
+  .medrec-form-grid-4col {
+    grid-template-columns: 1fr;
+  }
+
+  .medrec-create-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.medrec-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.medrec-form-group-full {
+  grid-column: 1 / -1;
+}
+
+.medrec-form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Input Fields */
+.medrec-form-input,
+.medrec-form-select,
+.medrec-form-textarea {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.medrec-form-input:focus,
+.medrec-form-select:focus,
+.medrec-form-textarea:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+  background-color: #ffffff;
+}
+
+.medrec-form-input:disabled,
+.medrec-form-select:disabled {
+  background-color: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.medrec-form-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.medrec-form-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.2rem;
+}
+
+/* Vital Sign Card Box */
+.vital-input-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: border-color 0.2s;
+}
+
+.vital-input-card:focus-within {
+  border-color: #818cf8;
+  background: #ffffff;
+}
+
+.vital-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vital-card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vital-card-unit {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.35rem;
+}
+
+/* Checkbox Toggle Card */
+.medrec-checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.medrec-checkbox-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.medrec-checkbox-card input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #4f46e5;
+  cursor: pointer;
+}
+
+.medrec-checkbox-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+/* Action Buttons */
+.medrec-action-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.medrec-btn-secondary {
+  padding: 0.65rem 1.35rem;
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.medrec-btn-secondary:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #1e293b;
+  border-color: #94a3b8;
+}
+
+.medrec-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.medrec-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4338ca 0%, #0891b2 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+.medrec-btn-primary:disabled,
+.medrec-btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading State */
+.medrec-page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1.5rem;
+  gap: 1rem;
+}
+
+.medrec-page-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid #e2e8f0;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: medrecSpin 0.8s linear infinite;
+}
+
+@keyframes medrecSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

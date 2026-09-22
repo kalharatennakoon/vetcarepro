@@ -496,6 +496,9 @@ const getPandemicRisk = async (req, res) => {
  */
 const getDailyBriefing = async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     const briefing = await getBriefing(req.user);
     res.json({ success: true, ...briefing });
   } catch (error) {

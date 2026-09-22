@@ -101,20 +101,58 @@ export const getAppointmentById = async (appointmentId) => {
 };
 
 /**
+ * Helper to generate a unique appointment_id (e.g. 'APPT-2026-0102').
+ * Scans existing database records to find the highest numeric suffix,
+ * preventing primary key collisions with hardcoded seed/demo data.
+ */
+export const generateNextAppointmentId = async (appointmentDate) => {
+  const year = appointmentDate
+    ? new Date(appointmentDate).getFullYear()
+    : new Date().getFullYear();
+
+  const query = `
+    SELECT appointment_id 
+    FROM appointments 
+    WHERE appointment_id LIKE 'APPT-%'
+  `;
+  const result = await pool.query(query);
+
+  let maxNum = 0;
+  for (const row of result.rows) {
+    const match = row.appointment_id.match(/\d+$/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+
+  const nextNum = maxNum + 1;
+  return `APPT-${year}-${String(nextNum).padStart(4, '0')}`;
+};
+
+/**
  * Create new appointment
  */
 export const createAppointment = async (appointmentData, createdBy) => {
+  let appointmentId = appointmentData.appointment_id;
+  if (!appointmentId) {
+    appointmentId = await generateNextAppointmentId(appointmentData.appointment_date);
+  }
+
   const query = `
     INSERT INTO appointments (
-      customer_id, pet_id, veterinarian_id, appointment_date,
+      appointment_id, customer_id, pet_id, veterinarian_id, appointment_date,
       appointment_time, duration_minutes, appointment_type,
       reason, estimated_cost, status, notes, created_by
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *
   `;
 
   const values = [
+    appointmentId,
     appointmentData.customer_id,
     appointmentData.pet_id,
     appointmentData.veterinarian_id || null,

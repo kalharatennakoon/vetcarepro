@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getAppointments, deleteAppointment, updateAppointmentStatus } from '../services/appointmentService';
 import { sendAppointmentConfirmationEmail } from '../services/emailService';
@@ -7,6 +7,7 @@ import { useNotification } from '../context/NotificationContext';
 import { addDeferredMedicalReport } from '../services/medicalReportQueue';
 import AppointmentForm from '../components/AppointmentForm';
 import Layout from '../components/Layout';
+import '../styles/AppointmentsModern.css';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -17,6 +18,12 @@ const Appointments = () => {
   useEffect(() => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTo(0, 0);
+    document.getElementById('main-content')?.scrollTo(0, 0);
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [filterDate, setFilterDate] = useState('');
@@ -51,8 +58,6 @@ const Appointments = () => {
   const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
   const canCreateBilling = user?.role === 'admin' || user?.role === 'receptionist';
-  // Admin/receptionist manage the whole schedule; a veterinarian may only
-  // start an appointment that's assigned to them.
   const canStartAppointment = (appointment) =>
     user?.role === 'admin' || user?.role === 'receptionist' ||
     (user?.role === 'veterinarian' && appointment.veterinarian_id === user.user_id);
@@ -101,8 +106,6 @@ const Appointments = () => {
     }
   };
 
-  // Helper functions - defined early to avoid hoisting issues
-
   const formatActualDuration = (startedAt, completedAt) => {
     if (!startedAt || !completedAt) return null;
     const diffMs = new Date(completedAt) - new Date(startedAt);
@@ -115,7 +118,6 @@ const Appointments = () => {
     return `${minutes}m`;
   };
 
-  // Helper function to format date as YYYY-MM-DD without timezone conversion
   const formatDateLocal = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -123,19 +125,32 @@ const Appointments = () => {
     return `${year}-${month}-${day}`;
   };
 
-  // Helper function to convert date string from database to YYYY-MM-DD
-  // Database returns dates like "2026-02-13T00:00:00.000Z" or "2026-02-13"
   const getISTDate = (dateString) => {
     if (!dateString) return '';
-    // Extract just the date part (YYYY-MM-DD) from the ISO string
     return dateString.split('T')[0];
   };
 
-  useEffect(() => {
-    fetchAppointments();
+  const fetchAppointments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const filters = {};
+      if (filterStatus) filters.status = filterStatus;
+      
+      const response = await getAppointments(filters);
+      setAppointments(response.data.appointments || []);
+      setError('');
+    } catch (err) {
+      setError('Failed to load appointments');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   }, [filterStatus]);
 
-  // Navigate calendar to selected date when date filter changes in calendar view
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
   useEffect(() => {
     if (viewMode === 'calendar' && filterDate) {
       const selectedDate = new Date(filterDate + 'T00:00:00');
@@ -143,7 +158,6 @@ const Appointments = () => {
     }
   }, [filterDate, viewMode]);
 
-  // Check if navigated from dashboard with specific appointment to edit
   useEffect(() => {
     if (location.state?.editAppointmentId) {
       setEditingId(location.state.editAppointmentId);
@@ -177,7 +191,6 @@ const Appointments = () => {
     }
   }, [location.state]);
 
-  // Once appointments load, open the specific appointment detail for the pending view
   useEffect(() => {
     if (!pendingViewDate || appointments.length === 0) return;
     if (pendingViewApptId) {
@@ -186,9 +199,8 @@ const Appointments = () => {
     }
     setPendingViewDate(null);
     setPendingViewApptId(null);
-  }, [appointments, pendingViewDate]);
+  }, [appointments, pendingViewDate, pendingViewApptId]);
 
-  // Once appointments load, open the day modal for the pending date
   useEffect(() => {
     if (!pendingOpenDayModal || appointments.length === 0) return;
     const dateStr = pendingOpenDayModal;
@@ -199,7 +211,6 @@ const Appointments = () => {
     setPendingOpenDayModal(null);
   }, [appointments, pendingOpenDayModal]);
 
-  // Scroll to and briefly highlight the appointment when switching to list view
   useEffect(() => {
     if (!highlightedApptId || viewMode !== 'list') return;
     const timer = setTimeout(() => {
@@ -212,24 +223,7 @@ const Appointments = () => {
     return () => { clearTimeout(timer); clearTimeout(clearTimer); };
   }, [highlightedApptId, viewMode, appointments]);
 
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true);
-      const filters = {};
-      // Always fetch all appointments - we'll filter on client side
-      // Only apply status filter to API
-      if (filterStatus) filters.status = filterStatus;
-      
-      const response = await getAppointments(filters);
-      setAppointments(response.data.appointments || []);
-      setError('');
-    } catch (err) {
-      setError('Failed to load appointments');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleDelete = (id) => {
     setPendingDeleteApptId(id);
@@ -319,11 +313,9 @@ const Appointments = () => {
     }
 
     navigate('/dashboard');
-
     closeMedicalReportPrompt();
   };
 
-  // Filter appointments based on search query, date, status, and vet
   const filteredAppointments = appointments.filter(appointment => {
     try {
       const matchesSearch = !searchQuery || 
@@ -332,7 +324,6 @@ const Appointments = () => {
         appointment.customer_last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         appointment.veterinarian_name?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Apply date filter in both views
       const appointmentDate = getISTDate(appointment.appointment_date);
       const matchesDate = !filterDate || appointmentDate === filterDate;
       
@@ -346,39 +337,75 @@ const Appointments = () => {
     }
   });
 
-  // Navigate to first filtered appointment when search/filters change in calendar view
   useEffect(() => {
     const filtersChanged = searchQuery !== lastSearchQuery || 
                           filterStatus !== lastFilterStatus || 
                           selectedVet !== lastSelectedVet;
     
-    if (viewMode === 'calendar' && filtersChanged && filteredAppointments.length > 0) {
-      const firstApt = filteredAppointments[0];
-      const aptDateStr = getISTDate(firstApt.appointment_date);
-      const aptDate = new Date(aptDateStr + 'T00:00:00');
-      setCurrentMonth(new Date(aptDate.getFullYear(), aptDate.getMonth(), 1));
-      
+    if (viewMode === 'calendar' && filtersChanged) {
       setLastSearchQuery(searchQuery);
       setLastFilterStatus(filterStatus);
       setLastSelectedVet(selectedVet);
-    }
-  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments.length]);
 
-  // Get calendar grid data
+      if (filteredAppointments.length > 0) {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonthIdx = today.getMonth();
+        const todayStr = formatDateLocal(today);
+
+        const currentMonthAppts = filteredAppointments.filter(apt => {
+          const aptDateStr = getISTDate(apt.appointment_date);
+          if (!aptDateStr) return false;
+          const aptDate = new Date(aptDateStr + 'T00:00:00');
+          return aptDate.getFullYear() === currentYear && aptDate.getMonth() === currentMonthIdx;
+        });
+
+        if (currentMonthAppts.length > 0) {
+          setCurrentMonth(new Date(currentYear, currentMonthIdx, 1));
+        } else {
+          const futureAppts = filteredAppointments
+            .filter(apt => {
+              const aptDateStr = getISTDate(apt.appointment_date);
+              return aptDateStr && aptDateStr >= todayStr;
+            })
+            .sort((a, b) => getISTDate(a.appointment_date).localeCompare(getISTDate(b.appointment_date)));
+
+          if (futureAppts.length > 0) {
+            const nextAptStr = getISTDate(futureAppts[0].appointment_date);
+            const nextAptDate = new Date(nextAptStr + 'T00:00:00');
+            setCurrentMonth(new Date(nextAptDate.getFullYear(), nextAptDate.getMonth(), 1));
+          } else {
+            const pastAppts = [...filteredAppointments].sort((a, b) =>
+              getISTDate(b.appointment_date).localeCompare(getISTDate(a.appointment_date))
+            );
+            const pastAptStr = getISTDate(pastAppts[0].appointment_date);
+            const pastAptDate = new Date(pastAptStr + 'T00:00:00');
+            setCurrentMonth(new Date(pastAptDate.getFullYear(), pastAptDate.getMonth(), 1));
+          }
+        }
+      }
+    }
+  }, [viewMode, searchQuery, filterStatus, selectedVet, filteredAppointments, lastFilterStatus, lastSearchQuery, lastSelectedVet]);
+
   const getCalendarDays = () => {
     try {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
       const firstDay = new Date(year, month, 1);
       const startDate = new Date(firstDay);
-      // Offset so week starts on Monday (Mon=0 ... Sun=6)
       startDate.setDate(startDate.getDate() - (firstDay.getDay() + 6) % 7);
+
+      const lastDay = new Date(year, month + 1, 0);
+      const endDate = new Date(lastDay);
+      const remainingDaysInWeek = (7 - ((lastDay.getDay() + 6) % 7 + 1)) % 7;
+      endDate.setDate(endDate.getDate() + remainingDaysInWeek);
+
+      const diffMs = endDate.getTime() - startDate.getTime();
+      const totalDays = Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
       
       const days = [];
       const current = new Date(startDate);
       
-      // For calendar view, show all appointments that match search/status/vet filters
-      // regardless of date filter (date filter only highlights the selected date)
       const calendarAppointments = appointments.filter(apt => {
         try {
           const matchesSearch = !searchQuery || 
@@ -397,7 +424,7 @@ const Appointments = () => {
         }
       });
       
-      for (let i = 0; i < 42; i++) {
+      for (let i = 0; i < totalDays; i++) {
         const dateStr = formatDateLocal(current);
         const dayAppointments = calendarAppointments.filter(apt => {
           try {
@@ -436,7 +463,7 @@ const Appointments = () => {
 
   const goToToday = () => {
     setCurrentMonth(new Date());
-    setFilterDate(''); // Clear date filter when going to today
+    setFilterDate('');
   };
 
   const handleDayClick = (dateStr, dayAppointments) => {
@@ -493,7 +520,6 @@ const Appointments = () => {
   };
 
   const formatDate = (dateString) => {
-    // Extract date part and parse it as local date
     const datePart = dateString.split('T')[0];
     const [year, month, day] = datePart.split('-');
     const date = new Date(year, month - 1, day);
@@ -517,7 +543,6 @@ const Appointments = () => {
       year: 'numeric'
     });
   };
-
 
   if (showForm) {
     return (
@@ -548,1694 +573,837 @@ const Appointments = () => {
 
   return (
     <Layout>
-          {/* Page Header */}
-          <div style={styles.pageHeader}>
-            <div>
-              <h2 style={styles.title}>Appointments</h2>
-              <p style={styles.subtitle}>Manage clinic appointments and schedules</p>
+      <div className="appts-container">
+        {/* Page Header Card */}
+        <div className="appts-header-card">
+          <div className="appts-header-content">
+            <div className="appts-header-icon">
+              <i className="fas fa-calendar-alt"></i>
             </div>
-            <button 
-              onClick={() => setShowForm(true)}
-              style={styles.addButton}
+            <div>
+              <h1 className="appts-header-title">Appointments</h1>
+              <p className="appts-header-subtitle">Manage clinic appointments and schedules</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowForm(true)}
+            className="appts-btn-schedule"
+          >
+            <i className="fas fa-plus"></i>
+            Schedule Appointment
+          </button>
+        </div>
+
+        {/* Toolbar Card */}
+        <div className="appts-toolbar-card">
+          <div className="appts-search-box">
+            <i className="fas fa-search appts-search-icon"></i>
+            <input
+              type="text"
+              placeholder="Search appointments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="appts-search-input"
+            />
+          </div>
+
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="appts-select"
+          >
+            <option value="">All Status</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+              className="appts-date-input"
+              placeholder="Filter by date"
+            />
+            {viewMode === 'list' && (
+              <button
+                onClick={() => setFilterDate(formatDateLocal(new Date()))}
+                className="appts-btn-today-pill"
+                title="Filter today's appointments"
+              >
+                <i className="fas fa-calendar-day"></i>
+                Today
+              </button>
+            )}
+          </div>
+
+          {user?.role === 'veterinarian' && (
+            <button
+              onClick={() => setSelectedVet(selectedVet ? '' : String(user.user_id))}
+              className={`appts-btn-my-appts ${selectedVet ? 'is-active' : 'is-inactive'}`}
+              title="Show only appointments assigned to you"
             >
-              <i className="fas fa-plus" style={{ marginRight: '0.5rem' }}></i>
-              Schedule Appointment
+              <i className="fas fa-user-md"></i>
+              My Appointments
+            </button>
+          )}
+
+          <div className="appts-view-toggle-group">
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`appts-view-toggle-btn ${viewMode === 'calendar' ? 'is-active' : ''}`}
+            >
+              <i className="far fa-calendar"></i>
+              Calendar
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`appts-view-toggle-btn ${viewMode === 'list' ? 'is-active' : ''}`}
+            >
+              <i className="fas fa-list"></i>
+              List
             </button>
           </div>
+        </div>
 
-          {/* Toolbar */}
-          <div style={styles.toolbar}>
-            {/* Search Bar */}
-            <div style={styles.searchContainer}>
-              <i className="fas fa-search" style={styles.searchIcon}></i>
-              <input
-                type="text"
-                placeholder="Search appointments..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={styles.searchInput}
-              />
-            </div>
-
-            {/* Filters */}
-            <div style={styles.filterGroup}>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                style={styles.filterSelect}
-              >
-                <option value="">All Status</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="in_progress">In Progress</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            {/* Date Filter */}
-            <div style={styles.filterGroup}>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="date"
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                  style={styles.filterInput}
-                  placeholder="Filter by date"
-                />
-                {viewMode === 'list' && (
-                  <button
-                    onClick={() => setFilterDate(formatDateLocal(new Date()))}
-                    style={styles.todayButton}
-                    title="Filter today's appointments"
-                  >
-                    <i className="fas fa-calendar-day" style={{ marginRight: '0.25rem' }}></i>
-                    Today
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* My Appointments - veterinarian only, filters to appointments assigned to them */}
-            {user?.role === 'veterinarian' && (
-              <div style={styles.filterGroup}>
-                <button
-                  onClick={() => setSelectedVet(selectedVet ? '' : String(user.user_id))}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    fontWeight: '500',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    border: selectedVet ? '1px solid #3B82F6' : '1px solid #d1d5db',
-                    backgroundColor: selectedVet ? '#3B82F6' : 'white',
-                    color: selectedVet ? 'white' : '#374151',
-                  }}
-                  title="Show only appointments assigned to you"
-                >
-                  <i className="fas fa-user-md" style={{ marginRight: '0.4rem' }}></i>
-                  My Appointments
+        {/* Active Filters Bar */}
+        {(filterStatus || searchQuery || filterDate || selectedVet) && (
+          <div className="appts-active-filters-bar">
+            <span className="appts-filter-label">Active filters:</span>
+            {selectedVet && (
+              <span className="appts-filter-pill">
+                My Appointments
+                <button onClick={() => setSelectedVet('')} className="appts-filter-pill-close">
+                  <i className="fas fa-times"></i>
                 </button>
-              </div>
+              </span>
             )}
-
-            {/* View Toggle */}
-            <div style={styles.viewToggle}>
-              <button
-                onClick={() => setViewMode('calendar')}
-                style={{
-                  ...styles.viewToggleButton,
-                  ...(viewMode === 'calendar' ? styles.viewToggleButtonActive : {})
-                }}
-              >
-                <i className="far fa-calendar" style={{ marginRight: '0.5rem' }}></i>
-                Calendar
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  ...styles.viewToggleButton,
-                  ...(viewMode === 'list' ? styles.viewToggleButtonActive : {})
-                }}
-              >
-                <i className="fas fa-list" style={{ marginRight: '0.5rem' }}></i>
-                List
-              </button>
-            </div>
+            {filterStatus && (
+              <span className="appts-filter-pill">
+                Status: {filterStatus}
+                <button onClick={() => setFilterStatus('')} className="appts-filter-pill-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </span>
+            )}
+            {searchQuery && (
+              <span className="appts-filter-pill">
+                Search: "{searchQuery}"
+                <button onClick={() => setSearchQuery('')} className="appts-filter-pill-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </span>
+            )}
+            {filterDate && (
+              <span className="appts-filter-pill">
+                Date: {filterDate}
+                <button onClick={() => setFilterDate('')} className="appts-filter-pill-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </span>
+            )}
+            <button
+              onClick={() => {
+                setFilterStatus('');
+                setSearchQuery('');
+                setFilterDate('');
+                setSelectedVet('');
+              }}
+              className="appts-clear-all-link"
+            >
+              Clear all
+            </button>
           </div>
+        )}
 
-          {/* Active Filters Display */}
-          {(filterStatus || searchQuery || filterDate || selectedVet) && (
-            <div style={styles.activeFilters}>
-              <span style={styles.activeFiltersLabel}>Active filters:</span>
-              {selectedVet && (
-                <span style={styles.filterPill}>
-                  My Appointments
-                  <button
-                    onClick={() => setSelectedVet('')}
-                    style={styles.filterPillClose}
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </span>
-              )}
-              {filterStatus && (
-                <span style={styles.filterPill}>
-                  Status: {filterStatus}
-                  <button
-                    onClick={() => setFilterStatus('')}
-                    style={styles.filterPillClose}
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </span>
-              )}
-              {searchQuery && (
-                <span style={styles.filterPill}>
-                  Search: "{searchQuery}"
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    style={styles.filterPillClose}
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </span>
-              )}
-              {filterDate && (
-                <span style={styles.filterPill}>
-                  Date: {filterDate}
-                  <button
-                    onClick={() => setFilterDate('')}
-                    style={styles.filterPillClose}
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </span>
-              )}
-              <button
-                onClick={() => {
-                  setFilterStatus('');
-                  setSearchQuery('');
-                  setFilterDate('');
-                  setSelectedVet('');
-                }
-}
-                style={styles.clearAllButton}
-              >
-                Clear all
-              </button>
-            </div>
-          )}
+        {/* Error Message */}
+        {error && (
+          <div ref={errorRef} className="appts-alert-error">
+            <i className="fas fa-exclamation-circle"></i>
+            {error}
+          </div>
+        )}
 
-          {/* Error Message */}
-          {error && (
-            <div ref={errorRef} style={styles.errorBox}>
-              <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
-              {error}
-            </div>
-          )}
-
-          {/* Loading State */}
-          {loading ? (
-            <div style={styles.loadingContainer}>
-              <div style={styles.spinner}></div>
-              <p>Loading appointments...</p>
-            </div>
-          ) : (
-            <>
-              {viewMode === 'calendar' ? (
-                /* Calendar View */
-                <div style={styles.calendarContainer}>
-                  <div style={styles.calendarHeader}>
-                    <h3 style={styles.calendarTitle}>{formatMonthYear()}</h3>
-                    <div style={styles.calendarControls}>
-                      <button onClick={goToToday} style={styles.todayButton}>
-                        <i className="fas fa-calendar-day" style={{ marginRight: '0.5rem' }}></i>
-                        Today
-                      </button>
-                      <button onClick={() => navigateMonth(-1)} style={styles.navButton}>
-                        <i className="fas fa-chevron-left"></i>
-                      </button>
-                      <button onClick={() => navigateMonth(1)} style={styles.navButton}>
-                        <i className="fas fa-chevron-right"></i>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Calendar instructions */}
-                  {!filterDate && (
-                    <div style={styles.calendarInstructions}>
-                      <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-                      Click on a day with appointments to view all scheduled visits for that date.
-                    </div>
-                  )}
-                  
-                  {filterDate && (
-                    <div style={styles.calendarInstructions}>
-                      <i className="fas fa-filter" style={{ marginRight: '0.5rem' }}></i>
-                      Showing appointments for {new Date(filterDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-                      <button 
-                        onClick={() => setFilterDate('')}
-                        style={{ marginLeft: '0.5rem', color: '#3b82f6', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-                      >
-                        Clear filter
-                      </button>
-                    </div>
-                  )}
-
-                  <div style={styles.calendarGrid}>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                      <div key={day} style={styles.dayHeader}>{day}</div>
-                    ))}
-
-                    {getCalendarDays().map((day, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          ...styles.calendarDay,
-                          ...(day.isCurrentMonth ? {} : styles.calendarDayOtherMonth),
-                          ...(day.isToday ? styles.calendarDayToday : {}),
-                          ...(day.isSelectedDate ? styles.calendarDaySelected : {}),
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => handleDayClick(day.dateStr, day.appointments)}
-                      >
-                        <div style={styles.calendarDayNumber}>
-                          {day.date.getDate()}
-                          {day.appointments.length > 0 && (
-                            <span style={{
-                              marginLeft: '4px',
-                              fontSize: '0.625rem',
-                              color: '#3b82f6',
-                              fontWeight: 'bold'
-                            }}>
-                              ({day.appointments.length})
-                            </span>
-                          )}
-                        </div>
-                        <div style={styles.appointmentsInDay}>
-                          {day.appointments.slice(0, 3).map(apt => (
-                            <div
-                              key={apt.appointment_id}
-                              style={{
-                                ...styles.appointmentCard,
-                                borderLeftColor: getStatusBorderColor(apt.status)
-                              }}
-                            >
-                              <div style={styles.appointmentCardTime}>
-                                {formatTime(apt.appointment_time)}
-                              </div>
-                              <div style={styles.appointmentCardTitle}>
-                                {apt.pet_name}
-                              </div>
-                              <div style={styles.appointmentCardSubtitle}>
-                                {apt.customer_first_name} {apt.customer_last_name}
-                              </div>
-                              {apt.veterinarian_name && (
-                                <div style={styles.appointmentCardVet}>
-                                  <i className="fas fa-user-md" style={{ marginRight: '3px' }}></i>
-                                  Dr. {apt.veterinarian_name}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                          {day.appointments.length > 3 && (
-                            <div style={styles.moreAppointments}>
-                              +{day.appointments.length - 3} more
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+        {/* Loading State */}
+        {loading ? (
+          <div className="appts-loading-box">
+            <div className="appts-spinner"></div>
+            <p>Loading appointments...</p>
+          </div>
+        ) : (
+          <>
+            {viewMode === 'calendar' ? (
+              /* Calendar View */
+              <div className="appts-calendar-card">
+                <div className="appts-cal-header">
+                  <h3 className="appts-cal-title">{formatMonthYear()}</h3>
+                  <div className="appts-cal-controls">
+                    <button onClick={goToToday} className="appts-cal-btn-today">
+                      <i className="fas fa-calendar-day"></i>
+                      Today
+                    </button>
+                    <button onClick={() => navigateMonth(-1)} className="appts-cal-btn-nav">
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+                    <button onClick={() => navigateMonth(1)} className="appts-cal-btn-nav">
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
                   </div>
                 </div>
-              ) : (
-                /* List View */
-                <>
-                  {/* Tabs */}
-                  <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #e5e7eb', marginBottom: '1.5rem' }}>
-                    {[
-                      { key: 'upcoming', label: 'Upcoming', count: upcomingAppointments.length, icon: 'fa-calendar-alt' },
-                      { key: 'past',     label: 'Past',     count: pastAppointments.length,     icon: 'fa-calendar-check' }
-                    ].map(tab => (
-                      <button
-                        key={tab.key}
-                        onClick={() => setListTab(tab.key)}
-                        style={{
-                          padding: '0.6rem 1.25rem',
-                          border: 'none',
-                          borderBottom: listTab === tab.key ? '2px solid #2563eb' : '2px solid transparent',
-                          marginBottom: '-2px',
-                          background: 'none',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: listTab === tab.key ? '600' : '400',
-                          color: listTab === tab.key ? '#2563eb' : '#6b7280',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.4rem'
-                        }}
-                      >
-                        <i className={`fas ${tab.icon}`}></i>
-                        {tab.label}
-                        <span style={{
-                          backgroundColor: listTab === tab.key ? '#dbeafe' : '#f3f4f6',
-                          color: listTab === tab.key ? '#1d4ed8' : '#6b7280',
-                          borderRadius: '10px',
-                          padding: '1px 7px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600'
-                        }}>{tab.count}</span>
-                      </button>
-                    ))}
-                  </div>
 
-                  <div style={styles.appointmentsList}>
-                    {tabAppointments.length === 0 ? (
-                      <div style={styles.emptyState}>
-                        <i className="far fa-calendar-times" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
-                        <p>No {listTab} appointments found</p>
-                        {listTab === 'upcoming' && (
-                          <button onClick={() => setShowForm(true)} style={styles.emptyButton}>
-                            Schedule an Appointment
-                          </button>
+                {!filterDate && (
+                  <div className="appts-cal-banner">
+                    <i className="fas fa-info-circle"></i>
+                    Click on a day with appointments to view all scheduled visits for that date.
+                  </div>
+                )}
+                
+                {filterDate && (
+                  <div className="appts-cal-banner">
+                    <i className="fas fa-filter"></i>
+                    Showing appointments for {new Date(filterDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                    <button 
+                      onClick={() => setFilterDate('')}
+                      style={{ marginLeft: '0.5rem', color: '#2563eb', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                )}
+
+                <div className="appts-cal-grid">
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                    <div key={day} className="appts-cal-day-header">{day}</div>
+                  ))}
+
+                  {getCalendarDays().map((day, index) => (
+                    <div
+                      key={index}
+                      className={`appts-cal-day-cell ${!day.isCurrentMonth ? 'is-other-month' : ''} ${day.isToday ? 'is-today' : ''} ${day.isSelectedDate ? 'is-selected' : ''}`}
+                      onClick={() => handleDayClick(day.dateStr, day.appointments)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="appts-cal-day-num">
+                        <span className={day.isToday ? 'is-today-num' : ''}>{day.date.getDate()}</span>
+                        {day.appointments.length > 0 && (
+                          <span style={{ fontSize: '0.675rem', color: '#2563eb', fontWeight: 'bold' }}>
+                            ({day.appointments.length})
+                          </span>
                         )}
                       </div>
-                    ) : (
-                      <div style={styles.cardsGrid}>
-                        {tabAppointments.map((appointment) => (
-                        <div key={appointment.appointment_id} id={`appt-card-${appointment.appointment_id}`} style={{ ...styles.card, ...(highlightedApptId === appointment.appointment_id ? { outline: '2px solid #2563eb', boxShadow: '0 0 0 4px #dbeafe' } : {}) }}>
-                        <div style={styles.cardHeader}>
-                          <div style={styles.cardHeaderLeft}>
-                            <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={styles.typeIcon}></i>
-                            <div>
-                              <h3 style={styles.cardTitle}>
-                                {appointment.pet_name}{appointment.species && <span style={{ fontWeight: '400', color: '#6b7280', fontSize: '0.85em' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
-                              </h3>
-                              <p style={styles.cardSubtitle}>
-                                {appointment.customer_first_name} {appointment.customer_last_name}
-                              </p>
-                            </div>
-                          </div>
-                          <span 
-                            style={{
-                              ...styles.statusBadge,
-                              backgroundColor: `${getStatusColor(appointment.status)}20`,
-                              color: getStatusColor(appointment.status),
-                            }}
+                      <div className="appts-cal-events-list">
+                        {day.appointments.slice(0, 3).map(apt => (
+                          <div
+                            key={apt.appointment_id}
+                            className="appts-cal-event-card"
+                            style={{ borderLeftColor: getStatusBorderColor(apt.status) }}
                           >
-                            {appointment.status}
-                          </span>
-                        </div>
-
-                        <div style={styles.cardBody}>
-                          <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="far fa-calendar"></i> Date:</span>
-                            <span style={styles.infoValue}>{formatDate(appointment.appointment_date)}</span>
-                          </div>
-                          <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="far fa-clock"></i> Time:</span>
-                            <span style={styles.infoValue}>{formatTime(appointment.appointment_time)}</span>
-                          </div>
-                          <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="fas fa-hourglass-half"></i> {appointment.status === 'completed' ? 'Scheduled:' : 'Duration:'}</span>
-                            <span style={styles.infoValue}>{appointment.duration_minutes} min</span>
-                          </div>
-                          {appointment.status === 'completed' && appointment.started_at && appointment.completed_at && (
-                            <div style={styles.infoRow}>
-                              <span style={styles.infoLabel}><i className="fas fa-stopwatch"></i> Actual:</span>
-                              <span style={{ ...styles.infoValue, color: '#059669', fontWeight: 600 }}>{formatActualDuration(appointment.started_at, appointment.completed_at)}</span>
+                            <div className="appts-cal-event-time">
+                              {formatTime(apt.appointment_time)}
                             </div>
-                          )}
-                          <div style={styles.infoRow}>
-                            <span style={styles.infoLabel}><i className="fas fa-clipboard"></i> Type:</span>
-                            <span style={styles.infoValue}>{appointment.appointment_type}</span>
-                          </div>
-                          {appointment.veterinarian_name && (
-                            <div style={styles.infoRow}>
-                              <span style={styles.infoLabel}><i className="fas fa-user-md"></i> Vet:</span>
-                              <span style={styles.infoValue}>Dr. {appointment.veterinarian_name}</span>
+                            <div className="appts-cal-event-title">
+                              {apt.pet_name}
                             </div>
-                          )}
-                          <div style={styles.reasonBox}>
-                            <strong>Reason:</strong> {appointment.reason}
+                            <div className="appts-cal-event-sub">
+                              {apt.customer_first_name} {apt.customer_last_name}
+                            </div>
+                            {apt.veterinarian_name && (
+                              <div className="appts-cal-event-vet">
+                                <i className="fas fa-user-md" style={{ marginRight: '3px' }}></i>
+                                Dr. {apt.veterinarian_name}
+                              </div>
+                            )}
                           </div>
-                        </div>
-
-                        <div style={styles.cardFooter}>
-                          {canStartAppointment(appointment) && appointment.status === 'confirmed' && (
-                            <button onClick={() => {
-                              if (!appointment.veterinarian_id) {
-                                showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
-                                return;
-                              }
-                              handleStatusUpdate(appointment.appointment_id, 'in_progress');
-                            }} style={styles.startButton}>
-                              <i className="fas fa-play" style={{ marginRight: '0.25rem' }}></i>Start
-                            </button>
-                          )}
-                          {appointment.status === 'in_progress' && (
-                            <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
-                              appointment_id: appointment.appointment_id,
-                              customer_id: appointment.customer_id,
-                              customer_first_name: appointment.customer_first_name,
-                              customer_last_name: appointment.customer_last_name,
-                              pet_name: appointment.pet_name,
-                              species: appointment.species,
-                              appointment_type: appointment.appointment_type,
-                              appointment_date: appointment.appointment_date,
-                              veterinarian_name: appointment.veterinarian_name
-                            })} style={styles.completeButton}>
-                              <i className="fas fa-check-double" style={{ marginRight: '0.25rem' }}></i>Complete
-                            </button>
-                          )}
-                          {user?.role !== 'veterinarian' && appointment.status === 'confirmed' && (
-                            <button
-                              onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
-                              style={styles.cancelButton}
-                            >
-                              <i className="fas fa-times" style={{ marginRight: '0.25rem' }}></i>Cancel
-                            </button>
-                          )}
-                          {/* Send Email — confirmed only (all roles) */}
-                          {appointment.status === 'confirmed' && (
-                            <button onClick={() => openEmailApptModal(appointment.appointment_id)} style={{ ...styles.editButton, backgroundColor: '#059669', borderColor: '#059669' }}>
-                              <i className="fas fa-envelope" style={{ marginRight: '0.25rem' }}></i>Send Email
-                            </button>
-                          )}
-                          {user?.role !== 'veterinarian' && (
-                            <>
-                              {/* Edit/Reschedule — confirmed only */}
-                              {appointment.status === 'confirmed' && (
-                                <button onClick={() => handleEdit(appointment.appointment_id)} style={styles.editButton}>
-                                  <i className="fas fa-edit" style={{ marginRight: '0.25rem' }}></i>Edit/Reschedule
-                                </button>
-                              )}
-                            </>
-                          )}
-                          {user?.role === 'admin' && (
-                            <button onClick={() => handleDelete(appointment.appointment_id)} style={styles.deleteButton}>
-                              <i className="fas fa-trash" style={{ marginRight: '0.25rem' }}></i>Delete
-                            </button>
-                          )}
-                        </div>
+                        ))}
+                        {day.appointments.length > 3 && (
+                          <div className="appts-cal-more-badge">
+                            +{day.appointments.length - 3} more
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* Appointment Detail Modal (calendar click) */}
-          {apptDetailModal && (
-            <div style={styles.modalOverlay} onClick={() => setApptDetailModal(null)}>
-              <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className={`fas ${getTypeIcon(apptDetailModal.appointment_type)}`} style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                    Appointment Details
-                  </h3>
-                  <button onClick={() => setApptDetailModal(null)} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div style={styles.modalBody}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <span style={{ ...styles.statusBadge, backgroundColor: `${getStatusColor(apptDetailModal.status)}20`, color: getStatusColor(apptDetailModal.status), fontSize: '0.875rem', padding: '0.3rem 0.75rem' }}>
-                      {apptDetailModal.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{apptDetailModal.appointment_type}</span>
-                  </div>
-                  {[
-                    { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.species ? `${apptDetailModal.pet_name} (${apptDetailModal.species.charAt(0).toUpperCase() + apptDetailModal.species.slice(1)})` : apptDetailModal.pet_name },
-                    { icon: 'fa-user', label: 'Owner', value: `${apptDetailModal.customer_first_name} ${apptDetailModal.customer_last_name}` },
-                    apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
-                    { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
-                    { icon: 'fa-clock', label: 'Time', value: formatTime(apptDetailModal.appointment_time) },
-                    { icon: 'fa-hourglass-half', label: apptDetailModal.status === 'completed' ? 'Scheduled' : 'Duration', value: `${apptDetailModal.duration_minutes} min` },
-                    apptDetailModal.status === 'completed' && apptDetailModal.started_at && apptDetailModal.completed_at
-                      ? { icon: 'fa-stopwatch', label: 'Actual', value: formatActualDuration(apptDetailModal.started_at, apptDetailModal.completed_at), highlight: true }
-                      : null,
-                  ].filter(Boolean).map((row, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f3f4f6', alignItems: 'center' }}>
-                      <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#9ca3af', fontSize: '0.8rem' }}></i>
-                      <span style={{ fontSize: '0.8rem', color: '#6b7280', minWidth: '80px' }}>{row.label}</span>
-                      <span style={{ fontSize: '0.875rem', color: row.highlight ? '#059669' : '#111827', fontWeight: row.highlight ? 600 : 500 }}>{row.value}</span>
                     </div>
                   ))}
-                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.875rem', color: '#374151' }}>
-                    <strong>Reason:</strong> {apptDetailModal.reason}
+                </div>
+              </div>
+            ) : (
+              /* List View */
+              <>
+                <div className="appts-list-tabs">
+                  {[
+                    { key: 'upcoming', label: 'Upcoming', count: upcomingAppointments.length, icon: 'fa-calendar-alt' },
+                    { key: 'past',     label: 'Past',     count: pastAppointments.length,     icon: 'fa-calendar-check' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setListTab(tab.key)}
+                      className={`appts-tab-btn ${listTab === tab.key ? 'is-active' : ''}`}
+                    >
+                      <i className={`fas ${tab.icon}`}></i>
+                      {tab.label}
+                      <span className="appts-tab-count-badge">{tab.count}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="appts-appointments-list">
+                  {tabAppointments.length === 0 ? (
+                    <div className="appts-empty-card">
+                      <i className="far fa-calendar-times" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
+                      <p style={{ fontSize: '1.1rem', fontWeight: 600, color: '#475569', margin: '0 0 1rem 0' }}>No {listTab} appointments found</p>
+                      {listTab === 'upcoming' && (
+                        <button onClick={() => setShowForm(true)} className="appts-btn-schedule">
+                          <i className="fas fa-plus"></i> Schedule an Appointment
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="appts-cards-grid">
+                      {tabAppointments.map((appointment) => (
+                        <div
+                          key={appointment.appointment_id}
+                          id={`appt-card-${appointment.appointment_id}`}
+                          className={`appts-card ${highlightedApptId === appointment.appointment_id ? 'is-highlighted' : ''}`}
+                        >
+                          <div className="appts-card-head">
+                            <div className="appts-card-head-left">
+                              <div className="appts-type-icon-tile">
+                                <i className={`fas ${getTypeIcon(appointment.appointment_type)}`}></i>
+                              </div>
+                              <div>
+                                <h3 className="appts-card-pet-name">
+                                  {appointment.pet_name}
+                                  {appointment.species && (
+                                    <span className="appts-card-species">
+                                      {' '} ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})
+                                    </span>
+                                  )}
+                                </h3>
+                                <p className="appts-card-owner-name">
+                                  {appointment.customer_first_name} {appointment.customer_last_name}
+                                </p>
+                              </div>
+                            </div>
+                            <span 
+                              className="appts-status-pill"
+                              style={{
+                                backgroundColor: `${getStatusColor(appointment.status)}1b`,
+                                color: getStatusColor(appointment.status),
+                                border: `1px solid ${getStatusColor(appointment.status)}40`
+                              }}
+                            >
+                              {appointment.status.replace('_', ' ')}
+                            </span>
+                          </div>
+
+                          <div className="appts-card-body">
+                            <div className="appts-info-row">
+                              <span className="appts-info-lbl"><i className="far fa-calendar"></i> Date:</span>
+                              <span className="appts-info-val">{formatDate(appointment.appointment_date)}</span>
+                            </div>
+                            <div className="appts-info-row">
+                              <span className="appts-info-lbl"><i className="far fa-clock"></i> Time:</span>
+                              <span className="appts-info-val">{formatTime(appointment.appointment_time)}</span>
+                            </div>
+                            <div className="appts-info-row">
+                              <span className="appts-info-lbl"><i className="fas fa-hourglass-half"></i> {appointment.status === 'completed' ? 'Scheduled:' : 'Duration:'}</span>
+                              <span className="appts-info-val">{appointment.duration_minutes} min</span>
+                            </div>
+                            {appointment.status === 'completed' && appointment.started_at && appointment.completed_at && (
+                              <div className="appts-info-row">
+                                <span className="appts-info-lbl"><i className="fas fa-stopwatch"></i> Actual:</span>
+                                <span className="appts-info-val" style={{ color: '#059669', fontWeight: 700 }}>{formatActualDuration(appointment.started_at, appointment.completed_at)}</span>
+                              </div>
+                            )}
+                            <div className="appts-info-row">
+                              <span className="appts-info-lbl"><i className="fas fa-clipboard"></i> Type:</span>
+                              <span className="appts-info-val">{appointment.appointment_type}</span>
+                            </div>
+                            {appointment.veterinarian_name && (
+                              <div className="appts-info-row">
+                                <span className="appts-info-lbl"><i className="fas fa-user-md"></i> Vet:</span>
+                                <span className="appts-info-val">Dr. {appointment.veterinarian_name}</span>
+                              </div>
+                            )}
+                            <div className="appts-reason-box">
+                              <strong>Reason:</strong> {appointment.reason}
+                            </div>
+                          </div>
+
+                          <div className="appts-card-foot">
+                            {canStartAppointment(appointment) && appointment.status === 'confirmed' && (
+                              <button onClick={() => {
+                                if (!appointment.veterinarian_id) {
+                                  showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                                  return;
+                                }
+                                handleStatusUpdate(appointment.appointment_id, 'in_progress');
+                              }} className="appts-btn-act btn-act-start">
+                                <i className="fas fa-play"></i> Start
+                              </button>
+                            )}
+                            {appointment.status === 'in_progress' && (
+                              <button onClick={() => handleStatusUpdate(appointment.appointment_id, 'completed', null, {
+                                appointment_id: appointment.appointment_id,
+                                customer_id: appointment.customer_id,
+                                customer_first_name: appointment.customer_first_name,
+                                customer_last_name: appointment.customer_last_name,
+                                pet_name: appointment.pet_name,
+                                species: appointment.species,
+                                appointment_type: appointment.appointment_type,
+                                appointment_date: appointment.appointment_date,
+                                veterinarian_name: appointment.veterinarian_name
+                              })} className="appts-btn-act btn-act-complete">
+                                <i className="fas fa-check-double"></i> Complete
+                              </button>
+                            )}
+                            {user?.role !== 'veterinarian' && appointment.status === 'confirmed' && (
+                              <button
+                                onClick={() => setCancelApptModal({ open: true, appointmentId: appointment.appointment_id, closeDetailModal: false })}
+                                className="appts-btn-act btn-act-cancel"
+                              >
+                                <i className="fas fa-times"></i> Cancel
+                              </button>
+                            )}
+                            {appointment.status === 'confirmed' && (
+                              <button onClick={() => openEmailApptModal(appointment.appointment_id)} className="appts-btn-act btn-act-email">
+                                <i className="fas fa-envelope"></i> Email
+                              </button>
+                            )}
+                            {user?.role !== 'veterinarian' && (
+                              <>
+                                {appointment.status === 'confirmed' && (
+                                  <button onClick={() => handleEdit(appointment.appointment_id)} className="appts-btn-act btn-act-edit">
+                                    <i className="fas fa-edit"></i> Edit
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {user?.role === 'admin' && (
+                              <button onClick={() => handleDelete(appointment.appointment_id)} className="appts-btn-act btn-act-delete">
+                                <i className="fas fa-trash"></i> Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Appointment Detail Modal (calendar click) */}
+        {apptDetailModal && (
+          <div className="appts-modal-backdrop" onClick={() => setApptDetailModal(null)}>
+            <div className="appts-modal-box" onClick={e => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className={`fas ${getTypeIcon(apptDetailModal.appointment_type)}`} style={{ color: '#3b82f6' }}></i>
+                  Appointment Details
+                </h3>
+                <button onClick={() => setApptDetailModal(null)} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <span className="appts-status-pill" style={{ backgroundColor: `${getStatusColor(apptDetailModal.status)}1b`, color: getStatusColor(apptDetailModal.status), fontSize: '0.825rem', padding: '0.35rem 0.8rem', border: `1px solid ${getStatusColor(apptDetailModal.status)}40` }}>
+                    {apptDetailModal.status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{apptDetailModal.appointment_type}</span>
+                </div>
+                {[
+                  { icon: 'fa-paw', label: 'Pet', value: apptDetailModal.species ? `${apptDetailModal.pet_name} (${apptDetailModal.species.charAt(0).toUpperCase() + apptDetailModal.species.slice(1)})` : apptDetailModal.pet_name },
+                  { icon: 'fa-user', label: 'Owner', value: `${apptDetailModal.customer_first_name} ${apptDetailModal.customer_last_name}` },
+                  apptDetailModal.veterinarian_name ? { icon: 'fa-user-md', label: 'Veterinarian', value: `Dr. ${apptDetailModal.veterinarian_name}` } : null,
+                  { icon: 'fa-calendar', label: 'Date', value: formatDate(apptDetailModal.appointment_date) },
+                  { icon: 'fa-clock', label: 'Time', value: formatTime(apptDetailModal.appointment_time) },
+                  { icon: 'fa-hourglass-half', label: apptDetailModal.status === 'completed' ? 'Scheduled' : 'Duration', value: `${apptDetailModal.duration_minutes} min` },
+                  apptDetailModal.status === 'completed' && apptDetailModal.started_at && apptDetailModal.completed_at
+                    ? { icon: 'fa-stopwatch', label: 'Actual', value: formatActualDuration(apptDetailModal.started_at, apptDetailModal.completed_at), highlight: true }
+                    : null,
+                ].filter(Boolean).map((row, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.75rem', padding: '0.5rem 0', borderBottom: '1px solid #f1f5f9', alignItems: 'center' }}>
+                    <i className={`fas ${row.icon}`} style={{ width: '16px', color: '#94a3b8', fontSize: '0.8rem' }}></i>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b', minWidth: '90px', fontWeight: 500 }}>{row.label}</span>
+                    <span style={{ fontSize: '0.875rem', color: row.highlight ? '#059669' : '#0f172a', fontWeight: row.highlight ? 700 : 600 }}>{row.value}</span>
                   </div>
-                  {apptDetailModal.status === 'cancelled' && apptDetailModal.cancellation_reason && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '0.875rem', color: '#991b1b' }}>
-                      <strong>Cancellation Reason:</strong> {apptDetailModal.cancellation_reason}
-                    </div>
-                  )}
-                  {(apptDetailModal.created_at || apptDetailModal.updated_at) && (
-                    <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                      {apptDetailModal.created_at && (
-                        <span><strong>Created:</strong> {formatDate(apptDetailModal.created_at)}</span>
-                      )}
-                      {apptDetailModal.updated_at && apptDetailModal.updated_at !== apptDetailModal.created_at && (
-                        <span><strong>Updated:</strong> {formatDate(apptDetailModal.updated_at)}</span>
-                      )}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                    {canStartAppointment(apptDetailModal) && apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => {
-                          if (!apptDetailModal.veterinarian_id) {
-                            showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
-                            return;
-                          }
-                          handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
-                          setApptDetailModal(null);
-                        }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-play"></i> Start
-                      </button>
+                ))}
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', backgroundColor: '#f8fafc', borderRadius: '10px', fontSize: '0.875rem', color: '#334155', border: '1px solid #e2e8f0' }}>
+                  <strong>Reason:</strong> {apptDetailModal.reason}
+                </div>
+                {apptDetailModal.status === 'cancelled' && apptDetailModal.cancellation_reason && (
+                  <div style={{ marginTop: '0.5rem', padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.875rem', color: '#991b1b' }}>
+                    <strong>Cancellation Reason:</strong> {apptDetailModal.cancellation_reason}
+                  </div>
+                )}
+                {(apptDetailModal.created_at || apptDetailModal.updated_at) && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', fontSize: '0.75rem', color: '#94a3b8' }}>
+                    {apptDetailModal.created_at && (
+                      <span><strong>Created:</strong> {formatDate(apptDetailModal.created_at)}</span>
                     )}
-                    {apptDetailModal.status === 'in_progress' && (
-                      <button
-                        onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
-                          appointment_id: apptDetailModal.appointment_id,
-                          customer_id: apptDetailModal.customer_id,
-                          customer_first_name: apptDetailModal.customer_first_name,
-                          customer_last_name: apptDetailModal.customer_last_name,
-                          pet_name: apptDetailModal.pet_name,
-                          species: apptDetailModal.species,
-                          appointment_type: apptDetailModal.appointment_type,
-                          appointment_date: apptDetailModal.appointment_date,
-                          veterinarian_name: apptDetailModal.veterinarian_name
-                        }); setApptDetailModal(null); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-check-double"></i> Complete
-                      </button>
+                    {apptDetailModal.updated_at && apptDetailModal.updated_at !== apptDetailModal.created_at && (
+                      <span><strong>Updated:</strong> {formatDate(apptDetailModal.updated_at)}</span>
                     )}
-                    {user?.role !== 'veterinarian' && apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-times"></i> Cancel
-                      </button>
-                    )}
-                    {user?.role !== 'veterinarian' && apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-edit"></i> Edit/Reschedule
-                      </button>
-                    )}
-                    {/* Send Email — confirmed only (all roles) */}
-                    {apptDetailModal.status === 'confirmed' && (
-                      <button
-                        onClick={() => { setApptDetailModal(null); openEmailApptModal(apptDetailModal.appointment_id); }}
-                        style={{ padding: '0.5rem 0.9rem', backgroundColor: '#059669', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <i className="fas fa-envelope"></i> Send Email
-                      </button>
-                    )}
-                    {/* View in List — all roles */}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                  {canStartAppointment(apptDetailModal) && apptDetailModal.status === 'confirmed' && (
                     <button
                       onClick={() => {
-                        const apptDate = getISTDate(apptDetailModal.appointment_date);
-                        const todayStr = formatDateLocal(new Date());
-                        setListTab(apptDate >= todayStr && apptDetailModal.status !== 'completed' && apptDetailModal.status !== 'cancelled' ? 'upcoming' : 'past');
-                        setHighlightedApptId(apptDetailModal.appointment_id);
+                        if (!apptDetailModal.veterinarian_id) {
+                          showError('Cannot start appointment — no veterinarian assigned. Please assign a vet first.');
+                          return;
+                        }
+                        handleStatusUpdate(apptDetailModal.appointment_id, 'in_progress');
                         setApptDetailModal(null);
-                        setShowDayModal(false);
-                        setViewMode('list');
                       }}
-                      style={{ padding: '0.5rem 0.9rem', backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                      className="appts-btn-act btn-act-start"
                     >
-                      <i className="fas fa-list"></i> View in List
+                      <i className="fas fa-play"></i> Start
                     </button>
-                  </div>
+                  )}
+                  {apptDetailModal.status === 'in_progress' && (
+                    <button
+                      onClick={() => { handleStatusUpdate(apptDetailModal.appointment_id, 'completed', null, {
+                        appointment_id: apptDetailModal.appointment_id,
+                        customer_id: apptDetailModal.customer_id,
+                        customer_first_name: apptDetailModal.customer_first_name,
+                        customer_last_name: apptDetailModal.customer_last_name,
+                        pet_name: apptDetailModal.pet_name,
+                        species: apptDetailModal.species,
+                        appointment_type: apptDetailModal.appointment_type,
+                        appointment_date: apptDetailModal.appointment_date,
+                        veterinarian_name: apptDetailModal.veterinarian_name
+                      }); setApptDetailModal(null); }}
+                      className="appts-btn-act btn-act-complete"
+                    >
+                      <i className="fas fa-check-double"></i> Complete
+                    </button>
+                  )}
+                  {user?.role !== 'veterinarian' && apptDetailModal.status === 'confirmed' && (
+                    <button
+                      onClick={() => setCancelApptModal({ open: true, appointmentId: apptDetailModal.appointment_id, closeDetailModal: true })}
+                      className="appts-btn-act btn-act-cancel"
+                    >
+                      <i className="fas fa-times"></i> Cancel
+                    </button>
+                  )}
+                  {user?.role !== 'veterinarian' && apptDetailModal.status === 'confirmed' && (
+                    <button
+                      onClick={() => { setApptDetailModal(null); setShowDayModal(false); handleEdit(apptDetailModal.appointment_id); }}
+                      className="appts-btn-act btn-act-edit"
+                    >
+                      <i className="fas fa-edit"></i> Edit
+                    </button>
+                  )}
+                  {apptDetailModal.status === 'confirmed' && (
+                    <button
+                      onClick={() => { setApptDetailModal(null); openEmailApptModal(apptDetailModal.appointment_id); }}
+                      className="appts-btn-act btn-act-email"
+                    >
+                      <i className="fas fa-envelope"></i> Email
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      const apptDate = getISTDate(apptDetailModal.appointment_date);
+                      const todayStr = formatDateLocal(new Date());
+                      setListTab(apptDate >= todayStr && apptDetailModal.status !== 'completed' && apptDetailModal.status !== 'cancelled' ? 'upcoming' : 'past');
+                      setHighlightedApptId(apptDetailModal.appointment_id);
+                      setApptDetailModal(null);
+                      setShowDayModal(false);
+                      setViewMode('list');
+                    }}
+                    className="appts-btn-act"
+                    style={{ background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }}
+                  >
+                    <i className="fas fa-list"></i> View in List
+                  </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Day Appointments Modal */}
-          {showDayModal && (
-            <div style={styles.modalOverlay} onClick={handleCloseDayModal}>
-              <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className="far fa-calendar-alt" style={{ marginRight: '0.5rem' }}></i>
-                    Appointments for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { 
-                      weekday: 'long', 
-                      year: 'numeric', 
-                      month: 'long', 
-                      day: 'numeric' 
-                    })}
-                  </h3>
-                  <button onClick={handleCloseDayModal} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
+        {/* Day Appointments Modal */}
+        {showDayModal && (
+          <div className="appts-modal-backdrop" onClick={handleCloseDayModal}>
+            <div className="appts-modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className="far fa-calendar-alt" style={{ color: '#2563eb' }}></i>
+                  Appointments for {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </h3>
+                <button onClick={handleCloseDayModal} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#64748b', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <i className="fas fa-list-ul"></i>
+                  {selectedDayAppointments.length} appointment{selectedDayAppointments.length !== 1 ? 's' : ''}
                 </div>
-                <div style={styles.modalBody}>
-                  <div style={styles.appointmentCount}>
-                    <i className="fas fa-list-ul" style={{ marginRight: '0.5rem' }}></i>
-                    {selectedDayAppointments.length} appointment{selectedDayAppointments.length !== 1 ? 's' : ''}
-                  </div>
-                  <div style={styles.modalAppointmentsList}>
-                    {selectedDayAppointments
-                      .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
-                      .map((appointment) => (
-                      <div 
-                        key={appointment.appointment_id} 
-                        style={styles.modalAppointmentCard}
-                        onClick={() => handleAppointmentClick(appointment)}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ffffff';
-                          e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                          e.currentTarget.style.boxShadow = 'none';
-                          e.currentTarget.style.transform = 'translateY(0)';
-                        }}
-                      >
-                        <div style={styles.modalAppointmentHeader}>
-                          <div style={styles.modalAppointmentTime}>
-                            <i className="far fa-clock" style={{ marginRight: '0.25rem' }}></i>
-                            {formatTime(appointment.appointment_time)}
-                          </div>
-                          <span 
-                            style={{
-                              ...styles.statusBadge,
-                              backgroundColor: `${getStatusColor(appointment.status)}20`,
-                              color: getStatusColor(appointment.status),
-                            }}
-                          >
-                            {appointment.status}
-                          </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {selectedDayAppointments
+                    .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))
+                    .map((appointment) => (
+                    <div 
+                      key={appointment.appointment_id} 
+                      style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '0.875rem 1rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onClick={() => handleAppointmentClick(appointment)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <div style={{ fontSize: '0.825rem', fontWeight: 700, color: '#2563eb', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <i className="far fa-clock"></i>
+                          {formatTime(appointment.appointment_time)}
                         </div>
-                        <div style={styles.modalAppointmentInfo}>
-                          <div style={styles.modalAppointmentPet}>
-                            <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} 
-                               style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                            <strong>{appointment.pet_name}</strong>{appointment.species && <span style={{ color: '#6b7280', fontWeight: '400' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
-                          </div>
-                          <div style={styles.modalAppointmentOwner}>
-                            <i className="fas fa-user" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
-                            {appointment.customer_first_name} {appointment.customer_last_name}
-                          </div>
-                          {appointment.veterinarian_name && (
-                            <div style={styles.modalAppointmentVet}>
-                              <i className="fas fa-user-md" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
-                              Dr. {appointment.veterinarian_name}
-                            </div>
-                          )}
-                          <div style={styles.modalAppointmentReason}>
-                            <i className="fas fa-notes-medical" style={{ marginRight: '0.5rem', color: '#6b7280' }}></i>
-                            {appointment.reason}
-                          </div>
+                        <span 
+                          className="appts-status-pill"
+                          style={{
+                            backgroundColor: `${getStatusColor(appointment.status)}1b`,
+                            color: getStatusColor(appointment.status),
+                            fontSize: '0.7rem',
+                            padding: '0.2rem 0.55rem'
+                          }}
+                        >
+                          {appointment.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#1e293b' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '2px' }}>
+                          <i className={`fas ${getTypeIcon(appointment.appointment_type)}`} style={{ marginRight: '0.4rem', color: '#2563eb' }}></i>
+                          {appointment.pet_name}{appointment.species && <span style={{ color: '#64748b', fontWeight: '400' }}> ({appointment.species.charAt(0).toUpperCase() + appointment.species.slice(1)})</span>}
                         </div>
-                        <div style={styles.modalAppointmentFooter}>
-                          <span style={styles.modalAppointmentType}>
-                            {appointment.appointment_type}
-                          </span>
-                          <span style={styles.modalAppointmentDuration}>
-                            {appointment.duration_minutes} min
-                          </span>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                          <i className="fas fa-user" style={{ marginRight: '0.4rem' }}></i>
+                          {appointment.customer_first_name} {appointment.customer_last_name}
+                        </div>
+                        {appointment.veterinarian_name && (
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            <i className="fas fa-user-md" style={{ marginRight: '0.4rem' }}></i>
+                            Dr. {appointment.veterinarian_name}
+                          </div>
+                        )}
+                        <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '4px' }}>
+                          <i className="fas fa-notes-medical" style={{ marginRight: '0.4rem' }}></i>
+                          {appointment.reason}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          {showDeleteApptModal && (
-            <div style={styles.modalOverlay} onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}>
-              <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className="fas fa-trash" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
-                    Delete Appointment
-                  </h3>
-                  <button onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div style={{ padding: '1.5rem' }}>
-                  <p style={{ margin: '0 0 1.5rem', color: '#374151', fontSize: '0.95rem' }}>
-                    Are you sure you want to delete this appointment?
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={confirmDeleteAppointment}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#dc2626', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                    >
-                      <i className="fas fa-trash" style={{ marginRight: '0.4rem' }}></i>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {cancelApptModal.open && (
-            <div style={styles.modalOverlay} onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}>
-              <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className="fas fa-times-circle" style={{ marginRight: '0.5rem', color: '#dc2626' }}></i>
-                    Cancel Appointment
-                  </h3>
-                  <button onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div style={{ padding: '1.5rem' }}>
-                  <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
-                    Are you sure you want to cancel this appointment? Please select a reason.
-                  </p>
-                  <select
-                    value={cancelApptModal.reason}
-                    onChange={e => setCancelApptModal(prev => ({ ...prev, reason: e.target.value }))}
-                    style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '7px', border: '1px solid #d1d5db', fontSize: '0.875rem', color: '#374151', marginBottom: '1.25rem', outline: 'none' }}
-                  >
-                    <option value="">— Select a reason —</option>
-                    <option value="Customer request">Customer request</option>
-                    <option value="Veterinarian unavailable">Veterinarian unavailable</option>
-                    <option value="Pet health improvement">Pet health improvement (no longer needed)</option>
-                    <option value="Financial constraints">Financial constraints</option>
-                    <option value="No show">No show</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                    >
-                      Keep
-                    </button>
-                    <button
-                      onClick={confirmCancelAppointment}
-                      disabled={!cancelApptModal.reason}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: cancelApptModal.reason ? '#dc2626' : '#fca5a5', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: cancelApptModal.reason ? 'pointer' : 'not-allowed' }}
-                    >
-                      <i className="fas fa-times" style={{ marginRight: '0.4rem' }}></i>
-                      Cancel Appointment
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {emailApptModal && (
-            <div style={styles.modalOverlay} onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}>
-              <div style={{ ...styles.modalContent, maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className="fas fa-envelope" style={{ marginRight: '0.5rem', color: '#059669' }}></i>
-                    Send Appointment Confirmation
-                  </h3>
-                  <button onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div style={{ padding: '1.5rem' }}>
-                  <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
-                    Send a confirmation email to the customer for this appointment.
-                  </p>
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', color: '#374151', marginBottom: '0.4rem' }}>
-                      Note to Customer <span style={{ color: '#9CA3AF', fontWeight: 400 }}>(optional)</span>
-                    </label>
-                    <textarea
-                      value={emailApptNote}
-                      onChange={(e) => setEmailApptNote(e.target.value)}
-                      style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '7px', fontSize: '0.875rem', minHeight: '90px', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
-                      placeholder="Add a note or message to include in the email..."
-                    />
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                      disabled={emailApptSending}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSendConfirmation}
-                      style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: '#059669', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                      disabled={emailApptSending}
-                    >
-                      <i className="fas fa-envelope" style={{ marginRight: '0.4rem' }}></i>
-                      {emailApptSending ? 'Sending...' : 'Send Email'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {medicalReportPrompt.open && medicalReportPrompt.appointmentData && (
-            <div style={styles.modalOverlay} onClick={() => handleMedicalReportChoice('none')}>
-              <div style={{ ...styles.modalContent, maxWidth: '460px' }} onClick={e => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <h3 style={styles.modalTitle}>
-                    <i className="fas fa-notes-medical" style={{ marginRight: '0.5rem', color: '#3b82f6' }}></i>
-                    Create Medical Report?
-                  </h3>
-                  <button onClick={() => handleMedicalReportChoice('none')} style={styles.modalCloseButton}>
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-                <div style={styles.modalBody}>
-                  <p style={{ margin: 0, color: '#374151', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                    The appointment has been marked completed. Would you like to create a medical report now, save it for later, or skip it for now?
-                  </p>
-                  <div style={{ marginTop: '1rem', padding: '0.9rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                    <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: '0.35rem' }}>Appointment</div>
-                    <div style={{ fontWeight: '600', color: '#111827' }}>{medicalReportPrompt.appointmentData.pet_name}</div>
-                    <div style={{ fontSize: '0.9rem', color: '#374151' }}>
-                      {medicalReportPrompt.appointmentData.customer_first_name} {medicalReportPrompt.appointmentData.customer_last_name}
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.25rem' }}>
-                    <button
-                      onClick={() => handleMedicalReportChoice('none')}
-                      style={{ padding: '0.55rem 0.95rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                      No medical report
-                    </button>
-                    <button
-                      onClick={() => handleMedicalReportChoice('later')}
-                      style={{ padding: '0.55rem 0.95rem', borderRadius: '7px', border: '1px solid #f59e0b', backgroundColor: '#fff7ed', color: '#b45309', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                      Create medical report later
-                    </button>
-                    <button
-                      onClick={() => handleMedicalReportChoice('now')}
-                      style={{ padding: '0.55rem 0.95rem', borderRadius: '7px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                      Create medical report now
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Delete Appointment Modal */}
+        {showDeleteApptModal && (
+          <div className="appts-modal-backdrop" onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}>
+            <div className="appts-modal-box" style={{ maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className="fas fa-trash" style={{ color: '#e11d48' }}></i>
+                  Delete Appointment
+                </h3>
+                <button onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <p style={{ margin: '0 0 1.5rem', color: '#475569', fontSize: '0.925rem' }}>
+                  Are you sure you want to delete this appointment?
+                </p>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setShowDeleteApptModal(false); setPendingDeleteApptId(null); }}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDeleteAppointment}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: 'none', backgroundColor: '#e11d48', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <i className="fas fa-trash"></i>
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Appointment Reason Modal */}
+        {cancelApptModal.open && (
+          <div className="appts-modal-backdrop" onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}>
+            <div className="appts-modal-box" style={{ maxWidth: '420px' }} onClick={e => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className="fas fa-times-circle" style={{ color: '#e11d48' }}></i>
+                  Cancel Appointment
+                </h3>
+                <button onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <p style={{ margin: '0 0 1rem', color: '#475569', fontSize: '0.925rem' }}>
+                  Are you sure you want to cancel this appointment? Please select a reason.
+                </p>
+                <select
+                  value={cancelApptModal.reason}
+                  onChange={e => setCancelApptModal(prev => ({ ...prev, reason: e.target.value }))}
+                  className="appts-select"
+                  style={{ width: '100%', marginBottom: '1.25rem' }}
+                >
+                  <option value="">— Select a reason —</option>
+                  <option value="Customer request">Customer request</option>
+                  <option value="Veterinarian unavailable">Veterinarian unavailable</option>
+                  <option value="Pet health improvement">Pet health improvement (no longer needed)</option>
+                  <option value="Financial constraints">Financial constraints</option>
+                  <option value="No show">No show</option>
+                  <option value="Other">Other</option>
+                </select>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setCancelApptModal({ open: false, appointmentId: null, closeDetailModal: false, reason: '' })}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                  >
+                    Keep
+                  </button>
+                  <button
+                    onClick={confirmCancelAppointment}
+                    disabled={!cancelApptModal.reason}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: 'none', backgroundColor: cancelApptModal.reason ? '#e11d48' : '#cbd5e1', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: cancelApptModal.reason ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <i className="fas fa-times"></i>
+                    Cancel Appointment
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Email Confirmation Modal */}
+        {emailApptModal && (
+          <div className="appts-modal-backdrop" onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}>
+            <div className="appts-modal-box" style={{ maxWidth: '480px' }} onClick={e => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className="fas fa-envelope" style={{ color: '#059669' }}></i>
+                  Send Confirmation Email
+                </h3>
+                <button onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <p style={{ margin: '0 0 1rem', color: '#475569', fontSize: '0.925rem' }}>
+                  Send a confirmation email to the customer for this appointment.
+                </p>
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', color: '#334155', marginBottom: '0.4rem' }}>
+                    Note to Customer <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span>
+                  </label>
+                  <textarea
+                    value={emailApptNote}
+                    onChange={(e) => setEmailApptNote(e.target.value)}
+                    style={{ width: '100%', padding: '0.65rem 0.85rem', border: '1px solid #cbd5e1', borderRadius: '10px', fontSize: '0.875rem', minHeight: '90px', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }}
+                    placeholder="Add a note or message to include in the email..."
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => { setEmailApptModal(false); setEmailApptNote(''); setPendingEmailApptId(null); }}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
+                    disabled={emailApptSending}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendConfirmation}
+                    style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: 'none', backgroundColor: '#059669', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                    disabled={emailApptSending}
+                  >
+                    <i className="fas fa-envelope"></i>
+                    {emailApptSending ? 'Sending...' : 'Send Email'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Medical Report Prompt Modal */}
+        {medicalReportPrompt.open && medicalReportPrompt.appointmentData && (
+          <div className="appts-modal-backdrop" onClick={() => handleMedicalReportChoice('none')}>
+            <div className="appts-modal-box" style={{ maxWidth: '460px' }} onClick={e => e.stopPropagation()}>
+              <div className="appts-modal-head">
+                <h3 className="appts-modal-title">
+                  <i className="fas fa-notes-medical" style={{ color: '#2563eb' }}></i>
+                  Create Medical Report?
+                </h3>
+                <button onClick={() => handleMedicalReportChoice('none')} className="appts-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="appts-modal-body">
+                <p style={{ margin: 0, color: '#475569', fontSize: '0.925rem', lineHeight: 1.5 }}>
+                  The appointment has been marked completed. Would you like to create a medical report now, save it for later, or skip it for now?
+                </p>
+                <div style={{ marginTop: '1rem', padding: '0.9rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.35rem' }}>Appointment</div>
+                  <div style={{ fontWeight: '700', color: '#0f172a' }}>{medicalReportPrompt.appointmentData.pet_name}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#475569' }}>
+                    {medicalReportPrompt.appointmentData.customer_first_name} {medicalReportPrompt.appointmentData.customer_last_name}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', marginTop: '1.25rem' }}>
+                  <button
+                    onClick={() => handleMedicalReportChoice('none')}
+                    style={{ padding: '0.55rem 0.95rem', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    No medical report
+                  </button>
+                  <button
+                    onClick={() => handleMedicalReportChoice('later')}
+                    style={{ padding: '0.55rem 0.95rem', borderRadius: '10px', border: '1px solid #f59e0b', backgroundColor: '#fff7ed', color: '#b45309', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    Create later
+                  </button>
+                  <button
+                    onClick={() => handleMedicalReportChoice('now')}
+                    style={{ padding: '0.55rem 0.95rem', borderRadius: '10px', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '600', cursor: 'pointer', fontSize: '0.85rem' }}
+                  >
+                    Create now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </Layout>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: '100vh',
-    backgroundColor: '#f5f7fa',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1rem 2rem',
-    backgroundColor: '#ffffff',
-    borderBottom: '1px solid #e5e7eb',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  logo: {
-    margin: 0,
-    fontSize: '1.5rem',
-    color: '#1e40af',
-    fontWeight: 'bold',
-  },
-  headerSubtitle: {
-    margin: 0,
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-  },
-  userName: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  userRole: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-  },
-  logoutButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  mainContent: {
-    display: 'flex',
-    flex: 1,
-  },
-  sidebar: {
-    width: '250px',
-    backgroundColor: '#ffffff',
-    borderRight: '1px solid #e5e7eb',
-    padding: '1.5rem 0',
-  },
-  nav: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  navItem: {
-    padding: '0.75rem 1.5rem',
-    textDecoration: 'none',
-    color: '#374151',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    borderLeft: '3px solid transparent',
-  },
-  navItemActive: {
-    backgroundColor: '#eff6ff',
-    color: '#2563eb',
-    borderLeft: '3px solid #2563eb',
-  },
-  content: {
-    flex: 1,
-  },
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    gap: '1rem',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: 0,
-  },
-  addButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  filterContainer: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-    alignItems: 'flex-end',
-  },
-  filterGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
-  },
-  filterLabel: {
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#374151',
-  },
-  filterInput: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  todayButton: {
-    padding: '0.5rem 0.75rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    whiteSpace: 'nowrap',
-  },
-  filterSelect: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-  },
-  clearButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-  },
-  errorBox: {
-    padding: '1rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    border: '1px solid #fecaca',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1.5rem',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-  },
-  countInfo: {
-    padding: '1rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  appointmentsList: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    overflow: 'hidden',
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '1.5rem',
-  },
-  emptyButton: {
-    marginTop: '1rem',
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-  },
-  cardsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1rem',
-    padding: '1.5rem',
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    transition: 'box-shadow 0.2s',
-  },
-  cardHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: '1rem',
-    borderBottom: '1px solid #f3f4f6',
-  },
-  cardHeaderLeft: {
-    display: 'flex',
-    gap: '0.5rem',
-    alignItems: 'center',
-  },
-  typeIcon: {
-    fontSize: '1rem',
-    color: '#3b82f6',
-  },
-  cardTitle: {
-    margin: '0 0 0.25rem 0',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  cardSubtitle: {
-    margin: 0,
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-  statusBadge: {
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  cardBody: {
-    padding: '1rem',
-  },
-  infoRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    marginBottom: '0.5rem',
-  },
-  infoLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.25rem',
-  },
-  infoValue: {
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    color: '#111827',
-  },
-  reasonBox: {
-    marginTop: '0.5rem',
-    padding: '0.75rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    color: '#374151',
-  },
-  cardFooter: {
-    display: 'flex',
-    gap: '0.5rem',
-    padding: '1rem',
-    borderTop: '1px solid #f3f4f6',
-    backgroundColor: '#f9fafb',
-    flexWrap: 'wrap',
-  },
-  confirmButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '500',
-  },
-  startButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#f59e0b',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '500',
-  },
-  completeButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '500',
-  },
-  cancelButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '500',
-  },
-  editButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '600',
-  },
-  deleteButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#DC2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    fontWeight: '600',
-  },
-  toolbar: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  searchContainer: {
-    position: 'relative',
-    flex: '1',
-    minWidth: '200px',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: '0.75rem',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    color: '#9ca3af',
-    fontSize: '0.875rem',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '0.5rem 0.75rem 0.5rem 2.5rem',
-    fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'all 0.2s',
-  },
-  viewToggle: {
-    display: 'flex',
-    gap: '0',
-    backgroundColor: '#f3f4f6',
-    borderRadius: '6px',
-    padding: '0.25rem',
-  },
-  viewToggleButton: {
-    padding: '0.5rem 0.75rem',
-    fontSize: '0.875rem',
-    border: 'none',
-    backgroundColor: 'transparent',
-    color: '#6b7280',
-    cursor: 'pointer',
-    borderRadius: '4px',
-    fontWeight: '500',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  viewToggleButtonActive: {
-    backgroundColor: 'white',
-    color: '#2563eb',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-  },
-  activeFilters: {
-    display: 'flex',
-    gap: '0.75rem',
-    marginBottom: '1.5rem',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  activeFiltersLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  filterPill: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.25rem 0.75rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-  },
-  filterPillClose: {
-    padding: '0',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#1e40af',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  clearAllButton: {
-    padding: '0.25rem 0.5rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: '#6b7280',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-  },
-  calendarContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    overflow: 'hidden',
-  },
-  calendarHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1.5rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  calendarTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    margin: 0,
-  },
-  calendarControls: {
-    display: 'flex',
-    gap: '0.5rem',
-    alignItems: 'center',
-  },
-  calendarInstructions: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#f0f9ff',
-    color: '#0369a1',
-    fontSize: '0.75rem',
-    borderBottom: '1px solid #e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  navButton: {
-    padding: '0.5rem 0.75rem',
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    transition: 'all 0.2s',
-  },
-  calendarGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(7, 1fr)',
-    borderTop: '1px solid #e5e7eb',
-  },
-  dayHeader: {
-    padding: '0.75rem',
-    textAlign: 'center',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    backgroundColor: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  calendarDay: {
-    minHeight: '90px',
-    padding: '0.5rem',
-    borderRight: '1px solid #e5e7eb',
-    borderBottom: '1px solid #e5e7eb',
-    backgroundColor: '#ffffff',
-    overflow: 'hidden',
-    transition: 'all 0.2s',
-    ':hover': {
-      backgroundColor: '#f9fafb',
-    }
-  },
-  calendarDayOtherMonth: {
-    backgroundColor: '#f9fafb',
-    opacity: 0.5,
-  },
-  calendarDayToday: {
-    backgroundColor: '#eff6ff',
-    borderTop: '2px solid #3b82f6',
-    borderRight: '2px solid #3b82f6',
-    borderBottom: '2px solid #3b82f6',
-    borderLeft: '2px solid #3b82f6',
-  },
-  calendarDaySelected: {
-    backgroundColor: '#fef3c7',
-    borderTop: '2px solid #f59e0b',
-    borderRight: '2px solid #f59e0b',
-    borderBottom: '2px solid #f59e0b',
-    borderLeft: '2px solid #f59e0b',
-    boxShadow: '0 0 0 3px rgba(245, 158, 11, 0.1)',
-  },
-  calendarDayNumber: {
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '0.25rem',
-  },
-  appointmentsInDay: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
-  },
-  appointmentCard: {
-    padding: '0.25rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '4px',
-    borderLeft: '2px solid',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    fontSize: '0.625rem',
-    ':hover': {
-      backgroundColor: '#f3f4f6',
-      transform: 'translateX(2px)',
-    }
-  },
-  appointmentCardTime: {
-    fontSize: '0.625rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    marginBottom: '0.125rem',
-  },
-  appointmentCardTitle: {
-    fontSize: '0.625rem',
-    fontWeight: '600',
-    color: '#111827',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  appointmentCardSubtitle: {
-    fontSize: '0.625rem',
-    color: '#6b7280',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  appointmentCardVet: {
-    fontSize: '0.625rem',
-    color: '#3b82f6',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  moreAppointments: {
-    padding: '4px',
-    fontSize: '0.625rem',
-    color: '#3b82f6',
-    textAlign: 'center',
-    backgroundColor: '#eff6ff',
-    borderRadius: '3px',
-    fontWeight: '600',
-    marginTop: '2px',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    backdropFilter: 'blur(2px)',
-  },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    maxWidth: '700px',
-    width: '90%',
-    maxHeight: '80vh',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  modalHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1.5rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  modalTitle: {
-    margin: 0,
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalCloseButton: {
-    padding: '0.5rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    color: '#6b7280',
-    fontSize: '1.25rem',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBody: {
-    padding: '1.5rem',
-    overflowY: 'auto',
-    flex: 1,
-  },
-  appointmentCount: {
-    padding: '0.75rem 1rem',
-    backgroundColor: '#f0f9ff',
-    color: '#0369a1',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    marginBottom: '1rem',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalAppointmentsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.75rem',
-  },
-  modalAppointmentCard: {
-    padding: '1rem',
-    backgroundColor: '#f9fafb',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  modalAppointmentHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '0.75rem',
-  },
-  modalAppointmentTime: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#111827',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalAppointmentInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-    marginBottom: '0.75rem',
-  },
-  modalAppointmentPet: {
-    fontSize: '0.9375rem',
-    fontWeight: '600',
-    color: '#111827',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalAppointmentOwner: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalAppointmentVet: {
-    fontSize: '0.875rem',
-    color: '#6b7280',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  modalAppointmentReason: {
-    fontSize: '0.875rem',
-    color: '#374151',
-    display: 'flex',
-    alignItems: 'flex-start',
-    lineHeight: '1.5',
-  },
-  modalAppointmentFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: '0.75rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  modalAppointmentType: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    textTransform: 'capitalize',
-    backgroundColor: '#f3f4f6',
-    padding: '0.25rem 0.5rem',
-    borderRadius: '4px',
-  },
-  modalAppointmentDuration: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-  },
-  footer: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#ffffff',
-    borderTop: '1px solid #e5e7eb',
-    textAlign: 'center',
-  },
-  footerText: {
-    margin: 0,
-    fontSize: '10px',
-    color: '#6b7280',
-  },
 };
 
 export default Appointments;

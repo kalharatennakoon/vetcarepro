@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getCustomers } from '../services/customerService';
 import { createAppointment, updateAppointment, getAppointmentById } from '../services/appointmentService';
 import { getVeterinarians } from '../services/userService';
 import { useNotification } from '../context/NotificationContext';
 import axios from 'axios';
+import '../styles/AppointmentCreateModern.css';
 
 const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
   const [loading, setLoading] = useState(false);
@@ -31,33 +32,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
 
-  useEffect(() => {
-    fetchCustomers();
-    fetchVeterinarians();
-    if (appointmentId) {
-      loadAppointment();
-    }
-  }, [appointmentId]);
-
-  const fetchCustomers = async () => {
-    try {
-      const response = await getCustomers({});
-      setCustomers(response.data.customers || []);
-    } catch (err) {
-      console.error('Failed to fetch customers:', err);
-    }
-  };
-
-  const fetchVeterinarians = async () => {
-    try {
-      const response = await getVeterinarians();
-      setVeterinarians(response.data.veterinarians || []);
-    } catch (err) {
-      console.error('Failed to fetch veterinarians:', err);
-    }
-  };
-
-  const loadAppointment = async () => {
+  const loadAppointment = useCallback(async () => {
     try {
       setLoading(true);
       const response = await getAppointmentById(appointmentId);
@@ -78,13 +53,39 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       });
       // Load pets for the customer
       if (appointment.customer_id) {
-        await fetchPetsForCustomer(appointment.customer_id);
+        fetchPetsForCustomer(appointment.customer_id);
       }
     } catch (err) {
-      setError('Failed to load appointment');
+      setError(err.response?.data?.message || 'Failed to load appointment details');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  }, [appointmentId]);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchVeterinarians();
+    if (appointmentId) {
+      loadAppointment();
+    }
+  }, [appointmentId, loadAppointment]);
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await getCustomers({});
+      setCustomers(response.data.customers || []);
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+    }
+  };
+
+  const fetchVeterinarians = async () => {
+    try {
+      const response = await getVeterinarians();
+      setVeterinarians(response.data.veterinarians || []);
+    } catch (err) {
+      console.error('Failed to fetch veterinarians:', err);
     }
   };
 
@@ -128,9 +129,6 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       setError('Please select an appointment date');
       return false;
     }
-    // The clinic is closed Sundays (see server/src/utils/appointmentRules.js,
-    // the source of truth this mirrors) - checked client-side for immediate
-    // feedback; the server rejects it too regardless of this check.
     if (new Date(`${formData.appointment_date}T00:00:00`).getDay() === 0) {
       setError('The clinic is closed on Sundays - please choose another date');
       return false;
@@ -179,20 +177,16 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
       setLoading(true);
       setError('');
 
-      // Prepare appointment data with proper types and formatting
       const appointmentData = {
-        customer_id: formData.customer_id, // Keep as string for new format
-        pet_id: formData.pet_id, // Keep as string for new format
-        appointment_date: formData.appointment_date, // YYYY-MM-DD format
-        appointment_time: formData.appointment_time, // HH:MM format
+        customer_id: formData.customer_id,
+        pet_id: formData.pet_id,
+        appointment_date: formData.appointment_date,
+        appointment_time: formData.appointment_time,
         duration_minutes: parseInt(formData.duration_minutes),
         appointment_type: formData.appointment_type,
         reason: formData.reason.trim(),
-        // Only include veterinarian_id if it has a value
         ...(formData.veterinarian_id && { veterinarian_id: parseInt(formData.veterinarian_id) })
       };
-
-      console.log('Submitting appointment data:', appointmentData); // Debug log
 
       if (isEditMode) {
         await updateAppointment(appointmentId, appointmentData);
@@ -204,9 +198,7 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
       onSuccess();
     } catch (err) {
-      console.error('Appointment submission error:', err.response?.data); // Debug log
-      
-      // Handle validation errors from backend
+      console.error('Appointment submission error:', err.response?.data);
       if (err.response?.data?.errors) {
         const errorMessages = err.response.data.errors.map(e => e.message).join(', ');
         setError(errorMessages);
@@ -220,69 +212,86 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
 
   if (loading && isEditMode) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
-        <p>Loading appointment data...</p>
+      <div className="apt-form-loading">
+        <div className="apt-form-spinner"></div>
+        <p style={{ color: '#64748b', fontWeight: '500' }}>Loading appointment details...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>{isEditMode ? 'Edit Appointment' : 'Schedule Appointment'}</h2>
-        <button onClick={onCancel} style={styles.cancelButton}><i className="fas fa-times"></i></button>
+    <div>
+      <div className="apt-form-header">
+        <div className="apt-form-title-group">
+          <h2 className="apt-form-title">{isEditMode ? 'Edit Appointment Details' : 'Appointment Information'}</h2>
+          <p className="apt-form-subtitle">Select the customer, pet, and scheduled date/time for the consultation.</p>
+        </div>
+        {onCancel && (
+          <button onClick={onCancel} className="apt-form-close-btn" type="button" title="Close form">
+            <i className="fas fa-times"></i>
+          </button>
+        )}
       </div>
 
       {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          {error}
+        <div ref={errorRef} className="apt-form-error">
+          <i className="fas fa-exclamation-circle apt-form-error-icon"></i>
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
-        {/* Customer Selection */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Customer & Pet</h3>
+      <form onSubmit={handleSubmit}>
+        <div className="apt-form-note">
+          <i className="fas fa-info-circle" style={{ color: '#3b82f6' }}></i>
+          <span>Fields marked with <span className="apt-form-required">*</span> are required.</span>
+        </div>
+
+        {/* Section 1: Customer & Pet */}
+        <div className="apt-form-section">
+          <div className="apt-form-section-header">
+            <div className="apt-form-section-icon">
+              <i className="fas fa-user-check"></i>
+            </div>
+            <h3 className="apt-form-section-title">1. Customer & Patient Selection</h3>
+          </div>
           
-          <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Customer <span style={styles.required}>*</span>
+          <div className="apt-form-grid">
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Customer <span className="apt-form-required">*</span></span>
               </label>
               <select
                 name="customer_id"
                 value={formData.customer_id}
                 onChange={handleChange}
-                style={styles.select}
+                className="apt-form-select"
                 required
               >
-                <option value="">Select Customer</option>
+                <option value="">-- Select Customer --</option>
                 {[...customers].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(customer => (
                   <option key={customer.customer_id} value={customer.customer_id}>
-                    {customer.first_name} {customer.last_name} - {customer.phone}
+                    {customer.first_name} {customer.last_name} ({customer.phone})
                   </option>
                 ))}
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Pet <span style={styles.required}>*</span>
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Pet <span className="apt-form-required">*</span></span>
               </label>
               <select
                 name="pet_id"
                 value={formData.pet_id}
                 onChange={handleChange}
-                style={styles.select}
+                className="apt-form-select"
                 required
                 disabled={!formData.customer_id}
               >
-                <option value="">Select Pet</option>
+                <option value="">{formData.customer_id ? '-- Select Pet --' : '-- Select Customer First --'}</option>
                 {pets.map(pet => (
                   <option key={pet.pet_id} value={pet.pet_id}>
-                    {pet.pet_name} ({pet.species})
+                    {pet.pet_name} ({pet.species}{pet.breed ? ` - ${pet.breed}` : ''})
                   </option>
                 ))}
               </select>
@@ -290,47 +299,56 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        {/* Appointment Details */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Appointment Details</h3>
+        {/* Section 2: Appointment Details */}
+        <div className="apt-form-section">
+          <div className="apt-form-section-header">
+            <div className="apt-form-section-icon">
+              <i className="fas fa-calendar-day"></i>
+            </div>
+            <h3 className="apt-form-section-title">2. Date, Time & Staff Allocation</h3>
+          </div>
           
-          <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Date <span style={styles.required}>*</span>
+          <div className="apt-form-grid">
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Date <span className="apt-form-required">*</span></span>
               </label>
               <input
                 type="date"
                 name="appointment_date"
                 value={formData.appointment_date}
                 onChange={handleChange}
-                style={styles.input}
+                className="apt-form-input"
                 required
                 min={new Date().toISOString().split('T')[0]}
               />
+              <span className="apt-form-hint">Clinic open Monday &ndash; Saturday</span>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Time <span style={styles.required}>*</span>
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Time <span className="apt-form-required">*</span></span>
               </label>
               <input
                 type="time"
                 name="appointment_time"
                 value={formData.appointment_time}
                 onChange={handleChange}
-                style={styles.input}
+                className="apt-form-input"
                 required
               />
+              <span className="apt-form-hint">Operating hours: 08:30 AM &ndash; 05:30 PM</span>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Duration (minutes)</label>
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Duration</span>
+              </label>
               <select
                 name="duration_minutes"
                 value={formData.duration_minutes}
                 onChange={handleChange}
-                style={styles.select}
+                className="apt-form-select"
               >
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
@@ -341,15 +359,15 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Appointment Type <span style={styles.required}>*</span>
+            <div className="apt-form-group">
+              <label className="apt-form-label">
+                <span>Appointment Type <span className="apt-form-required">*</span></span>
               </label>
               <select
                 name="appointment_type"
                 value={formData.appointment_type}
                 onChange={handleChange}
-                style={styles.select}
+                className="apt-form-select"
                 required
               >
                 <option value="checkup">Check-up</option>
@@ -360,216 +378,90 @@ const AppointmentForm = ({ appointmentId, onSuccess, onCancel }) => {
                 <option value="consultation">Consultation</option>
               </select>
             </div>
+
+            <div className="apt-form-group apt-form-group-full">
+              <label className="apt-form-label">
+                <span>Assigned Veterinarian</span>
+              </label>
+              <select
+                name="veterinarian_id"
+                value={formData.veterinarian_id}
+                onChange={handleChange}
+                className="apt-form-select"
+              >
+                <option value="">No preference (Any Available Vet)</option>
+                {[...veterinarians].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(vet => (
+                  <option key={vet.user_id} value={vet.user_id}>
+                    Dr. {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Reason for Visit */}
+        <div className="apt-form-section">
+          <div className="apt-form-section-header">
+            <div className="apt-form-section-icon">
+              <i className="fas fa-notes-medical"></i>
+            </div>
+            <h3 className="apt-form-section-title">3. Reason for Visit</h3>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Veterinarian (Optional)</label>
-            <select
-              name="veterinarian_id"
-              value={formData.veterinarian_id}
-              onChange={handleChange}
-              style={styles.select}
-            >
-              <option value="">No preference</option>
-              {[...veterinarians].sort((a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)).map(vet => (
-                <option key={vet.user_id} value={vet.user_id}>
-                  Dr. {vet.first_name} {vet.last_name} {vet.specialization ? `- ${vet.specialization}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              Reason for Visit <span style={styles.required}>*</span>
+          <div className="apt-form-group">
+            <label className="apt-form-label">
+              <span>Symptoms or Reason <span className="apt-form-required">*</span></span>
             </label>
             <textarea
               name="reason"
               value={formData.reason}
               onChange={handleChange}
-              style={styles.textarea}
-              placeholder="Describe the reason for this appointment... (3-255 characters)"
-              rows="4"
+              className="apt-form-textarea"
+              placeholder="Describe the reason for this appointment, symptoms, or special requests... (3-255 characters)"
+              rows="3"
               required
               maxLength="255"
             />
-            <small style={styles.charCount}>
+            <div className="apt-form-char-count">
               {formData.reason.length}/255 characters
-            </small>
+            </div>
           </div>
         </div>
 
         {/* Form Actions */}
-        <div style={styles.formActions}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={styles.cancelButtonBottom}
-            disabled={loading}
-          >
-            Cancel
-          </button>
+        <div className="apt-form-actions">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="apt-form-btn-secondary"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
-            style={styles.submitButton}
+            className="apt-form-btn-primary"
             disabled={loading}
           >
-            {loading ? 'Saving...' : (isEditMode ? 'Update Appointment' : 'Schedule Appointment')}
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i>
+                Saving...
+              </>
+            ) : (
+              <>
+                <i className={isEditMode ? 'fas fa-save' : 'fas fa-calendar-check'}></i>
+                {isEditMode ? 'Update Appointment' : 'Schedule Appointment'}
+              </>
+            )}
           </button>
         </div>
       </form>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    padding: '2rem',
-    maxWidth: '900px',
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '2px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: 0,
-  },
-  cancelButton: {
-    fontSize: '1.5rem',
-    color: '#6b7280',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: '0.5rem',
-  },
-  errorBox: {
-    padding: '1rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '6px',
-    marginBottom: '1.5rem',
-    border: '1px solid #fecaca',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2rem',
-  },
-  section: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  sectionTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#374151',
-    margin: '0 0 0.5rem 0',
-    paddingBottom: '0.5rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '0.5rem',
-  },
-  required: {
-    color: '#dc2626',
-  },
-  input: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-  },
-  select: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-  },
-  textarea: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  charCount: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    marginTop: '0.25rem',
-  },
-  formActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '1rem',
-    marginTop: '2rem',
-    paddingTop: '1.5rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  cancelButtonBottom: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  submitButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '3rem',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    animation: 'spin 1s linear infinite',
-  },
 };
 
 export default AppointmentForm;

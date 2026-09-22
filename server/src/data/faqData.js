@@ -125,6 +125,14 @@ const FAQS = [
       'someone else.'
   },
   {
+    id: 'clinic-004',
+    category: 'clinic_policy',
+    question: "What are your clinic's operating hours?",
+    answer:
+      'Pro Pet Animal Hospital is open Monday through Saturday from 09:00 to 18:30 ' +
+      '(9:00 AM to 6:30 PM). We are closed on Sundays.'
+  },
+  {
     id: 'general-007',
     category: 'general',
     question: 'Should I get my pet spayed or neutered?',

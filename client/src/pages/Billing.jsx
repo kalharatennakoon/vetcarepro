@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getBills, deleteBill, getOverdueBills } from '../services/billingService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import '../styles/BillingModern.css';
 
 const Billing = () => {
   const [bills, setBills] = useState([]);
@@ -128,19 +129,16 @@ const Billing = () => {
       new Date(dueDate) < new Date(new Date().toDateString());
     const effectiveStatus = isOverdue ? 'overdue' : status;
 
-    const statusStyles = {
-      unpaid: { backgroundColor: '#FEE2E2', color: '#991B1B' },
-      partially_paid: { backgroundColor: '#FEF3C7', color: '#92400E' },
-      fully_paid: { backgroundColor: '#D1FAE5', color: '#065F46' },
-      overdue: { backgroundColor: '#FECACA', color: '#7F1D1D' },
-      cancelled: { backgroundColor: '#F3F4F6', color: '#6B7280' }
+    const statusClasses = {
+      unpaid: 'billing-status-badge status-unpaid',
+      partially_paid: 'billing-status-badge status-partially-paid',
+      fully_paid: 'billing-status-badge status-fully-paid',
+      overdue: 'billing-status-badge status-overdue',
+      cancelled: 'billing-status-badge status-cancelled'
     };
 
     return (
-      <span style={{
-        ...styles.badge,
-        ...statusStyles[effectiveStatus]
-      }}>
+      <span className={statusClasses[effectiveStatus] || 'billing-status-badge'}>
         {effectiveStatus.replace('_', ' ').toUpperCase()}
       </span>
     );
@@ -163,625 +161,320 @@ const Billing = () => {
 
   return (
     <Layout>
-      {/* Page Header */}
-      <div style={styles.header}>
-        <div style={styles.pageHeaderContent}>
-          <i className="fas fa-receipt" style={styles.headerIcon}></i>
-          <div>
-            <h1 style={styles.title}>Billing & Invoices</h1>
-            <p style={styles.subtitle}>Manage invoices and track payments</p>
+      <div className="billing-container">
+        {/* Page Header */}
+        <div className="billing-header-card">
+          <div className="billing-header-content">
+            <div className="billing-header-icon">
+              <i className="fas fa-receipt"></i>
+            </div>
+            <div>
+              <h1 className="billing-header-title">Billing & Invoices</h1>
+              <p className="billing-header-subtitle">Manage invoices and track payments</p>
+            </div>
           </div>
+          {(user?.role === 'admin' || user?.role === 'receptionist') ? (
+            <button
+              onClick={() => navigate('/billing/new')}
+              className="billing-btn-create"
+            >
+              <i className="fas fa-plus"></i> Create Invoice
+            </button>
+          ) : (
+            <div title="Only admins and receptionists can create invoices" className="billing-disabled-badge">
+              <i className="fas fa-lock"></i>
+              Create Invoice
+            </div>
+          )}
         </div>
-        {(user?.role === 'admin' || user?.role === 'receptionist') ? (
-          <button
-            onClick={() => navigate('/billing/new')}
-            style={styles.addButton}
+
+        {/* Stats Cards — admin only */}
+        {user?.role === 'admin' && (
+          <div className="billing-stats-grid">
+            <div className="billing-stat-card stat-total">
+              <div className="billing-stat-label">Total Invoices</div>
+              <div className="billing-stat-value">{stats.total}</div>
+            </div>
+            <div className="billing-stat-card stat-revenue">
+              <div className="billing-stat-label">Total Revenue</div>
+              <div className="billing-stat-value val-revenue">{formatCurrency(stats.totalRevenue)}</div>
+            </div>
+            <div className="billing-stat-card stat-paid">
+              <div className="billing-stat-label">Total Paid</div>
+              <div className="billing-stat-value val-paid">{formatCurrency(stats.totalPaid)}</div>
+            </div>
+            <div className="billing-stat-card stat-pending">
+              <div className="billing-stat-label">Pending Payment</div>
+              <div className="billing-stat-value val-pending">{formatCurrency(stats.totalPending)}</div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="billing-filters-card">
+          <div className="billing-search-box">
+            <i className="fas fa-search billing-search-icon"></i>
+            <input
+              type="text"
+              placeholder="Search by invoice number, customer name, or phone..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="billing-search-input"
+            />
+          </div>
+          
+          <select
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+            className="billing-filter-select"
           >
-            + Create Invoice
+            <option value="">All Status</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partially_paid">Partially Paid</option>
+            <option value="fully_paid">Fully Paid</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <button 
+            onClick={() => {
+              setShowOverdue(!showOverdue);
+              setPaymentStatus('');
+              setSearch('');
+            }}
+            className={`billing-btn-overdue ${showOverdue ? 'is-active' : 'is-inactive'}`}
+          >
+            <i className="fas fa-exclamation-triangle"></i>
+            {showOverdue ? 'Show All' : 'View Overdue'}
           </button>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div ref={errorRef} className="billing-alert-error">
+            <i className="fas fa-exclamation-circle"></i>
+            {error}
+          </div>
+        )}
+
+        {/* Cancel Success Notification */}
+        {cancelSuccess && (
+          <div className="billing-alert-success">
+            <i className="fas fa-check-circle"></i>
+            Bill cancelled successfully.
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="billing-loading-box">
+            <div className="billing-spinner"></div>
+            <p>Loading bills...</p>
+          </div>
         ) : (
-          <div title="Only admins and receptionists can create invoices" style={styles.disabledButton}>
-            <i className="fas fa-lock" style={{ marginRight: '0.4rem', fontSize: '0.75rem' }}></i>
-            Create Invoice
+          <>
+            {/* Bills Table */}
+            {bills.length === 0 ? (
+              <div className="billing-empty-card">
+                <i className="fas fa-receipt billing-empty-icon"></i>
+                <div className="billing-empty-text">No bills found</div>
+                {!showOverdue && (user?.role === 'admin' || user?.role === 'receptionist') && (
+                  <button
+                    onClick={() => navigate('/billing/new')}
+                    className="billing-btn-create"
+                  >
+                    <i className="fas fa-plus"></i> Create First Invoice
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="billing-table-card">
+                <div className="billing-table-wrapper">
+                  <table className="billing-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '13%' }}>Invoice #</th>
+                        <th style={{ width: '14%' }}>Date</th>
+                        <th style={{ width: '22%' }}>Customer</th>
+                        <th style={{ width: '13%' }}>Total</th>
+                        <th style={{ width: '13%' }}>Status</th>
+                        <th style={{ width: '25%', textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentBills.map((bill) => (
+                        <tr key={bill.bill_id}>
+                          <td>
+                            <span className="billing-num-badge">{bill.bill_number}</span>
+                          </td>
+                          <td>{formatDate(bill.bill_date)}</td>
+                          <td>
+                            <div>
+                              <div className="billing-cust-name">{bill.customer_name}</div>
+                              <div className="billing-cust-phone">
+                                <i className="fas fa-phone-alt"></i>
+                                {bill.customer_phone}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="billing-amount-text">
+                              {(() => {
+                                const isOverdue =
+                                  (bill.payment_status === 'unpaid' || bill.payment_status === 'partially_paid') &&
+                                  bill.due_date &&
+                                  new Date(bill.due_date) < new Date(new Date().toDateString());
+                                return formatCurrency(
+                                  isOverdue && parseFloat(bill.paid_amount) > 0
+                                    ? bill.balance_amount
+                                    : bill.total_amount
+                                );
+                              })()}
+                            </span>
+                          </td>
+                          <td>
+                            {getStatusBadge(bill.payment_status, bill.due_date)}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div className="billing-actions-cell">
+                              <button
+                                onClick={() => navigate(`/billing/${bill.bill_id}`)}
+                                className="billing-btn-act-view"
+                                title="View Details"
+                              >
+                                <i className="fas fa-eye"></i> View
+                              </button>
+                              {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && bill.payment_status !== 'cancelled' && (
+                                <button
+                                  onClick={() => navigate(`/billing/${bill.bill_id}`, { state: { openPaymentForm: true } })}
+                                  className="billing-btn-act-pay"
+                                  title="Record Payment"
+                                >
+                                  <i className="fas fa-credit-card"></i> Pay
+                                </button>
+                              )}
+                              {user?.role === 'admin' && bill.payment_status === 'unpaid' && (
+                                <button
+                                  onClick={() => handleDelete(bill.bill_id)}
+                                  className="billing-btn-act-cancel"
+                                  title="Cancel Invoice"
+                                >
+                                  <i className="fas fa-ban"></i> Cancel
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Results Summary */}
+                {bills.length > 0 && (
+                  <div className="billing-summary-footer">
+                    <div>
+                      Showing <strong>{startIndex + 1}–{Math.min(endIndex, bills.length)}</strong> of <strong>{bills.length}</strong> records
+                    </div>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="billing-pagination-bar">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="billing-pag-btn"
+                    >
+                      <i className="fas fa-chevron-left"></i>
+                    </button>
+
+                    {getPageNumbers().map((pageNum, index) => (
+                      <span key={index}>
+                        {pageNum === '...' ? (
+                          <span className="billing-pag-ellipsis">...</span>
+                        ) : (
+                          <button
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`billing-pag-btn ${currentPage === pageNum ? 'is-active' : ''}`}
+                          >
+                            {pageNum}
+                          </button>
+                        )}
+                      </span>
+                    ))}
+
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="billing-pag-btn"
+                    >
+                      <i className="fas fa-chevron-right"></i>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Cancel Modal */}
+        {showCancelModal && (
+          <div className="billing-modal-backdrop" onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}>
+            <div className="billing-modal-box" onClick={e => e.stopPropagation()}>
+              <div className="billing-modal-head">
+                <h3 className="billing-modal-title">
+                  <i className="fas fa-ban" style={{ color: '#e11d48' }}></i>
+                  Cancel Bill
+                </h3>
+                <button onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }} className="billing-modal-close">
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="billing-modal-body">
+                <p className="billing-modal-desc">
+                  Are you sure you want to cancel this bill? This action cannot be undone.
+                </p>
+                <div className="billing-form-group">
+                  <label className="billing-form-label">
+                    Reason for cancellation <span style={{ color: '#e11d48' }}>*</span>
+                  </label>
+                  <select
+                    value={cancelReason}
+                    onChange={e => setCancelReason(e.target.value)}
+                    className="billing-form-select"
+                  >
+                    <option value="">Select a reason...</option>
+                    <option value="Duplicate bill">Duplicate bill</option>
+                    <option value="Billing error">Billing error</option>
+                    <option value="Customer request">Customer request</option>
+                    <option value="Service not rendered">Service not rendered</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="billing-modal-actions">
+                  <button
+                    onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}
+                    className="billing-btn-modal-cancel"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={confirmCancelBill}
+                    disabled={!cancelReason}
+                    className="billing-btn-modal-confirm"
+                  >
+                    <i className="fas fa-ban"></i>
+                    Cancel Bill
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Stats Cards — admin only */}
-      {user?.role === 'admin' && (
-        <div style={styles.statsContainer}>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Invoices</div>
-            <div style={styles.statValue}>{stats.total}</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Revenue</div>
-            <div style={{...styles.statValue, color: '#059669'}}>{formatCurrency(stats.totalRevenue)}</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Total Paid</div>
-            <div style={{...styles.statValue, color: '#0891B2'}}>{formatCurrency(stats.totalPaid)}</div>
-          </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Pending Payment</div>
-            <div style={{...styles.statValue, color: '#DC2626'}}>{formatCurrency(stats.totalPending)}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div style={styles.filtersContainer}>
-        <input
-          type="text"
-          placeholder="Search by invoice number, customer name, or phone..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={styles.searchInput}
-        />
-        
-        <select
-          value={paymentStatus}
-          onChange={(e) => setPaymentStatus(e.target.value)}
-          style={styles.filterSelect}
-        >
-          <option value="">All Status</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="partially_paid">Partially Paid</option>
-          <option value="fully_paid">Fully Paid</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-
-        <button 
-          onClick={() => {
-            setShowOverdue(!showOverdue);
-            setPaymentStatus('');
-            setSearch('');
-          }}
-          style={{...styles.overdueButton, backgroundColor: showOverdue ? '#DC2626' : '#EF4444'}}
-        >
-          {showOverdue ? 'Show All' : 'View Overdue'}
-        </button>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          {error}
-        </div>
-      )}
-
-      {/* Cancel Success Notification */}
-      {cancelSuccess && (
-        <div style={{ backgroundColor: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', borderRadius: '8px', padding: '0.875rem 1rem', marginBottom: '1rem', fontSize: '0.875rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <i className="fas fa-check-circle"></i>
-          Bill cancelled successfully.
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading bills...</p>
-        </div>
-      ) : (
-        <>
-          {/* Bills Table */}
-          {bills.length === 0 ? (
-            <div style={styles.emptyState}>
-              <p>No bills found</p>
-              {!showOverdue && (user?.role === 'admin' || user?.role === 'receptionist') && (
-                <button
-                  onClick={() => navigate('/billing/new')}
-                  style={styles.emptyStateButton}
-                >
-                  Create First Invoice
-                </button>
-              )}
-            </div>
-          ) : (
-            <div style={styles.tableContainer}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{...styles.th, width: '12%'}}>Invoice #</th>
-                    <th style={{...styles.th, width: '15%'}}>Date</th>
-                    <th style={{...styles.th, width: '20%'}}>Customer</th>
-                    <th style={{...styles.th, width: '12%'}}>Total</th>
-                    <th style={{...styles.th, width: '13%'}}>Status</th>
-                    <th style={{...styles.th, width: '28%', textAlign: 'right', paddingRight: '1rem'}}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentBills.map((bill) => (
-                    <tr key={bill.bill_id} style={styles.tr}>
-                      <td style={styles.td}>
-                        <span style={styles.billNumber}>{bill.bill_number}</span>
-                      </td>
-                      <td style={styles.td}>{formatDate(bill.bill_date)}</td>
-                      <td style={styles.td}>
-                        <div>
-                          <div style={styles.customerName}>{bill.customer_name}</div>
-                          <div style={styles.customerPhone}>{bill.customer_phone}</div>
-                        </div>
-                      </td>
-                      <td style={styles.td}>
-                        {(() => {
-                          const isOverdue =
-                            (bill.payment_status === 'unpaid' || bill.payment_status === 'partially_paid') &&
-                            bill.due_date &&
-                            new Date(bill.due_date) < new Date(new Date().toDateString());
-                          return formatCurrency(
-                            isOverdue && parseFloat(bill.paid_amount) > 0
-                              ? bill.balance_amount
-                              : bill.total_amount
-                          );
-                        })()}
-                      </td>
-                      <td style={styles.td}>
-                        {getStatusBadge(bill.payment_status, bill.due_date)}
-                      </td>
-                      <td style={{...styles.td, textAlign: 'right'}}>
-                        <div style={styles.actionButtons}>
-                          <button
-                            onClick={() => navigate(`/billing/${bill.bill_id}`)}
-                            style={styles.viewButton}
-                            title="View Details"
-                          >
-                            View
-                          </button>
-                          {(user?.role === 'admin' || user?.role === 'receptionist') && bill.payment_status !== 'fully_paid' && bill.payment_status !== 'cancelled' && (
-                            <button
-                              onClick={() => navigate(`/billing/${bill.bill_id}`, { state: { openPaymentForm: true } })}
-                              style={styles.payButton}
-                              title="Record Payment"
-                            >
-                              Pay
-                            </button>
-                          )}
-                          {user?.role === 'admin' && bill.payment_status === 'unpaid' && (
-                            <button
-                              onClick={() => handleDelete(bill.bill_id)}
-                              style={styles.deleteButton}
-                              title="Cancel Invoice"
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Results Summary */}
-              {bills.length > 0 && (
-                <div style={{ padding: '0.6rem 1rem', fontSize: '0.85rem', color: '#6b7280', borderTop: '1px solid #E5E7EB' }}>
-                  Showing <strong>{startIndex + 1}–{Math.min(endIndex, bills.length)}</strong> of <strong>{bills.length}</strong> records
-                </div>
-              )}
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div style={{ ...styles.paginationContainer, borderTop: 'none' }}>
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
-                  >
-                    <i className="fas fa-chevron-left"></i>
-                  </button>
-
-                  {getPageNumbers().map((pageNum, index) => (
-                    <span key={index}>
-                      {pageNum === '...' ? (
-                        <span style={styles.paginationEllipsis}>...</span>
-                      ) : (
-                        <button
-                          onClick={() => handlePageChange(pageNum)}
-                          style={currentPage === pageNum ? styles.paginationButtonActive : styles.paginationButton}
-                        >
-                          {pageNum}
-                        </button>
-                      )}
-                    </span>
-                  ))}
-
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
-                  >
-                    <i className="fas fa-chevron-right"></i>
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-      {showCancelModal && (
-        <div style={styles.modalOverlay} onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}>
-          <div style={{ ...styles.modalContent, maxWidth: '400px' }} onClick={e => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>
-                <i className="fas fa-ban" style={{ marginRight: '0.5rem', color: '#d97706' }}></i>
-                Cancel Bill
-              </h3>
-              <button onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }} style={styles.modalCloseButton}>
-                <i className="fas fa-times"></i>
-              </button>
-            </div>
-            <div style={{ padding: '1.5rem' }}>
-              <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.95rem' }}>
-                Are you sure you want to cancel this bill? This action cannot be undone.
-              </p>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: '#374151', marginBottom: '0.4rem' }}>
-                  Reason for cancellation <span style={{ color: '#dc2626' }}>*</span>
-                </label>
-                <select
-                  value={cancelReason}
-                  onChange={e => setCancelReason(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '7px', border: '1px solid #d1d5db', fontSize: '0.875rem', color: '#374151', backgroundColor: '#fff' }}
-                >
-                  <option value="">Select a reason...</option>
-                  <option value="Duplicate bill">Duplicate bill</option>
-                  <option value="Billing error">Billing error</option>
-                  <option value="Customer request">Customer request</option>
-                  <option value="Service not rendered">Service not rendered</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={() => { setShowCancelModal(false); setPendingCancelId(null); setCancelReason(''); }}
-                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: '1px solid #d1d5db', backgroundColor: '#fff', color: '#374151', fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer' }}
-                >
-                  Back
-                </button>
-                <button
-                  onClick={confirmCancelBill}
-                  disabled={!cancelReason}
-                  style={{ padding: '0.5rem 1.1rem', borderRadius: '7px', border: 'none', backgroundColor: cancelReason ? '#dc2626' : '#9ca3af', color: '#fff', fontWeight: '600', fontSize: '0.875rem', cursor: cancelReason ? 'pointer' : 'not-allowed' }}
-                >
-                  <i className="fas fa-ban" style={{ marginRight: '0.4rem' }}></i>
-                  Cancel Bill
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </Layout>
   );
-};
-
-const styles = {
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: '2rem',
-    gap: '1rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  pageHeaderContent: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  headerIcon: {
-    fontSize: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: '0 0 0.5rem 0'
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: '0'
-  },
-  disabledButton: {
-    backgroundColor: '#f3f4f6',
-    color: '#9ca3af',
-    border: '1px solid #e5e7eb',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'not-allowed',
-    display: 'inline-flex',
-    alignItems: 'center',
-  },
-  addButton: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '0.75rem 1.5rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    transition: 'background-color 0.2s',
-    whiteSpace: 'nowrap',
-    boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
-  },
-  statsContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-    gap: '1.5rem',
-    marginBottom: '2rem'
-  },
-  statCard: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    border: '1px solid #E5E7EB'
-  },
-  statLabel: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    marginBottom: '0.5rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  statValue: {
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#111827'
-  },
-  filtersContainer: {
-    display: 'flex',
-    gap: '1rem',
-    marginBottom: '2rem',
-    flexWrap: 'wrap',
-  },
-  searchContainer: {
-    flex: '1 1 200px',
-    minWidth: '0',
-  },
-  searchInput: {
-    width: '100%',
-    padding: '0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #D1D5DB',
-    fontSize: '0.875rem',
-    outline: 'none'
-  },
-  filterSelect: {
-    padding: '0.75rem',
-    borderRadius: '8px',
-    border: '1px solid #D1D5DB',
-    fontSize: '0.875rem',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-    outline: 'none'
-  },
-  overdueButton: {
-    backgroundColor: '#DC2626',
-    color: 'white',
-    border: 'none',
-    padding: '0.75rem 1rem',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-  },
-  errorBox: {
-    backgroundColor: '#FEE2E2',
-    border: '1px solid #FCA5A5',
-    color: '#991B1B',
-    padding: '8px',
-    borderRadius: '6px',
-    marginBottom: '0.75rem',
-    fontSize: '12px',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '2rem 1rem',
-    color: '#6B7280'
-  },
-  spinner: {
-    border: '4px solid #E5E7EB',
-    borderTop: '4px solid #3B82F6',
-    borderRadius: '50%',
-    width: '40px',
-    height: '40px',
-    animation: 'spin 1s linear infinite',
-    marginBottom: '16px'
-  },
-  emptyState: {
-    textAlign: 'center',
-    padding: '2rem 1rem',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    border: '1px solid #E5E7EB'
-  },
-  emptyStateButton: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '12px',
-    fontWeight: '600',
-    marginTop: '1rem'
-  },
-  tableContainer: {
-    backgroundColor: 'white',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    overflow: 'auto',
-    maxHeight: 'calc(100vh - 340px)',
-    border: '1px solid #E5E7EB'
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    tableLayout: 'fixed',
-  },
-  th: {
-    backgroundColor: '#F9FAFB',
-    padding: '1rem',
-    textAlign: 'left',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    borderBottom: '1px solid #E5E7EB',
-    whiteSpace: 'nowrap',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  tr: {
-    borderBottom: '1px solid #E5E7EB',
-    transition: 'background-color 0.2s'
-  },
-  td: {
-    padding: '1rem',
-    fontSize: '0.875rem',
-    color: '#374151'
-  },
-  billNumber: {
-    fontWeight: '600',
-    color: '#3B82F6'
-  },
-  customerName: {
-    fontWeight: '500',
-    marginBottom: '1px'
-  },
-  customerPhone: {
-    fontSize: '11px',
-    color: '#6B7280'
-  },
-  badge: {
-    padding: '2px 6px',
-    borderRadius: '8px',
-    fontSize: '10px',
-    fontWeight: '600',
-    display: 'inline-block'
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: '0.5rem',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  viewButton: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  payButton: {
-    backgroundColor: '#10B981',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  deleteButton: {
-    backgroundColor: '#DC2626',
-    color: 'white',
-    border: 'none',
-    padding: '0.5rem 1rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  paginationContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '1rem',
-    borderTop: '1px solid #E5E7EB',
-  },
-  paginationButton: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  paginationButtonActive: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: '1px solid #3B82F6',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  paginationButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#D1D5DB',
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'not-allowed',
-  },
-  paginationEllipsis: {
-    color: '#9ca3af',
-    padding: '0.5rem',
-    fontSize: '0.875rem',
-  },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modalContent: { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' },
-  modalTitle: { margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' },
-  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' },
 };
 
 export default Billing;

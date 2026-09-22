@@ -1,0 +1,846 @@
+/* AppointmentsModern.css - Modern Glassmorphism UI for Appointments Page */
+
+.appts-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0.5rem 0 2rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+/* Page Header Card */
+.appts-header-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.appts-header-content {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.appts-header-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 1.4rem;
+  box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.35);
+  flex-shrink: 0;
+}
+
+.appts-header-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.appts-header-subtitle {
+  font-size: 0.925rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.appts-btn-schedule {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 20px -4px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.appts-btn-schedule:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.45);
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+}
+
+/* Toolbar Card */
+.appts-toolbar-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 18px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.03);
+}
+
+.appts-search-box {
+  flex: 1 1 240px;
+  position: relative;
+}
+
+.appts-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.appts-search-input {
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.5rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.appts-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.appts-select {
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appts-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.appts-date-input {
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.875rem;
+  color: #1e293b;
+  background: #ffffff;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.appts-date-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.appts-btn-today-pill {
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #3b82f6;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.appts-btn-today-pill:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.appts-btn-my-appts {
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.appts-btn-my-appts.is-active {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  border: 1px solid #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.appts-btn-my-appts.is-inactive {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.appts-btn-my-appts.is-inactive:hover {
+  background: #f8fafc;
+}
+
+/* View Mode Toggle Pill Group */
+.appts-view-toggle-group {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  margin-left: auto;
+}
+
+.appts-view-toggle-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.appts-view-toggle-btn.is-active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Active Filters Pills */
+.appts-active-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(248, 250, 252, 0.8);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.appts-filter-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.appts-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.appts-filter-pill-close {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 0.75rem;
+}
+
+.appts-filter-pill-close:hover {
+  color: #1d4ed8;
+}
+
+.appts-clear-all-link {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ef4444;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  text-decoration: underline;
+}
+
+/* Banners & Messages */
+.appts-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.875rem 1.25rem;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Loading Box */
+.appts-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: #64748b;
+}
+
+.appts-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Calendar Card & Grid */
+.appts-calendar-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
+}
+
+.appts-cal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.appts-cal-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.appts-cal-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appts-cal-btn-today {
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.appts-cal-btn-today:hover {
+  background: #e2e8f0;
+}
+
+.appts-cal-btn-nav {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.appts-cal-btn-nav:hover {
+  background: #f8fafc;
+  color: #2563eb;
+  border-color: #93c5fd;
+}
+
+.appts-cal-banner {
+  background: rgba(239, 246, 255, 0.8);
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appts-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.appts-cal-day-header {
+  background: #f8fafc;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.appts-cal-day-cell {
+  background: #ffffff;
+  min-height: 110px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+
+.appts-cal-day-cell.is-other-month {
+  background: #f8fafc;
+  opacity: 0.55;
+}
+
+.appts-cal-day-cell.is-today {
+  background: #eff6ff;
+}
+
+.appts-cal-day-cell.is-selected {
+  background: #f0fdf4;
+  outline: 2px solid #10b981;
+  outline-offset: -2px;
+}
+
+.appts-cal-day-cell:hover {
+  background: #f1f5f9;
+}
+
+.appts-cal-day-num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.appts-cal-day-num.is-today-num {
+  color: #2563eb;
+  background: #dbeafe;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.appts-cal-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.appts-cal-event-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.725rem;
+  border-left: 3px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease;
+}
+
+.appts-cal-event-card:hover {
+  transform: translateX(2px);
+}
+
+.appts-cal-event-time {
+  font-weight: 700;
+  color: #475569;
+  font-size: 0.675rem;
+}
+
+.appts-cal-event-title {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appts-cal-event-sub {
+  color: #64748b;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.appts-cal-event-vet {
+  color: #2563eb;
+  font-size: 0.65rem;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.appts-cal-more-badge {
+  font-size: 0.675rem;
+  font-weight: 700;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* List View Tabs */
+.appts-list-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 1.5rem;
+}
+
+.appts-tab-btn {
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.appts-tab-btn.is-active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.appts-tab-count-badge {
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 9999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.appts-tab-btn.is-active .appts-tab-count-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+/* List View Cards Grid */
+.appts-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.appts-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.appts-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.07);
+}
+
+.appts-card.is-highlighted {
+  outline: 2px solid #2563eb;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.appts-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.appts-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.appts-type-icon-tile {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.appts-card-pet-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.15rem 0;
+}
+
+.appts-card-species {
+  font-weight: 400;
+  color: #64748b;
+  font-size: 0.825rem;
+}
+
+.appts-card-owner-name {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+.appts-status-pill {
+  padding: 0.3rem 0.7rem;
+  border-radius: 9999px;
+  font-size: 0.725rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.appts-card-body {
+  background: rgba(248, 250, 252, 0.7);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.appts-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.appts-info-lbl {
+  color: #64748b;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.appts-info-val {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.appts-reason-box {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 0.825rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.appts-card-foot {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.appts-btn-act {
+  padding: 0.45rem 0.8rem;
+  border-radius: 10px;
+  font-size: 0.775rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+}
+
+.appts-btn-act:hover {
+  transform: translateY(-1px);
+}
+
+.btn-act-start { background: #f59e0b; color: #ffffff; }
+.btn-act-start:hover { background: #d97706; }
+
+.btn-act-complete { background: #10b981; color: #ffffff; }
+.btn-act-complete:hover { background: #059669; }
+
+.btn-act-cancel { background: #ef4444; color: #ffffff; }
+.btn-act-cancel:hover { background: #dc2626; }
+
+.btn-act-email { background: #059669; color: #ffffff; }
+.btn-act-email:hover { background: #047857; }
+
+.btn-act-edit { background: rgba(37, 99, 235, 0.1); color: #2563eb; border: 1px solid rgba(37, 99, 235, 0.2); }
+.btn-act-edit:hover { background: #2563eb; color: #ffffff; }
+
+.btn-act-delete { background: rgba(225, 29, 72, 0.08); color: #e11d48; border: 1px solid rgba(225, 29, 72, 0.2); }
+.btn-act-delete:hover { background: #e11d48; color: #ffffff; }
+
+/* Empty States */
+.appts-empty-card {
+  text-align: center;
+  padding: 3.5rem 1.5rem;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+}
+
+/* Modals */
+.appts-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.appts-modal-box {
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.appts-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.appts-modal-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appts-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.appts-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.appts-modal-body {
+  padding: 1.5rem;
+}
+

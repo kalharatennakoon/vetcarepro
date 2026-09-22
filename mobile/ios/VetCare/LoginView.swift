@@ -182,6 +182,7 @@ struct LoginView: View {
             NavigationLink(value: WelcomeRoute.verifyIdentity) {
                 PillLabel(title: "Set Up Your Account", style: .outlined)
             }
+            .accessibilityIdentifier("loginSetupAccountLink")
         }
         .padding(.top, 4)
     }

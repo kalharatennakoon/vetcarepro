@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCustomerAuth } from '../context/CustomerAuthContext';
+import { useNotification } from '../context/NotificationContext';
 import '../styles/PetOwnerAuth.css';
 
 const PetOwnerLogin = () => {
@@ -13,6 +14,7 @@ const PetOwnerLogin = () => {
   const errorRef = useRef(null);
 
   const { login } = useCustomerAuth();
+  const { showSuccess } = useNotification();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,6 +30,7 @@ const PetOwnerLogin = () => {
     const result = await login(identifier, password);
 
     if (result.success) {
+      showSuccess(`Welcome back, ${result.customer?.first_name || 'Pet Owner'}!`, 2000);
       navigate('/pet-owner/profile');
     } else {
       setError(result.message || 'Login failed. Please check your details.');
@@ -158,7 +161,7 @@ const PetOwnerLogin = () => {
       </main>
 
       <footer className="po-auth-footer-bar">
-        <p>&copy; 2026 VetCare Systems</p>
+        <p>&copy; 2026 VetCare Pro Systems</p>
       </footer>
     </div>
   );

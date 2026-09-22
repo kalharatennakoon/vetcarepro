@@ -475,12 +475,12 @@ export const getBillCount = async () => {
 export const getRevenueStats = async (filters = {}) => {
   let query = `
     SELECT 
-      COUNT(*) as total_bills,
-      SUM(total_amount) as total_revenue,
-      SUM(paid_amount) as total_paid,
-      SUM(balance_amount) as total_pending,
+      COUNT(CASE WHEN payment_status != 'cancelled' THEN 1 END) as total_bills,
+      SUM(CASE WHEN payment_status != 'cancelled' THEN total_amount ELSE 0 END) as total_revenue,
+      SUM(CASE WHEN payment_status != 'cancelled' THEN paid_amount ELSE 0 END) as total_paid,
+      SUM(CASE WHEN payment_status IN ('unpaid', 'partially_paid', 'overdue') THEN balance_amount ELSE 0 END) as total_pending,
       COUNT(CASE WHEN payment_status = 'fully_paid' THEN 1 END) as paid_bills,
-      COUNT(CASE WHEN payment_status = 'unpaid' THEN 1 END) as unpaid_bills,
+      COUNT(CASE WHEN payment_status IN ('unpaid', 'overdue') THEN 1 END) as unpaid_bills,
       COUNT(CASE WHEN payment_status = 'partially_paid' THEN 1 END) as partially_paid_bills
     FROM billing
     WHERE 1=1
@@ -531,6 +531,7 @@ export const deleteBill = async (billId, userId, reason) => {
   const query = `
     UPDATE billing SET
       payment_status = 'cancelled',
+      balance_amount = 0,
       cancellation_reason = $3,
       updated_by = $1
     WHERE bill_id = $2

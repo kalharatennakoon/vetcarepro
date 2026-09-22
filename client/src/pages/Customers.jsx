@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getCustomers } from '../services/customerService';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import '../styles/ManagementPages.css';
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -100,373 +101,227 @@ const Customers = () => {
 
   return (
     <Layout>
-      {/* Page Header */}
-      <div style={styles.pageHeader}>
-        <div style={styles.headerInfo}>
-          <div style={styles.headerIconWrapper}>
-            <i className="fas fa-users" style={styles.headerIcon}></i>
+      <div className="mgmt-page-container">
+        {/* Page Header */}
+        <div className="mgmt-header-card">
+          <div className="mgmt-header-left">
+            <div className="mgmt-header-icon-box mgmt-header-icon-customers">
+              <i className="fas fa-users"></i>
+            </div>
+            <div className="mgmt-header-text">
+              <h2 className="mgmt-title">Customer Management</h2>
+              <p className="mgmt-subtitle">Manage pet owners and their information</p>
+            </div>
           </div>
-          <div>
-            <h2 style={styles.title}>Customer Management</h2>
-            <p style={styles.subtitle}>Manage pet owners and their information</p>
-          </div>
-        </div>
-        <button 
-          onClick={() => navigate('/customers/new')}
-          style={styles.addButton}
-          onMouseOver={(e) => e.target.style.backgroundColor = styles.addButtonHover.backgroundColor}
-          onMouseOut={(e) => e.target.style.backgroundColor = styles.addButton.backgroundColor}
-        >
-          <span style={styles.buttonIcon}>+</span>
-          <span>Add Customer</span>
-        </button>
-      </div>
-
-      {/* Search & Filter Bar */}
-      <div style={styles.searchContainer}>
-        <div style={styles.searchWrapper}>
-          <i className="fas fa-search" style={styles.searchIconSpan}></i>
-          <input
-            type="text"
-            placeholder="Search by name, phone, email, or city..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              style={styles.clearButton}
-            >
-              <i className="fas fa-times"></i>
-            </button>
-          )}
-        </div>
-        <div style={styles.statsBar}>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Total Customers</span>
-            <span style={styles.statValue}>{customers.length}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Active</span>
-            <span style={{ ...styles.statValue, color: '#059669' }}>{activeCount}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Inactive</span>
-            <span style={{ ...styles.statValue, color: '#dc2626' }}>{inactiveCount}</span>
-          </div>
-          <div style={styles.statItem}>
-            <span style={styles.statLabel}>Showing</span>
-            <span style={styles.statValue}>
-              {filteredCustomers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredCustomers.length)}` : '0'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Filter Tabs */}
-      <div style={styles.statusTabs}>
-        {statusTabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
-            style={{ ...styles.statusTab, ...(statusFilter === tab.key ? styles.statusTabActive : {}) }}
+          <button 
+            onClick={() => navigate('/customers/new')}
+            className="mgmt-add-btn mgmt-add-btn-purple"
           >
-            {tab.label}
-            <span style={{ ...styles.tabCount, ...(statusFilter === tab.key ? styles.tabCountActive : {}) }}>
-              {tab.count}
-            </span>
+            <span>+</span>
+            <span>Add Customer</span>
           </button>
-        ))}
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          {error}
         </div>
-      )}
 
-      {/* Loading State */}
-      {loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading customers...</p>
-        </div>
-      ) : (
-        <>
-          {/* Customers Table */}
-          <div style={styles.tableContainer}>
-            {currentCustomers.length === 0 ? (
-              <div style={styles.emptyState}>
-                <p>No customers found</p>
-                <button 
-                  onClick={() => navigate('/customers/new')}
-                  style={styles.emptyButton}
+        {/* Search & Filter Bar */}
+        <div className="mgmt-control-card">
+          <div className="mgmt-search-row">
+            <div className="mgmt-search-wrapper">
+              <i className="fas fa-search mgmt-search-icon"></i>
+              <input
+                type="text"
+                placeholder="Search by name, phone, email, or city..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="mgmt-search-input"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="mgmt-search-clear-btn"
                 >
-                  Add Your First Customer
+                  <i className="fas fa-times"></i>
                 </button>
-              </div>
-            ) : (
-              <table style={styles.table}>
-                <thead>
-                  <tr style={styles.tableHeader}>
-                    <th style={{...styles.th, width: '30%'}}>Customer</th>
-                    <th style={{...styles.th, width: '18%'}}>Phone</th>
-                    <th style={{...styles.th, width: '24%'}}>Email</th>
-                    <th style={{...styles.th, width: '10%', textAlign: 'center'}}>Pets</th>
-                    <th style={{...styles.th, width: '18%', textAlign: 'right'}}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentCustomers.map((customer) => (
-                    <tr 
-                      key={customer.customer_id} 
-                      style={styles.tableRow}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f8fafc';
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <td style={styles.td}>
-                        <div style={styles.customerCell}>
-                          <div style={styles.avatar}>
-                            {getInitials(customer.first_name, customer.last_name)}
-                          </div>
-                          <div style={styles.customerInfo}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span style={styles.customerName}>
-                                {customer.first_name} {customer.last_name}
-                              </span>
-                              {customer.is_active === false && <span style={styles.inactiveBadge}>Inactive</span>}
+              )}
+            </div>
+          </div>
+
+          <div className="mgmt-stats-grid">
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Total Customers</span>
+              <span className="mgmt-stat-value">{customers.length}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Active</span>
+              <span className="mgmt-stat-value active-color">{activeCount}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Inactive</span>
+              <span className="mgmt-stat-value inactive-color">{inactiveCount}</span>
+            </div>
+            <div className="mgmt-stat-card">
+              <span className="mgmt-stat-label">Showing</span>
+              <span className="mgmt-stat-value">
+                {filteredCustomers.length > 0 ? `${startIndex + 1}-${Math.min(endIndex, filteredCustomers.length)}` : '0'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div ref={errorRef} style={styles.errorBox}>
+            {error}
+          </div>
+        )}
+
+        {/* Status Filter Tabs */}
+        <div className="mgmt-status-tabs">
+          {statusTabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setStatusFilter(tab.key); setCurrentPage(1); }}
+              className={`mgmt-status-tab ${statusFilter === tab.key ? 'active' : ''}`}
+            >
+              {tab.label}
+              <span className="mgmt-tab-count">{tab.count}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Loading State */}
+        {loading ? (
+          <div style={styles.loadingContainer}>
+            <div style={styles.spinner}></div>
+            <p>Loading customers...</p>
+          </div>
+        ) : (
+          <>
+            {/* Customers Table Card */}
+            <div className="mgmt-table-card">
+              {currentCustomers.length === 0 ? (
+                <div className="mgmt-empty-card">
+                  <i className="fas fa-users mgmt-empty-icon"></i>
+                  <p className="mgmt-empty-text">No customers found</p>
+                  <button 
+                    onClick={() => navigate('/customers/new')}
+                    className="mgmt-add-btn mgmt-add-btn-purple"
+                  >
+                    Add Your First Customer
+                  </button>
+                </div>
+              ) : (
+                <table className="mgmt-table">
+                  <thead>
+                    <tr>
+                      <th className="mgmt-th" style={{ width: '30%' }}>Customer</th>
+                      <th className="mgmt-th" style={{ width: '20%' }}>Phone</th>
+                      <th className="mgmt-th" style={{ width: '26%' }}>Email</th>
+                      <th className="mgmt-th" style={{ width: '10%', textAlign: 'center' }}>Pets</th>
+                      <th className="mgmt-th" style={{ width: '14%', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentCustomers.map((customer) => (
+                      <tr key={customer.customer_id} className="mgmt-tr">
+                        <td className="mgmt-td">
+                          <div className="mgmt-item-cell">
+                            <div className="mgmt-avatar-initials mgmt-avatar-initials-purple">
+                              {getInitials(customer.first_name, customer.last_name)}
+                            </div>
+                            <div className="mgmt-item-info">
+                              <div className="mgmt-item-name">
+                                <span>{customer.first_name} {customer.last_name}</span>
+                                {customer.is_active === false && <span className="mgmt-badge-inactive">Inactive</span>}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td style={styles.td}>
-                        <span style={styles.phoneNumber}>{customer.phone}</span>
-                      </td>
-                      <td style={styles.td}>
-                        {customer.email ? (
-                          <a href={`mailto:${customer.email}`} style={styles.emailLink}>
-                            {customer.email}
-                          </a>
-                        ) : (
-                          <span style={styles.noData}>No email</span>
-                        )}
-                      </td>
-                      <td style={{...styles.td, textAlign: 'center'}}>
-                        <span style={{
-                          ...styles.petCount,
-                          ...(customer.pet_count > 0 ? {} : styles.petCountZero)
-                        }}>
-                          {customer.pet_count || 0}
-                        </span>
-                      </td>
-                      <td style={{...styles.td, textAlign: 'right'}}>
-                        <button
-                          onClick={() => navigate(`/customers/${customer.customer_id}`)}
-                          style={styles.viewButton}
-                          onMouseOver={(e) => e.target.style.backgroundColor = styles.viewButtonHover.backgroundColor}
-                          onMouseOut={(e) => e.target.style.backgroundColor = styles.viewButton.backgroundColor}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Pagination */}
-          {filteredCustomers.length > itemsPerPage && (
-            <div style={styles.paginationContainer}>
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                style={currentPage === 1 ? styles.paginationButtonDisabled : styles.paginationButton}
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-
-              {getPageNumbers().map((page, index) => (
-                page === '...' ? (
-                  <span key={`ellipsis-${index}`} style={styles.paginationEllipsis}>...</span>
-                ) : (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    style={currentPage === page ? styles.paginationButtonActive : styles.paginationButton}
-                  >
-                    {page}
-                  </button>
-                )
-              ))}
-
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                style={currentPage === totalPages ? styles.paginationButtonDisabled : styles.paginationButton}
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
+                        </td>
+                        <td className="mgmt-td">
+                          <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>{customer.phone}</span>
+                        </td>
+                        <td className="mgmt-td">
+                          {customer.email ? (
+                            <a href={`mailto:${customer.email}`} className="mgmt-owner-link">
+                              {customer.email}
+                            </a>
+                          ) : (
+                            <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>No email</span>
+                          )}
+                        </td>
+                        <td className="mgmt-td" style={{ textAlign: 'center' }}>
+                          <span className={`mgmt-count-badge ${customer.pet_count > 0 ? '' : 'zero'}`}>
+                            {customer.pet_count || 0}
+                          </span>
+                        </td>
+                        <td className="mgmt-td" style={{ textAlign: 'right' }}>
+                          <button
+                            onClick={() => navigate(`/customers/${customer.customer_id}`)}
+                            className="mgmt-view-btn"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
-        </>
-      )}
 
+            {/* Pagination Container */}
+            {filteredCustomers.length > itemsPerPage && (
+              <div className="mgmt-pagination-container">
+                <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
+                  Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} entries
+                </div>
+                <div className="mgmt-pagination-btns">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="mgmt-page-btn"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+
+                  {getPageNumbers().map((page, index) => (
+                    page === '...' ? (
+                      <span key={`ellipsis-${index}`} style={{ padding: '0 0.25rem', color: '#94a3b8' }}>...</span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`mgmt-page-btn ${currentPage === page ? 'active' : ''}`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ))}
+
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="mgmt-page-btn"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </Layout>
   );
 };
 
 const styles = {
-  // Page Header
-  pageHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '1px solid #e5e7eb',
-  },
-  headerInfo: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  headerIconWrapper: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerIcon: {
-    fontSize: '1.5rem',
-    color: 'white',
-  },
-  title: {
-    fontSize: '2rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: '0 0 0.5rem 0',
-    lineHeight: '1.2',
-  },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6b7280',
-    margin: '0',
-    lineHeight: '1.2',
-  },
-  addButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)',
-  },
-  addButtonHover: {
-    backgroundColor: '#1E40AF',
-  },
-  buttonIcon: {
-    fontSize: '1.25rem',
-    fontWeight: 'bold',
-  },
-  
-  // Search Section
-  searchContainer: {
-    marginBottom: '2rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  searchWrapper: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    border: '1px solid #e5e7eb',
-    padding: '0.75rem 1rem',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-  },
-  searchIconSpan: {
-    fontSize: '0.875rem',
-    marginRight: '0.75rem',
-    color: '#9ca3af',
-  },
-  searchInput: {
-    flex: 1,
-    border: 'none',
-    outline: 'none',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#111827',
-    backgroundColor: 'transparent',
-  },
-  clearButton: {
-    backgroundColor: '#f3f4f6',
-    border: 'none',
-    borderRadius: '50%',
-    width: '32px',
-    height: '32px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    color: '#6b7280',
-  },
-  statsBar: {
-    display: 'flex',
-    gap: '1rem',
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    backgroundColor: 'white',
-    borderRadius: '8px',
-    padding: '0.75rem 1rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.25rem',
-    flex: '1 1 100px',
-    border: '1px solid #e5e7eb',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-  },
-  statLabel: {
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  statValue: {
-    fontSize: '1.25rem',
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  
-  // Error & Loading
   errorBox: {
     padding: '1rem',
     backgroundColor: '#fee2e2',
     color: '#991b1b',
-    borderRadius: '6px',
-    marginBottom: '1rem',
+    borderRadius: '8px',
     border: '1px solid #fecaca',
+    fontSize: '0.875rem',
   },
   loadingContainer: {
     display: 'flex',
@@ -474,283 +329,16 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     padding: '3rem',
+    color: '#64748b',
   },
   spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
+    border: '3px solid #e2e8f0',
+    borderTop: '3px solid #4f46e5',
     borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    animation: 'spin 1s linear infinite',
-  },
-  
-  // Table Styles
-  tableContainer: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    maxHeight: 'calc(100vh - 340px)',
-    overflow: 'auto',
-    border: '1px solid #e5e7eb',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    minWidth: '900px',
-    tableLayout: 'fixed',
-  },
-  tableHeader: {
-    backgroundColor: '#f9fafb',
-    borderBottom: '1px solid #e5e7eb',
-    position: 'sticky',
-    top: 0,
-    zIndex: 10,
-  },
-  th: {
-    padding: '1rem',
-    textAlign: 'left',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em',
-  },
-  tableRow: {
-    borderBottom: '1px solid #f3f4f6',
-    transition: 'background-color 0.2s',
-  },
-  td: {
-    padding: '1rem',
-    fontSize: '0.875rem',
-    color: '#374151',
-    verticalAlign: 'middle',
-  },
-  customerCell: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-  },
-  avatar: {
     width: '40px',
     height: '40px',
-    borderRadius: '8px',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'white',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    flexShrink: 0,
-  },
-  customerInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0',
-  },
-  customerName: {
-    fontWeight: '600',
-    color: '#111827',
-    fontSize: '0.875rem',
-  },
-  phoneNumber: {
-    fontWeight: '500',
-    color: '#374151',
-    fontFamily: 'monospace',
-    fontSize: '0.875rem',
-  },
-  emailLink: {
-    color: '#3B82F6',
-    textDecoration: 'none',
-    fontWeight: '500',
-    fontSize: '0.875rem',
-  },
-  noData: {
-    color: '#cbd5e1',
-    fontStyle: 'italic',
-  },
-  petCount: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '32px',
-    padding: '0.375rem 0.75rem',
-    backgroundColor: '#dbeafe',
-    color: '#1e40af',
-    borderRadius: '6px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-  },
-  petCountZero: {
-    backgroundColor: '#f1f5f9',
-    color: '#94a3b8',
-  },
-  
-  // Action Buttons
-  actions: {
-    display: 'flex',
-    gap: '0.5rem',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  viewButton: {
-    padding: '0.35rem 1rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    fontSize: '0.8rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    display: 'inline-flex',
-    alignItems: 'center',
-    whiteSpace: 'nowrap',
-  },
-  viewButtonHover: {
-    backgroundColor: '#2563eb',
-  },
-  editButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  editButtonHover: {
-    backgroundColor: '#2563eb',
-  },
-  deleteButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#DC2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  deleteButtonHover: {
-    backgroundColor: '#475569',
-  },
-  
-  // Empty State
-  emptyState: {
-    textAlign: 'center',
-    padding: '4rem 2rem',
-  },
-  emptyButton: {
-    marginTop: '1rem',
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  
-  // Pagination
-  paginationContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '1rem',
-    borderTop: '1px solid #E5E7EB',
-  },
-  paginationButton: {
-    backgroundColor: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  paginationButtonActive: {
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: '1px solid #3B82F6',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '600',
-    borderRadius: '6px',
-    cursor: 'pointer',
-  },
-  paginationButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    color: '#D1D5DB',
-    border: '1px solid #D1D5DB',
-    padding: '0.5rem 0.75rem',
-    minWidth: '40px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    borderRadius: '6px',
-    cursor: 'not-allowed',
-  },
-  paginationEllipsis: {
-    color: '#9ca3af',
-    padding: '0.5rem',
-    fontSize: '0.875rem',
-  },
-  statusTabs: {
-    display: 'flex',
-    gap: '0.5rem',
+    animation: 'spin 1s linear infinite',
     marginBottom: '1rem',
-  },
-  statusTab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    backgroundColor: '#ffffff',
-    color: '#6b7280',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  statusTabActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-    color: '#ffffff',
-  },
-  tabCount: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '20px',
-    padding: '0 0.375rem',
-    height: '20px',
-    borderRadius: '10px',
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-  },
-  tabCountActive: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    color: '#ffffff',
-  },
-  inactiveBadge: {
-    display: 'inline-block',
-    padding: '0.125rem 0.5rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '4px',
-    fontSize: '0.65rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.04em',
   },
 };
 

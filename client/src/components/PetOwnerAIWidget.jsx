@@ -168,16 +168,7 @@ const PetOwnerAIWidget = () => {
           role: 'assistant',
           content: result.answer,
           sources: result.sources || [],
-          // Disambiguation choices ("which pet do you mean?") - clicking
-          // one just re-submits its value as the next message, same as
-          // typing it.
           options: result.options || [],
-          // Same flag/purpose as AIAssistant.jsx's staff chat: a
-          // deterministic/dispatch answer (disambiguation prompts, "no
-          // records found", structured SQL answers) has no sources by
-          // design, but it isn't an ungrounded RAG generation either - only
-          // the latter should get the "general veterinary knowledge"
-          // footer below.
           structured: Boolean(result.structured || result.pending_intent)
         }
       ]);
@@ -217,10 +208,14 @@ const PetOwnerAIWidget = () => {
           )}
           <div className="po-widget-header">
             <div className="po-widget-header-title">
-              <i className="fas fa-robot"></i>
+              <div className="po-widget-header-icon-badge">
+                <i className="fas fa-wand-magic-sparkles"></i>
+              </div>
               <div>
-                <strong>AI Assistant</strong>
-                <span>Scoped to your own pets only</span>
+                <strong>VetCare Pro AI Assistant</strong>
+                <span>
+                  <span className="po-widget-status-dot"></span> Scoped to your pets only
+                </span>
               </div>
             </div>
           </div>
@@ -245,18 +240,20 @@ const PetOwnerAIWidget = () => {
                       ))}
                     </div>
                   )}
-                  {m.role === 'assistant' && !m.intro && (
+                  {m.role === 'assistant' && !m.intro && m.content && m.content.trim() !== '' && (
                     m.sources && m.sources.length > 0 ? (
                       <div className="po-widget-sources">
-                        <span className="po-widget-sources-label">
+                        <div className="po-widget-sources-label">
                           <i className="fas fa-book"></i>
                           {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
-                        </span>
-                        {m.sources.map((s, j) => (
-                          <span key={j} className="po-widget-source-tag">
-                            {getSourceLabel(s)}
-                          </span>
-                        ))}
+                        </div>
+                        <div className="po-widget-sources-list">
+                          {m.sources.map((s, j) => (
+                            <span key={j} className="po-widget-source-tag">
+                              {getSourceLabel(s)}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     ) : !m.structured ? (
                       <div className="po-widget-sources po-widget-sources-general">
@@ -269,7 +266,10 @@ const PetOwnerAIWidget = () => {
             ))}
             {loading && (
               <div className="po-widget-message po-widget-message-assistant">
-                <div className="po-widget-bubble po-widget-bubble-loading">
+                <div className="po-widget-header-icon-badge" style={{ width: '26px', height: '26px', borderRadius: '50%', fontSize: '0.75rem', flexShrink: 0, marginRight: '0.4rem' }}>
+                  <i className="fas fa-robot"></i>
+                </div>
+                <div className="po-widget-thinking-status">
                   <span>Thinking</span>
                   <span className="po-widget-thinking-dots">
                     <span></span><span></span><span></span>
@@ -321,7 +321,7 @@ const PetOwnerAIWidget = () => {
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={isOpen ? 'Close AI assistant' : 'Open AI assistant'}
       >
-        <i className={`fas ${isOpen ? 'fa-times' : 'fa-robot'}`}></i>
+        <i className={`fas ${isOpen ? 'fa-times' : 'fa-wand-magic-sparkles'}`}></i>
         {!isOpen && <span>Ask AI</span>}
       </button>
     </>

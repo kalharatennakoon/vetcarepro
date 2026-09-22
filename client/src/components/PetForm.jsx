@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getPetById, createPet, updatePet } from '../services/petService';
+import { getCustomers } from '../services/customerService';
+import { useNotification } from '../context/NotificationContext';
+import '../styles/FormPagesModern.css';
 
 const SPECIES_LIST = [
   'Dog', 'Cat', 'Bird', 'Rabbit', 'Guinea Pig', 'Hamster',
@@ -9,18 +12,12 @@ const SPECIES_LIST = [
   'Exotic Animal', 'Monkey', 'Deer',
   'Rescue/Admitted Wildlife', 'Other',
 ];
-import { getCustomers } from '../services/customerService';
-import { useNotification } from '../context/NotificationContext';
 
 const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
   const { showSuccess } = useNotification();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef(null);
-
-  useEffect(() => {
-    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [error]);
   const [customers, setCustomers] = useState([]);
   const [formData, setFormData] = useState({
     customer_id: customerId || '',
@@ -43,8 +40,11 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
   const isEditMode = !!petId;
 
   useEffect(() => {
-    fetchCustomers();
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
 
+  useEffect(() => {
+    fetchCustomers();
     if (petId) {
       loadPet();
     }
@@ -60,7 +60,6 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
       console.error('Failed to fetch customers:', err);
     }
   };
-
 
   const loadPet = async () => {
     try {
@@ -123,13 +122,11 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
       return false;
     }
 
-    // Validate date is not in future
     if (new Date(formData.date_of_birth) > new Date()) {
       setError('Date of birth cannot be in the future');
       return false;
     }
 
-    // Validate weight if provided
     if (formData.weight_current && (isNaN(formData.weight_current) || parseFloat(formData.weight_current) <= 0)) {
       setError('Weight must be a positive number');
       return false;
@@ -140,20 +137,15 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
       setError('');
 
-      // Prepare data
       const petData = {
         ...formData,
         weight_current: formData.weight_current ? parseFloat(formData.weight_current) : null,
-        // Convert empty strings to null for optional fields
         breed: formData.breed.trim() || null,
         color: formData.color.trim() || null,
         insurance_provider: formData.insurance_provider.trim() || null,
@@ -181,46 +173,63 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
 
   if (loading && isEditMode) {
     return (
-      <div style={styles.loadingContainer}>
-        <div style={styles.spinner}></div>
-        <p>Loading pet data...</p>
+      <div className="form-page-loading">
+        <div className="form-page-spinner"></div>
+        <p style={{ color: '#64748b', fontWeight: '500' }}>Loading pet patient details...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.title}>{isEditMode ? 'Edit Pet' : 'Add New Pet'}</h2>
-        <button onClick={onCancel} style={styles.cancelButton}><i className="fas fa-times"></i></button>
+    <div>
+      <div className="form-card-header">
+        <div className="form-card-title-group">
+          <h2 className="form-card-title">{isEditMode ? 'Edit Pet Patient' : 'Pet Patient Profile'}</h2>
+          <p className="form-card-subtitle">Fill in the basic information, medical attributes, and notes below.</p>
+        </div>
+        {onCancel && (
+          <button onClick={onCancel} className="form-card-close-btn" type="button" title="Close form">
+            <i className="fas fa-times"></i>
+          </button>
+        )}
       </div>
 
       {error && (
-        <div ref={errorRef} style={styles.errorBox}>
-          {error}
+        <div ref={errorRef} className="form-card-error">
+          <i className="fas fa-exclamation-circle form-card-error-icon"></i>
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 1rem 0' }}>Fields marked with <span style={{ color: '#ef4444' }}>*</span> are required.</p>
-        {/* Basic Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Basic Information</h3>
-          
-          <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Owner <span style={styles.required}>*</span>
+      <form onSubmit={handleSubmit}>
+        <div className="form-card-note">
+          <i className="fas fa-info-circle" style={{ color: '#2563eb' }}></i>
+          <span>Fields marked with <span className="form-card-required">*</span> are required.</span>
+        </div>
+
+        {/* Section 1: Basic Information */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon">
+              <i className="fas fa-paw"></i>
+            </div>
+            <h3 className="form-section-title">1. Basic Information & Ownership</h3>
+          </div>
+
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label">
+                <span>Owner <span className="form-card-required">*</span></span>
               </label>
               <select
                 name="customer_id"
                 value={formData.customer_id}
                 onChange={handleChange}
-                style={styles.select}
+                className="form-select"
                 required
                 disabled={!!customerId}
               >
-                <option value="">Select Owner</option>
+                <option value="">-- Select Owner --</option>
                 {customers.map(customer => (
                   <option key={customer.customer_id} value={customer.customer_id}>
                     {customer.first_name} {customer.last_name} ({customer.phone})
@@ -229,104 +238,104 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Pet Name <span style={styles.required}>*</span>
+            <div className="form-group">
+              <label className="form-label">
+                <span>Pet Name <span className="form-card-required">*</span></span>
               </label>
               <input
                 type="text"
                 name="pet_name"
                 value={formData.pet_name}
                 onChange={handleChange}
-                style={styles.input}
+                className="form-input"
                 placeholder="e.g., Bruno"
                 required
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Species <span style={styles.required}>*</span>
+            <div className="form-group">
+              <label className="form-label">
+                <span>Species <span className="form-card-required">*</span></span>
               </label>
               <select
                 name="species"
                 value={formData.species}
                 onChange={handleChange}
-                style={styles.select}
+                className="form-select"
                 required
               >
-                <option value="">Select Species</option>
+                <option value="">-- Select Species --</option>
                 {SPECIES_LIST.map(species => (
                   <option key={species} value={species}>{species}</option>
                 ))}
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Breed</label>
+            <div className="form-group">
+              <label className="form-label"><span>Breed</span></label>
               <input
                 type="text"
                 name="breed"
                 value={formData.breed}
                 onChange={handleChange}
-                style={styles.input}
+                className="form-input"
                 placeholder="e.g., Labrador Retriever"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Gender <span style={styles.required}>*</span>
+            <div className="form-group">
+              <label className="form-label">
+                <span>Gender <span className="form-card-required">*</span></span>
               </label>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                style={styles.select}
+                className="form-select"
                 required
               >
-                <option value="">Select Gender</option>
+                <option value="">-- Select Gender --</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="unknown">Unknown</option>
               </select>
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>
-                Date of Birth <span style={styles.required}>*</span>
+            <div className="form-group">
+              <label className="form-label">
+                <span>Date of Birth <span className="form-card-required">*</span></span>
               </label>
               <input
                 type="date"
                 name="date_of_birth"
                 value={formData.date_of_birth}
                 onChange={handleChange}
-                style={styles.input}
+                className="form-input"
                 max={new Date().toISOString().split('T')[0]}
                 required
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Color</label>
+            <div className="form-group">
+              <label className="form-label"><span>Color / Markings</span></label>
               <input
                 type="text"
                 name="color"
                 value={formData.color}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Golden"
+                className="form-input"
+                placeholder="e.g., Golden / White chest"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Current Weight (kg)</label>
+            <div className="form-group">
+              <label className="form-label"><span>Current Weight (kg)</span></label>
               <input
                 type="number"
                 name="weight_current"
                 value={formData.weight_current}
                 onChange={handleChange}
-                style={styles.input}
+                className="form-input"
                 placeholder="e.g., 28.5"
                 step="0.1"
                 min="0"
@@ -335,286 +344,151 @@ const PetForm = ({ petId, customerId, onSuccess, onCancel }) => {
           </div>
         </div>
 
-        {/* Medical Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Medical Information</h3>
-          
-          <div style={styles.formGrid}>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Insurance Provider</label>
+        {/* Section 2: Medical & Insurance */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon">
+              <i className="fas fa-notes-medical"></i>
+            </div>
+            <h3 className="form-section-title">2. Medical Attributes & Insurance</h3>
+          </div>
+
+          <div className="form-grid-2col">
+            <div className="form-group">
+              <label className="form-label"><span>Insurance Provider</span></label>
               <input
                 type="text"
                 name="insurance_provider"
                 value={formData.insurance_provider}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Pet Insurance Co."
+                className="form-input"
+                placeholder="e.g., Ceylinco / Fairfirst Pet Insurance"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Insurance Policy Number</label>
+            <div className="form-group">
+              <label className="form-label"><span>Policy Number</span></label>
               <input
                 type="text"
                 name="insurance_policy_number"
                 value={formData.insurance_policy_number}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="Policy number"
+                className="form-input"
+                placeholder="e.g., POL-882319"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  name="is_neutered"
-                  checked={formData.is_neutered}
-                  onChange={handleChange}
-                  style={styles.checkbox}
-                />
-                Neutered/Spayed
-              </label>
-            </div>
-
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Allergies</label>
+            <div className="form-group">
+              <label className="form-label"><span>Allergies</span></label>
               <input
                 type="text"
                 name="allergies"
                 value={formData.allergies}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Penicillin"
+                className="form-input"
+                placeholder="e.g., Penicillin, Flea bites"
               />
             </div>
 
-            <div style={styles.formGroup}>
-              <label style={styles.label}>Special Needs</label>
+            <div className="form-group">
+              <label className="form-label"><span>Special Needs</span></label>
               <input
                 type="text"
                 name="special_needs"
                 value={formData.special_needs}
                 onChange={handleChange}
-                style={styles.input}
-                placeholder="e.g., Sensitive stomach"
+                className="form-input"
+                placeholder="e.g., Sensitive stomach, Blind in left eye"
               />
+            </div>
+
+            <div className="form-group form-group-full">
+              <label className="form-checkbox-card">
+                <input
+                  type="checkbox"
+                  name="is_neutered"
+                  checked={formData.is_neutered}
+                  onChange={handleChange}
+                />
+                <div>
+                  <div className="form-checkbox-label">Neutered / Spayed</div>
+                  <div className="form-checkbox-subtext">Check if the pet has undergone reproductive desexing surgery.</div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
 
-        {/* Additional Information */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}>Additional Information</h3>
-          
-          <div style={styles.formGroup}>
-            <label style={styles.checkboxLabel}>
+        {/* Section 3: Status & Notes */}
+        <div className="form-section-box">
+          <div className="form-section-header">
+            <div className="form-section-icon">
+              <i className="fas fa-sticky-note"></i>
+            </div>
+            <h3 className="form-section-title">3. Status & General Notes</h3>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-checkbox-card">
               <input
                 type="checkbox"
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                style={styles.checkbox}
               />
-              Active Patient
+              <div>
+                <div className="form-checkbox-label">Active Patient Record</div>
+                <div className="form-checkbox-subtext">Uncheck if the pet is deceased or no longer receiving treatment at this clinic.</div>
+              </div>
             </label>
-            <p style={styles.helpText}>Uncheck if the pet is deceased or no longer a patient</p>
           </div>
 
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Notes</label>
+          <div className="form-group">
+            <label className="form-label"><span>Additional Notes</span></label>
             <textarea
               name="notes"
               value={formData.notes}
               onChange={handleChange}
-              style={styles.textarea}
-              placeholder="Any additional notes about the pet..."
-              rows="4"
+              className="form-textarea"
+              placeholder="Any additional dietary requirements, temperament notes, or handling instructions..."
+              rows="3"
             />
           </div>
         </div>
 
         {/* Form Actions */}
-        <div style={styles.formActions}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={styles.cancelButtonBottom}
-            disabled={loading}
-          >
-            Cancel
-          </button>
+        <div className="form-action-footer">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="form-btn-secondary"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+          )}
           <button
             type="submit"
-            style={styles.submitButton}
+            className="form-btn-primary"
             disabled={loading}
           >
-            {loading ? 'Saving...' : (isEditMode ? 'Update Pet' : 'Add Pet')}
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i>
+                Saving...
+              </>
+            ) : (
+              <>
+                <i className={isEditMode ? 'fas fa-save' : 'fas fa-plus'}></i>
+                {isEditMode ? 'Update Pet Details' : 'Save New Pet'}
+              </>
+            )}
           </button>
         </div>
       </form>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    padding: '2rem',
-    maxWidth: '900px',
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
-    paddingBottom: '1rem',
-    borderBottom: '2px solid #e5e7eb',
-  },
-  title: {
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: 0,
-  },
-  cancelButton: {
-    padding: '0.5rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    fontSize: '1.5rem',
-    color: '#6b7280',
-    cursor: 'pointer',
-    borderRadius: '4px',
-  },
-  errorBox: {
-    padding: '1rem',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-    borderRadius: '6px',
-    marginBottom: '1.5rem',
-    border: '1px solid #fecaca',
-  },
-  form: {
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-  },
-  section: {
-    marginBottom: '2rem',
-  },
-  sectionTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1rem',
-  },
-  formGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1rem',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.5rem',
-  },
-  label: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-  },
-  required: {
-    color: '#ef4444',
-  },
-  input: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-  },
-  select: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    backgroundColor: 'white',
-    cursor: 'pointer',
-  },
-  textarea: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    outline: 'none',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-    cursor: 'pointer',
-  },
-  checkbox: {
-    width: '18px',
-    height: '18px',
-    cursor: 'pointer',
-  },
-  helpText: {
-    fontSize: '0.75rem',
-    color: '#6b7280',
-    margin: '0.25rem 0 0 0',
-  },
-  formActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '1rem',
-    marginTop: '2rem',
-    paddingTop: '1.5rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  cancelButtonBottom: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#6b7280',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  submitButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '1rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: '3rem',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    animation: 'spin 1s linear infinite',
-  },
 };
 
 export default PetForm;

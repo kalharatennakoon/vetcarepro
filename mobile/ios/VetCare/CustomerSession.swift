@@ -19,6 +19,9 @@ final class CustomerSession {
     var mustChangePassword: Bool { customer?.passwordMustChange == true }
 
     init() {
+        // UI test runs pass --uitesting so each test starts from a clean
+        // (logged-out) state without stale Keychain/UserDefaults session data.
+        guard !CommandLine.arguments.contains("--uitesting") else { return }
         token = Self.loadToken()
         customer = Self.loadCustomer()
     }

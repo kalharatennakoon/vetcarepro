@@ -26,9 +26,12 @@ const PetHealthPredictions = ({ pet }) => {
 
   const getAgeMonths = () => {
     if (!pet?.date_of_birth) return null;
-    const dob = new Date(pet.date_of_birth);
+    const parts = String(pet.date_of_birth).split('T')[0].split('-');
+    if (parts.length < 2) return null;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
     const now = new Date();
-    return Math.max(0, (now.getFullYear() - dob.getFullYear()) * 12 + now.getMonth() - dob.getMonth());
+    return Math.max(0, (now.getFullYear() - year) * 12 + now.getMonth() - month);
   };
 
   const runPredictions = async () => {
@@ -45,7 +48,9 @@ const PetHealthPredictions = ({ pet }) => {
           disease_name: c.disease_name,
           disease_category: c.disease_category,
         }));
-      } catch (_) {}
+      } catch {
+        // Disease case lookup optional, continue if unavailable
+      }
 
       if (pastDiseases.length === 0) {
         setDiseaseRisk(null);

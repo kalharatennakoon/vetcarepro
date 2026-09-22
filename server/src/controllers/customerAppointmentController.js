@@ -336,7 +336,8 @@ export const cancelMyAppointment = async (req, res) => {
       });
     }
 
-    const cancelledAppointment = await updateAppointmentStatus(id, 'cancelled', null, 'Cancelled by pet owner');
+    await updateAppointmentStatus(id, 'cancelled', null, 'Cancelled by pet owner');
+    const cancelledAppointment = await getAppointmentById(id);
 
     res.status(200).json({
       status: 'success',

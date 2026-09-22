@@ -4,12 +4,14 @@ import inventoryService from '../services/inventoryService';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useNotification } from '../context/NotificationContext';
+import '../styles/InventoryDetailModern.css';
 
 const InventoryDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const canManageInventory = isAdmin;
   const { showSuccess, showError } = useNotification();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,10 +91,10 @@ const InventoryDetail = () => {
 
   const getStockStatusBadge = (status) => {
     const badges = {
-      'OUT_OF_STOCK': <span style={styles.badgeOutOfStock}>Out of Stock</span>,
-      'LOW': <span style={styles.badgeDanger}>Low Stock</span>,
-      'EXPIRING': <span style={styles.badgeWarning}>Expiring Soon</span>,
-      'NORMAL': <span style={styles.badgeSuccess}>Normal</span>,
+      'OUT_OF_STOCK': <span className="inv-badge out-of-stock"><i className="fas fa-ban"></i> Out of Stock</span>,
+      'LOW': <span className="inv-badge low"><i className="fas fa-triangle-exclamation"></i> Low Stock</span>,
+      'EXPIRING': <span className="inv-badge expiring"><i className="fas fa-clock"></i> Expiring Soon</span>,
+      'NORMAL': <span className="inv-badge normal"><i className="fas fa-check"></i> Normal</span>,
     };
     return badges[status] || null;
   };
@@ -113,9 +115,11 @@ const InventoryDetail = () => {
   if (loading) {
     return (
       <Layout>
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p style={styles.loadingText}>Loading item details...</p>
+        <div className="inv-detail-container">
+          <div className="inv-empty-state">
+            <div className="appts-spinner" style={{ margin: '0 auto 1rem auto', borderTopColor: '#f59e0b' }}></div>
+            <p style={{ color: '#64748b' }}>Loading item details...</p>
+          </div>
         </div>
       </Layout>
     );
@@ -124,15 +128,16 @@ const InventoryDetail = () => {
   if (error || !item) {
     return (
       <Layout>
-        <div style={styles.container}>
-          <div ref={errorRef} style={styles.errorBox}>
-            <p style={styles.errorText}>{error || 'Item not found'}</p>
+        <div className="inv-detail-container">
+          <div ref={errorRef} className="inv-alert-card low-stock" style={{ marginBottom: '1.5rem' }}>
+            <div>
+              <i className="fas fa-circle-exclamation" style={{ marginRight: '0.5rem' }}></i>
+              {error || 'Item not found'}
+            </div>
           </div>
-          <div style={styles.backLinkContainer}>
-            <Link to="/inventory" style={styles.backLink}>
-              ← Back to Inventory
-            </Link>
-          </div>
+          <Link to="/inventory" className="inv-back-btn">
+            ← Back to Inventory
+          </Link>
         </div>
       </Layout>
     );
@@ -140,291 +145,293 @@ const InventoryDetail = () => {
 
   return (
     <Layout>
-      <div style={styles.container}>
-        {/* Header */}
-        <div style={styles.headerSection}>
-          <Link to="/inventory" style={styles.backLink}>
-            ← Back to Inventory
+      <div className="inv-detail-container">
+        {/* Navigation & Action Header Bar */}
+        <div className="inv-detail-topbar">
+          <Link to="/inventory" className="inv-back-btn">
+            <i className="fas fa-arrow-left"></i> Back to Inventory
           </Link>
-          <div style={styles.headerContent}>
-            <div>
-              <h1 style={styles.title}>{item.item_name}</h1>
-              {item.item_code && (
-                <p style={styles.subtitle}>Code: {item.item_code}</p>
-              )}
-            </div>
-            <div style={styles.actionButtons}>
-              <button
-                onClick={() => { setShowQuantityModal(true); if (!isAdmin) setQuantityOperation('subtract'); }}
-                style={styles.updateButton}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
+          <div className="inv-action-buttons">
+            <button
+              onClick={() => { setShowQuantityModal(true); if (!isAdmin) setQuantityOperation('subtract'); }}
+              className="inv-btn-update-qty"
+            >
+              <i className="fas fa-arrow-up-right-dots"></i> Update Quantity
+            </button>
+            {isAdmin && (
+              <Link
+                to={`/inventory/${id}/edit`}
+                className="inv-btn-edit"
               >
-                Update Quantity
+                <i className="fas fa-pen-to-square"></i> Edit
+              </Link>
+            )}
+            {isAdmin && (
+              <button
+                onClick={handleDelete}
+                className="inv-btn-danger"
+              >
+                <i className="fas fa-trash-can"></i> Delete
               </button>
-              {isAdmin && (
-                <Link
-                  to={`/inventory/${id}/edit`}
-                  style={styles.editButton}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                >
-                  Edit
-                </Link>
-              )}
-              {isAdmin && (
-                <button
-                  onClick={handleDelete}
-                  style={styles.deleteButton}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div style={isAdmin ? styles.gridContainer : { ...styles.gridContainer, gridTemplateColumns: '1fr' }}>
-          {/* Left Column - Main Details */}
-          <div style={isAdmin ? styles.leftColumn : { ...styles.leftColumn, gridColumn: 'unset' }}>
-            {/* Basic Information */}
-            <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Basic Information</h2>
-              <dl style={styles.detailGrid}>
-                <div>
-                  <dt style={styles.detailLabel}>Category</dt>
-                  <dd style={styles.detailValue}>{getCategoryLabel(item.category)}</dd>
-                </div>
-                {item.sub_category && (
-                  <div>
-                    <dt style={styles.detailLabel}>Sub-Category</dt>
-                    <dd style={styles.detailValue}>{item.sub_category}</dd>
-                  </div>
-                )}
-                <div>
-                  <dt style={styles.detailLabel}>Stock Status</dt>
-                  <dd style={{marginTop: '0.25rem'}}>{getStockStatusBadge(item.stock_status)}</dd>
-                </div>
-                <div>
-                  <dt style={styles.detailLabel}>Status</dt>
-                  <dd style={{marginTop: '0.25rem'}}>
-                    <span style={item.is_active ? styles.statusActive : styles.statusInactive}>
-                      {item.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </dd>
-                </div>
-                {item.requires_prescription && (
-                  <div style={{gridColumn: 'span 2'}}>
-                    <span style={styles.prescriptionBadge}>
-                      <i className="fas fa-exclamation-circle" style={{ marginRight: '0.35rem' }}></i>
-                      Requires Prescription
-                    </span>
-                  </div>
-                )}
-              </dl>
+        {/* Detail Hero Header */}
+        <div className="inv-detail-hero">
+          <div className="inv-detail-hero-left">
+            <div className="inv-detail-avatar">
+              <i className="fas fa-box"></i>
             </div>
+            <div>
+              <h1 className="inv-detail-title">{item.item_name}</h1>
+              <div className="inv-detail-tags">
+                {item.item_code && <span className="inv-code-pill">#{item.item_code}</span>}
+                <span className="inv-code-pill" style={{ background: '#eff6ff', color: '#2563eb' }}>{getCategoryLabel(item.category)}</span>
+                {item.sub_category && <span className="inv-code-pill">{item.sub_category}</span>}
+                {getStockStatusBadge(item.stock_status)}
+                {item.requires_prescription && (
+                  <span className="inv-prescription-tag">
+                    <i className="fas fa-file-prescription"></i> Requires Prescription
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div>
+            <span className={`inv-badge ${item.is_active ? 'normal' : 'low'}`} style={{ fontSize: '0.85rem', padding: '0.4rem 0.9rem' }}>
+              {item.is_active ? 'Active Item' : 'Inactive Item'}
+            </span>
+          </div>
+        </div>
 
-            {/* Inventory Details */}
-            <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Inventory Details</h2>
-              <dl style={styles.detailGrid}>
-                <div>
-                  <dt style={styles.detailLabel}>Current Quantity</dt>
-                  <dd style={{...styles.detailValue, fontWeight: '600'}}>
-                    {item.quantity} {item.unit}
-                  </dd>
+        {/* 2-Column Grid Layout */}
+        <div className="inv-detail-grid">
+          {/* Left Main Column */}
+          <div className="inv-detail-column">
+            {/* Inventory Stock & Levels Card */}
+            <div className="inv-glass-card">
+              <div className="inv-card-header">
+                <h3 className="inv-card-title">
+                  <i className="fas fa-warehouse"></i> Stock & Inventory Details
+                </h3>
+              </div>
+              <div className="inv-info-grid">
+                <div className="inv-info-item">
+                  <div className="inv-info-label">Current Quantity</div>
+                  <div className="inv-info-value" style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: 800 }}>
+                    {item.quantity} <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>{item.unit}</span>
+                  </div>
                 </div>
-                <div>
-                  <dt style={styles.detailLabel}>Unit</dt>
-                  <dd style={styles.detailValue}>{item.unit}</dd>
+                <div className="inv-info-item">
+                  <div className="inv-info-label">Unit Type</div>
+                  <div className="inv-info-value">{item.unit}</div>
                 </div>
-                <div>
-                  <dt style={styles.detailLabel}>Reorder Level</dt>
-                  <dd style={styles.detailValue}>{item.reorder_level}</dd>
+                <div className="inv-info-item">
+                  <div className="inv-info-label">Reorder Level</div>
+                  <div className="inv-info-value">{item.reorder_level}</div>
                 </div>
-                <div>
-                  <dt style={styles.detailLabel}>Reorder Quantity</dt>
-                  <dd style={styles.detailValue}>{item.reorder_quantity}</dd>
+                <div className="inv-info-item">
+                  <div className="inv-info-label">Reorder Quantity</div>
+                  <div className="inv-info-value">{item.reorder_quantity}</div>
                 </div>
                 {item.storage_location && (
-                  <div>
-                    <dt style={styles.detailLabel}>Storage Location</dt>
-                    <dd style={styles.detailValue}>{item.storage_location}</dd>
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Storage Location</div>
+                    <div className="inv-info-value">{item.storage_location}</div>
                   </div>
                 )}
                 {item.last_restock_date && (
-                  <div>
-                    <dt style={styles.detailLabel}>Last Restock</dt>
-                    <dd style={styles.detailValue}>{formatDate(item.last_restock_date)}</dd>
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Last Restock</div>
+                    <div className="inv-info-value">{formatDate(item.last_restock_date)}</div>
                   </div>
                 )}
-              </dl>
-            </div>
-
-            {/* Pricing Information */}
-            <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Pricing Information</h2>
-              <dl style={styles.pricingGrid}>
-                {isAdmin && (
-                  <div>
-                    <dt style={styles.detailLabel}>Unit Cost</dt>
-                    <dd style={styles.priceValue}>
-                      {formatCurrency(item.unit_cost)}
-                    </dd>
-                  </div>
-                )}
-                <div>
-                  <dt style={styles.detailLabel}>Selling Price</dt>
-                  <dd style={styles.priceValue}>
-                    {formatCurrency(item.selling_price)}
-                  </dd>
-                </div>
-                {isAdmin && item.unit_cost && item.selling_price && (
-                  <div>
-                    <dt style={styles.detailLabel}>Markup</dt>
-                    <dd style={styles.markupValue}>
-                      {(((parseFloat(item.selling_price) - parseFloat(item.unit_cost)) / parseFloat(item.unit_cost)) * 100).toFixed(2)}%
-                    </dd>
-                  </div>
-                )}
-              </dl>
-              <div style={styles.totalValueSection}>
-                <dt style={styles.detailLabel}>Total Value</dt>
-                <dd style={styles.totalValue}>
-                  {formatCurrency(item.quantity * item.unit_cost)}
-                </dd>
               </div>
             </div>
 
-            {/* Product Details */}
-            <div style={styles.card}>
-              <h2 style={styles.cardTitle}>Product Details</h2>
-              <dl style={styles.detailGrid}>
+            {/* Pricing & Valuation Card */}
+            <div className="inv-glass-card">
+              <div className="inv-card-header">
+                <h3 className="inv-card-title">
+                  <i className="fas fa-receipt" style={{ color: '#10b981' }}></i> Pricing & Valuation
+                </h3>
+              </div>
+              <div className="inv-info-grid">
+                {isAdmin && (
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Unit Cost</div>
+                    <div className="inv-info-value" style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                      {formatCurrency(item.unit_cost)}
+                    </div>
+                  </div>
+                )}
+                <div className="inv-info-item">
+                  <div className="inv-info-label">Selling Price</div>
+                  <div className="inv-info-value" style={{ fontSize: '1.1rem', fontWeight: 800, color: '#059669' }}>
+                    {formatCurrency(item.selling_price)}
+                  </div>
+                </div>
+                {isAdmin && item.unit_cost && item.selling_price && (
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Markup Margin</div>
+                    <div className="inv-info-value" style={{ color: '#2563eb', fontWeight: 700 }}>
+                      {(((parseFloat(item.selling_price) - parseFloat(item.unit_cost)) / parseFloat(item.unit_cost)) * 100).toFixed(2)}%
+                    </div>
+                  </div>
+                )}
+              </div>
+              {canManageInventory && item.unit_cost && (
+                <div className="inv-highlight-tile" style={{ marginTop: '1.25rem' }}>
+                  <div className="inv-info-label">Total Inventory Holding Value</div>
+                  <div className="inv-highlight-val">
+                    {formatCurrency(item.quantity * item.unit_cost)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Product Batch & Expiry Card */}
+            <div className="inv-glass-card">
+              <div className="inv-card-header">
+                <h3 className="inv-card-title">
+                  <i className="fas fa-barcode" style={{ color: '#7c3aed' }}></i> Batch & Product Details
+                </h3>
+              </div>
+              <div className="inv-info-grid">
                 {item.batch_number && (
-                  <div>
-                    <dt style={styles.detailLabel}>Batch Number</dt>
-                    <dd style={styles.detailValue}>{item.batch_number}</dd>
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Batch Number</div>
+                    <div className="inv-info-value" style={{ fontFamily: 'monospace' }}>{item.batch_number}</div>
                   </div>
                 )}
                 {item.manufacturing_date && (
-                  <div>
-                    <dt style={styles.detailLabel}>Manufacturing Date</dt>
-                    <dd style={styles.detailValue}>{formatDate(item.manufacturing_date)}</dd>
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Manufacturing Date</div>
+                    <div className="inv-info-value">{formatDate(item.manufacturing_date)}</div>
                   </div>
                 )}
                 {item.expiry_date && (
-                  <div>
-                    <dt style={styles.detailLabel}>Expiry Date</dt>
-                    <dd style={styles.detailValue}>{formatDate(item.expiry_date)}</dd>
+                  <div className="inv-info-item">
+                    <div className="inv-info-label">Expiry Date</div>
+                    <div className="inv-info-value" style={{ color: '#d97706', fontWeight: 700 }}>{formatDate(item.expiry_date)}</div>
                   </div>
                 )}
-              </dl>
+              </div>
               {item.description && (
-                <div style={styles.descriptionSection}>
-                  <dt style={{...styles.detailLabel, marginBottom: '0.5rem'}}>Description</dt>
-                  <dd style={styles.detailValue}>{item.description}</dd>
+                <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+                  <div className="inv-info-label" style={{ marginBottom: '0.4rem' }}>Product Description</div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#475569', lineHeight: '1.6' }}>{item.description}</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Column - Supplier & Metadata (admin only) */}
-          {isAdmin && (
-            <div style={styles.rightColumn}>
-              {/* Supplier Information */}
-              {(item.supplier || item.supplier_contact) && (
-                <div style={styles.card}>
-                  <h2 style={styles.sideCardTitle}>Supplier</h2>
-                  <dl style={styles.sideDetailList}>
-                    {item.supplier && (
-                      <div>
-                        <dt style={styles.detailLabel}>Name</dt>
-                        <dd style={styles.detailValue}>{item.supplier}</dd>
-                      </div>
-                    )}
-                    {item.supplier_contact && (
-                      <div>
-                        <dt style={styles.detailLabel}>Contact</dt>
-                        <dd style={styles.detailValue}>{item.supplier_contact}</dd>
-                      </div>
-                    )}
-                  </dl>
+          {/* Right Column - Supplier & Audit Logs (Admin) */}
+          <div className="inv-detail-column">
+            {isAdmin && (item.supplier || item.supplier_contact) && (
+              <div className="inv-glass-card">
+                <div className="inv-card-header">
+                  <h3 className="inv-card-title">
+                    <i className="fas fa-truck-field" style={{ color: '#0284c7' }}></i> Supplier Information
+                  </h3>
                 </div>
-              )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {item.supplier && (
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Supplier Name</div>
+                      <div className="inv-info-value">{item.supplier}</div>
+                    </div>
+                  )}
+                  {item.supplier_contact && (
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Contact Details</div>
+                      <div className="inv-info-value">{item.supplier_contact}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
-              {/* Record Information */}
-              <div style={styles.card}>
-                <h2 style={styles.sideCardTitle}>Record Information</h2>
-                <dl style={styles.sideDetailList}>
+            {isAdmin && (
+              <div className="inv-glass-card">
+                <div className="inv-card-header">
+                  <h3 className="inv-card-title">
+                    <i className="fas fa-clock-rotate-left" style={{ color: '#64748b' }}></i> Audit Metadata
+                  </h3>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {item.created_by_name && (
-                    <div>
-                      <dt style={styles.detailLabel}>Created By</dt>
-                      <dd style={styles.detailValue}>{item.created_by_name}</dd>
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Created By</div>
+                      <div className="inv-info-value">{item.created_by_name}</div>
                     </div>
                   )}
                   {item.created_at && (
-                    <div>
-                      <dt style={styles.detailLabel}>Created At</dt>
-                      <dd style={styles.detailValue}>{formatDate(item.created_at)}</dd>
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Created At</div>
+                      <div className="inv-info-value">{formatDate(item.created_at)}</div>
                     </div>
                   )}
                   {item.updated_by_name && (
-                    <div>
-                      <dt style={styles.detailLabel}>Last Updated By</dt>
-                      <dd style={styles.detailValue}>{item.updated_by_name}</dd>
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Last Updated By</div>
+                      <div className="inv-info-value">{item.updated_by_name}</div>
                     </div>
                   )}
                   {item.updated_at && (
-                    <div>
-                      <dt style={styles.detailLabel}>Last Updated</dt>
-                      <dd style={styles.detailValue}>{formatDate(item.updated_at)}</dd>
+                    <div className="inv-info-item">
+                      <div className="inv-info-label">Last Updated</div>
+                      <div className="inv-info-value">{formatDate(item.updated_at)}</div>
                     </div>
                   )}
-                </dl>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Quantity Update Modal */}
         {showQuantityModal && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.modal}>
-              <h3 style={styles.modalTitle}>Update Quantity</h3>
-              <div style={styles.modalContent}>
-                <div>
-                  <label style={styles.modalLabel}>
-                    Current Quantity: {item.quantity} {item.unit}
-                  </label>
+          <div className="inv-modal-overlay">
+            <div className="inv-modal-card">
+              <div className="inv-modal-header">
+                <h3 className="inv-modal-title">Update Stock Quantity</h3>
+                <button
+                  onClick={() => { setShowQuantityModal(false); setQuantityChange(''); }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.1rem' }}
+                >
+                  <i className="fas fa-xmark"></i>
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="inv-highlight-tile" style={{ padding: '0.85rem 1rem' }}>
+                  <div className="inv-info-label">Current Stock Level</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    {item.quantity} {item.unit}
+                  </div>
                 </div>
-                
+
                 <div>
-                  <label style={styles.modalLabel}>
-                    Operation
-                  </label>
-                  <div style={styles.radioGroup}>
+                  <label className="inv-form-label" style={{ display: 'block', marginBottom: '0.5rem' }}>Stock Operation</label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
                     {isAdmin && (
-                      <label style={styles.radioLabel}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155', cursor: 'pointer' }}>
                         <input
                           type="radio"
                           value="add"
                           checked={quantityOperation === 'add'}
                           onChange={(e) => setQuantityOperation(e.target.value)}
-                          style={styles.radioInput}
                         />
                         Add (Restock)
                       </label>
                     )}
-                    <label style={styles.radioLabel}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: '#334155', cursor: 'pointer' }}>
                       <input
                         type="radio"
                         value="subtract"
                         checked={quantityOperation === 'subtract'}
                         onChange={(e) => setQuantityOperation(e.target.value)}
-                        style={styles.radioInput}
                       />
                       Subtract (Usage)
                     </label>
@@ -432,64 +439,43 @@ const InventoryDetail = () => {
                 </div>
 
                 <div>
-                  <label style={styles.modalLabel}>
-                    Quantity
-                  </label>
+                  <label className="inv-form-label" style={{ display: 'block', marginBottom: '0.35rem' }}>Quantity to Adjust</label>
                   <input
                     type="number"
                     value={quantityChange}
                     onChange={(e) => setQuantityChange(e.target.value)}
                     min="1"
-                    style={styles.modalInput}
-                    placeholder="Enter quantity"
+                    className="inv-form-input"
+                    placeholder="Enter quantity amount..."
                   />
                 </div>
 
-                {quantityChange && (
-                  <div style={styles.infoBox}>
-                    <p style={styles.infoText}>
-                      New quantity will be: {
-                        quantityOperation === 'add' 
-                          ? item.quantity + parseInt(quantityChange) 
-                          : item.quantity - parseInt(quantityChange)
-                      } {item.unit}
-                    </p>
+                {quantityChange && parseInt(quantityChange) > 0 && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.75rem 1rem', borderRadius: '12px', fontSize: '0.85rem', color: '#15803d', fontWeight: 700 }}>
+                    Updated stock will be: {
+                      quantityOperation === 'add'
+                        ? item.quantity + parseInt(quantityChange)
+                        : item.quantity - parseInt(quantityChange)
+                    } {item.unit}
                   </div>
                 )}
-              </div>
 
-              <div style={styles.modalActions}>
-                <button
-                  onClick={() => {
-                    setShowQuantityModal(false);
-                    setQuantityChange('');
-                  }}
-                  style={styles.cancelButton}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleQuantityUpdate}
-                  disabled={!quantityChange || parseInt(quantityChange) <= 0}
-                  style={{
-                    ...styles.confirmButton,
-                    ...((!quantityChange || parseInt(quantityChange) <= 0) && styles.disabledButton)
-                  }}
-                  onMouseEnter={(e) => {
-                    if (quantityChange && parseInt(quantityChange) > 0) {
-                      e.currentTarget.style.backgroundColor = '#1d4ed8';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (quantityChange && parseInt(quantityChange) > 0) {
-                      e.currentTarget.style.backgroundColor = '#2563eb';
-                    }
-                  }}
-                >
-                  Update
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button
+                    onClick={() => { setShowQuantityModal(false); setQuantityChange(''); }}
+                    style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleQuantityUpdate}
+                    disabled={!quantityChange || parseInt(quantityChange) <= 0}
+                    className="inv-btn-primary"
+                    style={{ opacity: (!quantityChange || parseInt(quantityChange) <= 0) ? 0.5 : 1 }}
+                  >
+                    Update Quantity
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -498,379 +484,5 @@ const InventoryDetail = () => {
     </Layout>
   );
 };
-
-const styles = {
-  container: {
-    maxWidth: '80rem',
-    margin: '0 auto',
-    padding: '2rem 1rem',
-  },
-  loadingContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '60vh',
-  },
-  spinner: {
-    border: '4px solid #f3f3f3',
-    borderTop: '4px solid #2563eb',
-    borderRadius: '50%',
-    width: '50px',
-    height: '50px',
-    animation: 'spin 1s linear infinite',
-  },
-  loadingText: {
-    marginTop: '1rem',
-    color: '#6b7280',
-  },
-  errorBox: {
-    backgroundColor: '#fef2f2',
-    borderLeft: '4px solid #ef4444',
-    padding: '1rem',
-    borderRadius: '0.375rem',
-  },
-  errorText: {
-    color: '#991b1b',
-  },
-  backLinkContainer: {
-    marginTop: '1rem',
-  },
-  backLink: {
-    color: '#2563eb',
-    textDecoration: 'none',
-    display: 'inline-block',
-    marginBottom: '1rem',
-  },
-  headerSection: {
-    marginBottom: '1.5rem',
-  },
-  headerContent: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    flexWrap: 'wrap',
-    gap: '1rem',
-  },
-  title: {
-    fontSize: '1.875rem',
-    fontWeight: 'bold',
-    color: '#111827',
-    margin: 0,
-  },
-  subtitle: {
-    marginTop: '0.25rem',
-    color: '#6b7280',
-  },
-  actionButtons: {
-    display: 'flex',
-    gap: '0.75rem',
-    flexWrap: 'wrap',
-  },
-  updateButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-block',
-  },
-  editButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'inline-block',
-  },
-  deleteButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#ef4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'pointer',
-  },
-  disabledButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#e5e7eb',
-    color: '#9ca3af',
-    border: 'none',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    cursor: 'not-allowed',
-    display: 'inline-flex',
-    alignItems: 'center',
-    opacity: 0.5,
-  },
-  gridContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(1, 1fr)',
-    gap: '1.5rem',
-  },
-  leftColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  rightColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1.5rem',
-  },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: '0.75rem',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-    padding: '1.5rem',
-  },
-  cardTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1rem',
-  },
-  sideCardTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1rem',
-  },
-  detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1rem',
-  },
-  pricingGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-    gap: '1rem',
-  },
-  sideDetailList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.75rem',
-  },
-  detailLabel: {
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  detailValue: {
-    marginTop: '0.25rem',
-    fontSize: '0.875rem',
-    color: '#111827',
-  },
-  priceValue: {
-    marginTop: '0.25rem',
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-  },
-  markupValue: {
-    marginTop: '0.25rem',
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#10b981',
-  },
-  totalValueSection: {
-    marginTop: '1rem',
-    paddingTop: '1rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  totalValue: {
-    marginTop: '0.25rem',
-    fontSize: '1.5rem',
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  descriptionSection: {
-    marginTop: '1rem',
-    paddingTop: '1rem',
-    borderTop: '1px solid #e5e7eb',
-  },
-  badgeOutOfStock: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    backgroundColor: '#1f2937',
-    color: '#f9fafb',
-  },
-  badgeDanger: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-  },
-  badgeWarning: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-  },
-  badgeSuccess: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '9999px',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-  },
-  statusActive: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.125rem 0.625rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    backgroundColor: '#d1fae5',
-    color: '#065f46',
-  },
-  statusInactive: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.125rem 0.625rem',
-    borderRadius: '9999px',
-    fontSize: '0.75rem',
-    fontWeight: '500',
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-  },
-  prescriptionBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '0.3rem 0.75rem',
-    borderRadius: '6px',
-    fontSize: '0.8rem',
-    fontWeight: '600',
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-    border: '1px solid #fca5a5',
-  },
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(75, 85, 99, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-  },
-  modal: {
-    backgroundColor: '#ffffff',
-    borderRadius: '0.5rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-    padding: '1.5rem',
-    maxWidth: '28rem',
-    width: '100%',
-    margin: '0 1rem',
-  },
-  modalTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: '1rem',
-  },
-  modalContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  modalLabel: {
-    display: 'block',
-    fontSize: '0.875rem',
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: '0.5rem',
-  },
-  radioGroup: {
-    display: 'flex',
-    gap: '1rem',
-  },
-  radioLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.875rem',
-  },
-  radioInput: {
-    marginRight: '0.5rem',
-  },
-  modalInput: {
-    width: '100%',
-    padding: '0.5rem 1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    outline: 'none',
-  },
-  infoBox: {
-    backgroundColor: '#eff6ff',
-    border: '1px solid #bfdbfe',
-    borderRadius: '0.375rem',
-    padding: '0.75rem',
-  },
-  infoText: {
-    fontSize: '0.875rem',
-    color: '#1e3a8a',
-    margin: 0,
-  },
-  modalActions: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '0.75rem',
-    marginTop: '1.5rem',
-  },
-  cancelButton: {
-    padding: '0.5rem 1rem',
-    border: '1px solid #d1d5db',
-    borderRadius: '0.375rem',
-    color: '#374151',
-    backgroundColor: 'white',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-  },
-  confirmButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#2563eb',
-    color: 'white',
-    border: 'none',
-    borderRadius: '0.375rem',
-    fontSize: '0.875rem',
-    cursor: 'pointer',
-  },
-};
-
-// Add media query for responsive grid
-if (window.innerWidth >= 1024) {
-  styles.gridContainer.gridTemplateColumns = 'repeat(3, 1fr)';
-  styles.leftColumn.gridColumn = 'span 2';
-}
 
 export default InventoryDetail;

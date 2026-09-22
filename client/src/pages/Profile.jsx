@@ -23,7 +23,6 @@ function Profile() {
   const [showCropModal, setShowCropModal] = useState(false);
   const [imageToCrop, setImageToCrop] = useState(null);
   const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
-  const [croppedImageBlob, setCroppedImageBlob] = useState(null);
   const [activityStats, setActivityStats] = useState(null);
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
@@ -205,7 +204,6 @@ function Profile() {
     // Create preview from cropped blob
     const croppedUrl = URL.createObjectURL(croppedBlob);
     setImagePreview(croppedUrl);
-    setCroppedImageBlob(croppedBlob);
     
     // Create a File object from the blob
     const fileName = `profile-${Date.now()}.jpg`;
@@ -231,12 +229,11 @@ function Profile() {
       setUploadingImage(true);
       setError(null);
       const userId = currentUser.user_id || currentUser.id;
-      const response = await uploadProfileImage(userId, selectedImage);
+      await uploadProfileImage(userId, selectedImage);
       
       setSuccess('Profile image uploaded successfully');
       setSelectedImage(null);
       setImagePreview(null);
-      setCroppedImageBlob(null);
       
       // Reload profile to get updated image
       await loadProfile();
@@ -261,7 +258,6 @@ function Profile() {
       setSuccess('Profile image deleted successfully');
       setSelectedImage(null);
       setImagePreview(null);
-      setCroppedImageBlob(null);
       
       // Reload profile to refresh
       await loadProfile();
@@ -279,7 +275,6 @@ function Profile() {
   const cancelImageSelection = () => {
     setSelectedImage(null);
     setImagePreview(null);
-    setCroppedImageBlob(null);
     setError(null);
   };
 
@@ -323,505 +318,548 @@ function Profile() {
       )}
       
       <div style={styles.container}>
-        <div style={styles.header}>
-          <div style={styles.headerContent}>
-            <i className="fas fa-user-circle" style={styles.headerIcon}></i>
-            <div>
-              <h1 style={styles.title}>Profile</h1>
-              <p style={styles.subtitle}>Manage your account information</p>
+        {/* Modern Profile Hero Header */}
+        <div style={styles.heroBanner}>
+          <div style={styles.heroContent}>
+            <div style={styles.avatarWrapper}>
+              {imagePreview || profileData?.profile_image ? (
+                <img 
+                  src={imagePreview || `http://localhost:3000/uploads/${profileData.profile_image}`} 
+                  alt="Profile"
+                  style={styles.heroAvatarImage}
+                />
+              ) : (
+                <div style={styles.heroAvatarInitials}>
+                  {profileData?.first_name?.charAt(0)}{profileData?.last_name?.charAt(0)}
+                </div>
+              )}
+              <label htmlFor="profileImageInput" style={styles.avatarCameraBadge} title="Change Profile Image">
+                <i className="fas fa-camera"></i>
+              </label>
+              <input
+                type="file"
+                id="profileImageInput"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleImageSelect}
+                style={{ display: 'none' }}
+              />
+            </div>
+
+            <div style={styles.heroDetails}>
+              <div style={styles.heroHeaderRow}>
+                <div>
+                  <h1 style={styles.heroName}>{getNameWithPrefix()}</h1>
+                  <div style={styles.heroMetaRow}>
+                    <span style={styles.roleBadge}>
+                      <i className="fas fa-user-shield" style={{ marginRight: '5px' }}></i>
+                      {profileData?.role?.toUpperCase()}
+                    </span>
+                    <span style={{
+                      ...styles.statusBadge,
+                      backgroundColor: profileData?.is_active ? '#d1fae5' : '#fee2e2',
+                      color: profileData?.is_active ? '#065f46' : '#991b1b'
+                    }}>
+                      <span style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: profileData?.is_active ? '#10b981' : '#ef4444',
+                        display: 'inline-block',
+                        marginRight: '6px'
+                      }}></span>
+                      {profileData?.is_active ? 'Active Staff' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+
+                {!isEditing ? (
+                  <button onClick={() => setIsEditing(true)} style={styles.editButton}>
+                    <i className="fas fa-pen"></i> Edit Profile
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={handleCancel} style={styles.cancelButtonHeader}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {selectedImage ? (
+                <div style={styles.pendingImageBar}>
+                  <span style={{ fontSize: '0.8rem', color: '#1e40af', fontWeight: '500' }}>
+                    <i className="fas fa-image" style={{ marginRight: '6px' }}></i>
+                    New photo selected
+                  </span>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={handleImageUpload}
+                      disabled={uploadingImage}
+                      style={styles.uploadButton}
+                    >
+                      <i className="fas fa-upload"></i> {uploadingImage ? 'Uploading...' : 'Save Photo'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelImageSelection}
+                      disabled={uploadingImage}
+                      style={styles.cancelImageButton}
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+              ) : profileData?.profile_image && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteImageModal(true)}
+                    disabled={uploadingImage}
+                    style={styles.removePhotoButton}
+                  >
+                    <i className="fas fa-trash-alt"></i> Remove photo
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-          {!isEditing && (
-            <button onClick={() => setIsEditing(true)} style={styles.editButton}>
-              <i className="fas fa-edit"></i> Edit Profile
-            </button>
-          )}
         </div>
 
         {profileData?.password_must_change && (
           <div style={styles.warningAlert}>
-            <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.5rem' }}></i>
-            Your password must be changed. Please update it using the Edit Profile option.
+            <i className="fas fa-exclamation-triangle" style={{ marginRight: '0.6rem', fontSize: '1.1rem' }}></i>
+            Your password must be changed. Please update it using the Edit Profile option below.
           </div>
         )}
 
         {error && (
           <div ref={errorRef} style={styles.errorAlert}>
-            <i className="fas fa-exclamation-circle" style={{ marginRight: '0.5rem' }}></i>
+            <i className="fas fa-exclamation-circle" style={{ marginRight: '0.6rem', fontSize: '1.1rem' }}></i>
             {error}
           </div>
         )}
 
         {success && (
           <div style={styles.successAlert}>
-            <i className="fas fa-check-circle" style={{ marginRight: '0.5rem' }}></i>
+            <i className="fas fa-check-circle" style={{ marginRight: '0.6rem', fontSize: '1.1rem' }}></i>
             {success}
           </div>
         )}
 
-        <div style={styles.profileCard}>
-          <form onSubmit={handleSubmit}>
-            {/* Profile Overview Section */}
-            <div style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <h3 style={styles.sectionTitle}>
-                  <i className="fas fa-id-card" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-                  Personal Information
-                </h3>
-              </div>
-
-              <div style={styles.avatarSection}>
-                <div style={styles.avatarContainer}>
-                  {imagePreview || profileData?.profile_image ? (
-                    <img 
-                      src={imagePreview || `http://localhost:3000/uploads/${profileData.profile_image}`} 
-                      alt="Profile"
-                      style={styles.avatarImage}
-                    />
-                  ) : (
-                    <div style={styles.avatar}>
-                      {profileData?.first_name?.charAt(0)}{profileData?.last_name?.charAt(0)}
-                    </div>
-                  )}
-                </div>
-                
-                <div style={styles.avatarInfo}>
-                  <div style={styles.avatarName}>
-                    {getNameWithPrefix()}
+        {/* Activity Summary Cards */}
+        {activityStats && (
+          <div style={styles.activityGrid}>
+            {currentUser.role === 'veterinarian' && (
+              <>
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#dbeafe', color: '#2563eb' }}>
+                    <i className="fas fa-calendar-check"></i>
                   </div>
-                  <div style={styles.avatarRole}>
-                    {profileData?.role}
-                  </div>
-                  
-                  <div style={styles.imageUploadSection}>
-                    <input
-                      type="file"
-                      id="profileImageInput"
-                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                      onChange={handleImageSelect}
-                      style={{ display: 'none' }}
-                    />
-                    
-                    {selectedImage ? (
-                      <div style={styles.imageActions}>
-                        <button
-                          type="button"
-                          onClick={handleImageUpload}
-                          disabled={uploadingImage}
-                          style={styles.uploadButton}
-                        >
-                          <i className="fas fa-upload"></i> {uploadingImage ? 'Uploading...' : 'Upload Image'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelImageSelection}
-                          disabled={uploadingImage}
-                          style={styles.cancelButton}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={styles.imageActions}>
-                        <label htmlFor="profileImageInput" style={styles.selectImageButton}>
-                          <i className="fas fa-camera"></i> Select Image
-                        </label>
-                        {profileData?.profile_image && (
-                          <button
-                            type="button"
-                            onClick={() => setShowDeleteImageModal(true)}
-                            disabled={uploadingImage}
-                            style={styles.deleteImageButton}
-                          >
-                            <i className="fas fa-trash"></i> Remove
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div style={styles.imageHint}>
-                      <i className="fas fa-info-circle" style={{ marginRight: '0.25rem' }}></i>
-                      Click Select Image to choose a photo. You can zoom, rotate, and position it before uploading. Max 5MB • JPEG, PNG, GIF, WebP
-                    </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_appointments || 0}</p>
+                    <p style={styles.activityLabel}>Appointments Handled</p>
                   </div>
                 </div>
-              </div>
-
-              <div style={styles.formGrid}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>First Name</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="first_name"
-                      value={formData.first_name}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      required
-                    />
-                  ) : (
-                    <div style={styles.displayValue}>{profileData?.first_name}</div>
-                  )}
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#e0e7ff', color: '#4f46e5' }}>
+                    <i className="fas fa-notes-medical"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_medical_records || 0}</p>
+                    <p style={styles.activityLabel}>Medical Records</p>
+                  </div>
                 </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Last Name</label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      required
-                    />
-                  ) : (
-                    <div style={styles.displayValue}>{profileData?.last_name}</div>
-                  )}
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#fef3c7', color: '#d97706' }}>
+                    <i className="fas fa-viruses"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_disease_cases || 0}</p>
+                    <p style={styles.activityLabel}>Disease Cases</p>
+                  </div>
                 </div>
+              </>
+            )}
 
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>
-                    Email
-                    {currentUser.role !== 'admin' && (
-                      <span style={styles.readOnlyBadge}>(Admin only)</span>
-                    )}
-                  </label>
-                  {isEditing && currentUser.role === 'admin' ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                      required
-                    />
-                  ) : (
-                    <div style={styles.displayValue}>{profileData?.email}</div>
-                  )}
+            {currentUser.role === 'receptionist' && (
+              <>
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#dbeafe', color: '#2563eb' }}>
+                    <i className="fas fa-calendar-alt"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_appointments_booked || 0}</p>
+                    <p style={styles.activityLabel}>Appointments Scheduled</p>
+                  </div>
                 </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Phone</label>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                    />
-                  ) : (
-                    <div style={styles.displayValue}>{profileData?.phone || 'Not provided'}</div>
-                  )}
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#d1fae5', color: '#059669' }}>
+                    <i className="fas fa-user-plus"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_customers_registered || 0}</p>
+                    <p style={styles.activityLabel}>Customers Registered</p>
+                  </div>
                 </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Gender</label>
-                  {isEditing ? (
-                    <select
-                      name="gender"
-                      value={formData.gender}
-                      onChange={handleInputChange}
-                      style={styles.input}
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  ) : (
-                    <div style={styles.displayValue}>
-                      {profileData?.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not specified'}
-                    </div>
-                  )}
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#ffedd5', color: '#ea580c' }}>
+                    <i className="fas fa-paw"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_pets_registered || 0}</p>
+                    <p style={styles.activityLabel}>Pets Registered</p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
 
-            {/* Veterinarian-specific fields */}
-            {isVeterinarian && (
+            {currentUser.role === 'admin' && (
+              <>
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#f3e8ff', color: '#9333ea' }}>
+                    <i className="fas fa-users-cog"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_users_created || 0}</p>
+                    <p style={styles.activityLabel}>Staff Accounts</p>
+                  </div>
+                </div>
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#d1fae5', color: '#059669' }}>
+                    <i className="fas fa-address-book"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_customers_registered || 0}</p>
+                    <p style={styles.activityLabel}>Customers Registered</p>
+                  </div>
+                </div>
+                <div style={styles.activityCard}>
+                  <div style={{ ...styles.activityIconBg, background: '#e0e7ff', color: '#4f46e5' }}>
+                    <i className="fas fa-list-check"></i>
+                  </div>
+                  <div>
+                    <p style={styles.activityValue}>{activityStats.total_actions_logged || 0}</p>
+                    <p style={styles.activityLabel}>Audit Actions</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <div style={styles.mainLayoutGrid}>
+          {/* Left / Primary Column: Form */}
+          <div style={styles.profileCard}>
+            <form onSubmit={handleSubmit}>
+              {/* Personal Info Section */}
               <div style={styles.section}>
                 <div style={styles.sectionHeader}>
                   <h3 style={styles.sectionTitle}>
-                    <i className="fas fa-stethoscope" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-                    Professional Information
+                    <i className="fas fa-id-card" style={{ marginRight: '0.6rem', color: '#2563eb' }}></i>
+                    Personal Details
                   </h3>
                 </div>
 
                 <div style={styles.formGrid}>
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>Specialization</label>
+                    <label style={styles.label}>First Name</label>
                     {isEditing ? (
                       <input
                         type="text"
-                        name="specialization"
-                        value={formData.specialization}
+                        name="first_name"
+                        value={formData.first_name}
                         onChange={handleInputChange}
                         style={styles.input}
-                        placeholder="e.g., Small Animals, Surgery"
+                        required
                       />
                     ) : (
-                      <div style={styles.displayValue}>{profileData?.specialization || 'Not specified'}</div>
+                      <div style={styles.displayValue}>{profileData?.first_name}</div>
                     )}
                   </div>
 
                   <div style={styles.formGroup}>
-                    <label style={styles.label}>License Number</label>
-                    {isEditing && currentUser.role === 'admin' ? (
+                    <label style={styles.label}>Last Name</label>
+                    {isEditing ? (
                       <input
                         type="text"
-                        name="license_number"
-                        value={formData.license_number}
+                        name="last_name"
+                        value={formData.last_name}
                         onChange={handleInputChange}
                         style={styles.input}
-                        placeholder="Veterinary license number"
+                        required
                       />
                     ) : (
-                      <div style={styles.displayValue}>{profileData?.license_number || 'Not provided'}</div>
+                      <div style={styles.displayValue}>{profileData?.last_name}</div>
+                    )}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>
+                      Email Address
+                      {currentUser.role !== 'admin' && (
+                        <span style={styles.readOnlyBadge}>(Managed by Admin)</span>
+                      )}
+                    </label>
+                    {isEditing && currentUser.role === 'admin' ? (
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                        required
+                      />
+                    ) : (
+                      <div style={styles.displayValue}>{profileData?.email}</div>
+                    )}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Phone Number</label>
+                    {isEditing ? (
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                        placeholder="e.g. 077 123 4567"
+                      />
+                    ) : (
+                      <div style={styles.displayValue}>{profileData?.phone || 'Not provided'}</div>
+                    )}
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Gender</label>
+                    {isEditing ? (
+                      <select
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleInputChange}
+                        style={styles.input}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    ) : (
+                      <div style={styles.displayValue}>
+                        {profileData?.gender ? profileData.gender.charAt(0).toUpperCase() + profileData.gender.slice(1) : 'Not specified'}
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* Admin-specific information */}
-            {currentUser.role === 'admin' && (
-              <div style={styles.section}>
-                <div style={styles.sectionHeader}>
-                  <h3 style={styles.sectionTitle}>
-                    <i className="fas fa-shield-alt" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-                    Administrator Privileges
-                  </h3>
-                </div>
-                <div style={styles.infoBox}>
-                  <p style={styles.infoText}>
-                    <i className="fas fa-check-circle" style={{ color: '#10b981', marginRight: '0.5rem' }}></i>
-                    You have full administrative access to the system
-                  </p>
-                  <ul style={styles.privilegeList}>
-                    <li>Manage staff and user accounts</li>
-                    <li>Access all reports and analytics</li>
-                    <li>Configure system settings</li>
-                    <li>Full data access across all modules</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Password Change Section - Only visible when editing */}
-            {isEditing && (
-              <div style={styles.section}>
-                <div style={styles.sectionHeader}>
-                  <h3 style={styles.sectionTitle}>
-                    <i className="fas fa-key" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-                    Change Password
-                  </h3>
-                  <p style={styles.sectionSubtitle}>Leave blank to keep current password</p>
-                </div>
-
-                <div style={styles.formGrid}>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Current Password</label>
-                    <div style={styles.passwordWrapper}>
-                      <input
-                        type={showCurrentPw ? 'text' : 'password'}
-                        name="current_password"
-                        value={formData.current_password}
-                        onChange={handleInputChange}
-                        style={styles.passwordInput}
-                        placeholder="Enter current password"
-                        autoComplete="current-password"
-                      />
-                      <button type="button" onClick={() => setShowCurrentPw(p => !p)} style={styles.eyeButton}>
-                        <i className={`fas ${showCurrentPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                      </button>
-                    </div>
+              {/* Veterinarian professional info */}
+              {isVeterinarian && (
+                <div style={styles.section}>
+                  <div style={styles.sectionHeader}>
+                    <h3 style={styles.sectionTitle}>
+                      <i className="fas fa-user-md" style={{ marginRight: '0.6rem', color: '#2563eb' }}></i>
+                      Professional Credentials
+                    </h3>
                   </div>
 
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>New Password</label>
-                    <div style={styles.passwordWrapper}>
-                      <input
-                        type={showNewPw ? 'text' : 'password'}
-                        name="new_password"
-                        value={formData.new_password}
-                        onChange={handleInputChange}
-                        style={styles.passwordInput}
-                        placeholder="Enter new password"
-                        autoComplete="new-password"
-                      />
-                      <button type="button" onClick={() => setShowNewPw(p => !p)} style={styles.eyeButton}>
-                        <i className={`fas ${showNewPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                      </button>
+                  <div style={styles.formGrid}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Specialization</label>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          name="specialization"
+                          value={formData.specialization}
+                          onChange={handleInputChange}
+                          style={styles.input}
+                          placeholder="e.g. Small Animal Care"
+                        />
+                      ) : (
+                        <div style={styles.displayValue}>{profileData?.specialization || 'General Practice'}</div>
+                      )}
                     </div>
-                    <span style={styles.fieldHint}>Minimum 6 characters</span>
-                  </div>
 
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>Confirm New Password</label>
-                    <div style={styles.passwordWrapper}>
-                      <input
-                        type={showConfirmPw ? 'text' : 'password'}
-                        name="confirm_password"
-                        value={formData.confirm_password}
-                        onChange={handleInputChange}
-                        style={styles.passwordInput}
-                        placeholder="Confirm new password"
-                        autoComplete="new-password"
-                      />
-                      <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={styles.eyeButton}>
-                        <i className={`fas ${showConfirmPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                      </button>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>License Number</label>
+                      {isEditing && currentUser.role === 'admin' ? (
+                        <input
+                          type="text"
+                          name="license_number"
+                          value={formData.license_number}
+                          onChange={handleInputChange}
+                          style={styles.input}
+                        />
+                      ) : (
+                        <div style={styles.displayValue}>{profileData?.license_number || 'Registered'}</div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Action Buttons */}
-            {isEditing && (
-              <div style={styles.actionButtons}>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  style={styles.cancelButton}
-                  disabled={saving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={saving ? { ...styles.saveButton, opacity: 0.6 } : styles.saveButton}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-save" style={{ marginRight: '0.5rem' }}></i>
-                      Save Changes
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </form>
-        </div>
+              {/* Password Change Section */}
+              {isEditing && (
+                <div style={{ ...styles.section, borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+                  <div style={styles.sectionHeader}>
+                    <h3 style={styles.sectionTitle}>
+                      <i className="fas fa-lock" style={{ marginRight: '0.6rem', color: '#2563eb' }}></i>
+                      Security & Password
+                    </h3>
+                    <p style={styles.sectionSubtitle}>Leave blank if you do not wish to change your password</p>
+                  </div>
 
-        {/* Account Information */}
-        <div style={styles.infoCard}>
-          <h3 style={styles.infoCardTitle}>
-            <i className="fas fa-info-circle" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-            Account Information
-          </h3>
-          <div style={styles.infoGrid}>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Account Status:</span>
-              <span style={{
-                ...styles.badge,
-                backgroundColor: profileData?.is_active ? '#d1fae5' : '#fee2e2',
-                color: profileData?.is_active ? '#065f46' : '#991b1b'
-              }}>
-                {profileData?.is_active ? 'Active' : 'Inactive'}
-              </span>
+                  <div style={styles.formGrid}>
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Current Password</label>
+                      <div style={styles.passwordWrapper}>
+                        <input
+                          type={showCurrentPw ? 'text' : 'password'}
+                          name="current_password"
+                          value={formData.current_password}
+                          onChange={handleInputChange}
+                          style={styles.passwordInput}
+                          placeholder="Enter current password"
+                          autoComplete="current-password"
+                        />
+                        <button type="button" onClick={() => setShowCurrentPw(p => !p)} style={styles.eyeButton}>
+                          <i className={`fas ${showCurrentPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>New Password</label>
+                      <div style={styles.passwordWrapper}>
+                        <input
+                          type={showNewPw ? 'text' : 'password'}
+                          name="new_password"
+                          value={formData.new_password}
+                          onChange={handleInputChange}
+                          style={styles.passwordInput}
+                          placeholder="Enter new password"
+                          autoComplete="new-password"
+                        />
+                        <button type="button" onClick={() => setShowNewPw(p => !p)} style={styles.eyeButton}>
+                          <i className={`fas ${showNewPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                      </div>
+                      <span style={styles.fieldHint}>Minimum 6 characters</span>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                      <label style={styles.label}>Confirm New Password</label>
+                      <div style={styles.passwordWrapper}>
+                        <input
+                          type={showConfirmPw ? 'text' : 'password'}
+                          name="confirm_password"
+                          value={formData.confirm_password}
+                          onChange={handleInputChange}
+                          style={styles.passwordInput}
+                          placeholder="Confirm new password"
+                          autoComplete="new-password"
+                        />
+                        <button type="button" onClick={() => setShowConfirmPw(p => !p)} style={styles.eyeButton}>
+                          <i className={`fas ${showConfirmPw ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Action Buttons */}
+              {isEditing && (
+                <div style={styles.actionButtons}>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    style={styles.cancelButton}
+                    disabled={saving}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    style={saving ? { ...styles.saveButton, opacity: 0.6 } : styles.saveButton}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin" style={{ marginRight: '0.5rem' }}></i>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-save" style={{ marginRight: '0.5rem' }}></i>
+                        Save Changes
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* Right Column: Meta & Info */}
+          <div style={styles.sideColumn}>
+            <div style={styles.infoCard}>
+              <h3 style={styles.infoCardTitle}>
+                <i className="fas fa-shield-halved" style={{ marginRight: '0.6rem', color: '#2563eb' }}></i>
+                Account Meta
+              </h3>
+              <div style={styles.infoList}>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Role</span>
+                  <span style={styles.infoValueHighlight}>{profileData?.role?.toUpperCase()}</span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Member Since</span>
+                  <span style={styles.infoValue}>
+                    {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    }) : 'N/A'}
+                  </span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Last Updated</span>
+                  <span style={styles.infoValue}>
+                    {profileData?.updated_at ? new Date(profileData.updated_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    }) : 'N/A'}
+                  </span>
+                </div>
+                <div style={styles.infoRow}>
+                  <span style={styles.infoLabel}>Last Signed In</span>
+                  <span style={styles.infoValue}>
+                    {profileData?.last_login ? new Date(profileData.last_login).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : 'Recently'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Member Since:</span>
-              <span style={styles.infoValue}>
-                {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }) : 'N/A'}
-              </span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Last Updated:</span>
-              <span style={styles.infoValue}>
-                {profileData?.updated_at ? new Date(profileData.updated_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }) : 'N/A'}
-              </span>
-            </div>
-            <div style={styles.infoItem}>
-              <span style={styles.infoLabel}>Last Login:</span>
-              <span style={styles.infoValue}>
-                {profileData?.last_login ? new Date(profileData.last_login).toLocaleString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) : 'N/A'}
-              </span>
+
+            {/* Quick Clinic Info Card */}
+            <div style={{ ...styles.infoCard, marginTop: '1.25rem', background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)', border: '1px solid #bfdbfe' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <i className="fas fa-hospital" style={{ color: '#2563eb', fontSize: '1.2rem' }}></i>
+                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700', color: '#1e3a8a' }}>Pro Pet Animal Hospital</h4>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: '#3b82f6', lineHeight: 1.5 }}>
+                Operating Hours: Mon–Sat, 09:00 – 18:30. Authorized staff access only.
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Activity Summary */}
-        {activityStats && (
-          <div style={styles.infoCard}>
-            <h3 style={styles.infoCardTitle}>
-              <i className="fas fa-chart-bar" style={{ marginRight: '0.5rem', color: '#667eea' }}></i>
-              Activity Summary
-            </h3>
-            <div style={styles.infoGrid}>
-              {currentUser.role === 'veterinarian' && (
-                <>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_appointments || 0}</span>
-                    <span style={styles.statLabel}>Appointments Handled</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_medical_records || 0}</span>
-                    <span style={styles.statLabel}>Medical Records Created</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_disease_cases || 0}</span>
-                    <span style={styles.statLabel}>Disease Cases Recorded</span>
-                  </div>
-                </>
-              )}
-              {currentUser.role === 'receptionist' && (
-                <>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_appointments_booked || 0}</span>
-                    <span style={styles.statLabel}>Appointments Booked</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_customers_registered || 0}</span>
-                    <span style={styles.statLabel}>Customers Registered</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_pets_registered || 0}</span>
-                    <span style={styles.statLabel}>Pets Registered</span>
-                  </div>
-                </>
-              )}
-              {currentUser.role === 'admin' && (
-                <>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_users_created || 0}</span>
-                    <span style={styles.statLabel}>Users Created</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_customers_registered || 0}</span>
-                    <span style={styles.statLabel}>Customers Registered</span>
-                  </div>
-                  <div style={styles.statItem}>
-                    <span style={styles.statValue}>{activityStats.total_actions_logged || 0}</span>
-                    <span style={styles.statLabel}>Actions Logged</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       {showDeleteImageModal && (
@@ -869,426 +907,458 @@ const styles = {
     fontFamily: 'system-ui, -apple-system, sans-serif',
     maxWidth: '1200px',
     margin: '0 auto',
+    paddingBottom: '2rem',
   },
-  header: {
+  heroBanner: {
+    background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+    borderRadius: '16px',
+    padding: '2rem 2.25rem',
+    marginBottom: '1.5rem',
+    color: '#ffffff',
+    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.25)',
+  },
+  heroContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2rem',
+    flexWrap: 'wrap',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    flexShrink: 0,
+  },
+  heroAvatarImage: {
+    width: '90px',
+    height: '90px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '3px solid #38bdf8',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+  },
+  heroAvatarInitials: {
+    width: '90px',
+    height: '90px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #38bdf8 0%, #818cf8 100%)',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '2.25rem',
+    fontWeight: '700',
+    border: '3px solid rgba(255,255,255,0.2)',
+    boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+  },
+  avatarCameraBadge: {
+    position: 'absolute',
+    bottom: '0',
+    right: '0',
+    width: '30px',
+    height: '30px',
+    borderRadius: '50%',
+    backgroundColor: '#0284c7',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+    border: '2px solid #0f172a',
+    transition: 'transform 0.2s',
+  },
+  heroDetails: {
+    flex: 1,
+    minWidth: '260px',
+  },
+  heroHeaderRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '2rem',
+    alignItems: 'flex-start',
     gap: '1rem',
     flexWrap: 'wrap',
   },
-  headerContent: {
+  heroName: {
+    fontSize: '1.75rem',
+    fontWeight: '700',
+    margin: '0 0 0.4rem 0',
+    color: '#f8fafc',
+    letterSpacing: '-0.02em',
+  },
+  heroMetaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  roleBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    border: '1px solid rgba(56, 189, 248, 0.3)',
+    color: '#38bdf8',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: '700',
+    letterSpacing: '0.05em',
+  },
+  statusBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.25rem 0.75rem',
+    borderRadius: '20px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+  },
+  editButton: {
+    padding: '0.6rem 1.25rem',
+    backgroundColor: '#0284c7',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)',
+    transition: 'all 0.2s',
+  },
+  cancelButtonHeader: {
+    padding: '0.6rem 1.1rem',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    color: '#f8fafc',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    borderRadius: '10px',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  pendingImageBar: {
+    marginTop: '0.85rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: '0.5rem 0.85rem',
+    borderRadius: '8px',
+    width: 'fit-content',
+  },
+  uploadButton: {
+    padding: '0.35rem 0.85rem',
+    backgroundColor: '#10b981',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+  },
+  cancelImageButton: {
+    padding: '0.35rem 0.85rem',
+    backgroundColor: 'transparent',
+    color: '#cbd5e1',
+    border: '1px solid #64748b',
+    borderRadius: '6px',
+    fontSize: '0.75rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  removePhotoButton: {
+    background: 'none',
+    border: 'none',
+    color: '#f87171',
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  activityGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1rem',
+    marginBottom: '1.5rem',
+  },
+  activityCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: '14px',
+    padding: '1.1rem 1.25rem',
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
   },
-  headerIcon: {
-    fontSize: '2rem',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
+  activityIconBg: {
+    width: '46px',
+    height: '46px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.25rem',
+    flexShrink: 0,
   },
-  title: {
-    fontSize: '2rem',
-    fontWeight: '600',
-    color: '#1F2937',
+  activityValue: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#0f172a',
     margin: 0,
+    lineHeight: 1.1,
   },
-  subtitle: {
-    fontSize: '1rem',
-    color: '#6B7280',
-    margin: '0.5rem 0 0 0',
-  },
-  editButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#3B82F6',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
+  activityLabel: {
+    fontSize: '0.75rem',
     fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
+    color: '#64748b',
+    margin: '0.2rem 0 0 0',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
   },
-  warningAlert: {
-    backgroundColor: '#FFFBEB',
-    border: '1px solid #FCD34D',
-    color: '#92400E',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  errorAlert: {
-    backgroundColor: '#FEE2E2',
-    border: '1px solid #FCA5A5',
-    color: '#991B1B',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  successAlert: {
-    backgroundColor: '#D1FAE5',
-    border: '1px solid #6EE7B7',
-    color: '#065F46',
-    padding: '1rem',
-    borderRadius: '8px',
-    marginBottom: '1.5rem',
-    fontSize: '0.875rem',
-    display: 'flex',
-    alignItems: 'center',
+  mainLayoutGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 340px',
+    gap: '1.5rem',
+    alignItems: 'start',
   },
   profileCard: {
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    marginBottom: '1.5rem',
+    backgroundColor: '#ffffff',
+    padding: '1.75rem 2rem',
+    borderRadius: '14px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
+  },
+  sideColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.25rem',
   },
   section: {
-    marginBottom: '2rem',
-    paddingBottom: '2rem',
-    borderBottom: '1px solid #E5E7EB',
+    marginBottom: '1.75rem',
+    paddingBottom: '1.75rem',
+    borderBottom: '1px solid #f1f5f9',
   },
   sectionHeader: {
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
   },
   sectionTitle: {
-    fontSize: '1.25rem',
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: '1.1rem',
+    fontWeight: '700',
+    color: '#0f172a',
     margin: 0,
     display: 'flex',
     alignItems: 'center',
   },
   sectionSubtitle: {
-    fontSize: '0.875rem',
-    color: '#6B7280',
-    margin: '0.5rem 0 0 0',
-  },
-  avatarSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1.5rem',
-    marginBottom: '2rem',
-    padding: '1.5rem',
-    backgroundColor: '#F9FAFB',
-    borderRadius: '8px',
-  },
-  avatarContainer: {
-    position: 'relative',
-    flexShrink: 0,
-  },
-  avatar: {
-    width: '80px',
-    height: '80px',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: 'white',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '2rem',
-    fontWeight: '600',
-    flexShrink: 0,
-  },
-  avatarImage: {
-    width: '80px',
-    height: '80px',
-    borderRadius: '50%',
-    objectFit: 'cover',
-    border: '3px solid white',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-  },
-  avatarInfo: {
-    flex: 1,
-  },
-  avatarName: {
-    fontSize: '1.5rem',
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: '0.25rem',
-  },
-  avatarRole: {
-    fontSize: '1rem',
-    color: '#6B7280',
-    textTransform: 'capitalize',
-    marginBottom: '1rem',
-  },
-  imageUploadSection: {
-    marginTop: '1rem',
-  },
-  imageActions: {
-    display: 'flex',
-    gap: '0.75rem',
-    flexWrap: 'wrap',
-  },
-  selectImageButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#667eea',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  uploadButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#10B981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  deleteImageButton: {
-    padding: '0.5rem 1rem',
-    backgroundColor: '#EF4444',
-    color: 'white',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  imageHint: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
-    marginTop: '0.5rem',
+    fontSize: '0.8rem',
+    color: '#64748b',
+    margin: '0.35rem 0 0 0',
   },
   formGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '1.5rem',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: '1.25rem',
   },
   formGroup: {
     display: 'flex',
     flexDirection: 'column',
   },
   label: {
-    marginBottom: '0.5rem',
-    color: '#374151',
+    marginBottom: '0.4rem',
+    color: '#334155',
     fontWeight: '600',
-    fontSize: '0.875rem',
+    fontSize: '0.82rem',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.5rem',
+    justifyContent: 'space-between',
   },
   readOnlyBadge: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
+    fontSize: '0.72rem',
+    color: '#94a3b8',
     fontWeight: '500',
-    fontStyle: 'italic',
+    fontStyle: 'normal',
   },
   input: {
-    padding: '0.75rem',
-    border: '1px solid #D1D5DB',
+    padding: '0.65rem 0.85rem',
+    border: '1px solid #cbd5e1',
     borderRadius: '8px',
     fontSize: '0.875rem',
+    color: '#0f172a',
     outline: 'none',
-    transition: 'all 0.2s',
+    backgroundColor: '#ffffff',
+  },
+  displayValue: {
+    padding: '0.65rem 0.85rem',
+    backgroundColor: '#f8fafc',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    color: '#1e293b',
+    fontWeight: '500',
+    border: '1px solid #e2e8f0',
   },
   passwordWrapper: {
     display: 'flex',
     alignItems: 'center',
-    border: '1px solid #D1D5DB',
+    border: '1px solid #cbd5e1',
     borderRadius: '8px',
     overflow: 'hidden',
+    backgroundColor: '#ffffff',
   },
   passwordInput: {
     flex: 1,
-    padding: '0.75rem',
+    padding: '0.65rem 0.85rem',
     border: 'none',
     fontSize: '0.875rem',
     outline: 'none',
     background: 'transparent',
+    color: '#0f172a',
   },
   fieldHint: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
-    marginTop: '0.375rem',
+    fontSize: '0.72rem',
+    color: '#64748b',
+    marginTop: '0.3rem',
   },
   eyeButton: {
     padding: '0 0.75rem',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#9CA3AF',
+    color: '#94a3b8',
     fontSize: '0.9rem',
     display: 'flex',
     alignItems: 'center',
   },
-  displayValue: {
-    padding: '0.75rem',
-    backgroundColor: '#F9FAFB',
-    borderRadius: '8px',
-    fontSize: '0.875rem',
-    color: '#1F2937',
-    border: '1px solid #E5E7EB',
-  },
-  infoBox: {
-    backgroundColor: '#F0F9FF',
-    border: '1px solid #BAE6FD',
-    padding: '1.5rem',
-    borderRadius: '8px',
-  },
-  infoText: {
-    fontSize: '0.875rem',
-    color: '#1F2937',
-    margin: '0 0 1rem 0',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  privilegeList: {
-    margin: '0',
-    paddingLeft: '1.5rem',
-    color: '#374151',
-    fontSize: '0.875rem',
-  },
   actionButtons: {
     display: 'flex',
     justifyContent: 'flex-end',
-    gap: '1rem',
-    marginTop: '2rem',
+    gap: '0.85rem',
+    marginTop: '1.5rem',
+    paddingTop: '1.25rem',
+    borderTop: '1px solid #f1f5f9',
   },
   cancelButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#6B7280',
-    color: 'white',
-    border: 'none',
+    padding: '0.6rem 1.25rem',
+    backgroundColor: '#f1f5f9',
+    color: '#475569',
+    border: '1px solid #cbd5e1',
     borderRadius: '8px',
-    fontSize: '0.875rem',
+    fontSize: '0.85rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.2s',
   },
   saveButton: {
-    padding: '0.75rem 1.5rem',
-    backgroundColor: '#10B981',
-    color: 'white',
+    padding: '0.6rem 1.35rem',
+    backgroundColor: '#10b981',
+    color: '#ffffff',
     border: 'none',
     borderRadius: '8px',
-    fontSize: '0.875rem',
+    fontSize: '0.85rem',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 0.2s',
     display: 'flex',
     alignItems: 'center',
   },
   infoCard: {
-    backgroundColor: 'white',
-    padding: '1.5rem',
-    borderRadius: '12px',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    backgroundColor: '#ffffff',
+    padding: '1.35rem 1.5rem',
+    borderRadius: '14px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
   },
   infoCardTitle: {
-    fontSize: '1.125rem',
-    fontWeight: '600',
-    color: '#1F2937',
-    margin: '0 0 1.5rem 0',
+    fontSize: '1rem',
+    fontWeight: '700',
+    color: '#0f172a',
+    margin: '0 0 1rem 0',
     display: 'flex',
     alignItems: 'center',
   },
-  infoGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '1.5rem',
-  },
-  infoItem: {
+  infoList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.5rem',
+    gap: '0.85rem',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: '0.6rem',
+    borderBottom: '1px solid #f8fafc',
   },
   infoLabel: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
+    fontSize: '0.78rem',
+    color: '#64748b',
     fontWeight: '600',
-    textTransform: 'uppercase',
   },
   infoValue: {
-    fontSize: '0.875rem',
-    color: '#1F2937',
+    fontSize: '0.82rem',
+    color: '#0f172a',
     fontWeight: '500',
   },
-  statItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '1.25rem',
-    backgroundColor: '#F9FAFB',
-    borderRadius: '8px',
-    border: '1px solid #E5E7EB',
-    textAlign: 'center',
-  },
-  statValue: {
-    fontSize: '2rem',
+  infoValueHighlight: {
+    fontSize: '0.75rem',
+    color: '#0284c7',
     fontWeight: '700',
-    color: '#667eea',
-    lineHeight: 1,
-    marginBottom: '0.5rem',
+    backgroundColor: '#e0f2fe',
+    padding: '0.2rem 0.5rem',
+    borderRadius: '6px',
   },
-  statLabel: {
-    fontSize: '0.75rem',
-    color: '#6B7280',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: '0.025em',
+  warningAlert: {
+    backgroundColor: '#fffbe6',
+    border: '1px solid #ffe58f',
+    color: '#d48806',
+    padding: '0.85rem 1.1rem',
+    borderRadius: '10px',
+    marginBottom: '1.25rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
   },
-  badge: {
-    display: 'inline-block',
-    padding: '0.25rem 0.75rem',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    width: 'fit-content',
+  errorAlert: {
+    backgroundColor: '#fef2f2',
+    border: '1px solid #fecaca',
+    color: '#991b1b',
+    padding: '0.85rem 1.1rem',
+    borderRadius: '10px',
+    marginBottom: '1.25rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  successAlert: {
+    backgroundColor: '#ecfdf5',
+    border: '1px solid #a7f3d0',
+    color: '#065f46',
+    padding: '0.85rem 1.1rem',
+    borderRadius: '10px',
+    marginBottom: '1.25rem',
+    fontSize: '0.875rem',
+    display: 'flex',
+    alignItems: 'center',
   },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '3rem',
-    color: '#6B7280',
+    padding: '4rem',
+    color: '#64748b',
   },
   spinner: {
-    border: '4px solid #E5E7EB',
-    borderTop: '4px solid #667eea',
+    border: '3px solid #e2e8f0',
+    borderTop: '3px solid #0284c7',
     borderRadius: '50%',
-    width: '40px',
-    height: '40px',
+    width: '36px',
+    height: '36px',
     animation: 'spin 1s linear infinite',
     marginBottom: '1rem',
   },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modalContent: { backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid #e5e7eb' },
-  modalTitle: { margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#111827' },
-  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.25rem', color: '#6b7280', cursor: 'pointer', padding: '0.25rem' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
+  modalContent: { backgroundColor: '#fff', borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', width: '90%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto' },
+  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.1rem 1.35rem', borderBottom: '1px solid #e2e8f0' },
+  modalTitle: { margin: 0, fontSize: '1.05rem', fontWeight: '700', color: '#0f172a' },
+  modalCloseButton: { background: 'none', border: 'none', fontSize: '1.1rem', color: '#64748b', cursor: 'pointer', padding: '0.2rem' },
 };
 
 export default Profile;

@@ -42,7 +42,8 @@ const VETERINARIAN_SUGGESTED_PROMPTS = [
 const RECEPTIONIST_SUGGESTED_PROMPTS = [
   'Book an appointment for a pet',
   'Register a new customer',
-  'How much does a checkup usually cost?'
+  'How much does a checkup usually cost?',
+  'Check upcoming appointment schedule'
 ];
 
 // Veterinarian's own intro - written in first person for them, not "defer
@@ -115,31 +116,35 @@ const AIAssistant = () => {
       ? VETERINARIAN_SUGGESTED_PROMPTS
       : CLINICAL_SUGGESTED_PROMPTS;
 
+  const midpoint = Math.ceil(suggestedPrompts.length / 2);
+  const row1Prompts = suggestedPrompts.slice(0, midpoint);
+  const row2Prompts = suggestedPrompts.slice(midpoint);
+
+  const getPromptIcon = (promptText) => {
+    if (promptText.includes('revenue') || promptText.includes('cost')) return 'fas fa-chart-line';
+    if (promptText.includes('forecast')) return 'fas fa-chart-pie';
+    if (promptText.includes('veterinarian') || promptText.includes('staff')) return 'fas fa-user-md';
+    if (promptText.includes('reorder') || promptText.includes('inventory')) return 'fas fa-boxes';
+    if (promptText.includes('outbreak') || promptText.includes('risk')) return 'fas fa-shield-virus';
+    if (promptText.includes('history') || promptText.includes('medical')) return 'fas fa-file-medical';
+    if (promptText.includes('consultation') || promptText.includes('note')) return 'fas fa-notes-medical';
+    if (promptText.includes('aftercare')) return 'fas fa-heart-pulse';
+    if (promptText.includes('patient') || promptText.includes('seeing')) return 'fas fa-clipboard-check';
+    if (promptText.includes('Book') || promptText.includes('appointment') || promptText.includes('schedule')) return 'fas fa-calendar-plus';
+    if (promptText.includes('customer') || promptText.includes('Register')) return 'fas fa-user-plus';
+    return 'fas fa-wand-magic-sparkles';
+  };
+
   useEffect(() => {
-    // Scrolls chatContainerRef itself directly, NOT via a sentinel child's
-    // scrollIntoView() - scrollIntoView walks up through every scrollable
-    // ancestor needed to bring the target into view, which on this page
-    // includes Layout.jsx's #main-content (the page's own scrollbar, wrapped
-    // around this whole chat). During an admin reasoning stream this effect
-    // re-runs on every token, so scrollIntoView kept re-asserting itself on
-    // #main-content too - even after the admin manually scrolled the PAGE
-    // (not just the chat box) up to read something above it, the very next
-    // token yanked it back down, making the page scrollbar feel unusable
-    // until streaming finished. Scrolling only this container leaves
-    // #main-content (and every other ancestor) alone entirely.
     if (stickToBottomRef.current) {
       const el = chatContainerRef.current;
-      el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
     }
   }, [messages, loading]);
 
-  // A streamed reasoning trace can append dozens of tokens a second, each
-  // one re-running the effect above - if it always scrolled unconditionally,
-  // manually scrolling up mid-stream (e.g. to re-read an earlier answer)
-  // would get fought every few hundred milliseconds. Track how close to the
-  // bottom the user actually is instead, and only keep auto-scrolling while
-  // they're already there.
-  const NEAR_BOTTOM_PX = 80;
+  const NEAR_BOTTOM_PX = 120;
   const handleChatScroll = () => {
     const el = chatContainerRef.current;
     if (!el) return;
@@ -204,6 +209,7 @@ const AIAssistant = () => {
     // the reply as it streams in, even if they'd scrolled up to re-read
     // earlier history first.
     stickToBottomRef.current = true;
+
     setMessages((prev) => [...prev, { role: 'user', content: displayText || question }]);
     setInput('');
     setLoading(true);
@@ -214,12 +220,6 @@ const AIAssistant = () => {
     // role and /ai/chat/stream is admin-only regardless. Every other role
     // keeps the plain blocking call below unchanged.
     if (isAdmin) {
-      // A stable id (not an index into `messages`) identifies the in-progress
-      // streaming bubble across updates - React 18 StrictMode double-invokes
-      // setState updater functions in dev to check they're pure, so the
-      // updater itself must decide push-vs-update by looking at `prev`
-      // alone, never by mutating an outer variable (that path silently
-      // indexes into the wrong array on the discarded replay call).
       const streamId = `stream-${Date.now()}-${Math.random()}`;
       try {
         await askAssistantStream(question, { history, pendingIntent }, (event) => {
@@ -239,6 +239,7 @@ const AIAssistant = () => {
           } else if (event.type === 'final') {
             if (event.success === false) {
               setError(event.message || 'The AI assistant is unavailable. Make sure Ollama is running locally.');
+              setMessages((prev) => prev.filter((m) => m.id !== streamId));
               return;
             }
             setPendingIntent(event.action && event.requires_confirmation ? null : (event.pending_intent || null));
@@ -254,6 +255,7 @@ const AIAssistant = () => {
         });
       } catch {
         setError('The AI assistant is unavailable. Make sure Ollama is running locally.');
+        setMessages((prev) => prev.filter((m) => m.id !== streamId));
       } finally {
         setLoading(false);
       }
@@ -286,7 +288,7 @@ const AIAssistant = () => {
     initialQuestionHandledRef.current = true;
     sendQuestion(initialQuestion);
     navigate(location.pathname, { replace: true, state: {} });
-  }, []);
+  }, [location.pathname, location.state?.initialQuestion, navigate, sendQuestion]);
 
   const handleConfirmAction = async (messageIndex) => {
     const target = messages[messageIndex];
@@ -345,8 +347,13 @@ const AIAssistant = () => {
           <div className="ai-modern-header-icon">
             <i className="fas fa-wand-magic-sparkles"></i>
           </div>
-          <div>
-            <h1 className="ai-modern-title">AI Assistant</h1>
+          <div className="ai-modern-header-text">
+            <div className="ai-modern-title-row">
+              <h1 className="ai-modern-title">AI Assistant</h1>
+              <span className={`ai-modern-role-badge role-${user?.role || 'staff'}`}>
+                {isVeterinarian ? 'Clinical AI' : isReceptionist ? 'Front Desk AI' : 'Clinic Intelligence'}
+              </span>
+            </div>
             <p className="ai-assistant-subtitle ai-modern-subtitle">
               {isVeterinarian
                 ? 'Decision-support only — you always make the final call on diagnosis and treatment.'
@@ -369,27 +376,34 @@ const AIAssistant = () => {
                   <span>{user?.first_name?.charAt(0)}{user?.last_name?.charAt(0)}</span>
                 )}
               </div>
-              <div className={`ai-message-bubble ai-modern-bubble${m.intro ? ' ai-modern-intro' : ''}`}>
+              <div className={`ai-message-bubble ai-modern-bubble${m.intro ? ' ai-modern-intro' : ''}${m.streaming ? ' ai-modern-bubble-thinking' : ''}`}>
                 {m.role === 'assistant' ? formatMessageContent(m.content) : <p>{m.content}</p>}
                 {m.role === 'assistant' && isAdmin && m.reasoning && (
                   // Collapsed by default, even while actively streaming in -
                   // viewing the reasoning is opt-in, not forced open. The
                   // text keeps accumulating in state regardless, so opening
                   // it mid-stream still shows it catching up live.
-                  <details className="ai-reasoning ai-modern-reasoning">
-                    <summary className="ai-reasoning-summary ai-modern-reasoning-summary">
+                  <details
+                    className="ai-reasoning ai-modern-reasoning"
+                    onToggle={() => {
+                      if (stickToBottomRef.current && chatContainerRef.current) {
+                        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                      }
+                    }}
+                  >
+                    <summary className="ai-reasoning-summary ai-modern-reasoning-summary" title="Toggle reasoning">
                       {m.streaming ? (
                         <>
-                          <span className="ai-reasoning-thinking-label">
+                          <span className="ai-reasoning-label">
                             Thinking
                             <span className="ai-thinking-dots"><span></span><span></span><span></span></span>
                           </span>
                           <i className="fas fa-chevron-down ai-reasoning-chevron"></i>
                         </>
                       ) : (
-                        <>
+                        <span className="ai-reasoning-label">
                           <i className="fas fa-brain"></i> Show model reasoning
-                        </>
+                        </span>
                       )}
                     </summary>
                     <p className="ai-reasoning-text ai-modern-reasoning-text">{m.reasoning}</p>
@@ -428,18 +442,20 @@ const AIAssistant = () => {
                     ))}
                   </div>
                 )}
-                {m.role === 'assistant' && !m.intro && !m.action && !m.streaming && (
+                {m.role === 'assistant' && !m.intro && !m.action && !m.streaming && m.content && m.content.trim() !== '' && (
                   m.sources && m.sources.length > 0 ? (
                     <div className="ai-message-sources ai-modern-sources">
-                      <span className="ai-message-sources-label">
+                      <div className="ai-message-sources-label">
                         <i className="fas fa-book"></i>
                         {allSourcesAreFaq(m.sources) ? ' From our clinic FAQs:' : ' Sources:'}
-                      </span>
-                      {m.sources.map((s, j) => (
-                        <span key={j} className="ai-source-tag ai-modern-source-tag">
-                          {getSourceLabel(s)}
-                        </span>
-                      ))}
+                      </div>
+                      <div className="ai-message-sources-list">
+                        {m.sources.map((s, j) => (
+                          <span key={j} className="ai-source-tag ai-modern-source-tag">
+                            {getSourceLabel(s)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   ) : !m.structured ? (
                     // Only a genuine unsourced RAG answer (the model falling back to
@@ -455,16 +471,12 @@ const AIAssistant = () => {
               </div>
             </div>
           ))}
-          {/* Once the streaming reasoning bubble itself has appeared (see
-              sendQuestion's admin path), that bubble IS the "thinking"
-              indicator - showing this generic one at the same time would
-              just duplicate it below the live reasoning text. */}
           {loading && !messages[messages.length - 1]?.streaming && (
             <div className="ai-message ai-message-assistant ai-modern-message">
               <div className="ai-modern-avatar ai-modern-avatar-assistant">
                 <i className="fas fa-robot"></i>
               </div>
-              <div className="ai-message-bubble ai-message-loading ai-modern-bubble ai-modern-loading">
+              <div className="ai-modern-thinking-status">
                 <span>Thinking</span>
                 <span className="ai-thinking-dots">
                   <span></span><span></span><span></span>
@@ -472,17 +484,37 @@ const AIAssistant = () => {
               </div>
             </div>
           )}
+          <div className="ai-modern-chat-spacer"></div>
         </div>
 
         {error && <div className="ai-assistant-error ai-modern-error">{error}</div>}
 
         {messages.length <= 1 && (
-          <div className={`ai-suggested-prompts ai-modern-prompts${isVeterinarian ? ' ai-modern-prompts-grid' : ''}`}>
-            {suggestedPrompts.map((p) => (
-              <button key={p} className="ai-modern-prompt-btn" onClick={() => sendQuestion(p)}>
-                <i className="fas fa-lightbulb"></i> {p}
-              </button>
-            ))}
+          <div className="ai-modern-prompts-container">
+            <div className="ai-modern-prompts-rows">
+              <div className="ai-modern-prompts-row">
+                {row1Prompts.map((p) => (
+                  <button key={p} className="ai-modern-prompt-card" onClick={() => sendQuestion(p)}>
+                    <div className="ai-prompt-card-icon">
+                      <i className={getPromptIcon(p)}></i>
+                    </div>
+                    <span className="ai-prompt-card-text">{p}</span>
+                    <i className="fas fa-arrow-right ai-prompt-card-arrow"></i>
+                  </button>
+                ))}
+              </div>
+              <div className="ai-modern-prompts-row">
+                {row2Prompts.map((p) => (
+                  <button key={p} className="ai-modern-prompt-card" onClick={() => sendQuestion(p)}>
+                    <div className="ai-prompt-card-icon">
+                      <i className={getPromptIcon(p)}></i>
+                    </div>
+                    <span className="ai-prompt-card-text">{p}</span>
+                    <i className="fas fa-arrow-right ai-prompt-card-arrow"></i>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

@@ -98,21 +98,48 @@ export const getPetById = async (petId) => {
 };
 
 /**
+ * Helper to generate a unique pet_id (e.g. 'PET-0064').
+ * Scans existing database records to find the highest numeric suffix,
+ * preventing primary key collisions with hardcoded seed/demo data.
+ */
+export const generateNextPetId = async () => {
+  const result = await pool.query(`SELECT pet_id FROM pets WHERE pet_id LIKE 'PET-%'`);
+  let maxNum = 0;
+  for (const row of result.rows) {
+    const match = row.pet_id.match(/\d+$/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  const nextNum = maxNum + 1;
+  return `PET-${String(nextNum).padStart(4, '0')}`;
+};
+
+/**
  * Create new pet
  */
 export const createPet = async (petData, createdBy) => {
+  let petId = petData.pet_id;
+  if (!petId) {
+    petId = await generateNextPetId();
+  }
+
   const query = `
     INSERT INTO pets (
-      customer_id, pet_name, photo_url, species, breed, gender,
+      pet_id, customer_id, pet_name, photo_url, species, breed, gender,
       date_of_birth, color, weight_current,
       insurance_provider, insurance_policy_number, is_neutered,
       allergies, special_needs, notes, created_by
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
     RETURNING *
   `;
 
   const values = [
+    petId,
     petData.customer_id,
     petData.pet_name,
     petData.photo_url || null,

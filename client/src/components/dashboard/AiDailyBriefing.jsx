@@ -4,25 +4,49 @@ import { getBriefing } from '../../services/briefingService';
 // Fetches independently of the main dashboard stat fetch, so a slow or
 // unavailable Ollama never blocks or delays the rest of the dashboard.
 const AiDailyBriefing = () => {
-  const [state, setState] = useState({ loading: true, briefing: null, unavailable: false });
+  const [state, setState] = useState({ loading: true, briefing: null, unavailable: false, refreshing: false });
+  const [isHovered, setIsHovered] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadBriefing = (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setState((prev) => ({ ...prev, refreshing: true }));
+    }
 
-    getBriefing()
+    getBriefing({ forceRefresh: isManualRefresh })
       .then((res) => {
-        if (cancelled) return;
-        if (!res.success || res.unavailable) {
-          setState({ loading: false, briefing: null, unavailable: true });
+        if (!res || !res.success || res.unavailable) {
+          setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
         } else {
-          setState({ loading: false, briefing: res, unavailable: false });
+          setState({ loading: false, briefing: res, unavailable: false, refreshing: false });
         }
       })
       .catch(() => {
-        if (!cancelled) setState({ loading: false, briefing: null, unavailable: true });
+        setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
       });
+  };
 
-    return () => { cancelled = true; };
+  const handleRefresh = () => {
+    loadBriefing(true);
+  };
+
+  useEffect(() => {
+    let active = true;
+    getBriefing({ forceRefresh: false })
+      .then((res) => {
+        if (!active) return;
+        if (!res || !res.success || res.unavailable) {
+          setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
+        } else {
+          setState({ loading: false, briefing: res, unavailable: false, refreshing: false });
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setState({ loading: false, briefing: null, unavailable: true, refreshing: false });
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -34,6 +58,22 @@ const AiDailyBriefing = () => {
           </div>
           <h4 style={styles.title}>AI Daily Briefing</h4>
         </div>
+        <button
+          onClick={handleRefresh}
+          disabled={state.loading || state.refreshing}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          title="Refresh AI briefing"
+          style={{
+            ...styles.refreshBtn,
+            ...(state.refreshing ? styles.refreshBtnActive : {}),
+            ...(isHovered && !state.loading && !state.refreshing ? styles.refreshBtnHover : {}),
+            ...(state.loading && !state.refreshing ? styles.refreshBtnDisabled : {}),
+          }}
+        >
+          <i className={`fas fa-rotate-right ${state.refreshing ? 'fa-spin' : ''}`} style={{ fontSize: '0.75rem' }}></i>
+          <span style={styles.refreshBtnText}>{state.refreshing ? 'Refreshing…' : 'Refresh'}</span>
+        </button>
       </div>
 
       {state.loading ? (
@@ -48,8 +88,8 @@ const AiDailyBriefing = () => {
         </p>
       ) : (
         <>
-          {state.briefing.summary && <p style={styles.summary}>{state.briefing.summary}</p>}
-          {Array.isArray(state.briefing.bullets) && state.briefing.bullets.length > 0 && (
+          {state.briefing?.summary && <p style={styles.summary}>{state.briefing.summary}</p>}
+          {Array.isArray(state.briefing?.bullets) && state.briefing.bullets.length > 0 && (
             <ul style={styles.bulletList}>
               {state.briefing.bullets.map((bullet, i) => (
                 <li key={i} style={styles.bulletItem}>{bullet}</li>
@@ -142,6 +182,45 @@ const styles = {
     fontSize: '0.8rem',
     color: '#4b5563',
     lineHeight: 1.6,
+  },
+  refreshBtn: {
+    height: '30px',
+    minWidth: '30px',
+    padding: '0 0.6rem',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    background: 'rgba(255, 255, 255, 0.85)',
+    border: '1px solid rgba(124, 58, 237, 0.25)',
+    color: '#6d28d9',
+    cursor: 'pointer',
+    borderRadius: '15px',
+    fontSize: '0.8rem',
+    backdropFilter: 'blur(6px)',
+    boxShadow: '0 2px 6px -1px rgba(124, 58, 237, 0.12)',
+    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+  },
+  refreshBtnText: {
+    fontSize: '0.72rem',
+    fontWeight: '600',
+    letterSpacing: '0.01em',
+  },
+  refreshBtnActive: {
+    background: 'rgba(237, 233, 254, 0.9)',
+    borderColor: '#7c3aed',
+  },
+  refreshBtnHover: {
+    background: '#7c3aed',
+    borderColor: '#7c3aed',
+    color: '#ffffff',
+    boxShadow: '0 4px 12px rgba(124, 58, 237, 0.35)',
+    transform: 'translateY(-1px)',
+  },
+  refreshBtnDisabled: {
+    opacity: 0.5,
+    cursor: 'not-allowed',
+    transform: 'none',
   },
 };
 

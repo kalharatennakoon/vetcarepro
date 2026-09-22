@@ -114,6 +114,26 @@ export const getCustomerById = async (customerId) => {
 };
 
 /**
+ * Helper to generate a unique customer_id (e.g. 'CUST-0046').
+ * Scans existing database records to find the highest numeric suffix,
+ * preventing primary key collisions with hardcoded seed/demo data.
+ */
+export const generateNextCustomerId = async () => {
+  const result = await pool.query(`SELECT customer_id FROM customers WHERE customer_id LIKE 'CUST-%'`);
+  let maxNum = 0;
+  for (const row of result.rows) {
+    const match = row.customer_id.match(/\d+$/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return `CUST-${String(maxNum + 1).padStart(4, '0')}`;
+};
+
+/**
  * Create new customer
  * Every new customer starts with password_must_change = true and an
  * unguessable random password hash - they can't log in with it directly.
@@ -122,21 +142,27 @@ export const getCustomerById = async (customerId) => {
  * password via POST /api/customer-auth/set-password.
  */
 export const createCustomer = async (customerData, createdBy) => {
+  let customerId = customerData.customer_id;
+  if (!customerId) {
+    customerId = await generateNextCustomerId();
+  }
+
   const randomPassword = crypto.randomBytes(32).toString('hex');
   const defaultPasswordHash = await hashPassword(randomPassword);
 
   const query = `
     INSERT INTO customers (
-      first_name, last_name, email, phone, alternate_phone,
+      customer_id, first_name, last_name, email, phone, alternate_phone,
       address, city, postal_code, nic, emergency_contact,
       emergency_phone, preferred_contact_method, notes, created_by,
       password_hash, password_must_change
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true)
     RETURNING *
   `;
 
   const values = [
+    customerId,
     customerData.first_name,
     customerData.last_name,
     customerData.email || null,
