@@ -148,6 +148,47 @@ section{padding-block:clamp(56px,8vw,96px)}
 .cap li::before{content:"";position:absolute;left:2px;top:.62em;width:10px;height:2px;background:var(--teal)}
 @media (max-width:820px){.caps{grid-template-columns:1fr}}
 
+/* screenshot tour */
+.tour{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start}
+.tour-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.tour-group{font:500 .7rem var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:14px 0 4px 14px}
+.tour-group:first-child{margin-top:0}
+.tour-tab{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;padding:11px 14px;border-radius:12px;border:1px solid transparent}
+.tour-tab b{display:block;font:700 .98rem var(--display);letter-spacing:-.01em}
+.tour-tab span{display:block;font-size:.86rem;color:var(--ink-2);line-height:1.4;margin-top:2px}
+.tour-tab:hover{background:var(--surface)}
+.tour-tab[aria-selected="true"]{background:var(--surface);border-color:var(--teal);box-shadow:var(--shadow)}
+.tour-tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.shot{margin:0}
+.shot[hidden]{display:block;margin-top:32px}
+.js .shot[hidden]{display:none}
+.frame{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.frame-bar{display:flex;align-items:center;gap:6px;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.frame-bar code{margin-left:10px;font:400 .74rem var(--mono);color:var(--ink-2);background:var(--surface);padding:3px 10px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frame img{display:block;width:100%;height:auto;aspect-ratio:16/10;background:#f5f7fa}
+.shot figcaption{margin-top:14px;color:var(--ink-2);font-size:.95rem;max-width:70ch}
+.shot figcaption strong{color:var(--ink)}
+.tour-note{margin-top:22px;font-size:.88rem;color:var(--ink-2)}
+.phones-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px 20px;margin:64px 0 24px;padding-top:40px;border-top:1px solid var(--line)}
+.phones-head h3{font-size:1.5rem}
+.phones-head p{color:var(--ink-2);max-width:56ch}
+.phones{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.phone{margin:0}
+.phone img{display:block;width:100%;height:auto;aspect-ratio:1206/2622;border-radius:28px;border:6px solid #1b2a2e;background:#f2f2f7;box-shadow:var(--shadow)}
+.phone figcaption{margin-top:12px;font-size:.9rem;color:var(--ink-2);line-height:1.45}
+.phone figcaption b{display:block;color:var(--ink);font-family:var(--display);font-size:1rem}
+@media (max-width:900px){.phones{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:480px){.phones{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px}.phone{flex:0 0 62%;scroll-snap-align:start}}
+@media (max-width:900px){
+  .tour{grid-template-columns:1fr}
+  .tour-list{display:flex;overflow-x:auto;gap:8px;padding-bottom:6px;scrollbar-width:thin}
+  .tour-group{display:none}
+  .tour-tab{flex:none;width:auto;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+  .tour-tab span{display:none}
+  .tour-tab b{font-size:.88rem;white-space:nowrap}
+}
+
 /* access table */
 .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;min-width:640px;font-size:.95rem}
@@ -233,6 +274,7 @@ footer p+p{margin-top:6px}
     <ul>
       <li><a href="#what">What it is</a></li>
       <li><a href="#capabilities">Capabilities</a></li>
+      <li><a href="#tour">Screenshots</a></li>
       <li><a href="#different">What's different</a></li>
       <li><a href="#how">How it works</a></li>
     </ul>
@@ -253,7 +295,7 @@ footer p+p{margin-top:6px}
         <a class="btn btn-line" href="https://github.com/kalharatennakoon/vetcarepro" target="_blank" rel="noopener">Source on GitHub</a>
       </div>
       <div class="facts" aria-label="Key facts">
-        <span>Web app for staff</span><span>iOS app for pet owners</span><span>Local AI via Ollama</span>
+        <span>Web app for staff</span><span>Owner portal on web &amp; iOS</span><span>Local AI via Ollama</span>
       </div>
     </div>
 
@@ -275,7 +317,7 @@ footer p+p{margin-top:6px}
           <div class="row"><span class="yes">Confirm booking</span><span class="nope">Cancel</span></div>
         </div>
       </div>
-      <div class="chat-foot">Illustrative example · names resolved by database lookup, not guessed</div>
+      <div class="chat-foot">Illustrative example · names resolved by database lookup, not guessed · <a href="#tour" data-shot="assistant-clarify">see it live</a></div>
     </figure>
   </div>
 </header>
@@ -344,17 +386,110 @@ footer p+p{margin-top:6px}
         </ul>
       </article>
       <article class="cap">
-        <div class="cap-top"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span><h3>iOS app for pet owners</h3></div>
-        <p>A native SwiftUI app — not a web wrapper — for owners and prospective clients.</p>
+        <div class="cap-top"><span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span><h3>Pet-owner portal — web and iOS</h3></div>
+        <p>A self-service portal in the browser, plus a native SwiftUI app — not a web wrapper — for owners and prospective clients.</p>
         <ul>
           <li>Secure account setup: owners verify the email and phone the clinic holds, then choose a password</li>
           <li>Pet profiles with vaccination and lab history</li>
-          <li>Appointment viewing and self-service booking in 30-minute slots, 09:00–18:30, Monday to Saturday</li>
+          <li>Self-service booking, rescheduling and cancellation in 30-minute slots, 09:00–18:30, Monday to Saturday, with 48 hours' notice</li>
           <li>An assistant that sees only the owner's own pets — and a guest assistant for general pet-care questions</li>
           <li>AI photo guidance: submit a photo of a pet for general, non-diagnostic advice from a local vision model</li>
         </ul>
       </article>
     </div>
+  </div>
+</section>
+
+<section id="tour" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Screenshots</span>
+      <h2>See it running</h2>
+      <p class="lede">Captured from the live system against the clinic's demo database, with the assistant answering on the local model — nothing here is a mock-up.</p>
+    </div>
+    <div class="tour">
+      <div class="tour-list" role="tablist" aria-label="Screens" aria-orientation="vertical">
+        <p class="tour-group" role="presentation">Clinic staff</p>
+        <button class="tour-tab" role="tab" id="t-staff-dashboard" aria-controls="staff-dashboard" aria-selected="true"><b>Admin dashboard</b><span>AI daily briefing, collections, today's workload</span></button>
+        <button class="tour-tab" role="tab" id="t-pet-record" aria-controls="pet-record" aria-selected="false" tabindex="-1"><b>Pet record</b><span>History, vaccinations, labs and health predictions</span></button>
+        <button class="tour-tab" role="tab" id="t-sales-forecast" aria-controls="sales-forecast" aria-selected="false" tabindex="-1"><b>Sales forecasting</b><span>Prophet forecast with bounds and a plain-language explainer</span></button>
+        <p class="tour-group" role="presentation">AI assistant</p>
+        <button class="tour-tab" role="tab" id="t-assistant-clarify" aria-controls="assistant-clarify" aria-selected="false" tabindex="-1"><b>Asks, never guesses</b><span>An ambiguous pet name gets a question back</span></button>
+        <button class="tour-tab" role="tab" id="t-assistant-chart" aria-controls="assistant-chart" aria-selected="false" tabindex="-1"><b>Charts on request</b><span>Revenue figures from SQL, drawn in the chat</span></button>
+        <p class="tour-group" role="presentation">Pet owners &amp; guests</p>
+        <button class="tour-tab" role="tab" id="t-owner-booking" aria-controls="owner-booking" aria-selected="false" tabindex="-1"><b>Self-service booking</b><span>Only slots the clinic's rules allow</span></button>
+        <button class="tour-tab" role="tab" id="t-owner-visual-care" aria-controls="owner-visual-care" aria-selected="false" tabindex="-1"><b>AI Visual Care</b><span>Photo guidance from a local vision model</span></button>
+        <button class="tour-tab" role="tab" id="t-guest-assistant" aria-controls="guest-assistant" aria-selected="false" tabindex="-1"><b>Guest assistant</b><span>General pet-care answers, citing clinic FAQs</span></button>
+      </div>
+
+      <div>
+        <figure class="shot" id="staff-dashboard" role="tabpanel" aria-labelledby="t-staff-dashboard">
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/dashboard · Admin</code></div>
+          <img src="screenshots/staff-dashboard.webp" width="1600" height="1000" alt="Admin dashboard with an AI daily briefing, total collected, outstanding payments, today's appointments, low-stock alerts and a per-vet appointment table."></div>
+          <figcaption><strong>Admin dashboard.</strong> The AI daily briefing summarises revenue drivers, reorder alerts and outbreak trend from the live models; the tiles below it come straight from the database.</figcaption>
+        </figure>
+        <figure class="shot" id="pet-record" role="tabpanel" aria-labelledby="t-pet-record" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/pets/PET-0003 · Veterinarian</code></div>
+          <img src="screenshots/pet-record.webp" width="1600" height="1000" loading="lazy" alt="Pet profile for Max, a German Shepherd, with tabs for information, medical history, vaccinations, lab reports, health predictions and disease cases."></div>
+          <figcaption><strong>Pet record.</strong> One profile holds the full clinical picture — medical history, vaccinations, lab reports, disease cases, and a Health Predictions tab for breed-based recurrence and cancer risk.</figcaption>
+        </figure>
+        <figure class="shot" id="sales-forecast" role="tabpanel" aria-labelledby="t-sales-forecast" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/analytics · Sales forecasting</code></div>
+          <img src="screenshots/sales-forecast.webp" width="1600" height="1000" loading="lazy" alt="Sales forecasting tab showing a Prophet monthly revenue forecast with lower and upper bounds, an Explain in plain language button, and summary tiles."></div>
+          <figcaption><strong>Sales forecasting.</strong> A Prophet forecast with its uncertainty range shown, not hidden. “Explain in plain language” hands the numbers to the assistant; retraining is a deliberate admin action.</figcaption>
+        </figure>
+        <figure class="shot" id="assistant-clarify" role="tabpanel" aria-labelledby="t-assistant-clarify" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/ai-assistant · Veterinarian</code></div>
+          <img src="screenshots/assistant-clarify.webp" width="1600" height="1000" loading="lazy" alt="A vet asks the assistant to summarise Max's full medical history; the assistant replies that it found multiple pets named Max and offers four choices labelled by owner."></div>
+          <figcaption><strong>Asks, never guesses.</strong> Four patients are called Max. The name is resolved by database lookup, so instead of picking one the assistant asks — each choice labelled by owner.</figcaption>
+        </figure>
+        <figure class="shot" id="assistant-chart" role="tabpanel" aria-labelledby="t-assistant-chart" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/ai-assistant · Admin</code></div>
+          <img src="screenshots/assistant-chart.webp" width="1600" height="1000" loading="lazy" alt="The assistant answers a request for a monthly revenue chart with a bar chart of revenue for the last six months and the total in rupees."></div>
+          <figcaption><strong>Charts on request.</strong> Asking for a chart returns one, drawn from an exact SQL aggregate — the language model never totals the figures itself.</figcaption>
+        </figure>
+        <figure class="shot" id="owner-booking" role="tabpanel" aria-labelledby="t-owner-booking" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/pet-owner/appointments · Pet owner</code></div>
+          <img src="screenshots/owner-booking.webp" width="1600" height="1000" loading="lazy" alt="Pet-owner appointments page with a booking form for pet, appointment type, preferred vet, date, reason and time slot."></div>
+          <figcaption><strong>Self-service booking.</strong> Owners book, reschedule and cancel for their own pets. Available slots come from the same rules the server enforces: open days, 30-minute slots, three per slot, 48 hours' notice.</figcaption>
+        </figure>
+        <figure class="shot" id="owner-visual-care" role="tabpanel" aria-labelledby="t-owner-visual-care" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/pet-owner/ai-visual-care · Pet owner</code></div>
+          <img src="screenshots/owner-visual-care.webp" width="1600" height="1000" loading="lazy" alt="AI Visual Care page where an owner picks a pet, uploads a photo and describes what they are noticing, under a notice that this is general guidance, not a diagnosis."></div>
+          <figcaption><strong>AI Visual Care.</strong> An owner submits a photo and a note for general, non-diagnostic guidance from a local vision model. The notice up front says so, and photos are handled under Sri Lanka's PDPA.</figcaption>
+        </figure>
+        <figure class="shot" id="guest-assistant" role="tabpanel" aria-labelledby="t-guest-assistant" hidden>
+          <div class="frame"><div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><code>/guest/ai-assistant · Guest</code></div>
+          <img src="screenshots/guest-assistant.webp" width="1600" height="1000" loading="lazy" alt="Guest-mode assistant answering how often to deworm a puppy, with key points and a citation to a clinic FAQ."></div>
+          <figcaption><strong>Guest assistant.</strong> No login needed. Answers draw on the clinic's public FAQs and cite them, and always point back to a vet — the guest assistant never names a medicine.</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div class="phones-head">
+      <h3>On iPhone</h3>
+      <p>The native SwiftUI app gives owners the same portal, calling the same backend under the same access rules.</p>
+    </div>
+    <div class="phones">
+      <figure class="phone">
+        <img src="screenshots/ios-home.webp" width="603" height="1311" loading="lazy" alt="iOS home screen greeting the owner, listing their two pets, Loki and Max, with cards for appointments and the AI assistant.">
+        <figcaption><b>Home</b>The owner's pets, appointments and AI tools in one place.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="screenshots/ios-pet.webp" width="603" height="1311" loading="lazy" alt="iOS pet detail for Max showing age, weight, sex, date of birth, a penicillin allergy note and vaccination due dates.">
+        <figcaption><b>Pet detail</b>Profile, allergies and vaccination due dates.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="screenshots/ios-assistant.webp" width="603" height="1311" loading="lazy" alt="iOS assistant asked what vaccines my pet has had; it asks whether the owner means Loki or Max, then lists Loki's vaccinations with citations to the pet's records.">
+        <figcaption><b>AI assistant</b>Scoped to the owner's own pets — it asks which pet, then cites the records it used.</figcaption>
+      </figure>
+      <figure class="phone">
+        <img src="screenshots/ios-visual-care.webp" width="603" height="1311" loading="lazy" alt="iOS AI Visual Care result describing red spots on a dog's skin, stating it cannot diagnose, giving care steps and advising a vet visit.">
+        <figcaption><b>AI Visual Care</b>Photo guidance that says plainly it can't diagnose, and when to see a vet.</figcaption>
+      </figure>
+    </div>
+
+    <p class="tour-note">Demo data only. Web screens captured at 1440 px; iOS screens from the iPhone simulator.</p>
   </div>
 </section>
 
@@ -464,9 +599,10 @@ footer p+p{margin-top:6px}
 
         <rect class="box" x="790" y="170" width="120" height="110" rx="12"/>
         <text class="t" x="806" y="202">Ollama</text>
-        <text class="s" x="806" y="224">Local models</text>
-        <text class="m" x="806" y="246">qwen3:8b</text>
-        <text class="m" x="806" y="262">nomic-embed</text>
+        <text class="s" x="806" y="222">Local models</text>
+        <text class="m" x="806" y="240">qwen3:8b</text>
+        <text class="m" x="806" y="255">qwen3.5:9b</text>
+        <text class="m" x="806" y="270">nomic-embed</text>
 
         <path class="ln" d="M200 85 C235 85 235 130 268 130" marker-end="url(#ar)"/>
         <path class="ln" d="M200 215 C235 215 235 170 268 170" marker-end="url(#ar)"/>
@@ -553,6 +689,37 @@ footer p+p{margin-top:6px}
     <p>AI features provide decision support only and are not a substitute for professional veterinary care.</p>
   </div>
 </footer>
+
+<script>
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('.tour-tab'));
+  if(!tabs.length)return;
+  document.documentElement.classList.add('js');
+  function show(tab,focus){
+    tabs.forEach(function(t){
+      var on=t===tab;
+      t.setAttribute('aria-selected',on);
+      t.tabIndex=on?0:-1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden=!on;
+    });
+    if(focus)tab.focus();
+    tab.scrollIntoView({block:'nearest',inline:'nearest'});
+  }
+  tabs.forEach(function(t,i){
+    t.addEventListener('click',function(){show(t)});
+    t.addEventListener('keydown',function(e){
+      var d={ArrowDown:1,ArrowRight:1,ArrowUp:-1,ArrowLeft:-1}[e.key];
+      if(e.key==='Home')d=-i;if(e.key==='End')d=tabs.length-1-i;
+      if(d===undefined)return;
+      e.preventDefault();
+      show(tabs[(i+d+tabs.length)%tabs.length],true);
+    });
+  });
+  [].slice.call(document.querySelectorAll('[data-shot]')).forEach(function(a){
+    a.addEventListener('click',function(){show(document.getElementById('t-'+a.dataset.shot))});
+  });
+})();
+</script>
 
 </body>
 </html>

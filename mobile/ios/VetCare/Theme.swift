@@ -12,10 +12,10 @@ extension Color {
     /// Primary brand color for VetCare Pro — a calm medical teal. Backed by
     /// the AccentColor asset, which brightens slightly in dark mode so brand
     /// text and icons stay legible on dark backgrounds.
-    static let brand = Color("AccentColor")
+    nonisolated static let brand = Color("AccentColor")
 
     /// Darker brand shade, used for gradients and pressed states.
-    static let brandDark = Color(red: 0.05, green: 0.35, blue: 0.41)
+    nonisolated static let brandDark = Color(red: 0.05, green: 0.35, blue: 0.41)
 
     /// Grouped view background — light gray in light mode, near-black in dark mode.
     static let appBackground = Color(UIColor.systemGroupedBackground)
