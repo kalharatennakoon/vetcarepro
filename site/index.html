@@ -13,7 +13,8 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
-  --ground:#f3f7f7;
+  --ground:#ffffff;
+  --band:#f4f8f8;
   --surface:#ffffff;
   --surface-2:#e8f1f2;
   --ink:#10262a;
@@ -34,7 +35,7 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --ground:#0b181b;--surface:#122428;--surface-2:#173035;
+    --ground:#0b181b;--band:#122428;--surface:#122428;--surface-2:#173035;
     --ink:#e3eff0;--ink-2:#9db4b8;--line:#244046;
     --teal:#4cb8c6;--teal-deep:#8fd6df;--teal-soft:#15393f;
     --amber:#e9a857;--amber-soft:#33260f;--ok:#6cc58f;--no:#ec8a86;
@@ -43,7 +44,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --ground:#0b181b;--surface:#122428;--surface-2:#173035;
+  --ground:#0b181b;--band:#122428;--surface:#122428;--surface-2:#173035;
   --ink:#e3eff0;--ink-2:#9db4b8;--line:#244046;
   --teal:#4cb8c6;--teal-deep:#8fd6df;--teal-soft:#15393f;
   --amber:#e9a857;--amber-soft:#33260f;--ok:#6cc58f;--no:#ec8a86;
@@ -121,7 +122,7 @@ p{margin:0}
 /* sections */
 section{padding-block:clamp(56px,8vw,96px)}
 .sec-head{display:grid;gap:14px;margin-bottom:40px;max-width:760px}
-.band{background:var(--surface);border-block:1px solid var(--line)}
+.band{background:var(--band);border-block:1px solid var(--line)}
 
 /* what it is */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:start}
@@ -156,7 +157,7 @@ section{padding-block:clamp(56px,8vw,96px)}
 .tour-tab{all:unset;box-sizing:border-box;display:block;width:100%;cursor:pointer;padding:11px 14px;border-radius:12px;border:1px solid transparent}
 .tour-tab b{display:block;font:700 .98rem var(--display);letter-spacing:-.01em}
 .tour-tab span{display:block;font-size:.86rem;color:var(--ink-2);line-height:1.4;margin-top:2px}
-.tour-tab:hover{background:var(--surface)}
+.tour-tab:hover{background:var(--surface-2)}
 .tour-tab[aria-selected="true"]{background:var(--surface);border-color:var(--teal);box-shadow:var(--shadow)}
 .tour-tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
 .shot{margin:0}
@@ -188,6 +189,29 @@ section{padding-block:clamp(56px,8vw,96px)}
   .tour-tab span{display:none}
   .tour-tab b{font-size:.88rem;white-space:nowrap}
 }
+
+/* module gallery */
+.mod-group{margin-top:40px}
+.mod-group:first-of-type{margin-top:0}
+.mod-group>h3{font:500 .74rem var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+.mod{all:unset;box-sizing:border-box;display:flex;flex-direction:column;cursor:zoom-in;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:border-color .15s,box-shadow .15s,transform .15s}
+.mod:hover{border-color:var(--teal);box-shadow:var(--shadow);transform:translateY(-2px)}
+.mod:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.mod img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;object-position:top;border-bottom:1px solid var(--line);background:#f5f7fa}
+.mod-txt{padding:14px 16px 16px}
+.mod-txt b{display:block;font:700 1rem var(--display);letter-spacing:-.01em}
+.mod-txt span{display:block;margin-top:4px;font-size:.88rem;line-height:1.45;color:var(--ink-2)}
+.viewer{border:0;padding:0;background:transparent;max-width:min(1200px,94vw);width:100%;color:var(--ink)}
+.viewer::backdrop{background:rgba(6,18,20,.78);backdrop-filter:blur(3px)}
+.viewer figure{margin:0;background:var(--surface);border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.viewer img{display:block;width:100%;height:auto;max-height:78vh;object-fit:contain;background:#f5f7fa}
+.viewer figcaption{padding:14px 18px;font-size:.95rem;color:var(--ink-2)}
+.viewer figcaption strong{color:var(--ink)}
+.viewer-bar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px}
+.viewer-bar button{all:unset;cursor:pointer;font:600 .9rem var(--body);color:#fff;background:rgba(255,255,255,.14);padding:8px 14px;border-radius:999px}
+.viewer-bar button:hover{background:rgba(255,255,255,.26)}
+.viewer-bar button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
 /* access table */
 .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
@@ -493,6 +517,59 @@ footer p+p{margin-top:6px}
   </div>
 </section>
 
+<section id="modules" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Every module</span>
+      <h2>The rest of the web portal</h2>
+      <p class="lede">Front desk, clinical, billing, inventory, analytics and administration — each screen from the running system. Click any screen to enlarge it. Contact details are blurred.</p>
+    </div>
+
+    <div class="mod-group">
+      <h3>Front desk &amp; clinical</h3>
+      <div class="mods">
+        <button class="mod" data-src="screenshots/appointments-calendar.webp"><img src="screenshots/thumbs/appointments-calendar.webp" width="800" height="500" loading="lazy" alt="Appointments month calendar with each day's bookings, patient, owner and vet, plus status filters and a list view."><span class="mod-txt"><b>Appointments</b><span>Month calendar or list, filtered by status and date, with each booking's pet, owner and vet.</span></span></button>
+        <button class="mod" data-src="screenshots/vet-dashboard.webp"><img src="screenshots/thumbs/vet-dashboard.webp" width="800" height="500" loading="lazy" alt="Veterinarian dashboard with an AI daily briefing, patients waiting, emergency cases, follow-ups due and today's schedule."><span class="mod-txt"><b>Vet dashboard</b><span>A briefing on the vet's own day: patients waiting, follow-ups due and records still to write.</span></span></button>
+        <button class="mod" data-src="screenshots/medical-record.webp"><img src="screenshots/thumbs/medical-record.webp" width="800" height="500" loading="lazy" alt="Medical record detail showing pet information, visit date, veterinarian, linked appointment and chief complaint."><span class="mod-txt"><b>Medical records</b><span>Each visit's complaint, diagnosis, treatment and prescriptions, linked to its appointment.</span></span></button>
+        <button class="mod" data-src="screenshots/customers.webp"><img src="screenshots/thumbs/customers.webp" width="800" height="500" loading="lazy" alt="Customer management list with totals for active and inactive owners and a searchable table of owners and their pets."><span class="mod-txt"><b>Customers</b><span>Owner records searchable by name, phone, email or city, with their registered pets.</span></span></button>
+        <button class="mod" data-src="screenshots/breeding-registry.webp"><img src="screenshots/thumbs/breeding-registry.webp" width="800" height="500" loading="lazy" alt="Breeding registry grid of pet cards with photo, species, breed, age and buttons to contact the owner."><span class="mod-txt"><b>Breeding registry</b><span>Pets listed with their owner's consent, filterable by species and sex.</span></span></button>
+      </div>
+    </div>
+
+    <div class="mod-group">
+      <h3>Billing &amp; inventory</h3>
+      <div class="mods">
+        <button class="mod" data-src="screenshots/billing.webp"><img src="screenshots/thumbs/billing.webp" width="800" height="500" loading="lazy" alt="Billing and invoices list with invoice numbers, dates, customers, totals in rupees and payment status."><span class="mod-txt"><b>Billing</b><span>Every invoice with its payment status, a search, and a one-click overdue view.</span></span></button>
+        <button class="mod" data-src="screenshots/invoice.webp"><img src="screenshots/thumbs/invoice.webp" width="800" height="500" loading="lazy" alt="Invoice detail marked fully paid, with line items, quantities, unit prices and totals in rupees, and email and print buttons."><span class="mod-txt"><b>Invoices</b><span>Itemised in rupees, with discounts and payments recorded. Email or print from the page.</span></span></button>
+        <button class="mod" data-src="screenshots/inventory.webp"><img src="screenshots/thumbs/inventory.webp" width="800" height="500" loading="lazy" alt="Inventory management with totals, stock value, and alerts for out-of-stock, low-stock and items expiring within 90 days."><span class="mod-txt"><b>Inventory</b><span>Stock value and alerts for items that are out of stock, running low, or expire within 90 days.</span></span></button>
+      </div>
+    </div>
+
+    <div class="mod-group">
+      <h3>Analytics &amp; insights</h3>
+      <div class="mods">
+        <button class="mod" data-src="screenshots/disease-analytics.webp"><img src="screenshots/thumbs/disease-analytics.webp" width="800" height="500" loading="lazy" alt="Disease activity forecast showing a low pandemic risk index of 1.74 out of 10, a stable trend, projected cases and a monthly forecast table, with a very-low-confidence label."><span class="mod-txt"><b>Disease analytics</b><span>Case forecasts and a 0–10 pandemic risk index. It says so openly when confidence is low.</span></span></button>
+        <button class="mod" data-src="screenshots/inventory-demand.webp"><img src="screenshots/thumbs/inventory-demand.webp" width="800" height="500" loading="lazy" alt="Inventory demand forecast grouping items into urgent reorder, reorder soon and sufficient stock, with an estimated reorder cost."><span class="mod-txt"><b>Inventory demand</b><span>Items sorted into urgent, soon and sufficient, with the estimated reorder cost.</span></span></button>
+        <button class="mod" data-src="screenshots/health-predictions.webp"><img src="screenshots/thumbs/health-predictions.webp" width="800" height="500" loading="lazy" alt="Health risk predictions for Max showing disease recurrence risk by category over one month to two years, and a cancer risk estimate for his breed and age."><span class="mod-txt"><b>Pet health predictions</b><span>A pet's recurrence risk from one month to two years, and breed-based cancer risk.</span></span></button>
+        <button class="mod" data-src="screenshots/reports.webp"><img src="screenshots/thumbs/reports.webp" width="800" height="500" loading="lazy" alt="Reports and clinic analytics with a quick summary of revenue, appointments, patients and inventory for a date range, and financial and operational report options."><span class="mod-txt"><b>Reports</b><span>Financial and operational reports for any date range, exported to PDF or CSV.</span></span></button>
+      </div>
+    </div>
+
+    <div class="mod-group">
+      <h3>Administration</h3>
+      <div class="mods">
+        <button class="mod" data-src="screenshots/staff.webp"><img src="screenshots/thumbs/staff.webp" width="800" height="500" loading="lazy" alt="User management showing staff totals by role, and a table of staff with role, status and last login."><span class="mod-txt"><b>Staff management</b><span>Accounts by role, active status and last login, with a flag for required password changes.</span></span></button>
+        <button class="mod" data-src="screenshots/audit-logs.webp"><img src="screenshots/thumbs/audit-logs.webp" width="800" height="500" loading="lazy" alt="System audit log table listing date and time, action, record type, record ID, the staff member who performed it and IP address."><span class="mod-txt"><b>Audit logs</b><span>Who did what, to which record, and when. Filterable and exportable to CSV.</span></span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<dialog class="viewer" id="viewer" aria-label="Screenshot viewer">
+  <div class="viewer-bar"><button type="button" data-close>Close ✕</button></div>
+  <figure><img src="" alt=""><figcaption></figcaption></figure>
+</dialog>
+
 <section id="access" class="band">
   <div class="wrap">
     <div class="sec-head">
@@ -718,6 +795,24 @@ footer p+p{margin-top:6px}
   [].slice.call(document.querySelectorAll('[data-shot]')).forEach(function(a){
     a.addEventListener('click',function(){show(document.getElementById('t-'+a.dataset.shot))});
   });
+})();
+
+(function(){
+  var dlg=document.getElementById('viewer');
+  if(!dlg||typeof dlg.showModal!=='function')return;
+  var img=dlg.querySelector('img'),cap=dlg.querySelector('figcaption'),opener=null;
+  [].slice.call(document.querySelectorAll('.mod')).forEach(function(b){
+    b.addEventListener('click',function(){
+      var t=b.querySelector('.mod-txt');
+      img.src=b.dataset.src;
+      img.alt=b.querySelector('img').alt;
+      cap.innerHTML='<strong>'+t.querySelector('b').textContent+'.</strong> '+t.querySelector('span').textContent;
+      opener=b;
+      dlg.showModal();
+    });
+  });
+  dlg.addEventListener('click',function(e){if(e.target===dlg||e.target.hasAttribute('data-close'))dlg.close()});
+  dlg.addEventListener('close',function(){if(opener)opener.focus()});
 })();
 </script>
 
