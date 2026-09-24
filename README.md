@@ -172,6 +172,8 @@ This project is proprietary software. See the [LICENSE](LICENSE) file for full t
 
 All rights are reserved by the author. You may clone and run this project on your local machine for viewing and testing purposes only.
 
-**Any other use — including deployment, modification, distribution, or commercial use — requires explicit written permission from the author.**
+**Any other use — including deployment, modification, distribution, or commercial use — requires explicit written permission from the author.** For permission requests, pilots, licensing or partnerships, contact kalharatennakoonmck@gmail.com.
+
+Third-party open-source components and AI models keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 &copy; 2026 Kalhara Tennakoon. All Rights Reserved.
