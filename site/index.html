@@ -252,6 +252,225 @@ td:first-child{font-weight:600}
 .bound li strong{color:var(--ink)}
 @media (max-width:820px){.bounds{grid-template-columns:1fr}}
 
+/* nav progress + active link */
+.progress{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:var(--teal);transform-origin:0 50%;transform:scaleX(0)}
+.nav ul a[aria-current="true"]{color:var(--teal-deep);font-weight:600}
+
+/* shared bits */
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{all:unset;box-sizing:border-box;cursor:pointer;font:600 .88rem var(--body);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
+.seg button:hover{border-color:var(--teal);color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.ctl-label{font:500 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);margin-bottom:8px}
+.note{font-size:.88rem;color:var(--ink-2);margin-top:14px}
+.sub{font:700 1.35rem var(--display);letter-spacing:-.01em;margin:56px 0 8px}
+.sub+p{color:var(--ink-2);max-width:68ch;margin-bottom:24px}
+code.k{font:400 .86em var(--mono);background:var(--surface-2);padding:1px 6px;border-radius:5px}
+
+/* playground */
+.play{display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start}
+.play-side{display:grid;gap:22px}
+.qs{display:grid;gap:6px}
+.qs button{all:unset;box-sizing:border-box;cursor:pointer;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-size:.95rem;line-height:1.35}
+.qs button small{display:block;font:500 .7rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);margin-bottom:3px}
+.qs button:hover{border-color:var(--teal)}
+.qs button[aria-pressed="true"]{border-color:var(--teal);box-shadow:var(--shadow);background:var(--surface)}
+.qs button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.play .chat-body{min-height:250px}
+.msg.ai.deny{background:var(--amber-soft)}
+.msg .cites{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.typing{display:inline-flex;gap:4px;padding:4px 0}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--ink-2);opacity:.4;animation:blink 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{50%{opacity:1}}
+.route{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:12px 16px;border-top:1px solid var(--line);background:var(--band)}
+.route .ctl-label{margin:0 6px 0 0}
+.hop{font:500 .74rem var(--mono);padding:4px 9px;border-radius:6px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);opacity:.35;transition:opacity .25s,border-color .25s}
+.hop.on{opacity:1;border-color:var(--teal);color:var(--teal-deep)}
+.hop.stop{border-color:var(--amber);color:var(--amber)}
+.hop-sep{color:var(--ink-2);font-size:.8rem}
+@media (max-width:900px){.play{grid-template-columns:1fr}}
+
+/* model cards */
+.models{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.model{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.model h3{font-size:1.25rem}
+.model .algo{font:500 .76rem var(--mono);color:var(--teal-deep)}
+.model dl{margin:0;display:grid;gap:10px}
+.model dt{font:500 .7rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.model dd{margin:2px 0 0;font-size:.94rem}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.metrics div{background:var(--band);padding:10px 12px}
+.metrics b{display:block;font:800 1.35rem/1.1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.metrics span{display:block;font-size:.78rem;color:var(--ink-2);line-height:1.35;margin-top:3px}
+.limit{border-left:2px solid var(--amber);padding-left:12px;font-size:.9rem;color:var(--ink-2)}
+.limit b{color:var(--amber)}
+@media (max-width:980px){.models{grid-template-columns:1fr}}
+
+/* forecast chart */
+.fc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
+.fc-top{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px 28px;align-items:flex-end;margin-bottom:14px}
+.fc-top h3{font-size:1.1rem}
+.fc-top p{font-size:.88rem;color:var(--ink-2);margin-top:4px}
+.fc-ctl{display:flex;flex-wrap:wrap;gap:18px;align-items:center;font-size:.9rem}
+.fc-ctl label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.fc-ctl input[type=range]{accent-color:var(--teal);width:140px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.86rem;color:var(--ink-2);margin-bottom:6px}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend svg{flex:none}
+.fc-scroll{overflow-x:auto}
+.fc-plot{position:relative;min-width:620px}
+.fc-plot svg{display:block;width:100%;height:auto;overflow:visible;touch-action:pan-y}
+.fc-plot .grid{stroke:var(--line);stroke-width:1}
+.fc-plot .axis{fill:var(--ink-2);font:400 11px var(--mono)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:8px 11px;font-size:.84rem;white-space:nowrap;transform:translate(-50%,-100%);display:none}
+.tip b{display:block;font:700 1rem var(--display);font-variant-numeric:tabular-nums}
+.tip span{color:var(--ink-2)}
+details.tbl{margin-top:14px;font-size:.9rem}
+details.tbl summary{cursor:pointer;color:var(--teal-deep);font-weight:600}
+details.tbl table{min-width:0;margin-top:10px;font-size:.86rem}
+details.tbl td,details.tbl th{padding:6px 10px;text-align:right!important}
+details.tbl td:first-child,details.tbl th:first-child{text-align:left!important;font-weight:400}
+
+/* risk engine */
+.calcs{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.calc{border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--surface);min-width:0}
+.models>*,.play>*,.evals>*,.run>*,.explorer>*,.erd>*,.book>*{min-width:0}
+.calc h3{font-size:1.08rem;margin-bottom:8px}
+.calc p{font-size:.94rem;color:var(--ink-2)}
+.formula{margin-top:12px;font:400 .8rem/1.7 var(--mono);background:var(--band);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:pre;color:var(--ink)}
+@media (max-width:820px){.calcs{grid-template-columns:1fr}}
+.explorer{margin-top:28px;display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.ex-in{padding:22px;background:var(--band);border-right:1px solid var(--line);display:grid;gap:18px;align-content:start}
+.ex-in label{display:grid;gap:6px;font:500 .72rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.ex-in select,.ex-in input[type=range]{font:400 1rem var(--body);color:var(--ink);text-transform:none;letter-spacing:0}
+.ex-in select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.ex-in input[type=range]{accent-color:var(--teal);width:100%}
+.ex-in output{font:700 1rem var(--display);color:var(--ink);letter-spacing:0;text-transform:none}
+.ex-out{padding:22px;display:grid;gap:20px}
+.ex-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px}
+.ex-head b{font:800 2.6rem/1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.lvl{font:600 .78rem var(--mono);padding:4px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+.lvl.low{background:#e3f1e8;color:var(--ok)}.lvl.medium{background:var(--amber-soft);color:var(--amber)}.lvl.high{background:#f7e2e1;color:var(--no)}
+.lvl::before{margin-right:5px}.lvl.low::before{content:"●"}.lvl.medium::before{content:"◐"}.lvl.high::before{content:"▲"}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:150px 1fr 56px;gap:10px;align-items:center;font-size:.9rem}
+.bar i{display:block;height:10px;border-radius:0 4px 4px 0;background:#00899c;min-width:2px}
+.bar i.m{background:transparent;border:1px dashed var(--line);border-radius:4px;height:8px}
+.bar em{font:500 .82rem var(--mono);font-style:normal;text-align:right;color:var(--ink)}
+.ex-out ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:.92rem;display:grid;gap:4px}
+.rec-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.rec-grid div{background:var(--surface);padding:10px;text-align:center}
+.rec-grid b{display:block;font:800 1.3rem var(--display);font-variant-numeric:tabular-nums}
+.rec-grid span{font:500 .72rem var(--mono);color:var(--ink-2)}
+@media (max-width:820px){.explorer{grid-template-columns:1fr}.ex-in{border-right:0;border-bottom:1px solid var(--line)}.bar{grid-template-columns:110px 1fr 50px}}
+
+/* rag */
+.steps{counter-reset:s;display:grid;gap:0;border-top:1px solid var(--line)}
+.step{display:grid;grid-template-columns:56px 220px 1fr;gap:16px;padding:18px 0;border-bottom:1px solid var(--line);align-items:start}
+.step::before{counter-increment:s;content:counter(s,decimal-leading-zero);font:500 .9rem var(--mono);color:var(--teal)}
+.step.pre::before{content:"00";counter-increment:none}
+.step.side::before{content:"↳";counter-increment:none}
+.step b{font-family:var(--display);font-size:1.02rem}
+.step b small{display:block;font:400 .76rem var(--mono);color:var(--ink-2);margin-top:3px}
+.step p{color:var(--ink-2);font-size:.95rem}
+@media (max-width:820px){.step{grid-template-columns:40px 1fr}.step p{grid-column:2}}
+.chunk{font:400 .8rem/1.65 var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;white-space:pre-wrap;color:var(--ink)}
+.chunk .c{color:var(--ink-2)}
+
+/* erd */
+.erd{display:grid;grid-template-columns:1fr 280px;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.erd-svg{overflow-x:auto;padding:14px}
+.erd svg{display:block;min-width:700px;width:100%;height:auto}
+.erd .tb rect{fill:var(--surface-2);stroke:var(--line);transition:fill .15s,stroke .15s,opacity .15s}
+.erd .tb text{font-family:var(--body)}
+.erd .tb .n{fill:var(--ink);font:600 13px var(--mono)}
+.erd .tb .d{fill:var(--ink-2);font-size:11px}
+.erd .tb{cursor:pointer;outline:none}
+.erd .tb.vec rect{fill:var(--teal-soft)}
+.erd .ed{stroke:var(--ink-2);stroke-width:1.3;fill:none;opacity:.45;transition:opacity .15s,stroke .15s}
+.erd.focus .tb:not(.lit) rect,.erd.focus .tb:not(.lit) text{opacity:.35}
+.erd.focus .ed{opacity:.12}
+.erd .ed.lit{opacity:1;stroke:var(--teal);stroke-width:2}
+.erd .tb.lit rect{stroke:var(--teal);stroke-width:1.6}
+.erd .tb:focus-visible rect{stroke:var(--teal);stroke-width:2.5}
+.erd-info{padding:22px;border-left:1px solid var(--line);background:var(--band);font-size:.94rem;color:var(--ink-2)}
+.erd-info h3{color:var(--ink);font:600 1rem var(--mono);margin-bottom:8px}
+.erd-info p+p{margin-top:10px}
+@media (max-width:900px){.erd{grid-template-columns:1fr}.erd-info{border-left:0;border-top:1px solid var(--line)}}
+
+/* booking demo */
+.book{display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.book-in{padding:22px;background:var(--band);border-right:1px solid var(--line);display:grid;gap:14px;align-content:start}
+.book-in input{font:400 1rem var(--body);padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.book-in ul{margin:0;padding-left:18px;font-size:.9rem;color:var(--ink-2);display:grid;gap:4px}
+.book-out{padding:22px}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.slot{all:unset;box-sizing:border-box;cursor:pointer;text-align:center;padding:9px 6px;border-radius:10px;border:1px solid var(--line);font:500 .9rem var(--mono)}
+.slot small{display:block;font:400 .68rem var(--body);color:var(--ink-2);margin-top:2px}
+.slot.ok{border-color:var(--teal);color:var(--teal-deep)}
+.slot.ok:hover{background:var(--teal-soft)}
+.slot.no{background:var(--band);color:var(--ink-2);border-style:dashed}
+.slot[aria-pressed="true"]{outline:2px solid var(--teal);outline-offset:1px}
+.slot:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.verdict{margin-top:16px;padding:12px 14px;border-radius:10px;font-size:.94rem;border:1px solid var(--line);min-height:48px}
+.verdict.ok{border-color:var(--teal);background:var(--teal-soft);color:var(--teal-deep)}
+.verdict.no{border-color:color-mix(in srgb,var(--amber) 40%,transparent);background:var(--amber-soft);color:var(--amber)}
+@media (max-width:820px){.book{grid-template-columns:1fr}.book-in{border-right:0;border-bottom:1px solid var(--line)}}
+
+/* evaluation */
+.evals{display:grid;grid-template-columns:1.2fr 1fr;gap:28px;align-items:start}
+table.lt{min-width:0}
+table.lt td:not(:first-child),table.lt th:not(:first-child){text-align:left}
+table.lt td.num{text-align:right;font:500 .9rem var(--mono)}
+table.lt td:first-child{white-space:nowrap}
+.checklist{margin:0;padding:0;list-style:none;display:grid;gap:12px}
+.checklist li{padding-left:28px;position:relative;color:var(--ink-2);font-size:.95rem}
+.checklist li::before{content:"✓";position:absolute;left:0;top:0;color:var(--ok);font-weight:700}
+.checklist li strong{color:var(--ink)}
+@media (max-width:900px){.evals{grid-template-columns:1fr}}
+
+/* lessons */
+.lessons{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-top:1px solid var(--line)}
+.lesson{padding:26px 28px 28px 0;border-bottom:1px solid var(--line)}
+.lesson:nth-child(odd){border-right:1px solid var(--line)}
+.lesson:nth-child(even){padding-left:28px}
+.lesson h3{font-size:1.15rem;margin-bottom:10px}
+.lesson p{color:var(--ink-2);font-size:.95rem}
+.lesson p+p{margin-top:8px}
+.lesson p b{color:var(--ink)}
+@media (max-width:820px){.lessons{grid-template-columns:1fr}.lesson{padding:22px 0!important;border-right:0!important}}
+
+/* journey */
+.tl{list-style:none;margin:0;padding:0;position:relative;display:grid;gap:0}
+.tl::before{content:"";position:absolute;left:111px;top:8px;bottom:8px;width:2px;background:var(--line)}
+.tl li{display:grid;grid-template-columns:96px 1fr;gap:32px;padding:14px 0;position:relative}
+.tl li::before{content:"";position:absolute;left:106px;top:21px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--teal)}
+.tl li.big::before{background:var(--teal)}
+.tl time{font:500 .82rem var(--mono);color:var(--ink-2);text-align:right;padding-top:3px}
+.tl b{font-family:var(--display);font-size:1.05rem}
+.tl p{color:var(--ink-2);font-size:.94rem;margin-top:3px}
+
+/* roadmap */
+.road{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.lane{border-radius:16px;padding:24px;border:1px solid var(--line);background:var(--surface)}
+.lane.never{background:var(--amber-soft);border-color:color-mix(in srgb,var(--amber) 35%,transparent)}
+.lane h3{margin-bottom:4px}
+.lane>p{font-size:.88rem;color:var(--ink-2);margin-bottom:14px}
+.lane ul{margin:0;padding-left:20px;display:grid;gap:8px;color:var(--ink-2);font-size:.95rem}
+.lane li strong{color:var(--ink)}
+@media (max-width:900px){.road{grid-template-columns:1fr}}
+
+/* run it */
+.run{display:grid;grid-template-columns:1fr 1.3fr;gap:28px;align-items:start}
+.reqs{margin:0;display:grid;grid-template-columns:auto 1fr;gap:10px 18px;font-size:.95rem}
+.reqs dt{font:500 .8rem var(--mono);color:var(--teal-deep);padding-top:2px}
+.reqs dd{margin:0;color:var(--ink-2)}
+pre.term{margin:0;background:#10262a;color:#d7eef0;border-radius:14px;padding:18px 20px;font:400 .82rem/1.75 var(--mono);overflow-x:auto}
+pre.term .c{color:#7fa5ab}
+@media (max-width:900px){.run{grid-template-columns:1fr}}
+
 /* footer */
 footer{border-top:1px solid var(--line);padding-block:40px;color:var(--ink-2);font-size:.92rem}
 footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:20px;align-items:flex-start}
@@ -272,13 +491,15 @@ footer p+p{margin-top:6px}
     </a>
     <ul>
       <li><a href="#what">What it is</a></li>
-      <li><a href="#capabilities">Capabilities</a></li>
+      <li><a href="#try">Try it</a></li>
       <li><a href="#tour">Screenshots</a></li>
-      <li><a href="#different">What's different</a></li>
-      <li><a href="#how">How it works</a></li>
+      <li><a href="#models">Models</a></li>
+      <li><a href="#rag">Assistant</a></li>
+      <li><a href="#lessons">Lessons</a></li>
     </ul>
     <a class="btn btn-line" href="https://github.com/kalharatennakoon/vetcarepro" target="_blank" rel="noopener">View on GitHub</a>
   </div>
+  <div class="progress" aria-hidden="true"></div>
 </nav>
 
 <main id="top">
@@ -290,7 +511,7 @@ footer p+p{margin-top:6px}
       <h1>The whole clinic, <em>one conversation</em> away.</h1>
       <p class="lede">VetCare Pro runs a veterinary practice end to end — appointments, medical records, billing, inventory — and adds an AI assistant that answers from the clinic's own records, running entirely on the clinic's own machine.</p>
       <div class="ctas">
-        <a class="btn btn-solid" href="#capabilities">Explore the capabilities</a>
+        <a class="btn btn-solid" href="#try">Try the assistant</a>
         <a class="btn btn-line" href="https://github.com/kalharatennakoon/vetcarepro" target="_blank" rel="noopener">Source on GitHub</a>
       </div>
       <div class="facts" aria-label="Key facts">
@@ -399,7 +620,56 @@ footer p+p{margin-top:6px}
   </div>
 </section>
 
-<section id="tour" style="padding-top:0">
+<section id="try" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Try it</span>
+      <h2>Same question, five different people</h2>
+      <p class="lede">Pick who is asking and what they ask. The answer changes, and so does the route the question takes through the system. That route is decided by the server from the login, never by the app.</p>
+    </div>
+    <div class="play">
+      <div class="play-side">
+        <div>
+          <p class="ctl-label" id="role-lbl">Signed in as</p>
+          <div class="seg" id="roles" role="group" aria-labelledby="role-lbl">
+            <button type="button" data-role="guest" aria-pressed="false">Guest</button>
+            <button type="button" data-role="owner" aria-pressed="false">Pet owner</button>
+            <button type="button" data-role="receptionist" aria-pressed="true">Receptionist</button>
+            <button type="button" data-role="vet" aria-pressed="false">Vet</button>
+            <button type="button" data-role="admin" aria-pressed="false">Admin</button>
+          </div>
+        </div>
+        <div>
+          <p class="ctl-label" id="q-lbl">Ask</p>
+          <div class="qs" id="questions" role="group" aria-labelledby="q-lbl">
+            <button type="button" data-q="book" aria-pressed="true"><small>Action</small>Book Max in for a vaccination on Friday at 10:00</button>
+            <button type="button" data-q="history" aria-pressed="false"><small>Clinical tool</small>Summarise Bella's full medical history</button>
+            <button type="button" data-q="count" aria-pressed="false"><small>Exact count</small>How many appointments are there today?</button>
+            <button type="button" data-q="chart" aria-pressed="false"><small>Chart</small>Chart revenue by month</button>
+            <button type="button" data-q="outbreak" aria-pressed="false"><small>Live model</small>What's the outbreak risk right now?</button>
+          </div>
+        </div>
+      </div>
+      <figure class="chat" style="margin:0" aria-label="Assistant playground">
+        <div class="chat-head"><span>VetCare assistant · playground</span><span class="role" id="play-role">Receptionist</span></div>
+        <div class="chat-body" id="play-body" aria-live="polite"><noscript><p class="msg ai">The playground needs JavaScript. The screenshots below show the real assistant.</p></noscript></div>
+        <div class="route" id="play-route" aria-label="Route taken"><span class="ctl-label">Route</span></div>
+      </figure>
+    </div>
+    <p class="note">These are scripted replays that follow the system's real routing and role rules. Pet names, counts and figures are illustrative, not captured output. The row below is captured output.</p>
+
+    <div class="mod-group" style="margin-top:36px">
+      <h3>Captured live · the same question, three logins</h3>
+      <div class="mods">
+        <button class="mod" data-src="screenshots/role-receptionist.webp"><img src="screenshots/thumbs/role-receptionist.webp" width="800" height="500" loading="lazy" alt="Receptionist asks what the outbreak risk is right now; the assistant replies that outbreak risk assessments aren't available for this role and points to a veterinarian or admin."><span class="mod-txt"><b>Receptionist · refused</b><span>Stopped at the live-model gate before any model runs, with a pointer to who can answer.</span></span></button>
+        <button class="mod" data-src="screenshots/role-vet.webp"><img src="screenshots/thumbs/role-vet.webp" width="800" height="500" loading="lazy" alt="Veterinarian asks the same question; the assistant answers from the outbreak risk model: low risk, no cases in the last 30 days, very low confidence, with the model cited as the source."><span class="mod-txt"><b>Vet · answered by the model</b><span>The live outbreak model says low risk, states its very low confidence, and cites itself as the source.</span></span></button>
+        <button class="mod" data-src="screenshots/role-guest.webp"><img src="screenshots/thumbs/role-guest.webp" width="800" height="500" loading="lazy" alt="Guest asks the same question; the assistant gives general pet-care guidance about common diseases in Sri Lanka, labelled as general veterinary knowledge rather than a clinic article."><span class="mod-txt"><b>Guest · general knowledge</b><span>No clinic data. General guidance, labelled as not coming from a clinic article, ending with "see your vet".</span></span></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tour">
   <div class="wrap">
     <div class="sec-head">
       <span class="label">Screenshots</span>
@@ -612,6 +882,193 @@ footer p+p{margin-top:6px}
   </div>
 </section>
 
+<section id="models" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Predictive models</span>
+      <h2>Three trained models, with their error bars shown</h2>
+      <p class="lede">Each model trains on the clinic's demo database: seeded data from January 2024 to September 2026, not real patient records. The figures below come from the latest training run in September 2026. Where the numbers are weak, this section says so.</p>
+    </div>
+    <div class="models">
+      <article class="model">
+        <div><h3>Disease prediction</h3><p class="algo">Random Forest · K-Means · Prophet</p></div>
+        <dl>
+          <div><dt>Data</dt><dd>389 disease cases across 8 categories and 21 species, mostly dogs (234) and cats (96).</dd></div>
+          <div><dt>Features</dt><dd>Species, breed, severity, age at diagnosis, treatment duration and a contagious flag. The model predicts the disease category.</dd></div>
+          <div><dt>Why these</dt><dd>A Random Forest copes with mixed categorical and numeric features on a few hundred rows without much tuning. K-Means (k&nbsp;=&nbsp;3) groups similar case profiles. Prophet forecasts monthly case counts with yearly seasonality.</dd></div>
+        </dl>
+        <div class="metrics">
+          <div><b>64.1%</b><span>held-out accuracy, stratified 80/20 split</span></div>
+          <div><b>60.6%</b><span>5-fold cross-validated accuracy</span></div>
+          <div><b>32.6%</b><span>baseline: always guess the most common category</span></div>
+          <div><b>0.35</b><span>silhouette score for the three clusters</span></div>
+        </div>
+        <p class="limit"><b>Limits.</b> The model is about twice as good as guessing, but nowhere near diagnostic grade. Three categories (neoplastic, genetic, nutritional) have fewer than 16 examples each. Its output is a starting point for an examination, never a diagnosis.</p>
+      </article>
+      <article class="model">
+        <div><h3>Sales forecasting</h3><p class="algo">Prophet · Random Forest</p></div>
+        <dl>
+          <div><dt>Data</dt><dd>650 invoices, giving revenue on 404 billing days and 30 monthly totals.</dd></div>
+          <div><dt>Features</dt><dd>Prophet models daily revenue with yearly, weekly and monthly seasonality. The Random Forest predicts monthly revenue from the month, the quarter, a holiday-season flag, cyclic month encodings, three monthly lags, a three-month rolling mean and the transaction count.</dd></div>
+          <div><dt>Why these</dt><dd>Revenue has a yearly shape, with a December dip in both years, and many days have no billing at all. Prophet handles gaps and seasonality on short histories and returns an uncertainty interval.</dd></div>
+        </dl>
+        <div class="metrics">
+          <div><b>Rs 35.5k</b><span>cross-validated monthly error (MAE), against a Rs 92.8k average month</span></div>
+          <div><b>0.28</b><span>R² on six held-out months</span></div>
+          <div><b>Rs 3.0k</b><span>Prophet daily error over the last 30 days held out</span></div>
+          <div><b>30</b><span>months of history available to learn from</span></div>
+        </div>
+        <p class="limit"><b>Limits.</b> Revenue is recorded on only about 40% of days, so a single day's prediction is close to noise. The error on a month is about 38% of an average month. The app's forecast band is ±60%, the historical month-to-month variation, and it is shown on screen rather than hidden. Read the direction, not the exact figure.</p>
+      </article>
+      <article class="model">
+        <div><h3>Inventory demand</h3><p class="algo">Gradient Boosting</p></div>
+        <dl>
+          <div><dt>Data</dt><dd>235 stock items and 75 consumption records at the last training run.</dd></div>
+          <div><dt>Features</dt><dd>Category, current stock, reorder level and quantity, unit cost, average and spread of daily demand, demand trend and days observed. The model predicts demand over the next 30 days.</dd></div>
+          <div><dt>Why this</dt><dd>Boosted trees capture the non-linear interplay of usage, stock and cost on small tabular data, and they produce the reorder suggestions and restock dates shown in the app.</dd></div>
+        </dl>
+        <div class="metrics">
+          <div><b>14.5</b><span>cross-validated error (MAE), in units of 30-day demand</span></div>
+          <div><b>235</b><span>items scored on every run</span></div>
+          <div><b>75</b><span>consumption records behind the usage features</span></div>
+          <div><b>100</b><span>trees, depth 4, learning rate 0.1</span></div>
+        </div>
+        <p class="limit"><b>Limits.</b> Most items have little recorded usage so far. The training target is itself a projection (average daily use × 30, adjusted for trend) rather than observed next-month consumption, so for now the model smooths a heuristic instead of learning from real outcomes.</p>
+      </article>
+    </div>
+
+    <h3 class="sub">Revenue forecast, from the real model</h3>
+    <p>This is the model's own output on the demo data. The monthly totals and the ±60% band follow the same aggregation as the app's Sales Forecasting screen. Drag to change the horizon, and hover for values.</p>
+    <div class="fc">
+      <div class="fc-top">
+        <div class="legend" id="fc-legend">
+          <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#00899c" stroke-width="2"/></svg>Actual monthly revenue</span>
+          <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#b85f00" stroke-width="2" stroke-dasharray="5 3"/></svg>Prophet forecast</span>
+          <span id="fc-band-key"><svg width="22" height="10" aria-hidden="true"><rect width="22" height="10" rx="2" fill="#b85f00" opacity=".14"/></svg>Forecast band (±60%)</span>
+        </div>
+        <div class="fc-ctl">
+          <label><input type="checkbox" id="fc-band" checked> Show band</label>
+          <label>Horizon <input type="range" id="fc-h" min="3" max="12" value="12" aria-describedby="fc-hv"> <output id="fc-hv">12 months</output></label>
+        </div>
+      </div>
+      <div class="fc-scroll"><div class="fc-plot" id="fc-plot"><div class="tip" id="fc-tip" role="status"></div></div></div>
+      <details class="tbl"><summary>Show the data as a table</summary><div class="tbl-wrap"><table id="fc-table"><thead><tr><th scope="col">Month</th><th scope="col">Actual (Rs)</th><th scope="col">Forecast (Rs)</th><th scope="col">Band (Rs)</th></tr></thead><tbody></tbody></table></div></details>
+      <p class="note">September 2026 is a partial month: the data ends on 12 September. The March 2026 spike is in the source data.</p>
+    </div>
+
+    <h3 class="sub" id="risk">The real-time risk engine</h3>
+    <p>The pet health predictor is not trained. It computes four scores live from rules and from breed predisposition tables compiled from veterinary literature, so it works from day one. The trade-off is that it doesn't learn from the clinic's own outcomes. These are the calculations as the code runs them.</p>
+    <div class="calcs">
+      <article class="calc">
+        <h3>1 · Disease recurrence</h3>
+        <p>Uses only this pet's own history. The more often a category has recurred, the higher the 12-month risk, scaled linearly to other horizons.</p>
+        <div class="formula">n  = past cases in the category
+p₁₂ = 0.25 (n=1) · 0.45 (n=2) · min(0.25+0.15n, 0.80)
+p(t) = min(p₁₂ × t/12, 0.90)   t ∈ {1, 6, 12, 24} months</div>
+      </article>
+      <article class="calc">
+        <h3>2 · Cancer and tumour</h3>
+        <p>A breed baseline (species baseline if the breed isn't listed) scaled by an age multiplier. It returns per-type risk and screening suggestions.</p>
+        <div class="formula">risk = min(breed_base × age_factor, 0.95)
+age_factor (dog, cat):
+  &lt;2y 0.1 · &lt;4y 0.3 · &lt;7y 0.7 · &lt;10y 1.5 · 10y+ 2.5
+high ≥ 50% · medium ≥ 25%</div>
+      </article>
+      <article class="calc">
+        <h3>3 · Outbreak trend</h3>
+        <p>Compares the last eight weeks of cases with the eight before, then projects forward with dampened growth.</p>
+        <div class="formula">g = (mean last 8 wks − mean prior 8 wks) / prior
+rising if g &gt; 15% · declining if g &lt; −15%
+cases(w) = base × (1 + g/4)ʷ</div>
+      </article>
+      <article class="calc">
+        <h3>4 · Pandemic potential</h3>
+        <p>An R₀-style estimate over the last 12 months. It weighs how contagious the caseload is, how many transmission routes appear, and how many species are affected.</p>
+        <div class="formula">R₀ ≈ contagious_rate
+     × (1 + 0.3 × transmission_routes)
+     × (1 + 0.5 × (species_affected − 1))
+high ≥ 2.0 · medium ≥ 1.0</div>
+      </article>
+    </div>
+
+    <div class="explorer" id="explorer">
+      <div class="ex-in">
+        <label>Species<select id="ex-sp"><option>Dog</option><option>Cat</option><option>Rabbit</option><option>Bird</option></select></label>
+        <label>Breed<select id="ex-br"></select></label>
+        <label><span>Age · <output id="ex-agev">8 years</output></span><input type="range" id="ex-age" min="0" max="16" step="0.5" value="8"></label>
+        <label>Sex<select id="ex-sex"><option>Male</option><option>Female</option></select></label>
+        <label><span>Past cases in one category · <output id="ex-nv">2</output></span><input type="range" id="ex-n" min="1" max="5" value="2"></label>
+      </div>
+      <div class="ex-out" aria-live="polite">
+        <div>
+          <p class="ctl-label">Cancer and tumour risk</p>
+          <div class="ex-head"><b id="ex-pct">—</b><span class="lvl" id="ex-lvl">—</span><span class="note" id="ex-af" style="margin:0"></span></div>
+        </div>
+        <div class="bars" id="ex-bars"></div>
+        <div><p class="ctl-label">Suggested screening</p><ul id="ex-recs"></ul></div>
+        <div><p class="ctl-label">Recurrence risk for that category</p><div class="rec-grid" id="ex-rec"></div></div>
+      </div>
+    </div>
+    <p class="note">Runs the same tables and formulas as <code class="k">pet_health_predictor.py</code>, in your browser. This is decision support for a vet, not a diagnosis.</p>
+  </div>
+</section>
+
+<section id="rag">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Inside the assistant</span>
+      <h2>Retrieval is the last resort, not the first</h2>
+      <p class="lede">Most questions never reach vector search. A question passes through a fixed chain of handlers, and the first one that can answer it reliably takes it. Search only gets whatever is left.</p>
+    </div>
+    <div class="steps">
+      <div class="step pre"><b>Live-model gates<small>ml/app.py</small></b><p>Outbreak risk, disease trend, revenue forecast and reorder questions from admins and vets go straight to the trained model. Receptionists get a clear "not for your role". For guests and owners, the same words ("what should I do in an outbreak?") are ordinary pet-care questions, so they fall through.</p></div>
+      <div class="step"><b>Write intents<small>action_intent.py</small></b><p>Book, reschedule, cancel, remind, register. The model extracts slots as JSON, and every pet, owner, vet and date is then resolved by SQL. The handler proposes an action; nothing is written until a person confirms it.</p></div>
+      <div class="step"><b>Clinical tools<small>clinical_tools.py · vet &amp; admin</small></b><p>History summaries, consultation notes, aftercare and pre-visit briefings. Every relevant row is fetched by SQL, because a "full history" built from a top-5 sample is a partial history.</p></div>
+      <div class="step"><b>Pet health risk<small>pet_health_intent.py · vet &amp; admin</small></b><p>Recurrence, cancer and pandemic risk computed live by the risk engine above, never from retrieved text.</p></div>
+      <div class="step side"><b>Charts<small>chart_intent.py · staff</small></b><p>Claims a question only when it contains a trigger word (chart, graph, plot, visualise), so "what's our revenue?" stays a sentence. It runs just before the exact-query handler because the two share nouns.</p></div>
+      <div class="step"><b>Exact queries<small>structured_query.py</small></b><p>Counts, lists, clinic hours and an owner's own balance, all answered by deterministic SQL. The language model never totals anything.</p></div>
+      <div class="step"><b>Retrieval<small>retrieval.py · pgvector</small></b><p>The question is embedded and matched against the five nearest chunks by cosine distance, with role and owner filters applied inside the SQL. The local model then writes an answer grounded in those chunks.</p></div>
+    </div>
+
+    <h3 class="sub">What gets embedded</h3>
+    <p>Medical records, disease cases, lab-report metadata, vaccinations, public FAQs and internal staff FAQs. Each record becomes one chunk, so one citation points to one record. Chunks are embedded locally with <code class="k">nomic-embed-text</code> (768 dimensions), and the demo database holds 702 of them.</p>
+    <div class="split" style="align-items:start">
+      <div>
+        <p class="ctl-label">Chunk format · medical record (example values)</p>
+        <div class="chunk">Medical record for Bella (Dog Labrador Retriever).
+Visit date: 2026-08-14
+Chief complaint: Itching and hair loss on flank
+Diagnosis: Flea allergy dermatitis
+Treatment: Topical therapy, flea control plan
+Follow-up required, date: 2026-08-28
+Attending veterinarian: Dr. …
+<span class="c">— stored with pet_id, customer_id, source_type</span></div>
+      </div>
+      <div class="body" style="color:var(--ink-2)">
+        <p><strong style="color:var(--ink)">Kept in sync, not rebuilt.</strong> Saving a record re-embeds just that record. Deleting one deletes its chunk; there's no foreign key to cascade, so a missed hook would leave the assistant citing deleted data. Renaming a pet re-embeds all of its chunks, because the name is part of the text.</p>
+        <p style="margin-top:14px"><strong style="color:var(--ink)">Citations are data, not prose.</strong> The retrieved chunks come back with the answer and appear as source chips. The model is told not to write "(Source 1)" inline. Guest search has a relevance cut-off, so a question no FAQ matches doesn't show five loosely related FAQs as if they were its sources.</p>
+      </div>
+    </div>
+
+    <h3 class="sub">Scope is enforced in the query</h3>
+    <p>The role and owner ID come from the verified login. The client never sends them, so it has nothing to tamper with. The filters below are part of the retrieval SQL itself.</p>
+    <div class="tbl-wrap">
+      <table class="lt">
+        <thead><tr><th scope="col">Caller</th><th scope="col">Chunks the search can see</th></tr></thead>
+        <tbody>
+          <tr><td>Guest</td><td>Public FAQs only: no pet, no owner, no staff FAQs</td></tr>
+          <tr><td>Pet owner</td><td>Chunks carrying their own customer ID, plus public FAQs</td></tr>
+          <tr><td>Receptionist</td><td>Clinic-wide, excluding medical records, disease cases and lab reports</td></tr>
+          <tr><td>Vet, admin</td><td>Clinic-wide, including internal staff FAQs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">Sized for one clinic machine</h3>
+    <p>Everything runs on a 16&nbsp;GB machine through Ollama. Text (<code class="k">qwen3:8b</code>) and vision (<code class="k">qwen3.5:9b</code>) are deliberately separate models. Both can't stay in memory at once, so Ollama swaps in whichever one a request needs, and the first request after a switch waits for the swap. Every call shares one 8,192-token context window: a pet-owner question alone measures about 3,600 tokens before the answer starts.</p>
+  </div>
+</section>
+
 <section id="how" class="band">
   <div class="wrap">
     <div class="sec-head">
@@ -672,7 +1129,180 @@ footer p+p{margin-top:6px}
   </div>
 </section>
 
-<section id="stack">
+<section id="data">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Data model</span>
+      <h2>One database, records and vectors side by side</h2>
+      <p class="lede">The core schema has 17 PostgreSQL tables. Migrations add the pgvector store and a few AI tables. The diagram shows the tables that hold the clinic's records.</p>
+    </div>
+    <div class="erd" id="erd">
+      <div class="erd-svg">
+        <svg viewBox="0 0 930 470" role="group" aria-label="Entity-relationship diagram. Select a table to highlight its relationships.">
+          <g class="edges">
+            <path class="ed" data-a="pets" data-b="customers" d="M260 57 H190"/>
+            <path class="ed" data-a="appointments" data-b="customers" d="M260 168 L190 74"/>
+            <path class="ed" data-a="appointments" data-b="pets" d="M345 150 V84"/>
+            <path class="ed" data-a="medical_records" data-b="pets" d="M500 57 H430"/>
+            <path class="ed" data-a="medical_records" data-b="appointments" d="M520 84 L430 166"/>
+            <path class="ed" data-a="vaccinations" data-b="pets" d="M825 30 V14 H345 V30"/>
+            <path class="ed" data-a="disease_cases" data-b="pets" d="M540 150 V118 H400 V84"/>
+            <path class="ed" data-a="disease_cases" data-b="medical_records" d="M610 150 V84"/>
+            <path class="ed" data-a="lab_reports" data-b="pets" d="M800 150 V118 H400 V84"/>
+            <path class="ed" data-a="lab_reports" data-b="disease_cases" d="M740 177 H670"/>
+            <path class="ed" data-a="billing" data-b="customers" d="M105 150 V84"/>
+            <path class="ed" data-a="billing" data-b="appointments" d="M190 177 H260"/>
+            <path class="ed" data-a="payments" data-b="billing" d="M105 270 V204"/>
+            <path class="ed" data-a="billing_items" data-b="billing" d="M260 290 L190 196"/>
+            <path class="ed" data-a="billing_items" data-b="inventory" d="M345 324 V390"/>
+            <path class="ed" data-a="inventory_transactions" data-b="inventory" d="M500 417 H430"/>
+            <path class="ed" data-a="rag_chunks" data-b="pets" d="M520 270 V236 H450 V118 H400 V84"/>
+            <path class="ed" data-a="rag_chunks" data-b="customers" d="M670 297 H690 V458 H8 V57 H20"/>
+          </g>
+          <g class="tb" tabindex="0" data-t="customers" transform="translate(20,30)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">customers</text><text class="d" x="12" y="41">owners · portal login</text></g>
+          <g class="tb" tabindex="0" data-t="pets" transform="translate(260,30)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">pets</text><text class="d" x="12" y="41">species, breed, birth date</text></g>
+          <g class="tb" tabindex="0" data-t="medical_records" transform="translate(500,30)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">medical_records</text><text class="d" x="12" y="41">diagnosis, treatment, Rx</text></g>
+          <g class="tb" tabindex="0" data-t="vaccinations" transform="translate(740,30)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">vaccinations</text><text class="d" x="12" y="41">vaccine, next due date</text></g>
+          <g class="tb" tabindex="0" data-t="billing" transform="translate(20,150)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">billing</text><text class="d" x="12" y="41">invoices in rupees</text></g>
+          <g class="tb" tabindex="0" data-t="appointments" transform="translate(260,150)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">appointments</text><text class="d" x="12" y="41">slot, vet, status</text></g>
+          <g class="tb" tabindex="0" data-t="disease_cases" transform="translate(500,150)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">disease_cases</text><text class="d" x="12" y="41">category, severity, region</text></g>
+          <g class="tb" tabindex="0" data-t="lab_reports" transform="translate(740,150)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">lab_reports</text><text class="d" x="12" y="41">file + findings</text></g>
+          <g class="tb" tabindex="0" data-t="payments" transform="translate(20,270)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">payments</text><text class="d" x="12" y="41">amount, method</text></g>
+          <g class="tb" tabindex="0" data-t="billing_items" transform="translate(260,270)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">billing_items</text><text class="d" x="12" y="41">invoice line items</text></g>
+          <g class="tb vec" tabindex="0" data-t="rag_chunks" transform="translate(500,270)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">rag_chunks</text><text class="d" x="12" y="41">text + vector(768)</text></g>
+          <g class="tb" tabindex="0" data-t="users" transform="translate(740,270)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">users</text><text class="d" x="12" y="41">staff and their roles</text></g>
+          <g class="tb" tabindex="0" data-t="inventory" transform="translate(260,390)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23">inventory</text><text class="d" x="12" y="41">stock, reorder level</text></g>
+          <g class="tb" tabindex="0" data-t="inventory_transactions" transform="translate(500,390)"><rect width="170" height="54" rx="8"/><text class="n" x="12" y="23" style="font-size:11.5px">inventory_transactions</text><text class="d" x="12" y="41">stock in and out</text></g>
+        </svg>
+      </div>
+      <div class="erd-info" id="erd-info">
+        <h3>Select a table</h3>
+        <p>Hover over or tab to a table to see what it links to.</p>
+        <p>Staff accounts (<code class="k">users</code>) are referenced from nearly every table: as the vet on appointments and records, and in the created-by and updated-by audit fields. Those lines are left out to keep the diagram readable.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="rules" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Rules in code</span>
+      <h2>Booking rules, live in your browser</h2>
+      <p class="lede">Self-service booking follows constants defined in a single file, which both the booking endpoint and the availability endpoint read, so they can't drift apart. The slot picker below applies the same rules against your clock.</p>
+    </div>
+    <div class="book">
+      <div class="book-in">
+        <label class="ctl-label" for="bk-date" style="margin:0">Pick a date</label>
+        <input type="date" id="bk-date">
+        <ul>
+          <li>Open Monday to Saturday</li>
+          <li>09:00–18:30, 30-minute slots</li>
+          <li>Up to 3 bookings share a slot</li>
+          <li>At least 48 hours' notice to book, move or cancel</li>
+        </ul>
+      </div>
+      <div class="book-out">
+        <div class="slots" id="bk-slots" role="group" aria-label="Time slots"></div>
+        <div class="verdict" id="bk-verdict" aria-live="polite">Choose a slot to see what the server would say.</div>
+        <p class="note">Slot occupancy is simulated. The day, hours and lead-time checks mirror <code class="k">appointmentRules.js</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="testing">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Evaluation</span>
+      <h2>How it's checked</h2>
+      <p class="lede">The code's pure logic is covered by unit tests. The parts that need a live database and a local model are covered by written manual procedures, which are run before every demo.</p>
+    </div>
+    <div class="evals">
+      <div class="tbl-wrap">
+        <table class="lt">
+          <thead><tr><th scope="col">Suite</th><th scope="col">Covers</th><th scope="col" style="text-align:right">Tests</th></tr></thead>
+          <tbody>
+            <tr><td>Booking rules</td><td>Open days, closing-time fit, slot spacing, 48-hour lead time</td><td class="num">13</td></tr>
+            <tr><td>Auth utilities</td><td>Hashing, token tampering, a customer token can never pass staff auth</td><td class="num">10</td></tr>
+            <tr><td>Role checks</td><td>Every role against every guard</td><td class="num">8</td></tr>
+            <tr><td>Chat UI</td><td>Source-citation labels and the FAQ-grounding check</td><td class="num">10</td></tr>
+            <tr><td>Model client</td><td>Currency normalisation and stray-token stripping</td><td class="num">9</td></tr>
+            <tr><td>Answer clean-up</td><td>Removing imperial-unit asides without touching metric text</td><td class="num">6</td></tr>
+            <tr><td><strong>Total</strong></td><td>Node test runner, Vitest, pytest</td><td class="num"><strong>56</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="checklist">
+        <li><strong>Role-boundary walkthrough.</strong> A fixed question set for each of the five access modes, plus refusal tests that pass only when the assistant declines. Examples: a guest asking about medication, a receptionist asking for a diagnosis, a receptionist asking for a clinical chart.</li>
+        <li><strong>Wrong-pet check.</strong> Every cited source must belong to the pet in the question. A fluent answer with no source counts as a failure.</li>
+        <li><strong>Chart control pairs.</strong> The same question with and without "chart" confirms the trigger word neither over-fires nor under-fires.</li>
+        <li><strong>Client and server guard parity.</strong> A route hidden in the UI must also be refused by the API, because the server is the enforcement point.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="lessons" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Challenges &amp; lessons</span>
+      <h2>What broke, and what it taught</h2>
+    </div>
+    <div class="lessons">
+      <article class="lesson">
+        <h3>A wrong count looks exactly like a right one</h3>
+        <p>Plain RAG answered "how many pets are named Max?" from five retrieved chunks, with a confident, well-formatted, wrong number. An invented drug name looks odd; a wrong count doesn't.</p>
+        <p><b>Fix:</b> aggregate questions go to SQL. The model is also told to decline any count it would have to compute from a sample.</p>
+      </article>
+      <article class="lesson">
+        <h3>"Max" is four different dogs</h3>
+        <p>Unscoped search on a common name returned several pets' records blended into one story.</p>
+        <p><b>Fix:</b> names are resolved by database lookup. When more than one pet matches, the assistant asks which one, with each option labelled by its owner. With no server session, the half-finished request travels back and forth through the client.</p>
+      </article>
+      <article class="lesson">
+        <h3>The model truncated itself silently</h3>
+        <p>Ollama's default 4,096-token window was smaller than several prompts. It dropped the front of the context (the system prompt first) and still reported a clean finish, so answers just stopped mid-thought.</p>
+        <p><b>Fix:</b> one fixed 8,192-token window for every call. A value of 16,384 crashed the machine by running out of memory. Overruns are now detected from token counts and logged.</p>
+      </article>
+      <article class="lesson">
+        <h3>Two models, 16 GB</h3>
+        <p>A single model for both text and photos, or keeping two warm at once, doesn't fit the clinic's hardware.</p>
+        <p><b>Fix:</b> separate text and vision models that Ollama swaps on demand. The only cost is a one-off delay when switching between them.</p>
+      </article>
+      <article class="lesson">
+        <h3>Instructions a small model won't follow</h3>
+        <p>However the prompt was worded, the local model kept adding "(65 lbs)" after metric weights.</p>
+        <p><b>Fix:</b> when a small model reliably breaks a rule, enforce the rule in code. A tested regular expression now strips those asides.</p>
+      </article>
+      <article class="lesson">
+        <h3>Deleted records kept talking</h3>
+        <p>Vector chunks have no foreign key to the records they came from, so deleting a medical record left its chunk in search results.</p>
+        <p><b>Fix:</b> every create, update and delete path now calls the matching re-embed or delete hook. Renaming a pet re-embeds all of its chunks.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="journey">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">The journey</span>
+      <h2>From clinic system to AI decision support</h2>
+    </div>
+    <ol class="tl">
+      <li><time datetime="2025-10">Oct 2025</time><div><b>Project starts</b><p>Repository created for Pro Pet Animal Hospital's management system.</p></div></li>
+      <li><time datetime="2025-12">Dec 2025</time><div><b>Core build</b><p>React client, Express API and the PostgreSQL schema laid down.</p></div></li>
+      <li class="big"><time datetime="2026-02">Feb 2026</time><div><b>Clinic system demonstrated</b><p>Presented on a demo dataset in mid-February. The Flask ML service and first disease model followed within days.</p></div></li>
+      <li><time datetime="2026-03">Mar 2026</time><div><b>Forecasting and risk</b><p>Sales and inventory models trained. The pet health risk engine was added.</p></div></li>
+      <li class="big"><time datetime="2026-07">Jul 2026</time><div><b>AI Launchpad begins</b><p>Requirements written, the iOS app started and the RAG assistant built. It was completed for receptionists, vets and admins by the end of the month.</p></div></li>
+      <li><time datetime="2026-08">Aug 2026</time><div><b>Hardening and new tools</b><p>Unit tests, charts in chat, the AI daily briefing, and AI Visual Care for pet owners.</p></div></li>
+      <li><time datetime="2026-09">Sep 2026</time><div><b>Public case study</b><p>Briefing caching, and this site.</p></div></li>
+    </ol>
+  </div>
+</section>
+
+<section id="stack" class="band">
   <div class="wrap">
     <div class="sec-head">
       <span class="label">Built with</span>
@@ -688,33 +1318,82 @@ footer p+p{margin-top:6px}
   </div>
 </section>
 
-<section id="scope" class="band">
+<section id="scope">
   <div class="wrap">
     <div class="sec-head">
-      <span class="label">Scope</span>
-      <h2>Deliberate boundaries</h2>
-      <p class="lede">Each exclusion is a decision, not an oversight.</p>
+      <span class="label">Roadmap</span>
+      <h2>Where it goes next, and where it never will</h2>
+      <p class="lede">Deferred work is a matter of timing. The boundaries on the right are permanent and don't depend on any release.</p>
     </div>
-    <div class="bounds">
-      <div class="bound warn">
-        <h3>What the AI will never do</h3>
+    <div class="road">
+      <div class="lane">
+        <h3>Next</h3>
+        <p>Closes gaps the assistant already runs into.</p>
+        <ul>
+          <li><strong>Lab report text.</strong> Extract text from PDFs and scans so the assistant can answer from values, not just metadata.</li>
+          <li><strong>Push notifications.</strong> Appointment and vaccination reminders on iOS.</li>
+          <li><strong>Typo-tolerant names.</strong> Fuzzy matching for pets and owners.</li>
+        </ul>
+      </div>
+      <div class="lane">
+        <h3>Later</h3>
+        <p>Larger steps beyond the first release.</p>
+        <ul>
+          <li><strong>Android app.</strong> The backend already serves any client.</li>
+          <li><strong>Multiple clinics.</strong> Today's design assumes a single practice.</li>
+          <li><strong>Online payments.</strong> Payments are recorded today, not processed.</li>
+          <li><strong>Voice input and longer conversation memory.</strong></li>
+        </ul>
+      </div>
+      <div class="lane never">
+        <h3>Never</h3>
+        <p>Boundaries by design.</p>
         <ul>
           <li><strong>Diagnose.</strong> Every response is decision support for a veterinarian.</li>
-          <li><strong>Act on its own.</strong> No database write, saved note or email without a person's approval.</li>
-          <li><strong>Approve prescription refills.</strong> That needs a vet's review of the patient.</li>
+          <li><strong>Act on its own.</strong> No write, saved note or email without a person's approval.</li>
+          <li><strong>Free-form text-to-SQL.</strong> Every query is written in advance, and the model only fills slots.</li>
           <li><strong>Send data to a cloud model.</strong> Inference stays on the clinic's machine.</li>
         </ul>
       </div>
-      <div class="bound">
-        <h3>Not in this version</h3>
-        <ul>
-          <li><strong>Android app</strong> — one platform built well; the backend is ready for a second.</li>
-          <li><strong>Staff mobile app</strong> — clinical work happens at a workstation.</li>
-          <li><strong>Multiple clinics</strong> — designed for a single practice.</li>
-          <li><strong>Online payments</strong> — payments are recorded, not processed.</li>
-        </ul>
-      </div>
     </div>
+  </div>
+</section>
+
+<section id="run" class="band">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Run it</span>
+      <h2>Four services, one command</h2>
+      <p class="lede">The licence permits cloning and running VetCare Pro locally for personal, non-commercial evaluation.</p>
+    </div>
+    <div class="run">
+      <dl class="reqs">
+        <dt>Node.js</dt><dd>Backend API (Express 5) and the React client</dd>
+        <dt>Python 3</dt><dd>ML and assistant service, in its own virtual environment</dd>
+        <dt>PostgreSQL</dt><dd>With the <code class="k">pgvector</code> extension for the vector store</dd>
+        <dt>Ollama</dt><dd>With three models pulled: <code class="k">nomic-embed-text</code>, <code class="k">qwen3:8b</code> and <code class="k">qwen3.5:9b</code></dd>
+        <dt>Memory</dt><dd>16 GB is enough; the text and vision models swap in and out on demand</dd>
+        <dt>Xcode</dt><dd>Optional, for the iOS app</dd>
+      </dl>
+      <pre class="term"><span class="c"># database</span>
+createdb vetcarepro
+psql -d vetcarepro -f database/schema.sql
+psql -d vetcarepro -f database/seed.sql
+psql -d vetcarepro -f database/migrations/add_rag_vector_store.sql
+<span class="c"># …then the other migrations, see docs/setup.md</span>
+
+<span class="c"># local models</span>
+ollama pull nomic-embed-text
+ollama pull qwen3:8b
+ollama pull qwen3.5:9b
+
+<span class="c"># install each service once, then start all four</span>
+(cd server &amp;&amp; npm install &amp;&amp; cp .env.example .env)
+(cd client &amp;&amp; npm install)
+(cd ml &amp;&amp; python3 -m venv venv &amp;&amp; ./venv/bin/pip install -r requirements.txt &amp;&amp; cp .env.example .env)
+./run.sh   <span class="c"># Ollama, API :3000, ML :5001, web :5173</span></pre>
+    </div>
+    <p class="note">Trained models aren't in the repository, so analytics pages stay empty until an admin runs training. The full guide, including migrations, is in <a href="https://github.com/kalharatennakoon/vetcarepro/blob/main/docs/setup.md" target="_blank" rel="noopener">docs/setup.md</a>.</p>
   </div>
 </section>
 
@@ -788,6 +1467,326 @@ footer p+p{margin-top:6px}
   });
   dlg.addEventListener('click',function(e){if(e.target===dlg||e.target.hasAttribute('data-close'))dlg.close()});
   dlg.addEventListener('close',function(){if(opener)opener.focus()});
+})();
+
+var REDUCED=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+function el(tag,cls,text){var e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+var SVGNS='http://www.w3.org/2000/svg';
+function sv(tag,attrs){var e=document.createElementNS(SVGNS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);return e}
+function rs(n){return 'Rs '+Math.round(n).toLocaleString('en-US')}
+
+/* nav progress + active section */
+(function(){
+  var bar=document.querySelector('.progress'),ticking=false;
+  function upd(){var h=document.documentElement.scrollHeight-innerHeight;bar.style.transform='scaleX('+(h>0?Math.min(1,scrollY/h):0)+')';ticking=false}
+  addEventListener('scroll',function(){if(!ticking){ticking=true;requestAnimationFrame(upd)}},{passive:true});upd();
+  if(!('IntersectionObserver' in window))return;
+  var links=[].slice.call(document.querySelectorAll('.nav ul a'));
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.setAttribute('aria-current',a.getAttribute('href')==='#'+e.target.id?'true':'false')})}})},{rootMargin:'-45% 0px -50% 0px'});
+  links.forEach(function(a){var s=document.querySelector(a.getAttribute('href'));if(s)io.observe(s)});
+})();
+
+/* assistant playground */
+(function(){
+  var body=document.getElementById('play-body');if(!body)return;
+  var routeEl=document.getElementById('play-route'),roleTag=document.getElementById('play-role');
+  var ROLE_NAMES={guest:'Guest',owner:'Pet owner',receptionist:'Receptionist',vet:'Vet',admin:'Admin'};
+  var CH={guest:'Public chat',owner:'Owner chat',receptionist:'Staff chat',vet:'Staff chat',admin:'Staff chat'};
+  var AUTH={guest:'Backend · guest',owner:'Backend · owner ID',receptionist:'Backend · receptionist',vet:'Backend · vet',admin:'Backend · admin'};
+  var Q={
+    book:'Book Max in for a vaccination on Friday at 10:00',
+    history:"Summarise Bella's full medical history",
+    count:'How many appointments are there today?',
+    chart:'Chart revenue by month',
+    outbreak:"What's the outbreak risk right now?"
+  };
+  var REV=[['Apr',67500],['May',53200],['Jun',50750],['Jul',48600],['Aug',70979],['Sep',31958]];
+  var bookStaff={hops:['Action handler','SQL · resolve "Max"','Awaiting confirmation'],msgs:[
+    {t:'ai',x:'Two pets named Max are registered. Which one did you mean?',chips:['Max · Labrador · owner #0412','Max · Persian cat · owner #0877'],pick:0},
+    {t:'me',x:'The Labrador'},
+    {t:'confirm'}]};
+  var outbreakPublic=function(scope){return {hops:['Live-model gate · staff only','Retrieval · '+scope,'Ollama'],skip:0,msgs:[
+    {t:'ai',x:"Outbreak risk for pets depends on the disease and the area. Rabies and leptospirosis are the main concerns here, so keep vaccinations up to date, keep your pet away from strays and stagnant water, and see your vet promptly if you notice fever, lethargy or loss of appetite.",foot:'General veterinary knowledge, not from a clinic article'}]}};
+  var S={
+    book:{
+      guest:{hops:['Action handler · staff only','Retrieval · public FAQs','Ollama'],skip:0,msgs:[{t:'ai',x:"I can't book appointments in guest mode. Registered clients can book online through the pet-owner portal, or you can call the clinic.",cites:['FAQ · How do I book an appointment?']}]},
+      owner:{hops:['Action handler · staff only','Retrieval · own records + FAQs','Ollama'],skip:0,msgs:[{t:'ai',x:"I can't make bookings from chat. Use Appointments → Book in your portal. It only offers slots the clinic can take: Monday to Saturday, with 48 hours' notice.",cites:['FAQ · How do I book an appointment?']}]},
+      receptionist:bookStaff,vet:bookStaff,admin:bookStaff
+    },
+    history:{
+      guest:{hops:['Retrieval · public FAQs','Ollama'],msgs:[{t:'deny',x:"I can't see any pet's records in guest mode. Bella's owner can sign in to view her history, or ask at the front desk.",cites:["FAQ · Can the AI assistant see my pet's medical records?"]}]},
+      owner:{hops:['Retrieval · own pets only','Ollama'],msgs:[{t:'ai',x:"Bella's records show an August visit for itchy skin, diagnosed as flea allergy dermatitis and treated, with a follow-up two weeks later. Her vaccinations are up to date. Your vet can go through the details with you.",cites:['Medical record · 14 Aug 2026','Vaccination · DHPP']}]},
+      receptionist:{hops:['Clinical tool · vet & admin only'],stop:true,msgs:[{t:'deny',x:"Medical histories are available to veterinarians and admins only. I can help with Bella's appointments, reminders or billing instead."}]},
+      vet:null,admin:null
+    },
+    count:{
+      guest:{hops:['Exact query · staff only','Retrieval · public FAQs','Ollama'],skip:0,msgs:[{t:'ai',x:"I can't see the clinic's schedule. The clinic is open Monday to Saturday, 09:00–18:30, and registered clients can book online."}]},
+      owner:{hops:['SQL · your appointments only'],msgs:[{t:'ai',x:"I can only see your own appointments. You don't have one today. Your next is Bella's vaccination on Tuesday at 11:30."}]},
+      receptionist:null,vet:null,admin:null
+    },
+    chart:{
+      guest:{hops:['Chart · staff only','Retrieval · public FAQs','Ollama'],skip:0,msgs:[{t:'deny',x:"I can't share the clinic's financial information."}]},
+      owner:{hops:['Chart · staff only','SQL · your balance only'],skip:0,msgs:[{t:'deny',x:"I can't share the clinic's revenue. I can tell you about your own invoices: you have no outstanding balance."}]},
+      receptionist:null,admin:null,
+      vet:{hops:['Chart handler','Billing staff only'],stop:true,msgs:[{t:'deny',x:'Revenue data is available to admins and receptionists. I can chart appointments or disease cases for you instead.'}]}
+    },
+    outbreak:{
+      guest:outbreakPublic('public FAQs'),owner:outbreakPublic('own records + FAQs'),
+      receptionist:{hops:['Live-model gate'],stop:true,msgs:[{t:'deny',x:"Disease outbreak risk assessments aren't available through this assistant for your role - check the Analytics page, or ask a veterinarian or admin."}]},
+      vet:null,admin:null
+    }
+  };
+  var hist={hops:['Clinical tool','SQL · every record','Ollama · one draft'],msgs:[{t:'ai',x:'Draft for review · Bella, Labrador Retriever, 6 years. 7 visits since 2023: three for recurring skin complaints (flea allergy dermatitis, managed with topical therapy and flea control), one dental cleaning, and routine checks. No allergies on record. Vaccinations are current, with the next due in March.',cites:['7 medical records','4 vaccinations'],foot:'Draft only. Nothing is saved as a record.'}]};
+  S.history.vet=S.history.admin=hist;
+  var cnt={hops:['Exact query','SQL · COUNT(*)'],msgs:[{t:'ai',x:'There are 14 appointments today: 9 scheduled, 3 confirmed and 2 completed.'}]};
+  S.count.receptionist=S.count.vet=S.count.admin=cnt;
+  var ch={hops:['Chart handler','SQL · SUM by month'],msgs:[{t:'chart'}]};
+  S.chart.receptionist=S.chart.admin=ch;
+  var ob={hops:['Live-model gate','Disease model','Ollama · explain'],msgs:[{t:'ai',x:'The model estimates that the current outbreak risk is low, with no reported cases in the last 30 days and no contagious cases. Confidence is very low, so treat this as directional rather than precise. Continue routine preventive care and monitoring.',cites:['Outbreak risk model · low risk']}]};
+  S.outbreak.vet=S.outbreak.admin=ob;
+
+  var role='receptionist',q='book',token=0;
+  function wait(ms,t,fn){if(REDUCED)return fn();setTimeout(function(){if(t===token)fn()},ms)}
+  function bubble(m){
+    if(m.t==='me')return el('div','msg me',m.x);
+    if(m.t==='confirm'){
+      var c=el('div','confirm');c.appendChild(document.createTextNode('Ready to book. Nothing is saved until you confirm.'));
+      var dl=el('dl');[['Pet','Max (Labrador)'],['Type','Vaccination'],['Slot','Fri · 10:00–10:30']].forEach(function(p){dl.appendChild(el('dt',null,p[0]));dl.appendChild(el('dd',null,p[1]))});
+      var r=el('div','row');r.appendChild(el('span','yes','Confirm booking'));r.appendChild(el('span','nope','Cancel'));
+      c.appendChild(dl);c.appendChild(r);return c;
+    }
+    if(m.t==='chart'){
+      var b=el('div','msg ai');b.appendChild(el('div',null,'Revenue by month, last 6 months. Total: '+rs(REV.reduce(function(s,r){return s+r[1]},0))+'.'));
+      var W=260,H=110,max=80000,svg=sv('svg',{viewBox:'0 0 '+W+' '+(H+18),width:'100%',role:'img','aria-label':'Bar chart of monthly revenue, April to September'});
+      REV.forEach(function(r,i){var bw=30,x=8+i*(bw+12),h=r[1]/max*H;
+        var rect=sv('rect',{x:x,y:H-h,width:bw,height:h,rx:3,fill:'#00899c'});var tt=sv('title',{});tt.textContent=r[0]+': '+rs(r[1]);rect.appendChild(tt);svg.appendChild(rect);
+        var tx=sv('text',{x:x+bw/2,y:H+14,'text-anchor':'middle','font-size':'10','fill':'currentColor'});tx.textContent=r[0];svg.appendChild(tx)});
+      svg.style.marginTop='8px';svg.style.color='var(--ink-2)';b.appendChild(svg);
+      var cs=el('div','cites');cs.appendChild(el('span','chip','SQL · billing, Apr–Sep 2026'));b.appendChild(cs);return b;
+    }
+    var d=el('div','msg ai'+(m.t==='deny'?' deny':''));d.appendChild(document.createTextNode(m.x));
+    if(m.chips){var ch=el('div','chips');m.chips.forEach(function(c,i){ch.appendChild(el('span','chip'+(i===m.pick?' pick':''),c))});d.appendChild(ch)}
+    if(m.cites){var ci=el('div','cites');m.cites.forEach(function(c){ci.appendChild(el('span','chip',c))});d.appendChild(ci)}
+    if(m.foot){var f=el('div','chips');f.appendChild(el('span','chip',m.foot));d.appendChild(f)}
+    return d;
+  }
+  function run(){
+    var t=++token,sc=S[q][role];
+    roleTag.textContent=ROLE_NAMES[role];
+    body.textContent='';body.appendChild(el('div','msg me',Q[q]));
+    [].slice.call(routeEl.querySelectorAll('.hop,.hop-sep')).forEach(function(n){n.remove()});
+    var hops=[CH[role],AUTH[role]].concat(sc.hops),nodes=[];
+    hops.forEach(function(h,i){if(i)routeEl.appendChild(el('span','hop-sep','→'));var n=el('span','hop',h);routeEl.appendChild(n);nodes.push(n)});
+    var skipIdx=sc.skip!=null?sc.skip+2:-1;
+    nodes.forEach(function(n,i){wait(180*i,t,function(){n.classList.add('on');if(i===skipIdx)n.style.textDecoration='line-through';if(sc.stop&&i===nodes.length-1)n.classList.add('stop')})});
+    var typing=el('div','msg ai');typing.innerHTML='<span class="typing" aria-label="Assistant is typing"><i></i><i></i><i></i></span>';
+    wait(250,t,function(){body.appendChild(typing)});
+    var delay=180*nodes.length+300;
+    sc.msgs.forEach(function(m,i){wait(delay+i*650,t,function(){if(typing.parentNode)typing.remove();body.appendChild(bubble(m))})});
+  }
+  function wire(groupId,attr,set){
+    var bs=[].slice.call(document.querySelectorAll('#'+groupId+' button'));
+    bs.forEach(function(b){b.addEventListener('click',function(){bs.forEach(function(x){x.setAttribute('aria-pressed',x===b)});set(b.getAttribute(attr));run()})});
+  }
+  wire('roles','data-role',function(v){role=v});
+  wire('questions','data-q',function(v){q=v});
+  run();
+})();
+
+/* revenue forecast chart */
+(function(){
+  var plot=document.getElementById('fc-plot');if(!plot)return;
+  var CV=0.6018;
+  var HIST=[["2024-04",103200],["2024-05",93700],["2024-06",88400],["2024-07",86600],["2024-08",136200],["2024-09",193900],["2024-10",159000],["2024-11",132800],["2024-12",30200],["2025-01",49400],["2025-02",67300],["2025-03",73400],["2025-04",72100],["2025-05",67700],["2025-06",72400],["2025-07",85800],["2025-08",111500],["2025-09",83200],["2025-10",72500],["2025-11",86300],["2025-12",28300],["2026-01",134500],["2026-02",126700],["2026-03",306955],["2026-04",67500],["2026-05",53200],["2026-06",50750],["2026-07",48600],["2026-08",70979],["2026-09",31958]];
+  var FC=[["2026-10",112876],["2026-11",106813],["2026-12",29005],["2027-01",77140],["2027-02",80754],["2027-03",140191],["2027-04",69039],["2027-05",57450],["2027-06",49484],["2027-07",54751],["2027-08",68245],["2027-09",92431]];
+  var MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function lab(k,long){var p=k.split('-');return MN[+p[1]-1]+(long?' '+p[0]:" '"+p[0].slice(2))}
+  var W=900,H=300,L=58,R=24,T=14,B=30,YMAX=320000;
+  var band=document.getElementById('fc-band'),hor=document.getElementById('fc-h'),hv=document.getElementById('fc-hv'),tip=document.getElementById('fc-tip'),bandKey=document.getElementById('fc-band-key');
+  var svg,cross,dotA,dotF,cur=-1,pts=[];
+  function draw(){
+    var h=+hor.value,fc=FC.slice(0,h),n=HIST.length+h;
+    hv.textContent=h+' months';bandKey.style.display=band.checked?'':'none';
+    var x=function(i){return L+i*(W-L-R)/(n-1)},y=function(v){return T+(1-v/YMAX)*(H-T-B)};
+    if(svg)svg.remove();
+    svg=sv('svg',{viewBox:'0 0 '+W+' '+H,role:'img',tabindex:'0','aria-label':'Monthly revenue, April 2024 to September 2026, and a Prophet forecast for the next '+h+' months. Use left and right arrow keys to read values.'});
+    [0,100000,200000,300000].forEach(function(v){svg.appendChild(sv('line',{class:'grid',x1:L,x2:W-R,y1:y(v),y2:y(v)}));var t=sv('text',{class:'axis',x:L-8,y:y(v)+4,'text-anchor':'end'});t.textContent=v?(v/1000)+'k':'0';svg.appendChild(t)});
+    var all=HIST.concat(fc);
+    all.forEach(function(d,i){var m=d[0].slice(5);if(m==='01'||i===0){var t=sv('text',{class:'axis',x:x(i),y:H-8,'text-anchor':'middle'});t.textContent=lab(d[0]);svg.appendChild(t)}});
+    var s0=HIST.length;
+    if(band.checked){var up=fc.map(function(d,i){return x(s0+i)+','+y(d[1]*(1+CV))}),lo=fc.map(function(d,i){return x(s0+i)+','+y(Math.max(0,d[1]*(1-CV)))}).reverse();
+      svg.appendChild(sv('polygon',{points:up.concat(lo).join(' '),fill:'#b85f00',opacity:'.14'}))}
+    svg.appendChild(sv('line',{x1:x(s0-.5),x2:x(s0-.5),y1:T,y2:H-B,stroke:'var(--line)','stroke-dasharray':'3 3'}));
+    svg.appendChild(sv('polyline',{points:HIST.map(function(d,i){return x(i)+','+y(d[1])}).join(' '),fill:'none',stroke:'#00899c','stroke-width':2,'stroke-linejoin':'round'}));
+    svg.appendChild(sv('polyline',{points:fc.map(function(d,i){return x(s0+i)+','+y(d[1])}).join(' '),fill:'none',stroke:'#b85f00','stroke-width':2,'stroke-dasharray':'6 4','stroke-linejoin':'round'}));
+    [['Actual',-8,'end'],['Forecast',8,'start']].forEach(function(l){var t=sv('text',{x:x(s0-.5)+l[1],y:T+10,'font-size':'12','fill':'var(--ink-2)','font-weight':'600','text-anchor':l[2]});t.textContent=l[0];svg.appendChild(t)});
+    cross=sv('line',{y1:T,y2:H-B,stroke:'var(--ink-2)','stroke-width':1,opacity:0});svg.appendChild(cross);
+    dotA=sv('circle',{r:5,fill:'#00899c',stroke:'#fff','stroke-width':2,opacity:0});dotF=sv('circle',{r:5,fill:'#b85f00',stroke:'#fff','stroke-width':2,opacity:0});
+    svg.appendChild(dotA);svg.appendChild(dotF);
+    pts=all.map(function(d,i){return {k:d[0],v:d[1],f:i>=s0,x:x(i),y:y(d[1])}});
+    svg.addEventListener('pointermove',function(e){var r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*W/r.width;var i=Math.round((px-L)/((W-L-R)/(n-1)));show(Math.max(0,Math.min(n-1,i)))});
+    svg.addEventListener('pointerleave',hide);svg.addEventListener('blur',hide);
+    svg.addEventListener('focus',function(){show(cur>=0&&cur<n?cur:s0-1)});
+    svg.addEventListener('keydown',function(e){var d={ArrowLeft:-1,ArrowRight:1}[e.key];if(!d)return;e.preventDefault();show(Math.max(0,Math.min(n-1,(cur<0?s0-1:cur)+d)))});
+    plot.insertBefore(svg,tip);
+    var tb=document.querySelector('#fc-table tbody');tb.textContent='';
+    all.forEach(function(d,i){var tr=el('tr'),f=i>=s0;tr.appendChild(el('td',null,lab(d[0],true)));tr.appendChild(el('td',null,f?'':Math.round(d[1]).toLocaleString('en-US')));tr.appendChild(el('td',null,f?Math.round(d[1]).toLocaleString('en-US'):''));tr.appendChild(el('td',null,f?Math.round(Math.max(0,d[1]*(1-CV))).toLocaleString('en-US')+' – '+Math.round(d[1]*(1+CV)).toLocaleString('en-US'):''));tb.appendChild(tr)});
+  }
+  function show(i){
+    cur=i;var p=pts[i];if(!p)return;
+    cross.setAttribute('x1',p.x);cross.setAttribute('x2',p.x);cross.setAttribute('opacity',.5);
+    var d=p.f?dotF:dotA,o=p.f?dotA:dotF;d.setAttribute('cx',p.x);d.setAttribute('cy',p.y);d.setAttribute('opacity',1);o.setAttribute('opacity',0);
+    tip.textContent='';tip.appendChild(el('b',null,rs(p.v)));
+    tip.appendChild(el('span',null,lab(p.k,true)+(p.f?' · forecast':' · actual')+(p.k==='2026-09'?' (partial)':'')));
+    if(p.f&&band.checked){tip.appendChild(el('br'));tip.appendChild(el('span',null,'Band '+rs(Math.max(0,p.v*(1-CV)))+' – '+rs(p.v*(1+CV))))}
+    var r=svg.getBoundingClientRect(),sx=r.width/W;
+    tip.style.display='block';
+    var left=p.x*sx,tw=tip.offsetWidth;left=Math.max(tw/2,Math.min(r.width-tw/2,left));
+    tip.style.left=left+'px';tip.style.top=(Math.max(p.y*sx-12,tip.offsetHeight))+'px';
+  }
+  function hide(){tip.style.display='none';if(cross){cross.setAttribute('opacity',0);dotA.setAttribute('opacity',0);dotF.setAttribute('opacity',0)}}
+  band.addEventListener('change',draw);hor.addEventListener('input',draw);
+  draw();
+})();
+
+/* pet risk explorer — mirrors ml/scripts/pet_health_predictor.py */
+(function(){
+  var sp=document.getElementById('ex-sp');if(!sp)return;
+  var BREED={
+    'Golden Retriever':{s:'Dog',overall:.60,lymphoma:.20,hemangiosarcoma:.10,osteosarcoma:.06,mast_cell_tumor:.08},
+    'Bernese Mountain Dog':{s:'Dog',overall:.55,histiocytic_sarcoma:.25,lymphoma:.10,osteosarcoma:.08},
+    'Rottweiler':{s:'Dog',overall:.45,osteosarcoma:.15,lymphoma:.10},
+    'Boxer':{s:'Dog',overall:.45,mast_cell_tumor:.20,lymphoma:.12,brain_tumor:.08},
+    'Scottish Terrier':{s:'Dog',overall:.42,bladder_cancer:.18,lymphoma:.10},
+    'Flat-Coated Retriever':{s:'Dog',overall:.50,histiocytic_sarcoma:.20,lymphoma:.12},
+    'German Shepherd':{s:'Dog',overall:.30,hemangiosarcoma:.12,osteosarcoma:.07},
+    'Labrador Retriever':{s:'Dog',overall:.31,lymphoma:.10,mast_cell_tumor:.08},
+    'Bulldog':{s:'Dog',overall:.28,mast_cell_tumor:.12,lymphoma:.08},
+    'Siamese':{s:'Cat',overall:.22,intestinal_lymphoma:.12,mediastinal_lymphoma:.07},
+    'Persian':{s:'Cat',overall:.18,lymphoma:.09},
+    'Maine Coon':{s:'Cat',overall:.20,lymphoma:.10,carcinoma:.06}
+  };
+  var SPECIES={
+    Dog:{overall:.30,common:['lymphoma','mast_cell_tumor','osteosarcoma','hemangiosarcoma','mammary_tumor']},
+    Cat:{overall:.20,common:['lymphoma','squamous_cell_carcinoma','mammary_tumor','fibrosarcoma']},
+    Rabbit:{overall:.10,common:['uterine_cancer','lymphoma']},
+    Bird:{overall:.08,common:['xanthoma','lipoma','papilloma']}
+  };
+  function ageFactor(s,y){
+    if(s==='Dog'||s==='Cat'){if(y<2)return .1;if(y<4)return .3;if(y<7)return .7;if(y<10)return 1.5;return 2.5}
+    if(s==='Rabbit'){if(y<2)return .2;if(y<5)return .8;return 1.8}
+    return 1;
+  }
+  function title(k){return k.split('_').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1)}).join(' ')}
+  var br=document.getElementById('ex-br'),age=document.getElementById('ex-age'),sex=document.getElementById('ex-sex'),nIn=document.getElementById('ex-n');
+  function fillBreeds(){
+    br.textContent='';
+    Object.keys(BREED).filter(function(b){return BREED[b].s===sp.value}).forEach(function(b){br.appendChild(el('option',null,b))});
+    var o=el('option',null,'Other or mixed breed');o.value='';br.appendChild(o);
+    if(sp.value==='Dog')br.value='Golden Retriever';
+  }
+  function r1(v){return Math.round(v*10)/10}
+  function calc(){
+    var s=sp.value,y=+age.value,src=BREED[br.value]||SPECIES[s],af=ageFactor(s,y),adj=Math.min(src.overall*af,.95);
+    var lvl=adj>=.5?'high':adj>=.25?'medium':'low';
+    document.getElementById('ex-agev').textContent=(y===1?'1 year':y+' years');
+    document.getElementById('ex-pct').textContent=r1(adj*100)+'%';
+    var L=document.getElementById('ex-lvl');L.className='lvl '+lvl;L.textContent=lvl;
+    document.getElementById('ex-af').textContent='breed baseline '+Math.round(src.overall*100)+'% × age factor '+af+(BREED[br.value]?'':' · species-level estimate');
+    var bars=document.getElementById('ex-bars');bars.textContent='';
+    var types=[];
+    Object.keys(src).forEach(function(k){if(k==='overall'||k==='common'||k==='s')return;types.push({n:title(k),p:r1(Math.min(src[k]*af*100,95))})});
+    if(src.common){var have=types.map(function(t){return t.n.toLowerCase().replace(/ /g,'_')});src.common.forEach(function(c){if(have.indexOf(c)<0)types.push({n:title(c),p:null})})}
+    types.forEach(function(t){
+      var row=el('div','bar');row.appendChild(el('span',null,t.n));
+      var track=el('div');var i=el('i',t.p==null?'m':null);i.style.width=t.p==null?'100%':Math.max(1,t.p)+'%';track.appendChild(i);row.appendChild(track);
+      row.appendChild(el('em',null,t.p==null?'monitor':t.p+'%'));bars.appendChild(row);
+    });
+    var recs=lvl==='high'?['Annual CBC + chemistry blood panel','Semi-annual physical with lymph node check','Annual chest X-ray','Early spay/neuter reduces mammary/testicular cancer risk']:lvl==='medium'?['Annual blood panel','Bi-annual physical examination']:['Annual routine blood panel','Regular weight monitoring'];
+    if(y>=7)recs.push('Senior wellness screen every 6 months for pets over 7 years');
+    if(sex.value==='Female')recs.push('Spay recommended to significantly reduce mammary tumor risk');
+    var ul=document.getElementById('ex-recs');ul.textContent='';recs.forEach(function(r){ul.appendChild(el('li',null,r))});
+    var n=+nIn.value;document.getElementById('ex-nv').textContent=n;
+    var p12=n===1?.25:n===2?.45:Math.min(.25+n*.15,.8),g=document.getElementById('ex-rec');g.textContent='';
+    [1,6,12,24].forEach(function(t){var c=el('div');c.appendChild(el('b',null,r1(Math.min(p12*t/12,.9)*100)+'%'));c.appendChild(el('span',null,t===1?'1 month':t+' months'));g.appendChild(c)});
+  }
+  sp.addEventListener('change',function(){fillBreeds();calc()});
+  [br,sex].forEach(function(e){e.addEventListener('change',calc)});
+  [age,nIn].forEach(function(e){e.addEventListener('input',calc)});
+  fillBreeds();calc();
+})();
+
+/* ERD */
+(function(){
+  var root=document.getElementById('erd');if(!root)return;
+  var info=document.getElementById('erd-info'),dflt=info.innerHTML;
+  var D={
+    customers:'Pet owners. Also hold the portal credentials, which stay unusable until the owner verifies their email and phone and chooses a password.',
+    pets:'One row per animal, owned by a customer. Nearly every clinical table hangs off this one.',
+    medical_records:'One per visit: complaint, diagnosis, treatment, prescription, follow-up. Linked to the appointment it came from.',
+    vaccinations:'Vaccine given, by whom, and the next due date that drives reminders.',
+    billing:'Invoices in Sri Lankan Rupees, per customer and optionally per appointment.',
+    appointments:'The booking itself: pet, owner, vet, slot and status. Self-service bookings obey the rules shown further down.',
+    disease_cases:'Category, severity, contagiousness and region. The source for disease prediction and the risk engine.',
+    lab_reports:'An uploaded PDF or image, plus structured findings. Can be linked to a disease case.',
+    payments:'Payments recorded against an invoice. Money is recorded here, not processed.',
+    billing_items:'Invoice lines. Items drawn from stock point at inventory.',
+    rag_chunks:'The assistant’s vector store: text, a 768-dim embedding, and the pet, customer and source type used to scope every search. Cascades from pets and customers; other deletes are handled in code.',
+    users:'Staff accounts with a role: admin, veterinarian or receptionist. Referenced as the vet on bookings and records, and in audit fields.',
+    inventory:'Stock levels, reorder levels, cost and expiry. Feeds the demand model.',
+    inventory_transactions:'Every movement of stock in or out, the usage history behind the demand forecast.'
+  };
+  var boxes=[].slice.call(root.querySelectorAll('.tb')),edges=[].slice.call(root.querySelectorAll('.ed'));
+  function on(t){
+    root.classList.add('focus');var lit={};lit[t]=1;
+    edges.forEach(function(e){var hit=e.dataset.a===t||e.dataset.b===t;e.classList.toggle('lit',hit);if(hit){lit[e.dataset.a]=1;lit[e.dataset.b]=1}});
+    boxes.forEach(function(b){b.classList.toggle('lit',!!lit[b.dataset.t])});
+    var links=Object.keys(lit).filter(function(k){return k!==t});
+    info.textContent='';info.appendChild(el('h3',null,t));info.appendChild(el('p',null,D[t]));
+    if(links.length)info.appendChild(el('p',null,'Links to: '+links.join(', ')+'.'));
+  }
+  function off(){root.classList.remove('focus');edges.concat(boxes).forEach(function(e){e.classList.remove('lit')});info.innerHTML=dflt}
+  boxes.forEach(function(b){
+    b.setAttribute('role','button');b.setAttribute('aria-label',b.dataset.t+' table');
+    b.addEventListener('mouseenter',function(){on(b.dataset.t)});b.addEventListener('focus',function(){on(b.dataset.t)});
+    b.addEventListener('click',function(){on(b.dataset.t)});
+    b.addEventListener('mouseleave',function(){if(document.activeElement!==b)off()});b.addEventListener('blur',off);
+  });
+})();
+
+/* booking rules demo — mirrors server/src/utils/appointmentRules.js */
+(function(){
+  var inp=document.getElementById('bk-date');if(!inp)return;
+  var OPEN=9*60,CLOSE=18*60+30,STEP=30,DUR=30,MAX=3,LEAD=48;
+  var grid=document.getElementById('bk-slots'),out=document.getElementById('bk-verdict');
+  function pad(n){return String(n).padStart(2,'0')}
+  function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+  var d0=new Date();d0.setDate(d0.getDate()+(d0.getHours()>=18?3:2));if(d0.getDay()===0)d0.setDate(d0.getDate()+1);inp.value=iso(d0);inp.min=iso(new Date());
+  function hash(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h)}
+  function render(){
+    grid.textContent='';out.className='verdict';out.textContent='Choose a slot to see what the server would say.';
+    if(!inp.value)return;
+    var p=inp.value.split('-'),day=new Date(+p[0],p[1]-1,+p[2]),dow=day.getDay();
+    var label=day.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+    for(var t=OPEN;t+DUR<=CLOSE;t+=STEP){(function(t){
+      var hh=pad(Math.floor(t/60))+':'+pad(t%60),at=new Date(+p[0],p[1]-1,+p[2],Math.floor(t/60),t%60);
+      var hrs=(at-Date.now())/36e5,taken=hash(inp.value+hh)%4,why=null,short;
+      if(dow===0){why='The clinic is closed on Sundays. Bookings are Monday to Saturday.';short='closed'}
+      else if(hrs<LEAD){why=hrs<0?'That time has already passed.':'Appointments need at least 48 hours’ notice. This slot is '+Math.max(0,Math.floor(hrs))+' hours away.';short=hrs<0?'past':'< 48 h'}
+      else if(taken>=MAX){why='This slot already has 3 bookings, the most one slot can hold.';short='full'}
+      else short=(MAX-taken)+' of 3 free';
+      var b=el('button','slot '+(why?'no':'ok'));b.type='button';b.setAttribute('aria-pressed','false');
+      b.appendChild(document.createTextNode(hh));b.appendChild(el('small',null,short));
+      b.setAttribute('aria-label',hh+', '+(why?'unavailable: '+short:'available, '+short));
+      b.addEventListener('click',function(){
+        [].forEach.call(grid.children,function(x){x.setAttribute('aria-pressed','false')});b.setAttribute('aria-pressed','true');
+        out.className='verdict '+(why?'no':'ok');
+        out.textContent=why?'Rejected: '+why:'Accepted: '+label+', '+hh+'–'+pad(Math.floor((t+DUR)/60))+':'+pad((t+DUR)%60)+'. '+(MAX-taken-1)+' place'+(MAX-taken-1===1?'':'s')+' left in this slot afterwards.';
+      });
+      grid.appendChild(b);
+    })(t)}
+  }
+  inp.addEventListener('change',render);render();
 })();
 </script>
 
